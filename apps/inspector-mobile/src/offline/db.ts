@@ -1,0 +1,271 @@
+/**
+ * SQLite local persistence for Inspector Mobile application (§5, §31).
+ * Supports offline queuing, inspection caching, and media upload tracking.
+ */
+
+export interface ISqliteDatabase {
+  execAsync(sql: string): Promise<void>;
+  runAsync(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ lastInsertRowId?: number; changes?: number }>;
+  getAllAsync<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
+  getFirstAsync<T = unknown>(sql: string, params?: unknown[]): Promise<T | null>;
+}
+
+/**
+ * In-memory SQLite emulator for Vitest test environments or environments
+ * without native Expo SQLite bindings.
+ */
+export class InMemorySqliteDatabase implements ISqliteDatabase {
+  private tables = new Map<string, Array<Record<string, unknown>>>();
+
+  async execAsync(sql: string): Promise<void> {
+    // Extract CREATE TABLE IF NOT EXISTS tableName
+    const matches = sql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/gi);
+    for (const match of matches) {
+      const name = match[1]?.toLowerCase();
+      if (name && !this.tables.has(name)) {
+        this.tables.set(name, []);
+      }
+    }
+  }
+
+  async runAsync(
+    sql: string,
+    params: unknown[] = [],
+  ): Promise<{ lastInsertRowId?: number; changes?: number }> {
+    const trimmed = sql.trim();
+    const insertMatch = trimmed.match(
+      /^INSERT(?:\s+OR\s+REPLACE)?\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i,
+    );
+    if (insertMatch) {
+      const table = insertMatch[1]?.toLowerCase();
+      const cols = insertMatch[2]?.split(",").map((c) => c.trim()) ?? [];
+      const valExprs = insertMatch[3]?.split(",").map((v) => v.trim()) ?? [];
+      let rows = this.tables.get(table ?? "") ?? [];
+      const newRow: Record<string, unknown> = {};
+      let paramIdx = 0;
+      cols.forEach((col, idx) => {
+        const valExpr = valExprs[idx];
+        if (valExpr === "?") {
+          newRow[col] = params[paramIdx++];
+        } else if (valExpr?.startsWith("'") && valExpr.endsWith("'")) {
+          newRow[col] = valExpr.slice(1, -1);
+        } else if (valExpr !== undefined && !Number.isNaN(Number(valExpr))) {
+          newRow[col] = Number(valExpr);
+        } else {
+          newRow[col] = params[paramIdx++];
+        }
+      });
+      const pk = newRow.id ? "id" : newRow.operation_id ? "operation_id" : null;
+      if (pk) {
+        rows = rows.filter((r) => r[pk] !== newRow[pk]);
+      }
+      rows.push(newRow);
+      this.tables.set(table ?? "", rows);
+      return { changes: 1, lastInsertRowId: rows.length };
+    }
+
+    const updateMatch = trimmed.match(/^UPDATE\s+(\w+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$/i);
+    if (updateMatch) {
+      const table = updateMatch[1]?.toLowerCase();
+      const setClause = updateMatch[2] ?? "";
+      const whereClause = updateMatch[3] ?? "";
+      const rows = this.tables.get(table ?? "") ?? [];
+
+      const setPairs = setClause.split(",").map((p) => p.trim());
+      let whereVal: unknown = undefined;
+      let whereCol: string | null = null;
+      const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
+      if (whereMatch && whereMatch[1]) {
+        whereCol = whereMatch[1].toLowerCase();
+        whereVal = whereMatch[2] !== undefined ? whereMatch[2] : params[params.length - 1];
+      }
+
+      for (const row of rows) {
+        if (!whereCol || row[whereCol] === whereVal) {
+          let paramIdx = 0;
+          for (const pair of setPairs) {
+            const parts = pair.split("=").map((s) => s.trim());
+            const col = parts[0]?.toLowerCase();
+            const valExpr = parts[1];
+            if (col) {
+              if (valExpr === "?") {
+                row[col] = params[paramIdx++];
+              } else if (valExpr?.startsWith("'") && valExpr.endsWith("'")) {
+                row[col] = valExpr.slice(1, -1);
+              }
+            }
+          }
+        }
+      }
+      return { changes: rows.length };
+    }
+
+    const deleteMatch = trimmed.match(/^DELETE\s+FROM\s+(\w+)/i);
+    if (deleteMatch) {
+      const table = deleteMatch[1]?.toLowerCase();
+      if (table) this.tables.set(table, []);
+      return { changes: 1 };
+    }
+
+    return { changes: 0 };
+  }
+
+  async getAllAsync<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
+    const fromMatch = sql.match(/FROM\s+(\w+)(?:\s+WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s*$))?/i);
+    if (!fromMatch) return [];
+    const table = fromMatch[1]?.toLowerCase();
+    const whereClause = fromMatch[2]?.trim() ?? "";
+    const rows = this.tables.get(table ?? "") ?? [];
+
+    if (!whereClause) {
+      return rows as T[];
+    }
+
+    const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
+    if (whereMatch && whereMatch[1]) {
+      const col = whereMatch[1].toLowerCase();
+      const val = whereMatch[2] !== undefined ? whereMatch[2] : params[0];
+      return rows.filter((r) => r[col] === val) as T[];
+    }
+
+    return rows as T[];
+  }
+
+  async getFirstAsync<T = unknown>(sql: string, params: unknown[] = []): Promise<T | null> {
+    const all = await this.getAllAsync<T>(sql, params);
+    return all.length > 0 ? (all[0] ?? null) : null;
+  }
+}
+
+export const DDL_SCHEMA = `
+CREATE TABLE IF NOT EXISTS offline_operations (
+  operation_id TEXT PRIMARY KEY,
+  inspection_id TEXT NOT NULL,
+  operation_type TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  status TEXT NOT NULL,
+  code TEXT,
+  error_message TEXT,
+  result_data TEXT,
+  client_timestamp TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  synced_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cached_inspections (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  project_name TEXT NOT NULL,
+  project_code TEXT NOT NULL,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  district_id TEXT,
+  scheduled_start TEXT,
+  scheduled_end TEXT,
+  started_at TEXT,
+  submitted_at TEXT,
+  cached_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cached_observations (
+  id TEXT PRIMARY KEY,
+  inspection_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  is_local INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS cached_evidence (
+  id TEXT PRIMARY KEY,
+  inspection_id TEXT NOT NULL,
+  evidence_type TEXT NOT NULL,
+  file_name TEXT,
+  content_hash TEXT,
+  upload_state TEXT NOT NULL,
+  integrity_state TEXT NOT NULL,
+  local_file_uri TEXT,
+  created_at TEXT NOT NULL,
+  is_local INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS media_upload_queue (
+  id TEXT PRIMARY KEY,
+  evidence_id TEXT NOT NULL,
+  operation_id TEXT NOT NULL,
+  local_file_uri TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  file_size_bytes INTEGER,
+  content_hash TEXT NOT NULL,
+  upload_status TEXT NOT NULL,
+  error_message TEXT,
+  created_at TEXT NOT NULL,
+  uploaded_at TEXT
+);
+`;
+
+interface ExpoSQLiteLike {
+  execAsync(sql: string): Promise<void>;
+  runAsync(sql: string, params?: unknown): Promise<{ lastInsertRowId?: number; changes?: number }>;
+  getAllAsync<T>(sql: string, params?: unknown): Promise<T[]>;
+  getFirstAsync<T>(sql: string, params?: unknown): Promise<T | null>;
+}
+
+class ExpoSqliteAdapter implements ISqliteDatabase {
+  constructor(private readonly db: ExpoSQLiteLike) {}
+
+  async execAsync(sql: string): Promise<void> {
+    await this.db.execAsync(sql);
+  }
+
+  async runAsync(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ lastInsertRowId?: number; changes?: number }> {
+    const res = await this.db.runAsync(sql, params ?? []);
+    return {
+      lastInsertRowId: res?.lastInsertRowId,
+      changes: res?.changes,
+    };
+  }
+
+  async getAllAsync<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
+    return this.db.getAllAsync<T>(sql, params ?? []);
+  }
+
+  async getFirstAsync<T = unknown>(sql: string, params?: unknown[]): Promise<T | null> {
+    return this.db.getFirstAsync<T>(sql, params ?? []);
+  }
+}
+
+let currentDb: ISqliteDatabase | null = null;
+
+export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
+  if (currentDb) return currentDb;
+
+  try {
+    // Attempt dynamic import of expo-sqlite
+    const SQLite = await import("expo-sqlite");
+    if (typeof SQLite.openDatabaseAsync === "function") {
+      const nativeDb = await SQLite.openDatabaseAsync("netram_inspector.db");
+      await nativeDb.execAsync(DDL_SCHEMA);
+      const adapter = new ExpoSqliteAdapter(nativeDb);
+      currentDb = adapter;
+      return adapter;
+    }
+  } catch {
+    // Fall back to in-memory database in non-Expo or test environments
+  }
+
+  const inMem = new InMemorySqliteDatabase();
+  await inMem.execAsync(DDL_SCHEMA);
+  currentDb = inMem;
+  return inMem;
+}
+
+export function setTestDatabase(db: ISqliteDatabase | null) {
+  currentDb = db;
+}

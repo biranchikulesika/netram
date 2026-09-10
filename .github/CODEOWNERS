@@ -1,0 +1,28 @@
+# Code ownership — see docs/OWNERSHIP.md and AGENTS.md §61-62
+
+apps/web/                          @biranchikulesika @srutiswarupa @smrutirekhaparida576
+apps/inspector-mobile/             @biranchikulesika @srutiswarupa @smrutirekhaparida576 @BISHNU-CHARAN-BARIK
+
+services/api/                      @biranchikulesika @jyotirmaya2004
+services/ai/                       @dipteshrpradhan @jyotirmaya2004
+services/cctv-gateway/             @biranchikulesika @dipteshrpradhan
+services/realtime/                 @biranchikulesika @jyotirmaya2004
+
+packages/data/                     @biranchikulesika
+packages/types/                    @biranchikulesika @jyotirmaya2004
+packages/validation/               @biranchikulesika @jyotirmaya2004
+packages/api-client/               @biranchikulesika
+packages/ui/                       @biranchikulesika
+packages/config/                   @biranchikulesika
+
+supabase/                          @biranchikulesika @jyotirmaya2004
+scripts/                           @biranchikulesika
+
+infrastructure/                    @biranchikulesika @BISHNU-CHARAN-BARIK
+docs/architecture/                 @biranchikulesika
+docs/domain/                       @biranchikulesika
+docs/contracts/                    @biranchikulesika
+docs/decisions/                    @biranchikulesika
+docs/development/                  @biranchikulesika
+
+.github/workflows/ci.yml          @biranchikulesika

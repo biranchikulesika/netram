@@ -1,0 +1,76 @@
+# Netram local development infrastructure.
+#
+# This file provides the SUPPORT SERVICES the platform depends on. The
+# application services (api, web, realtime, ...) are orchestrated through
+# pnpm/Turborepo during development (see README.md).
+#
+# Service applications can also be containerized individually (see each
+# service's Dockerfile). To run the full stack through Docker, start every
+# component with its own profile.
+
+name: netram
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: netram-postgres
+    environment:
+      POSTGRES_USER: netram
+      POSTGRES_PASSWORD: netram
+      POSTGRES_DB: netram
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netram -d netram"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: netram-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: netram-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: netram
+      MINIO_ROOT_PASSWORD: netram-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: netram-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 netram netram-secret &&
+      mc mb --ignore-existing local/netram &&
+      echo 'MinIO bucket ready'
+      "
+
+volumes:
+  db-data:
+  minio-data:

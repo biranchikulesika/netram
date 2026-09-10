@@ -1,0 +1,36 @@
+{
+  "name": "@netram/data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/db/schema.ts",
+    "./client": "./src/db/client.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts -- action migrate",
+    "db:reset": "tsx src/db/migrate.ts -- action reset",
+    "db:seed": "tsx ../../supabase/seed/index.ts",
+    "db:setup": "pnpm db:reset && pnpm db:seed",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests --typecheck"
+  },
+  "dependencies": {
+    "@netram/types": "workspace:*",
+    "@netram/config": "workspace:*",
+    "drizzle-orm": "^0.44.2",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "drizzle-kit": "^0.31.2",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.3"
+  }
+}

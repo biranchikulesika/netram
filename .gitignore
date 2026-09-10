@@ -1,0 +1,102 @@
+# ================= Dependencies =================
+node_modules/
+.pnpm-store/
+
+# ================= Build output =================
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# ================= Framework caches =================
+.next/
+.turbo/
+cache/
+.eslintcache
+.coverage/
+
+# ================= Environment & secrets =================
+# Local and environment-specific `.env` files always carry secrets.
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# ================= Private keys & certificates =================
+*.pem
+*.key
+*.p12
+*.pfx
+*.p8
+*.pk8
+
+# ================= Database & local data =================
+# Guards local SQLite artifacts (the mobile offline store is device-local;
+# these prevent accidental local copies). Migrations/schema are .sql/.ts, untouched.
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+supabase/.temp/
+supabase/.branch/
+
+# ================= Logs & runtime output =================
+*.log
+logs/
+tmp/
+temp/
+
+# ================= Python =================
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# ================= Mobile (Expo / React Native) =================
+apps/inspector-mobile/.expo/
+apps/inspector-mobile/dist/
+apps/inspector-mobile/web-build/
+
+# ================= IDE & OS =================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ================= Infrastructure state =================
+# Local developer-machine data only; never shared configuration.
+infrastructure/.data/
+
+# ================= Test artifacts =================
+coverage/
+
+# ================= Markdown =================
+# Default: every `.md` file is ignored.
+# Only canonical repository documentation is explicitly allowed below.
+# A Markdown file enters Git only when deliberately added to this allowlist.
+*.md
+
+# Root repository documentation
+!README.md
+!AGENTS.md
+
+# Canonical docs
+!docs/OWNERSHIP.md
+!docs/architecture/README.md
+!docs/contracts/README.md
+!docs/domain/README.md
+!docs/decisions/ADR-001-monorepo.md
+
+# Canonical development docs
+!docs/development/setup.md
+!docs/development/TEAM-HANDOFF.md
+!docs/development/WORK-AREAS.md
+!docs/development/SHARED-CONTRACTS.md
+!docs/development/TEAM-TASKS.md

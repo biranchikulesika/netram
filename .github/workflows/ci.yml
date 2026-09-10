@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    name: Lint / Typecheck / Test / Build / Guards
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: netram
+          POSTGRES_PASSWORD: netram
+          POSTGRES_DB: netram
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U netram -d netram"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://netram:netram@localhost:5432/netram
+      NETRAM_DEV_AUTH_SECRET: ci-only-secret-00000000000000000000000000000000
+      NEXT_PUBLIC_API_URL: http://localhost:3101
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: AI service tests (pytest)
+        run: |
+          pip install -e "services/ai[dev]"
+          pytest services/ai/tests
+
+      - name: Build
+        run: pnpm build
+
+      - name: Architecture guards
+        run: pnpm check:architecture
+
+      - name: Security scan
+        run: pnpm check:security
+
+      - name: Database setup on fresh Postgres
+        run: pnpm db:setup
+
+      - name: OpenAPI export is reproducible
+        run: pnpm api:export-openapi && git diff --exit-code -- services/api/openapi

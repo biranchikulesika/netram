@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.next/
+out/
+.turbo/
+coverage/
+pnpm-lock.yaml
+supabase/migrations/
+services/api/openapi/openapi.json
+.git/
+.expo/

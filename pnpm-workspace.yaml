@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+  - "services/*"
+  - "packages/*"
+  - "supabase/seed"
+
+# Lifecycle build scripts are approved per-package (supply-chain awareness).
+allowBuilds:
+  "@tailwindcss/oxide": true
+  "@swc/core": true
+  esbuild: true
+  sharp: true
+  msgpackr-extract: true
+  unrs-resolver: true
+  workerd: true

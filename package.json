@@ -1,0 +1,43 @@
+{
+  "name": "netram",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Netram - Smart Real-Time Monitoring & Inspection platform for DoSJE",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @netram/data db:generate",
+    "db:migrate": "pnpm --filter @netram/data db:migrate",
+    "db:reset": "pnpm --filter @netram/data db:reset",
+    "db:seed": "pnpm --filter @netram/data db:seed",
+    "db:setup": "pnpm db:reset && pnpm db:seed",
+    "api:export-openapi": "pnpm --filter @netram/api export:openapi",
+    "check:architecture": "node scripts/architecture-check.mjs",
+    "check:security": "node scripts/security-check.mjs",
+    "verify:runtime:web": "tsx scripts/verify-web-runtime.ts",
+    "verify:runtime:cctv": "tsx scripts/verify-cctv-runtime.ts",
+    "verify:runtime:evidence": "tsx scripts/verify-evidence-runtime.ts",
+    "verify:runtime:workers": "tsx scripts/verify-workers-runtime.ts",
+    "verify:runtime:mobile": "tsx scripts/verify-mobile-offline-runtime.ts",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
