@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { VcSessionWithParticipants, VcJoinDetails, VcParticipantRole } from "@netram/types";
+import { formatDateTime } from "../../../lib/presentation";
 
 export interface VcPanelProps {
   inspectionId: string;
@@ -374,7 +375,7 @@ export function VcPanel({
                 <div className="vc-session-meta">
                   <span>Provider: {session.provider.toUpperCase()}</span>
                   {session.scheduledAt && (
-                    <span>• Scheduled: {new Date(session.scheduledAt).toLocaleString()}</span>
+                    <span>• Scheduled: {formatDateTime(session.scheduledAt)}</span>
                   )}
                   {session.participants && session.participants.length > 0 && (
                     <span>• {session.participants.length} Participants Assigned</span>

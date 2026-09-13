@@ -41,7 +41,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: netram-minio
     command: server /data --console-address ":9001"
     environment:
@@ -59,7 +59,7 @@ services:
       retries: 10
 
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:latest
     container_name: netram-minio-init
     depends_on:
       minio:

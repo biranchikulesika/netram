@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Observation } from "@netram/types";
 import { useRouter } from "next/navigation";
+import { getUserDisplayName, formatDateTime } from "../../../lib/presentation";
 
 export interface ObservationsSectionProps {
   inspectionId: string;
@@ -62,9 +63,9 @@ export function ObservationsSection({ inspectionId, items, canAdd }: Observation
             <article key={obs.id} className="observation-item">
               <div className="observation-header">
                 <span className="obs-author">
-                  Inspector {obs.userId ? `(${obs.userId.slice(0, 8)})` : ""}
+                  {getUserDisplayName(obs.userId, "Field Inspector")}
                 </span>
-                <span className="obs-time">{new Date(obs.createdAt).toLocaleString()}</span>
+                <span className="obs-time">{formatDateTime(obs.createdAt)}</span>
               </div>
               <p className="obs-text">{obs.text}</p>
             </article>

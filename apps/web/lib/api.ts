@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { NetramApiClient } from "@netram/api-client";
 import { cookies } from "next/headers";
 import { loadClientEnv } from "@netram/config";
@@ -23,3 +24,6 @@ export async function getSessionUser() {
     return null;
   }
 }
+
+/** Deduplicates the session fetch across layout + page renders in one request. */
+export const getCachedSessionUser = cache(getSessionUser);
