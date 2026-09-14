@@ -37,7 +37,7 @@ function walk(dir, out = []) {
 
 const allFiles = walk(ROOT);
 const tsFiles = allFiles.filter((f) => /\.(ts|tsx)$/.test(f));
-const rel = (f) => f.slice(ROOT.length + 1);
+const rel = (f) => f.slice(ROOT.length + 1).replace(/\\/g, "/");
 const under = (f, seg) =>
   rel(f).startsWith(`${seg}${f.slice(ROOT.length).includes("/") ? "" : ""}`) &&
   rel(f).startsWith(seg + "/");
