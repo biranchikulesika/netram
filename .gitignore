@@ -18,6 +18,7 @@ cache/
 # ================= Environment & secrets =================
 # Local and environment-specific `.env` files always carry secrets.
 .env
+.env.local
 .env.*
 !.env.example
 !.env.sample
@@ -56,6 +57,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+*.egg-info/
 
 # ================= Mobile (Expo / React Native) =================
 apps/inspector-mobile/.expo/
@@ -100,3 +102,4 @@ coverage/
 !docs/development/WORK-AREAS.md
 !docs/development/SHARED-CONTRACTS.md
 !docs/development/TEAM-TASKS.md
+!docs/development/environments.md

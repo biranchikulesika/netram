@@ -41,7 +41,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: netram-minio
     command: server /data --console-address ":9001"
     environment:
@@ -59,7 +59,7 @@ services:
       retries: 10
 
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:latest
     container_name: netram-minio-init
     depends_on:
       minio:
@@ -71,6 +71,119 @@ services:
       echo 'MinIO bucket ready'
       "
 
+  # =================================================================
+  # Application Services (Profile: "full")
+  # Run backing infra with: pnpm infra:up
+  # Run full containerized stack with: docker compose --profile full up -d
+  # =================================================================
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: netram-api
+    profiles: ["full", "services"]
+    environment:
+      DATABASE_URL: postgres://netram:netram@postgres:5432/netram
+      REDIS_URL: redis://redis:6379
+      NETRAM_API_PORT: 3001
+      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESS_KEY_ID: netram
+      STORAGE_S3_SECRET_ACCESS_KEY: netram-secret
+      STORAGE_S3_BUCKET: netram
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  workers:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: netram-workers
+    profiles: ["full", "services"]
+    command: ["pnpm", "workers"]
+    environment:
+      DATABASE_URL: postgres://netram:netram@postgres:5432/netram
+      REDIS_URL: redis://redis:6379
+      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESS_KEY_ID: netram
+      STORAGE_S3_SECRET_ACCESS_KEY: netram-secret
+      STORAGE_S3_BUCKET: netram
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  realtime:
+    build:
+      context: .
+      dockerfile: services/realtime/Dockerfile
+    container_name: netram-realtime
+    profiles: ["full", "services"]
+    environment:
+      NETRAM_REALTIME_PORT: 3002
+      REDIS_URL: redis://redis:6379
+      NETRAM_API_URL: http://api:3001
+      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+    ports:
+      - "3002:3002"
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  cctv-gateway:
+    build:
+      context: .
+      dockerfile: services/cctv-gateway/Dockerfile
+    container_name: netram-cctv-gateway
+    profiles: ["full", "services"]
+    environment:
+      CCTV_GATEWAY_PORT: 3003
+      NETRAM_API_URL: http://api:3001
+    ports:
+      - "3003:3003"
+    depends_on:
+      api:
+        condition: service_started
+
+  ai:
+    build:
+      context: .
+      dockerfile: services/ai/Dockerfile
+    container_name: netram-ai
+    profiles: ["full", "services"]
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: netram-web
+    profiles: ["full", "web"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_REALTIME_WS_URL: ws://localhost:3002
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_started
+      realtime:
+        condition: service_started
+
 volumes:
   db-data:
   minio-data:
+
