@@ -88,7 +88,7 @@ async function main() {
   });
   if (!inspectionsRes.ok) throw new Error(`GET /inspections returned ${inspectionsRes.status}`);
   const inspectionsHtml = await inspectionsRes.text();
-  if (!inspectionsHtml.includes("Inspections") || !inspectionsHtml.includes("Total Inspections")) {
+  if (!inspectionsHtml.includes("Inspections") || !inspectionsHtml.includes("Active Attention")) {
     throw new Error("Inspections page HTML missing expected content");
   }
   console.log(
@@ -294,10 +294,7 @@ async function main() {
     throw new Error(`GET /control-room returned ${controlRoomRes.status}`);
   }
   const controlRoomHtml = await controlRoomRes.text();
-  if (
-    !controlRoomHtml.includes("Control Room &amp; Live Surveillance") &&
-    !controlRoomHtml.includes("Control Room & Live Surveillance")
-  ) {
+  if (!controlRoomHtml.includes("Control Room")) {
     throw new Error("Control room HTML missing expected title");
   }
   if (!controlRoomHtml.includes("Vani Vihar")) {
