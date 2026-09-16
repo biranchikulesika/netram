@@ -37,5 +37,6 @@ export const aiAnomalyListQuerySchema = paginationSchema.extend({
 export const transitionAiAnomalySchema = z
   .object({
     to: z.enum(ANOMALY_STATUSES),
+    note: z.string().max(1000).optional(),
   })
   .strict();

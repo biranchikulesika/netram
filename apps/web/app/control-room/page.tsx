@@ -20,6 +20,8 @@ export default async function ControlRoomPage() {
       .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
   ]);
 
+  const canTransition = session.permissions.includes("ai:anomaly:transition");
+
   return (
     <main>
       <NavHeader
@@ -40,6 +42,7 @@ export default async function ControlRoomPage() {
         cameras={camerasPage.items}
         anomalies={anomaliesPage.items}
         anomaliesTotal={anomaliesPage.total}
+        canTransition={canTransition}
       />
     </main>
   );

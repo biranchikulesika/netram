@@ -62,8 +62,8 @@ export async function registerAiAnomalyRoutes(
     },
     async (request) => {
       const { id } = request.params as { id: string };
-      const body = request.body as { to: AnomalyStatus };
-      return aiAnomalyService.transitionAiAnomaly(request.netram!, id, body.to);
+      const body = request.body as { to: AnomalyStatus; note?: string };
+      return aiAnomalyService.transitionAiAnomaly(request.netram!, id, body.to, body.note);
     },
   );
 }

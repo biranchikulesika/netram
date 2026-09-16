@@ -367,6 +367,61 @@ async function main() {
   }
   console.log(`✓ Proxy GET health returned status: ${healthData.status}`);
 
+  // Test AI anomaly human-in-the-loop transition proxy (API-1 & WEB-7)
+  console.log("Testing POST /api/ai-anomalies/:id/transition proxy...");
+  const anomaliesRes = await fetch(`${API_BASE}/api/v1/ai-anomalies?pageSize=10`, {
+    headers: { Authorization: `Bearer ${officer.token}` },
+  });
+  if (!anomaliesRes.ok) {
+    throw new Error(`Failed to fetch AI anomalies: ${anomaliesRes.status}`);
+  }
+  const anomaliesData = (await anomaliesRes.json()) as { items: Array<{ id: string; status: string }> };
+  const targetAnomaly = anomaliesData.items.find(
+    (a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated",
+  );
+  if (targetAnomaly) {
+    const nextStatus =
+      targetAnomaly.status === "new"
+        ? "reviewed"
+        : targetAnomaly.status === "reviewed"
+          ? "investigated"
+          : "acted_upon";
+
+    // 1. Valid transition
+    const transRes = await fetch(`${WEB_BASE}/api/ai-anomalies/${targetAnomaly.id}/transition`, {
+      method: "POST",
+      headers: {
+        Cookie: officer.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ to: nextStatus, note: "Advisory review confirmed in field." }),
+    });
+    if (!transRes.ok) {
+      throw new Error(`AI anomaly transition proxy failed: ${transRes.status}: ${await transRes.text()}`);
+    }
+    const transJson = (await transRes.json()) as { id: string; status: string };
+    if (transJson.status !== nextStatus) {
+      throw new Error(`Expected anomaly status '${nextStatus}', got '${transJson.status}'`);
+    }
+    console.log(`✓ Proxy POST AI anomaly transition to '${nextStatus}' passed (id=${targetAnomaly.id})`);
+
+    // 2. Invalid transition: cannot transition backwards to "new" (should return 409 Conflict)
+    const invalidTransRes = await fetch(`${WEB_BASE}/api/ai-anomalies/${targetAnomaly.id}/transition`, {
+      method: "POST",
+      headers: {
+        Cookie: officer.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ to: "new" }),
+    });
+    if (invalidTransRes.status !== 409) {
+      throw new Error(`Expected 409 Conflict for invalid transition, got ${invalidTransRes.status}`);
+    }
+    console.log(`✓ Invalid transition correctly rejected with 409 Conflict`);
+  } else {
+    console.log(`(All anomalies in terminal states)`);
+  }
+
   // Step 12: Video Conferencing (VC) Tripartite Review Integration
   console.log("\n12. Testing Video Conferencing (VC) Tripartite Review Integration...");
   // Find an inspection within officer's authorized jurisdiction (Khordha)
