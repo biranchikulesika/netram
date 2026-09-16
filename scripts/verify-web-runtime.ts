@@ -724,8 +724,187 @@ async function main() {
   }
   console.log(`✓ /track-complaint rendered successfully (${trackPortalHtml.length} bytes, citizen portal OK)`);
 
+  // Step 15: Corrective Actions Workflow (WEB + API)
+  console.log("\n15. Testing Corrective Actions Lifecycle & Proxy Integration...");
+
+  // Test SSR GET /corrective-actions
+  console.log("Testing SSR GET /corrective-actions...");
+  const caListRes = await fetch(`${WEB_BASE}/corrective-actions`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!caListRes.ok) {
+    throw new Error(`GET /corrective-actions returned ${caListRes.status}`);
+  }
+  const caListHtml = await caListRes.text();
+  if (!caListHtml.includes("Corrective Actions") || !caListHtml.includes("Pending Compliance")) {
+    throw new Error("Corrective Actions page HTML missing expected headings/metrics");
+  }
+  console.log(`✓ /corrective-actions rendered successfully (${caListHtml.length} bytes, contains layout)`);
+
+  // Find or create a confirmed finding to order a corrective action against
+  const officerInspectionsRes = await fetch(`${API_BASE}/api/v1/inspections?pageSize=20`, {
+    headers: { Authorization: `Bearer ${officer.token}` },
+  });
+  const officerInsps = (await officerInspectionsRes.json()) as {
+    items: Array<{ id: string; status: string; districtId: string }>;
+  };
+  const targetInsp = officerInsps.items.find((i) =>
+    ["under_review", "findings", "corrective_actions"].includes(i.status),
+  );
+  if (!targetInsp) {
+    throw new Error("Expected at least one inspection in review/findings status in officer jurisdiction");
+  }
+
+  // Create a new deficiency finding
+  const createFindingRes = await fetch(`${API_BASE}/api/v1/inspections/${targetInsp.id}/findings`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${officer.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      severity: "high",
+      description: `Deficiency finding for corrective action test at ${new Date().toISOString()}`,
+      remediation: "Execute structural waterproofing and submit certified inspection report.",
+    }),
+  });
+  if (!createFindingRes.ok) {
+    throw new Error(`Failed to create test finding: ${createFindingRes.status}`);
+  }
+  const testFinding = (await createFindingRes.json()) as { id: string; status: string };
+
+  // Transition finding to 'confirmed' so canOrderCorrectiveAction is true
+  const confirmFindingRes = await fetch(`${API_BASE}/api/v1/findings/${testFinding.id}/transitions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${officer.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "confirmed", note: "Finding confirmed by officer" }),
+  });
+  if (!confirmFindingRes.ok) {
+    throw new Error(`Failed to confirm test finding: ${confirmFindingRes.status}`);
+  }
+
+  // Test Web Proxy POST /api/corrective-actions (Order corrective action)
+  console.log("Testing POST /api/corrective-actions proxy to order corrective action...");
+  const orderCaRes = await fetch(`${WEB_BASE}/api/corrective-actions`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      findingId: testFinding.id,
+      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    }),
+  });
+  if (!orderCaRes.ok) {
+    throw new Error(`POST /api/corrective-actions returned ${orderCaRes.status}: ${await orderCaRes.text()}`);
+  }
+  const createdCa = (await orderCaRes.json()) as { id: string; status: string; findingId: string };
+  if (createdCa.findingId !== testFinding.id || createdCa.status !== "pending") {
+    throw new Error(`Unexpected corrective action payload: ${JSON.stringify(createdCa)}`);
+  }
+  console.log(`✓ Corrective action ordered via proxy: id=${createdCa.id}, status=${createdCa.status}`);
+
+  // Test SSR GET /corrective-actions/:id (Dossier page)
+  console.log(`Testing SSR GET /corrective-actions/${createdCa.id}...`);
+  const caDetailRes = await fetch(`${WEB_BASE}/corrective-actions/${createdCa.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!caDetailRes.ok) {
+    throw new Error(`GET /corrective-actions/${createdCa.id} returned ${caDetailRes.status}`);
+  }
+  const caDetailHtml = await caDetailRes.text();
+  if (!caDetailHtml.includes("Remediation") || !caDetailHtml.includes("Statutory Compliance")) {
+    throw new Error("Corrective action detail page missing expected headings");
+  }
+  console.log(`✓ /corrective-actions/${createdCa.id} rendered successfully (${caDetailHtml.length} bytes)`);
+
+  // Test POST /api/corrective-actions/:id/transition (pending -> submitted)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (pending -> submitted)...`);
+  const submitRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: "submitted",
+      note: "Contractor submitted waterproofing test certificate and photos",
+    }),
+  });
+  if (!submitRes.ok) {
+    throw new Error(`POST transition to submitted failed: ${submitRes.status}: ${await submitRes.text()}`);
+  }
+  const submittedCa = (await submitRes.json()) as { id: string; status: string };
+  if (submittedCa.status !== "submitted") {
+    throw new Error(`Expected status='submitted', got '${submittedCa.status}'`);
+  }
+  console.log(`✓ Proxy transition to 'submitted' passed`);
+
+  // Test POST /api/corrective-actions/:id/transition (submitted -> under_review)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (submitted -> under_review)...`);
+  const reviewRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: "under_review",
+      note: "Executive engineer commenced review of submitted materials",
+    }),
+  });
+  if (!reviewRes.ok) {
+    throw new Error(`POST transition to under_review failed: ${reviewRes.status}: ${await reviewRes.text()}`);
+  }
+  const reviewingCa = (await reviewRes.json()) as { id: string; status: string };
+  if (reviewingCa.status !== "under_review") {
+    throw new Error(`Expected status='under_review', got '${reviewingCa.status}'`);
+  }
+  console.log(`✓ Proxy transition to 'under_review' passed`);
+
+  // Test POST /api/corrective-actions/:id/transition (under_review -> accepted)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (under_review -> accepted)...`);
+  const acceptRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: "accepted",
+      note: "Site reinspection verified compliant execution. Deficiency resolved.",
+    }),
+  });
+  if (!acceptRes.ok) {
+    throw new Error(`POST transition to accepted failed: ${acceptRes.status}: ${await acceptRes.text()}`);
+  }
+  const acceptedCa = (await acceptRes.json()) as { id: string; status: string };
+  if (acceptedCa.status !== "accepted") {
+    throw new Error(`Expected status='accepted', got '${acceptedCa.status}'`);
+  }
+  console.log(`✓ Proxy transition to 'accepted' passed (Finding deficiency closed)`);
+
+  // Test Invalid Transition Rejection (accepted -> submitted should return 409 Conflict)
+  console.log("Testing invalid transition rejection on terminal state...");
+  const invalidCaRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "submitted" }),
+  });
+  if (invalidCaRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for invalid corrective action transition, got ${invalidCaRes.status}`);
+  }
+  console.log(`✓ Invalid corrective action transition correctly rejected with 409 Conflict`);
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 14 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 15 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
 }
 
@@ -733,3 +912,4 @@ main().catch((err) => {
   console.error("\n❌ Web runtime verification failed:", err);
   process.exit(1);
 });
+

@@ -438,6 +438,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         "ai:anomaly:read",
         "ai:anomaly:transition",
         "corrective_action:read",
+        "corrective_action:submit",
         "corrective_action:approve",
         "report:read",
         "report:generate",
