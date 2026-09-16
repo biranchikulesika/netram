@@ -19,6 +19,7 @@ import type {
   Complaint,
   ComplaintListQuery,
   ComplaintStatus,
+  PublicComplaintTracking,
   CorrectiveAction,
   CorrectiveActionListQuery,
   CorrectiveActionStatus,
@@ -395,6 +396,10 @@ export class NetramApiClient extends HttpClient {
       to,
       resolutionText,
     });
+  }
+
+  async trackComplaint(trackingCode: string): Promise<PublicComplaintTracking> {
+    return this.get(`/api/v1/complaints/track/${encodeURIComponent(trackingCode)}`);
   }
 
   async listAuditEvents(query: AuditListQuery = {}): Promise<AuditPage> {
