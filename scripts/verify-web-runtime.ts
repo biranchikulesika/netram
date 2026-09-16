@@ -600,8 +600,132 @@ async function main() {
   });
   console.log("✓ WebSocket subscription authorized and closed cleanly");
 
+  // Step 14: Complaints & Grievance Lifecycle Integration (§35)
+  console.log("\n14. Testing Complaints & Grievance Lifecycle Integration...");
+  const complaintsListRes = await fetch(`${WEB_BASE}/complaints`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!complaintsListRes.ok) {
+    throw new Error(`GET /complaints returned ${complaintsListRes.status}`);
+  }
+  const complaintsHtml = await complaintsListRes.text();
+  if (!complaintsHtml.includes("Complaints &amp; Grievances") && !complaintsHtml.includes("Complaints & Grievances")) {
+    throw new Error("Complaints page missing expected heading");
+  }
+  console.log(`✓ /complaints rendered successfully (${complaintsHtml.length} bytes, contains header and layout)`);
+
+  // Get accessible project for creating a complaint
+  const cmpProjectsRes = await fetch(`${API_BASE}/api/v1/projects?pageSize=1`, {
+    headers: { Authorization: `Bearer ${officer.token}` },
+  });
+  const cmpProjectsData = (await cmpProjectsRes.json()) as { items: Array<{ id: string; code: string; name: string }> };
+  const targetProject = cmpProjectsData.items[0];
+  if (!targetProject) throw new Error("No accessible project found for complaint testing");
+
+  // Test POST /api/complaints proxy
+  console.log("Testing POST /api/complaints proxy...");
+  const createCmpRes = await fetch(`${WEB_BASE}/api/complaints`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      projectId: targetProject.id,
+      description: "Runtime verification grievance: improper storage and safety fence damage.",
+      complainantName: "Citizen Whistleblower",
+      contactInfo: "citizen@example.gov",
+    }),
+  });
+  if (!createCmpRes.ok) {
+    throw new Error(`POST /api/complaints failed: ${createCmpRes.status}: ${await createCmpRes.text()}`);
+  }
+  const createdCmp = (await createCmpRes.json()) as { id: string; trackingCode: string; status: string };
+  if (!createdCmp.id || !createdCmp.trackingCode || createdCmp.status !== "received") {
+    throw new Error(`Unexpected complaint creation response: ${JSON.stringify(createdCmp)}`);
+  }
+  console.log(`✓ Proxy POST /api/complaints created grievance: id=${createdCmp.id}, tracking=${createdCmp.trackingCode}`);
+
+  // Test SSR GET /complaints/:id
+  console.log(`Testing SSR GET /complaints/${createdCmp.id}...`);
+  const cmpDetailRes = await fetch(`${WEB_BASE}/complaints/${createdCmp.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!cmpDetailRes.ok) {
+    throw new Error(`GET /complaints/${createdCmp.id} returned ${cmpDetailRes.status}`);
+  }
+  const cmpDetailHtml = await cmpDetailRes.text();
+  if (!cmpDetailHtml.includes(createdCmp.trackingCode)) {
+    throw new Error("Complaint detail page missing tracking code");
+  }
+  console.log(`✓ /complaints/${createdCmp.id} rendered successfully (${cmpDetailHtml.length} bytes, contains dossier)`);
+
+  // Test POST /api/complaints/:id/transition (received -> under_review)
+  console.log(`Testing POST /api/complaints/${createdCmp.id}/transition proxy (received -> under_review)...`);
+  const transCmpRes = await fetch(`${WEB_BASE}/api/complaints/${createdCmp.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "under_review" }),
+  });
+  if (!transCmpRes.ok) {
+    throw new Error(`POST transition complaint failed: ${transCmpRes.status}: ${await transCmpRes.text()}`);
+  }
+  const transitionedCmp = (await transCmpRes.json()) as { id: string; status: string };
+  if (transitionedCmp.status !== "under_review") {
+    throw new Error(`Expected status='under_review', got '${transitionedCmp.status}'`);
+  }
+  console.log(`✓ Proxy POST transition to 'under_review' passed`);
+
+  // Test invalid transition rejection (under_review -> received should return 409 Conflict)
+  const invalidCmpRes = await fetch(`${WEB_BASE}/api/complaints/${createdCmp.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "received" }),
+  });
+  if (invalidCmpRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for invalid complaint transition, got ${invalidCmpRes.status}`);
+  }
+  console.log(`✓ Invalid complaint transition correctly rejected with 409 Conflict`);
+
+  // Test Public Citizen Tracking Endpoint (GET /api/complaints/track/:code)
+  console.log(`Testing public GET /api/complaints/track/${createdCmp.trackingCode}...`);
+  const publicTrackRes = await fetch(`${WEB_BASE}/api/complaints/track/${encodeURIComponent(createdCmp.trackingCode)}`);
+  if (!publicTrackRes.ok) {
+    throw new Error(`Public track endpoint returned ${publicTrackRes.status}: ${await publicTrackRes.text()}`);
+  }
+  const trackData = (await publicTrackRes.json()) as {
+    trackingCode: string;
+    projectCode: string;
+    status: string;
+    complainantName?: string;
+  };
+  if (trackData.trackingCode !== createdCmp.trackingCode || trackData.status !== "under_review") {
+    throw new Error(`Public track data mismatch: ${JSON.stringify(trackData)}`);
+  }
+  if (trackData.complainantName !== undefined) {
+    throw new Error("PRIVACY VIOLATION: Complainant name leaked in public tracking response!");
+  }
+  console.log(`✓ Public tracking endpoint verified: trackingCode=${trackData.trackingCode}, status=${trackData.status}, PII omitted`);
+
+  // Test Public Citizen Portal SSR (GET /track-complaint)
+  const trackPortalRes = await fetch(`${WEB_BASE}/track-complaint?code=${encodeURIComponent(createdCmp.trackingCode)}`);
+  if (!trackPortalRes.ok) {
+    throw new Error(`GET /track-complaint returned ${trackPortalRes.status}`);
+  }
+  const trackPortalHtml = await trackPortalRes.text();
+  if (!trackPortalHtml.includes("Track Grievance Status")) {
+    throw new Error("Citizen tracking portal missing expected title");
+  }
+  console.log(`✓ /track-complaint rendered successfully (${trackPortalHtml.length} bytes, citizen portal OK)`);
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 13 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 14 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
 }
 
