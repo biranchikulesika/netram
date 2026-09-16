@@ -409,8 +409,8 @@ export class NetramApiClient extends HttpClient {
     return this.get(`/api/v1/ai-anomalies/${id}`);
   }
 
-  async transitionAiAnomaly(id: string, to: AnomalyStatus): Promise<AIAnomaly> {
-    return this.post(`/api/v1/ai-anomalies/${id}/transitions`, { to });
+  async transitionAiAnomaly(id: string, to: AnomalyStatus, note?: string): Promise<AIAnomaly> {
+    return this.post(`/api/v1/ai-anomalies/${id}/transitions`, { to, note });
   }
 
   async listInspectionAssignments(inspectionId: string): Promise<InspectionAssignment[]> {

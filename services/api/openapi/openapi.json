@@ -6034,6 +6034,10 @@
                       "investigated",
                       "acted_upon"
                     ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 1000
                   }
                 },
                 "required": [
