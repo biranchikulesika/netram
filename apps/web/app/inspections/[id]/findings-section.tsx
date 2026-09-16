@@ -1,4 +1,5 @@
 import type { Finding } from "@netram/types";
+import { formatDate } from "../../../lib/presentation";
 
 export interface FindingsSectionProps {
   items: Finding[];
@@ -28,7 +29,7 @@ export function FindingsSection({ items }: FindingsSectionProps) {
                     </span>
                     <span className={`badge-status ${f.status}`}>{f.status.replace("_", " ")}</span>
                   </div>
-                  <span className="finding-time">{new Date(f.createdAt).toLocaleDateString()}</span>
+                  <span className="finding-time">{formatDate(f.createdAt)}</span>
                 </div>
 
                 <p className="finding-desc">{f.description}</p>

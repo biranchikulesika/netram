@@ -10,7 +10,7 @@ export function SignOutButton() {
     router.refresh();
   }
   return (
-    <button onClick={signOut} style={{ background: "#6b7280" }}>
+    <button onClick={signOut} className="btn-secondary">
       Sign out
     </button>
   );

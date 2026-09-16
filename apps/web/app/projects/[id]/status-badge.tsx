@@ -1,5 +1,14 @@
 import type { ProjectStatus } from "@netram/types";
 
-export function StatusBadge({ status }: { status: ProjectStatus }) {
-  return <span className="status">{status}</span>;
+function formatStatus(status: string): string {
+  return status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+export function StatusBadge({ status }: { status: ProjectStatus }) {
+  const normalized = status.toLowerCase().replace(/\s+/g, "_");
+  return <span className={`status status-${normalized}`}>{formatStatus(status)}</span>;
+}
+
