@@ -1359,8 +1359,100 @@ async function main() {
   }
   console.log(`✓ All notifications verified read: unread=${afterAllData.unread}`);
 
+  // Step 20: Statutory Audit Ledger Explorer & Tamper-Evident Dossier Integration (§37, §38)
+  console.log("\n20. Testing Statutory Audit Ledger Explorer & Tamper-Evident Dossier Integration...");
+
+  // 1. Test SSR GET /audit
+  console.log("Testing SSR GET /audit...");
+  const auditSsrRes = await fetch(`${WEB_BASE}/audit`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!auditSsrRes.ok) {
+    throw new Error(`GET /audit returned ${auditSsrRes.status}`);
+  }
+  const auditSsrHtml = await auditSsrRes.text();
+  if (
+    !auditSsrHtml.includes("Statutory Audit Ledger Explorer") ||
+    !auditSsrHtml.includes("Immutable Ledger")
+  ) {
+    throw new Error("Audit page missing expected 'Statutory Audit Ledger Explorer' heading");
+  }
+  console.log(`✓ /audit rendered successfully (${auditSsrHtml.length} bytes, contains Audit Explorer)`);
+
+  // 2. Test Proxy GET /api/audit
+  console.log("Testing Proxy GET /api/audit?page=1&pageSize=50...");
+  const getAuditRes = await fetch(`${WEB_BASE}/api/audit?page=1&pageSize=50`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!getAuditRes.ok) {
+    throw new Error(`GET /api/audit returned ${getAuditRes.status}: ${await getAuditRes.text()}`);
+  }
+  const auditPage = (await getAuditRes.json()) as {
+    items: Array<{
+      id: string;
+      action: string;
+      actorUserId: string | null;
+      resourceType: string | null;
+      resourceId: string | null;
+      requestId: string | null;
+      metadata: Record<string, unknown> | null;
+      occurredAt: string;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+  if (!Array.isArray(auditPage.items) || auditPage.total < 1) {
+    throw new Error(`Expected populated audit ledger, got total=${auditPage.total}`);
+  }
+  console.log(
+    `✓ Proxy GET /api/audit returned ${auditPage.items.length} records (total=${auditPage.total} statutory events)`,
+  );
+
+  // 3. Test Proxy GET /api/audit with action filter (?action=report.finalized)
+  console.log("Testing Proxy GET /api/audit?action=report.finalized...");
+  const filteredActionRes = await fetch(`${WEB_BASE}/api/audit?action=report.finalized`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!filteredActionRes.ok) {
+    throw new Error(`GET /api/audit?action=report.finalized failed with ${filteredActionRes.status}`);
+  }
+  const filteredActionPage = (await filteredActionRes.json()) as typeof auditPage;
+  if (!Array.isArray(filteredActionPage.items) || filteredActionPage.items.length === 0) {
+    throw new Error("Expected at least 1 'report.finalized' audit record from Step 18");
+  }
+  for (const item of filteredActionPage.items) {
+    if (item.action !== "report.finalized") {
+      throw new Error(`Expected action='report.finalized', got '${item.action}'`);
+    }
+  }
+  console.log(
+    `✓ Action-filtered audit events verified: ${filteredActionPage.items.length} report.finalized event(s)`,
+  );
+
+  // 4. Test Proxy GET /api/audit with resourceType filter (?resourceType=inspection)
+  console.log("Testing Proxy GET /api/audit?resourceType=inspection...");
+  const filteredResTypeRes = await fetch(`${WEB_BASE}/api/audit?resourceType=inspection`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!filteredResTypeRes.ok) {
+    throw new Error(`GET /api/audit?resourceType=inspection failed with ${filteredResTypeRes.status}`);
+  }
+  const filteredResTypePage = (await filteredResTypeRes.json()) as typeof auditPage;
+  if (!Array.isArray(filteredResTypePage.items) || filteredResTypePage.items.length === 0) {
+    throw new Error("Expected at least 1 inspection audit record");
+  }
+  for (const item of filteredResTypePage.items) {
+    if (item.resourceType !== "inspection") {
+      throw new Error(`Expected resourceType='inspection', got '${item.resourceType}'`);
+    }
+  }
+  console.log(
+    `✓ Resource-filtered audit events verified: ${filteredResTypePage.items.length} inspection event(s)`,
+  );
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 19 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 20 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
   process.exit(0);
 }
