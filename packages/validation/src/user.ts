@@ -37,6 +37,13 @@ export const roleViewSchema = z.object({
   permissions: z.array(z.string().max(80)),
 });
 
+export const jurisdictionViewSchema = z.object({
+  id: uuidSchema,
+  code: z.string().max(50),
+  name: z.string().max(300),
+  scopeLevel: z.string().max(20),
+});
+
 export const updateUserSchema = z
   .object({
     displayName: z.string().max(200).optional(),

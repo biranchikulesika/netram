@@ -906,6 +906,142 @@ async function main() {
   console.log("\n==================================================================");
   console.log("✓ ALL 15 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
+
+  // Step 16: User Admin & Scoped Role Assignment (WEB + API)
+  console.log("\n16. Testing User Administration & Scoped Role Assignment Integration...");
+
+  // Establish Admin Session (admin.example-social@dev.netram.in)
+  console.log("Establishing Department Admin session (admin.example-social@dev.netram.in)...");
+  const admin = await loginAndGetCookie("admin.example-social@dev.netram.in");
+  console.log(`✓ Admin authenticated: id=${admin.user.id}`);
+
+  // Test SSR GET /admin
+  console.log("Testing SSR GET /admin...");
+  const adminPageRes = await fetch(`${WEB_BASE}/admin`, {
+    headers: { Cookie: admin.cookie },
+  });
+  if (!adminPageRes.ok) {
+    throw new Error(`GET /admin returned ${adminPageRes.status}`);
+  }
+  const adminHtml = await adminPageRes.text();
+  if (!adminHtml.includes("User Administration") || !adminHtml.includes("User Directory")) {
+    throw new Error("Admin page HTML missing expected headings");
+  }
+  console.log(`✓ /admin rendered successfully (${adminHtml.length} bytes, contains operator directory)`);
+
+  // Fetch users and jurisdictions to target for role assignment & status update
+  const listUsersRes = await fetch(`${API_BASE}/api/v1/users?pageSize=20`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
+  });
+  const usersData = (await listUsersRes.json()) as { items: Array<{ id: string; email: string; status: string }> };
+  const targetOperator = usersData.items.find((u) => u.email !== admin.user.email);
+  if (!targetOperator) {
+    throw new Error("Expected at least one non-admin operator in seed data");
+  }
+
+  const listJurisdictionsRes = await fetch(`${API_BASE}/api/v1/jurisdictions`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
+  });
+  const jurisdictionsData = (await listJurisdictionsRes.json()) as Array<{ id: string; code: string; name: string }>;
+  const targetJurisdiction = jurisdictionsData.find((j) => j.code.includes("PURI") || j.name.includes("Puri")) ?? jurisdictionsData[0];
+  if (!targetJurisdiction) {
+    throw new Error("Expected at least one jurisdiction in seed data");
+  }
+
+  // 1. Test Proxy PATCH /api/admin/users/:id to suspend operator
+  console.log(`Testing PATCH /api/admin/users/${targetOperator.id} proxy (status -> suspended)...`);
+  const suspendRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}`, {
+    method: "PATCH",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "suspended" }),
+  });
+  if (!suspendRes.ok) {
+    throw new Error(`PATCH /api/admin/users/:id to suspend returned ${suspendRes.status}`);
+  }
+  const suspendedUser = (await suspendRes.json()) as { id: string; status: string };
+  if (suspendedUser.status !== "suspended") {
+    throw new Error(`Expected status='suspended', got '${suspendedUser.status}'`);
+  }
+  console.log(`✓ Proxy PATCH status to 'suspended' passed for ${targetOperator.email}`);
+
+  // 2. Test Proxy PATCH /api/admin/users/:id to reactivate operator
+  console.log(`Testing PATCH /api/admin/users/${targetOperator.id} proxy (status -> active)...`);
+  const reactivateRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}`, {
+    method: "PATCH",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "active" }),
+  });
+  if (!reactivateRes.ok) {
+    throw new Error(`PATCH /api/admin/users/:id to reactivate returned ${reactivateRes.status}`);
+  }
+  const reactivatedUser = (await reactivateRes.json()) as { id: string; status: string };
+  if (reactivatedUser.status !== "active") {
+    throw new Error(`Expected status='active', got '${reactivatedUser.status}'`);
+  }
+  console.log(`✓ Proxy PATCH status to 'active' passed for ${targetOperator.email}`);
+
+  // 3. Test Proxy POST /api/admin/users/:id/role-assignments
+  console.log(`Testing POST /api/admin/users/${targetOperator.id}/role-assignments proxy...`);
+  const assignRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}/role-assignments`, {
+    method: "POST",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      roleCode: "inspector",
+      scope: "jurisdiction",
+      jurisdictionId: targetJurisdiction.id,
+    }),
+  });
+  if (!assignRes.ok) {
+    throw new Error(`POST /api/admin/users/:id/role-assignments failed: ${assignRes.status}: ${await assignRes.text()}`);
+  }
+  const assignment = (await assignRes.json()) as { id: string; roleCode: string; scope: string; jurisdictionId: string };
+  if (assignment.roleCode !== "inspector" || assignment.scope !== "jurisdiction") {
+    throw new Error(`Unexpected assignment payload: ${JSON.stringify(assignment)}`);
+  }
+  console.log(`✓ Scoped role assignment created: id=${assignment.id}, role=${assignment.roleCode}, scope=${assignment.scope}`);
+
+  // 4. Test Duplicate Role Assignment Rejection (409 Conflict)
+  console.log("Testing duplicate role assignment rejection (409 Conflict)...");
+  const dupRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}/role-assignments`, {
+    method: "POST",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      roleCode: "inspector",
+      scope: "jurisdiction",
+      jurisdictionId: targetJurisdiction.id,
+    }),
+  });
+  if (dupRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for duplicate role assignment, got ${dupRes.status}`);
+  }
+  console.log(`✓ Duplicate role assignment correctly rejected with 409 Conflict`);
+
+  // 5. Test Proxy DELETE /api/admin/role-assignments/:id
+  console.log(`Testing DELETE /api/admin/role-assignments/${assignment.id} proxy...`);
+  const deleteRes = await fetch(`${WEB_BASE}/api/admin/role-assignments/${assignment.id}`, {
+    method: "DELETE",
+    headers: { Cookie: admin.cookie },
+  });
+  if (deleteRes.status !== 204) {
+    throw new Error(`Expected 204 No Content for role assignment deletion, got ${deleteRes.status}`);
+  }
+  console.log(`✓ Proxy DELETE role assignment passed (status 204)`);
+
+  console.log("\n==================================================================");
+  console.log("✓ ALL 16 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("==================================================================");
 }
 
 main().catch((err) => {
