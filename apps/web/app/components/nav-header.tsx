@@ -22,6 +22,7 @@ export interface NavHeaderProps {
   userEmail: string;
   permissionsCount: number;
   permissions?: string[];
+  unreadNotificationsCount?: number;
   activeSection:
     | "projects"
     | "inspections"
@@ -87,10 +88,42 @@ export function NavHeader({
   userEmail,
   permissionsCount: _permissionsCount,
   permissions,
+  unreadNotificationsCount,
   activeSection,
 }: NavHeaderProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(unreadNotificationsCount ?? 0);
+
+  useEffect(() => {
+    if (unreadNotificationsCount !== undefined) {
+      setUnreadCount(unreadNotificationsCount);
+    }
+  }, [unreadNotificationsCount]);
+
+  useEffect(() => {
+    const canReadNotifications =
+      !permissions ||
+      permissions.length === 0 ||
+      permissions.includes("*") ||
+      permissions.includes("notification:read");
+
+    if (!canReadNotifications) return;
+
+    let isMounted = true;
+    fetch("/api/notifications?pageSize=1")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data && typeof data.unread === "number") {
+          setUnreadCount(data.unread);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [permissions, activeSection]);
 
   const visibleNavItems = React.useMemo(() => {
     if (!permissions || permissions.length === 0 || permissions.includes("*")) {
@@ -182,6 +215,41 @@ export function NavHeader({
           </div>
 
           <div className="topbar-right">
+            {/* Notifications Icon Button with Unread Badge */}
+            <Link
+              href="/notifications"
+              className={`topbar-account-btn ${activeSection === "notifications" ? "active" : ""}`}
+              title={unreadCount > 0 ? `${unreadCount} Unread Notifications` : "Notifications"}
+              aria-label="Notifications"
+              style={{ position: "relative" }}
+            >
+              <IconBell style={{ width: 16, height: 16 }} />
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "-4px",
+                    right: "-4px",
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    fontSize: "0.6rem",
+                    fontWeight: 700,
+                    borderRadius: "9999px",
+                    minWidth: "15px",
+                    height: "15px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    lineHeight: 1,
+                    padding: "0 3px",
+                    boxShadow: "0 0 0 2px var(--color-surface, #ffffff)",
+                  }}
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Link>
+
             {/* Account Profile / Management Icon Button */}
             <Link
               href="/account"
@@ -210,6 +278,7 @@ export function NavHeader({
           {visibleNavItems.map((item) => {
             const IconComp = item.icon;
             const isActive = activeSection === item.section;
+            const isNotifications = item.section === "notifications";
 
             return (
               <Link
@@ -220,10 +289,49 @@ export function NavHeader({
                 title={isCollapsed ? item.label : undefined}
                 aria-current={isActive ? "page" : undefined}
               >
-                <span className="sidepanel-icon-wrap">
+                <span className="sidepanel-icon-wrap" style={{ position: "relative" }}>
                   <IconComp className="sidepanel-icon" />
+                  {isNotifications && unreadCount > 0 && isCollapsed && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "-2px",
+                        right: "-2px",
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        fontSize: "0.55rem",
+                        fontWeight: 700,
+                        borderRadius: "9999px",
+                        minWidth: "12px",
+                        height: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        lineHeight: 1,
+                        padding: "0 2px",
+                      }}
+                    >
+                      {unreadCount > 9 ? "!" : unreadCount}
+                    </span>
+                  )}
                 </span>
-                {!isCollapsed && <span className="sidepanel-link-text">{item.label}</span>}
+                {!isCollapsed && (
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, gap: "0.5rem" }}>
+                    <span className="sidepanel-link-text">{item.label}</span>
+                    {isNotifications && unreadCount > 0 && (
+                      <span
+                        className="badge badge-critical"
+                        style={{
+                          fontSize: "0.65rem",
+                          padding: "1px 6px",
+                          borderRadius: "9999px",
+                        }}
+                      >
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </span>
+                )}
               </Link>
             );
           })}
