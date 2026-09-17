@@ -744,11 +744,12 @@ async function main() {
   console.log(`✓ /corrective-actions rendered successfully (${caListHtml.length} bytes, contains layout)`);
 
   // Find or create a confirmed finding to order a corrective action against
+  let caProjectId: string | undefined;
   const officerInspectionsRes = await fetch(`${API_BASE}/api/v1/inspections?pageSize=20`, {
     headers: { Authorization: `Bearer ${officer.token}` },
   });
   const officerInsps = (await officerInspectionsRes.json()) as {
-    items: Array<{ id: string; status: string; districtId: string }>;
+    items: Array<{ id: string; status: string; districtId: string; projectId?: string }>;
   };
   const targetInsp = officerInsps.items.find((i) =>
     ["under_review", "findings", "corrective_actions"].includes(i.status),
@@ -756,6 +757,7 @@ async function main() {
   if (!targetInsp) {
     throw new Error("Expected at least one inspection in review/findings status in officer jurisdiction");
   }
+  caProjectId = targetInsp.projectId;
 
   // Create a new deficiency finding
   const createFindingRes = await fetch(`${API_BASE}/api/v1/inspections/${targetInsp.id}/findings`, {
@@ -1451,8 +1453,77 @@ async function main() {
     `✓ Resource-filtered audit events verified: ${filteredResTypePage.items.length} inspection event(s)`,
   );
 
+  // -------------------------------------------------------------------------
+  // Step 21: Facility Sub-Workspaces Enhancement & Statutory Deep-Linking
+  // -------------------------------------------------------------------------
+  console.log("\n21. Testing Facility Sub-Workspaces & Statutory Deep-Linking Integration...");
+
+  // 1. SSR GET /projects/:id/reports
+  console.log(`Testing SSR GET /projects/${targetProject.id}/reports...`);
+  const facReportsRes = await fetch(`${WEB_BASE}/projects/${targetProject.id}/reports`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!facReportsRes.ok) {
+    throw new Error(`GET /projects/${targetProject.id}/reports failed with ${facReportsRes.status}`);
+  }
+  const facReportsHtml = await facReportsRes.text();
+  if (!facReportsHtml.includes("Facility Reports")) {
+    throw new Error("Facility reports page missing 'Facility Reports' header");
+  }
+  if (!facReportsHtml.includes("/reports/")) {
+    throw new Error("Facility reports page missing link to statutory report dossier (/reports/)");
+  }
+  if (!facReportsHtml.includes("+ Compile Official Report")) {
+    throw new Error("Facility reports page missing '+ Compile Official Report' button");
+  }
+  console.log(
+    `✓ /projects/${targetProject.id}/reports rendered successfully (${facReportsHtml.length} bytes, contains dossier deep-links and compile button)`,
+  );
+
+  // 2. SSR GET /projects/:id/actions
+  const caTargetProjectId = caProjectId || targetProject.id;
+  console.log(`Testing SSR GET /projects/${caTargetProjectId}/actions...`);
+  const facActionsRes = await fetch(`${WEB_BASE}/projects/${caTargetProjectId}/actions`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!facActionsRes.ok) {
+    throw new Error(`GET /projects/${caTargetProjectId}/actions failed with ${facActionsRes.status}`);
+  }
+  const facActionsHtml = await facActionsRes.text();
+  if (!facActionsHtml.includes("Corrective Actions")) {
+    throw new Error("Facility actions page missing 'Corrective Actions' header");
+  }
+  if (!facActionsHtml.includes("/corrective-actions/")) {
+    throw new Error("Facility actions page missing link to remediation dossier (/corrective-actions/)");
+  }
+  console.log(
+    `✓ /projects/${caTargetProjectId}/actions rendered successfully (${facActionsHtml.length} bytes, contains remediation deep-links)`,
+  );
+
+  // 3. SSR GET /projects/:id/complaints
+  console.log(`Testing SSR GET /projects/${targetProject.id}/complaints...`);
+  const facComplaintsRes = await fetch(`${WEB_BASE}/projects/${targetProject.id}/complaints`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!facComplaintsRes.ok) {
+    throw new Error(`GET /projects/${targetProject.id}/complaints failed with ${facComplaintsRes.status}`);
+  }
+  const facComplaintsHtml = await facComplaintsRes.text();
+  if (!facComplaintsHtml.includes("Facility Complaints")) {
+    throw new Error("Facility complaints page missing 'Facility Complaints' header");
+  }
+  if (!facComplaintsHtml.includes("/complaints/")) {
+    throw new Error("Facility complaints page missing link to complaint grievance dossier (/complaints/)");
+  }
+  if (!facComplaintsHtml.includes("/track-complaint?code=")) {
+    throw new Error("Facility complaints page missing citizen portal tracking link");
+  }
+  console.log(
+    `✓ /projects/${targetProject.id}/complaints rendered successfully (${facComplaintsHtml.length} bytes, contains complaint & citizen links)`,
+  );
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 20 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 21 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
   process.exit(0);
 }
