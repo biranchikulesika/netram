@@ -212,6 +212,19 @@ export async function buildApp(container: Container) {
     } satisfies ApiErrorBody);
   });
 
+  app.setNotFoundHandler((request, reply) => {
+    const requestId = request.id;
+    const body: ApiErrorBody = {
+      error: {
+        code: "NOT_FOUND",
+        message: `Route ${request.method}:${request.url} not found`,
+        requestId,
+      },
+    };
+    void reply.code(404).send(body);
+  });
+
+
   // Health/liveness routes are intentionally OUTSIDE /api/v1 and unprefixed so
   // load balancers/k8s probes can reach them without auth. Do not move them
   // under /api/v1 or behind bearerAuth. (AGENTS.md §54, docs/contracts/README.md)

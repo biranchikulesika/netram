@@ -30,6 +30,7 @@
     "verify:runtime:evidence": "tsx scripts/verify-evidence-runtime.ts",
     "verify:runtime:workers": "tsx scripts/verify-workers-runtime.ts",
     "verify:runtime:mobile": "tsx scripts/verify-mobile-offline-runtime.ts",
+    "verify:runtime:all": "tsx scripts/verify-all-runtime.ts",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down"
   },

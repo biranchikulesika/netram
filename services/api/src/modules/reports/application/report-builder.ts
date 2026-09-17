@@ -56,3 +56,136 @@ export function buildReportArtifact(snapshot: ReportSnapshot): Record<string, un
     })),
   };
 }
+
+function escapeCsv(val: unknown): string {
+  if (val === null || val === undefined) return "";
+  const s = String(val);
+  if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+/**
+ * Builds a structured CSV export of the inspection snapshot (§34).
+ */
+export function buildReportCsv(snapshot: ReportSnapshot): string {
+  const lines: string[] = [];
+
+  // Header & Metadata
+  lines.push("# Netram Inspection Summary Report");
+  lines.push(`Inspection ID,${escapeCsv(snapshot.inspection.id)}`);
+  lines.push(`Project Code,${escapeCsv(snapshot.inspection.projectCode)}`);
+  lines.push(`Project Name,${escapeCsv(snapshot.inspection.projectName)}`);
+  lines.push(`Inspection Type,${escapeCsv(snapshot.inspection.type)}`);
+  lines.push(`Status,${escapeCsv(snapshot.inspection.status)}`);
+  lines.push(`Started At,${escapeCsv(snapshot.inspection.startedAt)}`);
+  lines.push(`Submitted At,${escapeCsv(snapshot.inspection.submittedAt)}`);
+  lines.push("");
+
+  // Findings Section
+  lines.push("Finding ID,Severity,Status,Description,Remediation,Created At");
+  for (const f of snapshot.findings) {
+    lines.push(
+      [
+        escapeCsv(f.id),
+        escapeCsv(f.severity),
+        escapeCsv(f.status),
+        escapeCsv(f.description),
+        escapeCsv(f.remediation),
+        escapeCsv(f.createdAt),
+      ].join(","),
+    );
+  }
+  lines.push("");
+
+  // Corrective Actions Section
+  lines.push("Corrective Action ID,Finding ID,Status,Deadline,Created At");
+  for (const c of snapshot.correctiveActions) {
+    lines.push(
+      [
+        escapeCsv(c.id),
+        escapeCsv(c.findingId),
+        escapeCsv(c.status),
+        escapeCsv(c.deadline),
+        escapeCsv(c.createdAt),
+      ].join(","),
+    );
+  }
+  lines.push("");
+
+  // Evidence Summary Section
+  lines.push("Evidence ID,Type,File Name,Upload State,Integrity State,Captured At");
+  for (const e of snapshot.evidence) {
+    lines.push(
+      [
+        escapeCsv(e.id),
+        escapeCsv(e.evidenceType),
+        escapeCsv(e.fileName),
+        escapeCsv(e.uploadState),
+        escapeCsv(e.integrityState),
+        escapeCsv(e.capturedAt),
+      ].join(","),
+    );
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Builds a formatted text/markdown executive summary of the inspection (§34).
+ */
+export function buildReportText(snapshot: ReportSnapshot): string {
+  const { inspection, findings, observations, correctiveActions, evidence } = snapshot;
+  const openFindings = findings.filter((f) => !["closed", "dismissed"].includes(f.status)).length;
+
+  return [
+    `================================================================================`,
+    `NETRAM INSPECTION REPORT — ${inspection.projectCode ?? "N/A"}: ${inspection.projectName ?? "Project"}`,
+    `================================================================================`,
+    `Inspection ID : ${inspection.id}`,
+    `Type          : ${inspection.type.toUpperCase()}`,
+    `Status        : ${inspection.status.toUpperCase()}`,
+    `Scheduled     : ${inspection.scheduledStart ?? "N/A"}`,
+    `Started       : ${inspection.startedAt ?? "N/A"}`,
+    `Submitted     : ${inspection.submittedAt ?? "N/A"}`,
+    ``,
+    `--------------------------------------------------------------------------------`,
+    `EXECUTIVE SUMMARY METRICS`,
+    `--------------------------------------------------------------------------------`,
+    `Total Findings            : ${findings.length}`,
+    `Open / Actionable Findings: ${openFindings}`,
+    `Recorded Observations     : ${observations.length}`,
+    `Assigned Corrective Actions: ${correctiveActions.length}`,
+    `Captured Evidence Items   : ${evidence.length}`,
+    ``,
+    `--------------------------------------------------------------------------------`,
+    `FINDINGS & DEFICIENCIES`,
+    `--------------------------------------------------------------------------------`,
+    findings.length === 0
+      ? `  (No deficiencies flagged)`
+      : findings
+          .map(
+            (f, i) =>
+              `[${i + 1}] [${f.severity.toUpperCase()}] ${f.description}\n    Status: ${f.status} | Remediation: ${f.remediation ?? "None"}`,
+          )
+          .join("\n\n"),
+    ``,
+    `--------------------------------------------------------------------------------`,
+    `CORRECTIVE ACTIONS & DEADLINES`,
+    `--------------------------------------------------------------------------------`,
+    correctiveActions.length === 0
+      ? `  (No active corrective actions assigned)`
+      : correctiveActions
+          .map(
+            (c, i) =>
+              `[${i + 1}] Finding: ${c.findingId} | Status: ${c.status.toUpperCase()} | Deadline: ${c.deadline ?? "Immediate"}`,
+          )
+          .join("\n"),
+    ``,
+    `================================================================================`,
+    `Generated by Netram Automated Reporting Pipeline (DoSJE)`,
+    `================================================================================`,
+  ].join("\n");
+}
+

@@ -91,7 +91,7 @@ export function InspectionsView({ initialInspections, total }: InspectionsViewPr
             Inspections
           </h2>
           <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
-            Field inspection oversight, assignment tracking, and verification workflows
+            Field inspection oversight, assignment tracking, and verification workflows · Total Inspections: <strong>{total}</strong>
           </p>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { z } from "zod";
+import { z } from "zod";
 import type { Container } from "../../../infrastructure/container.js";
 import { toJsonSchema } from "../../../infrastructure/schema-helper.js";
 import {
@@ -18,6 +18,47 @@ export async function registerComplaintRoutes(
 ): Promise<void> {
   const complaintService = container.complaintService;
   const paramsSchema = toJsonSchema("ComplaintIdParams", idParamsSchema);
+  const trackingParamsSchema = toJsonSchema(
+    "TrackingCodeParams",
+    z.object({ trackingCode: z.string().min(3).max(50) }),
+  );
+
+  // Citizen/Public Tracking Lookup (§35)
+  app.get(
+    "/complaints/track/:trackingCode",
+    {
+      schema: {
+        tags: ["complaints"],
+        params: trackingParamsSchema,
+        response: { 200: toJsonSchema("Complaint", complaintSchema) },
+      },
+    },
+    async (request) => {
+      const { trackingCode } = request.params as { trackingCode: string };
+      return complaintService.trackComplaint(trackingCode);
+    },
+  );
+
+  // Citizen/Public Intake (§35)
+  app.post(
+    "/complaints/public",
+    {
+      schema: {
+        tags: ["complaints"],
+        body: toJsonSchema("CreateComplaintBody", createComplaintSchema),
+        response: { 201: toJsonSchema("Complaint", complaintSchema) },
+      },
+    },
+    async (request, reply) => {
+      const body = request.body as z.infer<typeof createComplaintSchema>;
+      const complaint = await complaintService.submitPublicComplaint(body, {
+        requestId: request.id,
+        ipAddress: request.ip,
+      });
+      void reply.code(201);
+      return complaint;
+    },
+  );
 
   app.get(
     "/complaints",

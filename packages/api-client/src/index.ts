@@ -377,6 +377,10 @@ export class NetramApiClient extends HttpClient {
     return this.get(`/api/v1/complaints/${id}`);
   }
 
+  async trackComplaint(trackingCode: string): Promise<Complaint> {
+    return this.get(`/api/v1/complaints/track/${encodeURIComponent(trackingCode)}`);
+  }
+
   async createComplaint(input: {
     projectId: string;
     description: string;
@@ -384,6 +388,15 @@ export class NetramApiClient extends HttpClient {
     contactInfo?: string;
   }): Promise<Complaint> {
     return this.post("/api/v1/complaints", input);
+  }
+
+  async submitPublicComplaint(input: {
+    projectId: string;
+    description: string;
+    complainantName?: string;
+    contactInfo?: string;
+  }): Promise<Complaint> {
+    return this.post("/api/v1/complaints/public", input);
   }
 
   async transitionComplaint(

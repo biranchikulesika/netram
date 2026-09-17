@@ -3512,8 +3512,331 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     ])
     .onConflictDoNothing();
 
+
+  // =====================================================================
+  // DATA-03: Maharashtra — Multi-state expansion (§13: synthetic, no real PII)
+  // =====================================================================
+
+  await db
+    .insert(s.states)
+    .values({
+      id: did("state:maharashtra"),
+      countryId: india?.id ?? did("country:india"),
+      code: "MH",
+      name: "Maharashtra",
+    })
+    .onConflictDoNothing();
+
+  const mhDistrictRows = [
+    { id: did("district:pune"), stateId: did("state:maharashtra"), code: "PUNE", name: "Pune" },
+    {
+      id: did("district:nagpur"),
+      stateId: did("state:maharashtra"),
+      code: "NAGP",
+      name: "Nagpur",
+    },
+    {
+      id: did("district:nashik"),
+      stateId: did("state:maharashtra"),
+      code: "NSHK",
+      name: "Nashik",
+    },
+  ];
+  for (const d of mhDistrictRows) {
+    await db.insert(s.districts).values(d).onConflictDoNothing();
+  }
+
+  await db
+    .insert(s.authorities)
+    .values({
+      id: did("authority:dosje-mh"),
+      code: "DOSJE-MH",
+      name: "Department of Social Justice & Empowerment, Maharashtra",
+      type: "department",
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.jurisdictions)
+    .values([
+      {
+        id: did("jurisdiction:maharashtra"),
+        code: "J-MH",
+        name: "Maharashtra State",
+        stateId: did("state:maharashtra"),
+        scopeLevel: "jurisdiction",
+      },
+      {
+        id: did("jurisdiction:pune"),
+        code: "J-PUNE",
+        name: "Pune District",
+        districtId: did("district:pune"),
+        scopeLevel: "jurisdiction",
+      },
+      {
+        id: did("jurisdiction:nagpur"),
+        code: "J-NAGP",
+        name: "Nagpur District",
+        districtId: did("district:nagpur"),
+        scopeLevel: "jurisdiction",
+      },
+      {
+        id: did("jurisdiction:nashik"),
+        code: "J-NSHK",
+        name: "Nashik District",
+        districtId: did("district:nashik"),
+        scopeLevel: "jurisdiction",
+      },
+    ])
+    .onConflictDoNothing();
+
+  const mhUsers = [
+    {
+      id: did("user:officer-pune"),
+      email: "officer.pune@dev.netram.in",
+      displayName: "Priya (Officer, Pune)",
+      status: "active",
+    },
+    {
+      id: did("user:inspector-mh-1"),
+      email: "inspector.mh.one@dev.netram.in",
+      displayName: "Inspector Rahul",
+      status: "active",
+    },
+    {
+      id: did("user:institution-pune"),
+      email: "institution.pune@dev.netram.in",
+      displayName: "Pune Hostel Admin",
+      status: "active",
+    },
+    {
+      id: did("user:institution-nagpur"),
+      email: "institution.nagpur@dev.netram.in",
+      displayName: "Nagpur Hostel Admin",
+      status: "active",
+    },
+  ] as const;
+  for (const u of mhUsers) {
+    await db.insert(s.users).values({ ...u }).onConflictDoNothing();
+    await db
+      .insert(s.identities)
+      .values({
+        id: did(`identity:${u.email}`),
+        userId: u.id,
+        provider: "dev",
+        providerSubject: u.id,
+        email: u.email,
+      })
+      .onConflictDoNothing();
+  }
+
+  await db
+    .insert(s.roleAssignments)
+    .values([
+      {
+        id: did("ra:officer-pune"),
+        userId: did("user:officer-pune"),
+        roleCode: "district_officer",
+        authorityId: did("authority:dosje-mh"),
+        jurisdictionId: did("jurisdiction:pune"),
+        scope: "jurisdiction",
+      },
+      {
+        id: did("ra:inspector-mh-1"),
+        userId: did("user:inspector-mh-1"),
+        roleCode: "inspector",
+        jurisdictionId: did("jurisdiction:nagpur"),
+        scope: "jurisdiction",
+      },
+      {
+        id: did("ra:institution-pune"),
+        userId: did("user:institution-pune"),
+        roleCode: "institution_admin",
+        authorityId: did("authority:dosje-mh"),
+        jurisdictionId: did("jurisdiction:pune"),
+        scope: "jurisdiction",
+      },
+      {
+        id: did("ra:institution-nagpur"),
+        userId: did("user:institution-nagpur"),
+        roleCode: "institution_admin",
+        authorityId: did("authority:dosje-mh"),
+        jurisdictionId: did("jurisdiction:nagpur"),
+        scope: "jurisdiction",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.organisations)
+    .values([
+      {
+        id: did("org:pune-girls-hostel"),
+        code: "ORG-PUNE-007",
+        name: "Pune SC Girls' Hostel",
+        category: "SC Hostel",
+        authorityId: did("authority:dosje-mh"),
+        districtId: did("district:pune"),
+      },
+      {
+        id: did("org:nagpur-obc-hostel"),
+        code: "ORG-NAGP-008",
+        name: "Nagpur OBC Boys' Hostel",
+        category: "OBC Hostel",
+        authorityId: did("authority:dosje-mh"),
+        districtId: did("district:nagpur"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.projects)
+    .values([
+      {
+        id: did("project:pune-girls"),
+        code: "PRJ-PUNE-007",
+        name: "Pune SC Girls' Hostel",
+        type: "institution",
+        description: "SC girls' hostel in Pune. 75 residents.",
+        organisationId: did("org:pune-girls-hostel"),
+        authorityId: did("authority:dosje-mh"),
+        districtId: did("district:pune"),
+        status: "Active",
+        approvedById: did("user:dept-admin"),
+        approvedAt: new Date("2026-02-01T09:00:00Z"),
+        programmeIds: [did("programme:nsp")],
+      },
+      {
+        id: did("project:nagpur-obc"),
+        code: "PRJ-NAGP-008",
+        name: "Nagpur OBC Boys' Hostel",
+        type: "institution",
+        description: "OBC boys' hostel in Nagpur. 120 residents.",
+        organisationId: did("org:nagpur-obc-hostel"),
+        authorityId: did("authority:dosje-mh"),
+        districtId: did("district:nagpur"),
+        status: "Active",
+        approvedById: did("user:dept-admin"),
+        approvedAt: new Date("2026-02-10T09:00:00Z"),
+        programmeIds: [did("programme:nsp"), did("programme:surprise-audit")],
+      },
+    ])
+    .onConflictDoNothing();
+
+  // -- Inspection in Pune (completed) --
+  await db
+    .insert(s.inspections)
+    .values({
+      id: did("inspection:pune-routine-2026-03"),
+      projectId: did("project:pune-girls"),
+      type: "routine",
+      trigger: "officer",
+      status: "submitted",
+      scheduledStart: new Date("2026-03-10T09:00:00Z"),
+      scheduledEnd: new Date("2026-03-10T17:00:00Z"),
+      startedAt: new Date("2026-03-10T09:30:00Z"),
+      submittedAt: new Date("2026-03-10T16:45:00Z"),
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.inspectionAssignments)
+    .values({
+      id: did("ia:pune-routine-inspector-mh-1"),
+      inspectionId: did("inspection:pune-routine-2026-03"),
+      userId: did("user:inspector-mh-1"),
+      role: "lead",
+      status: "completed",
+    })
+    .onConflictDoNothing();
+
+  // -- Inspection in Nagpur (overdue — past scheduledEnd, still in_progress)
+  // This exercises the API-04 scheduled SLA overdue detection job.
+  await db
+    .insert(s.inspections)
+    .values({
+      id: did("inspection:nagpur-surprise-overdue"),
+      projectId: did("project:nagpur-obc"),
+      type: "surprise",
+      trigger: "risk_engine",
+      status: "in_progress",
+      scheduledStart: new Date("2026-01-15T09:00:00Z"),
+      scheduledEnd: new Date("2026-01-15T17:00:00Z"),
+      startedAt: new Date("2026-01-15T09:20:00Z"),
+      submittedAt: null,
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.inspectionAssignments)
+    .values({
+      id: did("ia:nagpur-overdue-inspector-mh-1"),
+      inspectionId: did("inspection:nagpur-surprise-overdue"),
+      userId: did("user:inspector-mh-1"),
+      role: "lead",
+      status: "in_progress",
+    })
+    .onConflictDoNothing();
+
+  // -- CCTV cameras for Maharashtra projects --
+  await db
+    .insert(s.cctvCameras)
+    .values([
+      {
+        id: did("cctv:pune-main"),
+        name: "Pune Hostel – Main Entrance",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.netram.in/pune-main",
+        districtId: did("district:pune"),
+        status: "active",
+      },
+      {
+        id: did("cctv:nagpur-dining"),
+        name: "Nagpur Hostel – Dining Hall",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.netram.in/nagpur-dining",
+        districtId: did("district:nagpur"),
+        status: "active",
+      },
+    ])
+    .onConflictDoNothing();
+
+  // -- AI anomalies for Maharashtra inspections --
+  await db
+    .insert(s.aiAnomalies)
+    .values([
+      {
+        id: did("aianom:pune-overcrowding-2026-03"),
+        inspectionId: did("inspection:pune-routine-2026-03"),
+        evidenceId: null,
+        type: "overcrowding",
+        severity: "medium",
+        status: "new",
+        confidence: 0.82,
+        explanation:
+          "AI detected sustained overcrowding in the dining area during lunch hours. Capacity appears exceeded by ~30%.",
+        modelVersion: "netram-v1.2.0",
+      },
+      {
+        id: did("aianom:nagpur-absent-2026-01"),
+        inspectionId: did("inspection:nagpur-surprise-overdue"),
+        evidenceId: null,
+        type: "low_attendance",
+        severity: "high",
+        status: "new",
+        confidence: 0.91,
+        explanation:
+          "AI estimated significant student absence during mandatory meal attendance window. Only ~40% of expected residents detected.",
+        modelVersion: "netram-v1.2.0",
+      },
+    ])
+    .onConflictDoNothing();
+
   console.log(
     `Seed complete: ${projects.length + enrichedProjects.length} projects, ${users.length + enrichedUsers.length} users across ${districtRows.length} districts.`,
+
   );
 }
 
