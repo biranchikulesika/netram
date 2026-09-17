@@ -172,7 +172,16 @@ async function main() {
 
   // 8. Allow realtime poller to deliver events
   console.log("8. Waiting for Realtime outbox poller to deliver events...");
-  await new Promise((r) => setTimeout(r, 2500));
+  const maxWaitMs = 10000;
+  const pollIntervalMs = 250;
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWaitMs) {
+    const hasCaptured = receivedEvents.some((e) => e.type === "evidence.captured");
+    const hasVerified = receivedEvents.some((e) => e.type === "evidence.verified");
+    const hasFailed = receivedEvents.some((e) => e.type === "evidence.integrity_failed");
+    if (hasCaptured && hasVerified && hasFailed) break;
+    await new Promise((r) => setTimeout(r, pollIntervalMs));
+  }
 
   console.log(`✓ Received ${receivedEvents.length} realtime events total:`);
   for (const ev of receivedEvents) {
