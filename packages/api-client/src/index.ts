@@ -31,6 +31,7 @@ import type {
   InspectionAssignment,
   InspectionListQuery,
   InspectionStatus,
+  JurisdictionView,
   Notification,
   NotificationListQuery,
   NotificationListResponse,
@@ -495,6 +496,10 @@ export class NetramApiClient extends HttpClient {
 
   async updateRolePermissions(roleCode: string, permissions: string[]): Promise<RoleView> {
     return this.put(`/api/v1/roles/${roleCode}/permissions`, { permissions });
+  }
+
+  async listJurisdictions(): Promise<JurisdictionView[]> {
+    return this.get("/api/v1/jurisdictions");
   }
 
   async listCameras(query: ListCamerasFilter = {}): Promise<CctvCameraPage> {

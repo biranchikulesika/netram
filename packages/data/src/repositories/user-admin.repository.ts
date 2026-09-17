@@ -13,6 +13,7 @@ import type {
   AssignmentScope,
   AuditAction,
   DomainEventType,
+  JurisdictionView,
   RoleAssignmentView,
   RoleView,
   UserAdminView,
@@ -235,6 +236,18 @@ export class UserAdminRepository {
       .where(eq(jurisdictions.id, jurisdictionId))
       .limit(1);
     return rows.length > 0;
+  }
+
+  async listJurisdictions(): Promise<JurisdictionView[]> {
+    return this.db
+      .select({
+        id: jurisdictions.id,
+        code: jurisdictions.code,
+        name: jurisdictions.name,
+        scopeLevel: jurisdictions.scopeLevel,
+      })
+      .from(jurisdictions)
+      .orderBy(asc(jurisdictions.name));
   }
 
   async assignRole(cmd: AssignRoleWrite): Promise<RoleAssignmentView> {
