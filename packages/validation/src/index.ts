@@ -18,3 +18,4 @@ export * from "./sync.js";
 export * from "./cctv.js";
 export * from "./vc.js";
 export * from "./attendance.js";
+export * from "./analytics.js";

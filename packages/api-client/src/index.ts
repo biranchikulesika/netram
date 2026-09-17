@@ -1,6 +1,8 @@
 import type {
   AIAnomaly,
   AIAnomalyListQuery,
+  AnalyticsQuery,
+  AuthorityAnalyticsOverview,
   AnomalyStatus,
   AssignRoleInput,
   AssignmentListQuery,
@@ -552,6 +554,11 @@ export class NetramApiClient extends HttpClient {
 
   async leaveVcSession(id: string): Promise<void> {
     return this.post(`/api/v1/vc/sessions/${id}/leave`, {});
+  }
+
+  // analytics & statutory SLA compliance
+  async getAnalyticsOverview(query: AnalyticsQuery = {}): Promise<AuthorityAnalyticsOverview> {
+    return this.get(`/api/v1/analytics/overview${queryString(query)}`);
   }
 }
 

@@ -1525,8 +1525,123 @@ async function main() {
     `✓ /projects/${targetProject.id}/complaints rendered successfully (${facComplaintsHtml.length} bytes, contains complaint & citizen links)`,
   );
 
+  // -------------------------------------------------------------------------
+  // Step 22: Authority Analytics & Statutory SLA Compliance Integration
+  // -------------------------------------------------------------------------
+  console.log("\n22. Testing Authority Analytics & Statutory SLA Compliance Integration...");
+
+  // 1. SSR GET /analytics
+  console.log("Testing SSR GET /analytics...");
+  const analyticsPageRes = await fetch(`${WEB_BASE}/analytics`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!analyticsPageRes.ok) {
+    throw new Error(`GET /analytics failed with ${analyticsPageRes.status}`);
+  }
+  const analyticsHtml = await analyticsPageRes.text();
+  if (
+    !analyticsHtml.includes("Statutory Analytics &amp; SLA Intelligence") &&
+    !analyticsHtml.includes("Statutory Analytics & SLA Intelligence")
+  ) {
+    throw new Error("Analytics page missing main heading");
+  }
+  if (
+    !analyticsHtml.includes("Jurisdiction SLA Compliance &amp; Escalation Matrix") &&
+    !analyticsHtml.includes("Jurisdiction SLA Compliance & Escalation Matrix")
+  ) {
+    throw new Error("Analytics page missing SLA compliance matrix heading");
+  }
+  if (!analyticsHtml.includes("Deficiency Recurrence Taxonomy")) {
+    throw new Error("Analytics page missing deficiency recurrence heading");
+  }
+  console.log(
+    `✓ /analytics rendered successfully (${analyticsHtml.length} bytes, contains KPI cards, SLA matrix, and deficiency taxonomy)`,
+  );
+
+  // 2. Proxy GET /api/analytics
+  console.log("Testing Proxy GET /api/analytics...");
+  const proxyAnalyticsRes = await fetch(`${WEB_BASE}/api/analytics`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!proxyAnalyticsRes.ok) {
+    throw new Error(
+      `Proxy GET /api/analytics failed with ${proxyAnalyticsRes.status}: ${await proxyAnalyticsRes.text()}`,
+    );
+  }
+  const analyticsData = (await proxyAnalyticsRes.json()) as {
+    summary: {
+      totalProjects: number;
+      activeProjects: number;
+      totalInspections: number;
+      overallSlaComplianceRate: number;
+      totalCorrectiveActions: number;
+      totalFindings: number;
+    };
+    slaComplianceByJurisdiction: Array<{
+      districtId: string;
+      districtName: string;
+      slaComplianceRate: number;
+    }>;
+    deficiencyRecurrence: Array<{ category: string; totalOccurrences: number }>;
+    inspectionClosureVelocity: { averageClosureDays: number };
+  };
+
+  if (typeof analyticsData.summary?.overallSlaComplianceRate !== "number") {
+    throw new Error("Expected overallSlaComplianceRate number in analytics summary");
+  }
+  if (!Array.isArray(analyticsData.slaComplianceByJurisdiction)) {
+    throw new Error("Expected slaComplianceByJurisdiction array");
+  }
+  if (!Array.isArray(analyticsData.deficiencyRecurrence)) {
+    throw new Error("Expected deficiencyRecurrence array");
+  }
+  console.log(
+    `✓ Proxy GET /api/analytics verified: SLA compliance=${analyticsData.summary.overallSlaComplianceRate}%, totalProjects=${analyticsData.summary.totalProjects}, totalInspections=${analyticsData.summary.totalInspections}`,
+  );
+
+  // 3. Direct Backend GET /api/v1/analytics/overview with Admin token
+  console.log("Testing Backend GET /api/v1/analytics/overview with Admin session...");
+  const backendAnalyticsRes = await fetch(`${API_BASE}/api/v1/analytics/overview`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
+  });
+  if (!backendAnalyticsRes.ok) {
+    throw new Error(
+      `Backend GET /api/v1/analytics/overview failed with ${backendAnalyticsRes.status}`,
+    );
+  }
+  const backendAnalytics = (await backendAnalyticsRes.json()) as {
+    slaComplianceByJurisdiction: Array<{ districtId: string; districtName: string }>;
+  };
+  console.log(
+    `✓ Backend analytics overview returned ${backendAnalytics.slaComplianceByJurisdiction.length} jurisdiction(s) for State Admin`,
+  );
+
+  // 4. Test Out-of-Jurisdiction Rejection for Scoped Officer
+  console.log("Testing out-of-jurisdiction query rejection (403 Forbidden)...");
+  const outsideDistrict = backendAnalytics.slaComplianceByJurisdiction.find(
+    (d) => !d.districtName.toLowerCase().includes("khordha"),
+  );
+  if (!outsideDistrict) {
+    throw new Error("Expected at least one non-Khordha district in seed data");
+  }
+  const forbiddenDistrictId = outsideDistrict.districtId;
+  const forbiddenAnalyticsRes = await fetch(
+    `${API_BASE}/api/v1/analytics/overview?districtId=${forbiddenDistrictId}`,
+    {
+      headers: { Authorization: `Bearer ${officer.token}` },
+    },
+  );
+  if (forbiddenAnalyticsRes.status !== 403) {
+    throw new Error(
+      `Expected 403 Forbidden for out-of-jurisdiction query (${outsideDistrict.districtName}), got ${forbiddenAnalyticsRes.status}`,
+    );
+  }
+  console.log(
+    `✓ Out-of-jurisdiction analytics request for ${outsideDistrict.districtName} correctly rejected with 403 Forbidden (§16, §17)`,
+  );
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 21 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 22 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
   process.exit(0);
 }
