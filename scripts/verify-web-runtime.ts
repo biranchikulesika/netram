@@ -18,6 +18,8 @@
  */
 
 import { createHash } from "node:crypto";
+import { loadServerEnv } from "@netram/config";
+import { getDb, NotificationRepository } from "@netram/data";
 
 const WEB_BASE = "http://localhost:3000";
 const API_BASE = "http://localhost:3001";
@@ -1246,9 +1248,121 @@ async function main() {
   }
   console.log(`✓ Re-finalizing immutable report correctly rejected with 409 Conflict`);
 
+  // Step 19: Interactive Notifications Center & Unread Alerting Integration (§37, §38)
+  console.log("\n19. Testing Interactive Notifications Center & Unread Alerting Integration...");
+
+  // 1. Test SSR GET /notifications
+  console.log("Testing SSR GET /notifications...");
+  const notifSsrRes = await fetch(`${WEB_BASE}/notifications`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!notifSsrRes.ok) {
+    throw new Error(`GET /notifications returned ${notifSsrRes.status}`);
+  }
+  const notifSsrHtml = await notifSsrRes.text();
+  if (!notifSsrHtml.includes("Notifications Center")) {
+    throw new Error("Notifications page missing expected 'Notifications Center' heading");
+  }
+  console.log(`✓ /notifications rendered successfully (${notifSsrHtml.length} bytes, contains Notifications Center)`);
+
+  // 2. Insert 2 pending test notifications for the officer via repository
+  const db = getDb(loadServerEnv().DATABASE_URL);
+  const notifRepo = new NotificationRepository(db);
+
+  const testNotif1 = await notifRepo.create({
+    userId: officer.user.id,
+    type: "inspection.assigned",
+    title: `Runtime Test Notification 1 (${Date.now()})`,
+    body: "Statutory surprise inspection assigned to field team for urgent execution.",
+  });
+  const testNotif2 = await notifRepo.create({
+    userId: officer.user.id,
+    type: "corrective_action.overdue",
+    title: `Runtime Test Notification 2 (${Date.now()})`,
+    body: "Mandatory corrective action is overdue and requires escalated administrative review.",
+  });
+  console.log(`✓ Seeded 2 pending test notifications for officer: ${testNotif1.id}, ${testNotif2.id}`);
+
+  // 3. Test Proxy GET /api/notifications
+  console.log("Testing GET /api/notifications proxy...");
+  const listNotifsRes = await fetch(`${WEB_BASE}/api/notifications?page=1&pageSize=50`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!listNotifsRes.ok) {
+    throw new Error(`GET /api/notifications failed with ${listNotifsRes.status}`);
+  }
+  const notifList = (await listNotifsRes.json()) as {
+    items: Array<{ id: string; status: string; title: string; type: string }>;
+    total: number;
+    unread: number;
+  };
+  if (notifList.unread < 2) {
+    throw new Error(`Expected at least 2 unread notifications, got ${notifList.unread}`);
+  }
+  const found1 = notifList.items.find((n) => n.id === testNotif1.id);
+  const found2 = notifList.items.find((n) => n.id === testNotif2.id);
+  if (!found1 || !found2) {
+    throw new Error("Created notifications not found in GET /api/notifications list response");
+  }
+  if (found1.status !== "pending" || found2.status !== "pending") {
+    throw new Error(`Expected both notifications to have status='pending', got ${found1.status}, ${found2.status}`);
+  }
+  console.log(`✓ Proxy GET /api/notifications returned items with unread count: ${notifList.unread}`);
+
+  // 4. Test Proxy POST /api/notifications/:id/read
+  console.log(`Testing POST /api/notifications/${testNotif1.id}/read proxy...`);
+  const markOneRes = await fetch(`${WEB_BASE}/api/notifications/${testNotif1.id}/read`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (!markOneRes.ok) {
+    throw new Error(`POST /api/notifications/:id/read failed: ${markOneRes.status}: ${await markOneRes.text()}`);
+  }
+  const markedOne = (await markOneRes.json()) as { id: string; status: string };
+  if (markedOne.status !== "read") {
+    throw new Error(`Expected status='read' after marking single notification, got '${markedOne.status}'`);
+  }
+  console.log(`✓ Proxy POST mark single notification as read passed (status=${markedOne.status})`);
+
+  // Verify unread count decreased by 1
+  const afterOneRes = await fetch(`${WEB_BASE}/api/notifications?page=1&pageSize=10`, {
+    headers: { Cookie: officer.cookie },
+  });
+  const afterOneData = (await afterOneRes.json()) as { unread: number };
+  if (afterOneData.unread !== notifList.unread - 1) {
+    throw new Error(`Expected unread count to be ${notifList.unread - 1}, got ${afterOneData.unread}`);
+  }
+  console.log(`✓ Unread count verified decreased: ${afterOneData.unread}`);
+
+  // 5. Test Proxy POST /api/notifications/read-all
+  console.log("Testing POST /api/notifications/read-all proxy...");
+  const readAllRes = await fetch(`${WEB_BASE}/api/notifications/read-all`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (!readAllRes.ok) {
+    throw new Error(`POST /api/notifications/read-all failed: ${readAllRes.status}: ${await readAllRes.text()}`);
+  }
+  const readAllData = (await readAllRes.json()) as { updated: number };
+  if (typeof readAllData.updated !== "number" || readAllData.updated < 1) {
+    throw new Error(`Expected updated >= 1 from read-all, got: ${JSON.stringify(readAllData)}`);
+  }
+  console.log(`✓ Proxy POST mark all read passed (updated=${readAllData.updated} notifications)`);
+
+  // Verify unread count is now 0
+  const afterAllRes = await fetch(`${WEB_BASE}/api/notifications?page=1&pageSize=10`, {
+    headers: { Cookie: officer.cookie },
+  });
+  const afterAllData = (await afterAllRes.json()) as { unread: number };
+  if (afterAllData.unread !== 0) {
+    throw new Error(`Expected 0 unread notifications after read-all, got ${afterAllData.unread}`);
+  }
+  console.log(`✓ All notifications verified read: unread=${afterAllData.unread}`);
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 18 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 19 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
+  process.exit(0);
 }
 
 main().catch((err) => {
