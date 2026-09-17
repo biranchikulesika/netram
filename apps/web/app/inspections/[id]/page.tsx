@@ -7,6 +7,7 @@ import { ObservationsSection } from "./observations-section";
 import { FindingsSection } from "./findings-section";
 import { EvidenceGallery } from "./evidence-gallery";
 import { VcPanel } from "./vc-panel";
+import { InspectionLifecyclePanel } from "./inspection-lifecycle-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,12 @@ export default async function InspectionDetailPage({
     session.permissions.includes("vc:create") ||
     session.permissions.includes("inspection:transition") ||
     session.permissions.includes("*");
+  const canTransitionInspector =
+    session.permissions.includes("inspection:transition") ||
+    session.permissions.includes("*");
+  const canTransitionAuthority =
+    session.permissions.includes("inspection:review") ||
+    session.permissions.includes("*");
 
   return (
     <main>
@@ -92,6 +99,13 @@ export default async function InspectionDetailPage({
           </span>
         </div>
       </header>
+
+      {/* Lifecycle Progression Stepper (§32) */}
+      <InspectionLifecyclePanel
+        inspection={inspection}
+        canTransitionInspector={canTransitionInspector}
+        canTransitionAuthority={canTransitionAuthority}
+      />
 
       {/* Overview Cards */}
       <section className="overview-cards">

@@ -1039,8 +1039,117 @@ async function main() {
   }
   console.log(`✓ Proxy DELETE role assignment passed (status 204)`);
 
+  // Step 17: Inspection Scheduling & Lifecycle Progression Integration
+  console.log("\n17. Testing Inspection Scheduling & Lifecycle Progression Integration...");
+
+  // 1. Test Proxy POST /api/projects
+  console.log("Testing POST /api/projects proxy...");
+  const createProjRes = await fetch(`${WEB_BASE}/api/projects`, {
+    method: "POST",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: `Khordha Community Health & Rehab Unit #${Date.now().toString().slice(-4)}`,
+      type: "institution",
+      description: "Automated facility created via Next.js proxy route for lifecycle verification",
+    }),
+  });
+  if (!createProjRes.ok) {
+    throw new Error(`POST /api/projects failed: ${createProjRes.status}: ${await createProjRes.text()}`);
+  }
+  const createdFacility = (await createProjRes.json()) as { id: string; name: string; status: string };
+  console.log(`✓ Facility registered via proxy: id=${createdFacility.id}, status=${createdFacility.status}`);
+
+  // 2. Schedule a new routine inspection for the facility
+  console.log("Testing POST /api/inspections proxy to schedule inspection...");
+  const scheduleRes = await fetch(`${WEB_BASE}/api/inspections`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      projectId: targetProject.id,
+      type: "routine",
+      trigger: "officer",
+      scheduledStart: new Date(Date.now() + 86400000).toISOString(),
+      scheduledEnd: new Date(Date.now() + 2 * 86400000).toISOString(),
+    }),
+  });
+  if (!scheduleRes.ok) {
+    throw new Error(`POST /api/inspections failed: ${scheduleRes.status}: ${await scheduleRes.text()}`);
+  }
+  const scheduledInsp = (await scheduleRes.json()) as { id: string; status: string; type: string };
+  if (scheduledInsp.status !== "assigned" || scheduledInsp.type !== "routine") {
+    throw new Error(`Unexpected inspection state: ${JSON.stringify(scheduledInsp)}`);
+  }
+  console.log(`✓ Inspection created via proxy: id=${scheduledInsp.id}, status=${scheduledInsp.status}`);
+
+  // 3. SSR GET /inspections/[id] to verify Lifecycle Progression Stepper
+  console.log(`Testing SSR GET /inspections/${scheduledInsp.id}...`);
+  const inspDetailRes = await fetch(`${WEB_BASE}/inspections/${scheduledInsp.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!inspDetailRes.ok) {
+    throw new Error(`GET /inspections/:id returned ${inspDetailRes.status}`);
+  }
+  const inspDetailHtml = await inspDetailRes.text();
+  if (!inspDetailHtml.includes("Statutory Lifecycle Stepper")) {
+    throw new Error("Inspection detail HTML missing expected lifecycle stepper content");
+  }
+  console.log(`✓ /inspections/${scheduledInsp.id} rendered successfully (${inspDetailHtml.length} bytes, contains stepper)`);
+
+  // 4. Test Transition Progression: assigned -> scheduled -> in_progress -> evidence_collection -> submitted -> under_review -> findings -> corrective_actions -> verification -> closed
+  const lifecycleSteps = [
+    { to: "scheduled", note: "Inspection window formalized and team notified" },
+    { to: "in_progress", note: "Field verification initiated on site" },
+    { to: "evidence_collection", note: "Evidence gathering and photo capture active" },
+    { to: "submitted", note: "Field inspection dossier compiled and submitted" },
+    { to: "under_review", note: "Under supervisory review by authority officer" },
+    { to: "findings", note: "Regulatory non-compliance findings documented" },
+    { to: "corrective_actions", note: "Remediation measures formally ordered" },
+    { to: "verification", note: "Remediation verified on site" },
+    { to: "closed", note: "Statutory inspection concluded and sealed" },
+  ];
+
+  for (const step of lifecycleSteps) {
+    const tRes = await fetch(`${WEB_BASE}/api/inspections/${scheduledInsp.id}/transition`, {
+      method: "POST",
+      headers: {
+        Cookie: officer.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ to: step.to, note: step.note }),
+    });
+    if (!tRes.ok) {
+      throw new Error(`POST /api/inspections/:id/transition to '${step.to}' failed: ${tRes.status}: ${await tRes.text()}`);
+    }
+    const tData = (await tRes.json()) as { id: string; status: string };
+    if (tData.status !== step.to) {
+      throw new Error(`Expected status='${step.to}', got '${tData.status}'`);
+    }
+    console.log(`✓ Proxy transition to '${step.to}' passed`);
+  }
+
+  // 5. Test Invalid Transition Rejection on Terminal State (409 Conflict)
+  console.log("Testing invalid transition rejection on terminal state...");
+  const invalidTRes = await fetch(`${WEB_BASE}/api/inspections/${scheduledInsp.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "in_progress", note: "Illegal transition" }),
+  });
+  if (invalidTRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for invalid transition on closed inspection, got ${invalidTRes.status}`);
+  }
+  console.log(`✓ Invalid inspection transition correctly rejected with 409 Conflict`);
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 16 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 17 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
 }
 
