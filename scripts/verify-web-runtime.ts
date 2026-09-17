@@ -721,8 +721,11 @@ async function main() {
     throw new Error(`GET /track-complaint returned ${trackPortalRes.status}`);
   }
   const trackPortalHtml = await trackPortalRes.text();
-  if (!trackPortalHtml.includes("Track Grievance Status")) {
+  if (!trackPortalHtml.includes("Netram Citizen Grievance Portal")) {
     throw new Error("Citizen tracking portal missing expected title");
+  }
+  if (!trackPortalHtml.includes("Track Status")) {
+    throw new Error("Citizen tracking portal missing tracking lookup action");
   }
   console.log(`✓ /track-complaint rendered successfully (${trackPortalHtml.length} bytes, citizen portal OK)`);
 
