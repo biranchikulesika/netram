@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getClient, getSessionUser } from "../../lib/api";
-import { NavHeader } from "../components/nav-header";
-import { IconAlertTriangle, IconBuilding } from "../components/icons";
-import { ReportsView } from "./reports-view";
+import { notFound, redirect } from "next/navigation";
+import { getClient, getSessionUser } from "../../../lib/api";
+import { NavHeader } from "../../components/nav-header";
+import { IconAlertTriangle, IconBuilding } from "../../components/icons";
+import { ReportDetailClient } from "./report-detail-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage() {
+export default async function ReportDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const session = await getSessionUser();
   if (!session) redirect("/login");
 
@@ -53,7 +57,7 @@ export default async function ReportsPage() {
             Access Restricted
           </h3>
           <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}>
-            Your official account does not have authorization to view inspection reports. Please contact your administrative supervisor if you require elevated access.
+            Your official account does not have authorization to view statutory inspection reports.
           </p>
 
           <Link
@@ -69,16 +73,17 @@ export default async function ReportsPage() {
     );
   }
 
-  const canGenerate = permissions.includes("report:generate") || permissions.includes("*");
-  const canFinalize = permissions.includes("report:finalize") || permissions.includes("*");
-
+  const { id } = await params;
   const client = await getClient();
-  const [page, inspectionsPage] = await Promise.all([
-    client.listReports({ pageSize: 50 }).catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
-    canGenerate
-      ? client.listInspections({ pageSize: 50 }).catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }))
-      : Promise.resolve({ items: [], total: 0, page: 1, pageSize: 0 }),
-  ]);
+
+  let report;
+  try {
+    report = await client.getReport(id);
+  } catch {
+    notFound();
+  }
+
+  const canFinalize = permissions.includes("report:finalize") || permissions.includes("*");
 
   return (
     <main>
@@ -89,19 +94,7 @@ export default async function ReportsPage() {
         activeSection="reports"
       />
 
-      <ReportsView
-        initialReports={page.items}
-        total={page.total}
-        canGenerate={canGenerate}
-        canFinalize={canFinalize}
-        availableInspections={inspectionsPage.items.map((i) => ({
-          id: i.id,
-          projectCode: i.projectCode,
-          projectName: i.projectName,
-          type: i.type,
-          status: i.status,
-        }))}
-      />
+      <ReportDetailClient report={report} canFinalize={canFinalize} />
     </main>
   );
 }

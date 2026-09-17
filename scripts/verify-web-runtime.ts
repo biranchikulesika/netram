@@ -1148,8 +1148,106 @@ async function main() {
   }
   console.log(`✓ Invalid inspection transition correctly rejected with 409 Conflict`);
 
+  // Step 18: Official Inspection Reports & Statutory Dossiers Integration
+  console.log("\n18. Testing Official Inspection Reports & Statutory Dossiers Integration...");
+
+  // 1. Test SSR GET /reports
+  console.log("Testing SSR GET /reports...");
+  const reportsRes = await fetch(`${WEB_BASE}/reports`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!reportsRes.ok) {
+    throw new Error(`GET /reports returned ${reportsRes.status}`);
+  }
+  const reportsHtml = await reportsRes.text();
+  if (!reportsHtml.includes("Inspection Reports") || !reportsHtml.includes("Compile Report")) {
+    throw new Error("Reports page HTML missing expected reports dashboard content");
+  }
+  console.log(`✓ /reports rendered successfully (${reportsHtml.length} bytes, contains dashboard & compile button)`);
+
+  // 2. Test Proxy POST /api/reports to compile statutory report for the completed inspection
+  console.log(`Testing POST /api/reports proxy for inspection ${scheduledInsp.id}...`);
+  const createReportRes = await fetch(`${WEB_BASE}/api/reports`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      inspectionId: scheduledInsp.id,
+      format: "json",
+    }),
+  });
+  if (!createReportRes.ok) {
+    throw new Error(`POST /api/reports failed: ${createReportRes.status}: ${await createReportRes.text()}`);
+  }
+  const createdReport = (await createReportRes.json()) as { id: string; status: string; inspectionId: string; format: string };
+  if (!createdReport.id || createdReport.inspectionId !== scheduledInsp.id) {
+    throw new Error(`Unexpected report creation response: ${JSON.stringify(createdReport)}`);
+  }
+  console.log(`✓ Report generation requested via proxy: id=${createdReport.id}, status=${createdReport.status}`);
+
+  // 3. Poll Proxy GET /api/reports/:id until report worker completes artifact generation
+  console.log(`Polling GET /api/reports/${createdReport.id} proxy for generated artifact...`);
+  let pollReport = createdReport;
+  const pollStart = Date.now();
+  while (pollReport.status !== "ready" && pollReport.status !== "finalized") {
+    if (Date.now() - pollStart > 15000) {
+      throw new Error(`Report generation timed out after 15s (current status=${pollReport.status})`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const getRepRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}`, {
+      headers: { Cookie: officer.cookie },
+    });
+    if (!getRepRes.ok) {
+      throw new Error(`GET /api/reports/:id returned ${getRepRes.status}`);
+    }
+    pollReport = (await getRepRes.json()) as typeof createdReport & { artifact?: Record<string, unknown> };
+  }
+  console.log(`✓ Report artifact generated and ready: id=${pollReport.id}, status=${pollReport.status}`);
+
+  // 4. Test SSR GET /reports/[id]
+  console.log(`Testing SSR GET /reports/${createdReport.id}...`);
+  const reportDetailRes = await fetch(`${WEB_BASE}/reports/${createdReport.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!reportDetailRes.ok) {
+    throw new Error(`GET /reports/:id returned ${reportDetailRes.status}`);
+  }
+  const reportDetailHtml = await reportDetailRes.text();
+  if (!reportDetailHtml.includes("STATUTORY REPORT") || !reportDetailHtml.includes("Deterministic Statutory JSON Dossier")) {
+    throw new Error("Report detail HTML missing expected statutory report content");
+  }
+  console.log(`✓ /reports/${createdReport.id} rendered successfully (${reportDetailHtml.length} bytes, contains dossier)`);
+
+  // 5. Test Proxy POST /api/reports/:id/finalize
+  console.log(`Testing POST /api/reports/${createdReport.id}/finalize proxy...`);
+  const finalizeRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}/finalize`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (!finalizeRes.ok) {
+    throw new Error(`POST /api/reports/:id/finalize failed: ${finalizeRes.status}: ${await finalizeRes.text()}`);
+  }
+  const finalizedReport = (await finalizeRes.json()) as { id: string; status: string; finalizedAt: string; finalizedBy: string };
+  if (finalizedReport.status !== "finalized" || !finalizedReport.finalizedAt) {
+    throw new Error(`Expected report status='finalized', got '${finalizedReport.status}'`);
+  }
+  console.log(`✓ Statutory report finalized and sealed: finalizedAt=${finalizedReport.finalizedAt}`);
+
+  // 6. Test Finalization Immutability (§34) - cannot re-finalize or transition finalized report
+  console.log("Testing finalized report immutability rejection...");
+  const reFinalizeRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}/finalize`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (reFinalizeRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict when re-finalizing report, got ${reFinalizeRes.status}`);
+  }
+  console.log(`✓ Re-finalizing immutable report correctly rejected with 409 Conflict`);
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 17 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 18 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
 }
 
