@@ -8,6 +8,7 @@ import { FindingsSection } from "./findings-section";
 import { EvidenceGallery } from "./evidence-gallery";
 import { VcPanel } from "./vc-panel";
 import { InspectionLifecyclePanel } from "./inspection-lifecycle-panel";
+import { GenerateInspectionReportButton } from "./generate-inspection-report-button";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +37,15 @@ export default async function InspectionDetailPage({
     // optional
   }
 
-  const [evidenceList, observations, findings, vcSessionsPage] = await Promise.all([
+  const [evidenceList, observations, findings, vcSessionsPage, reportsPage] = await Promise.all([
     client.listEvidence(inspection.id).catch(() => []),
     client.listObservations(inspection.id).catch(() => []),
     client.listFindings(inspection.id).catch(() => []),
     client
       .listVcSessions({ inspectionId: inspection.id })
+      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 20 })),
+    client
+      .listReports({ inspectionId: inspection.id })
       .catch(() => ({ items: [], total: 0, page: 1, pageSize: 20 })),
   ]);
 
@@ -60,6 +64,9 @@ export default async function InspectionDetailPage({
     session.permissions.includes("*");
   const canTransitionAuthority =
     session.permissions.includes("inspection:review") ||
+    session.permissions.includes("*");
+  const canGenerateReport =
+    session.permissions.includes("report:generate") ||
     session.permissions.includes("*");
 
   return (
@@ -93,10 +100,17 @@ export default async function InspectionDetailPage({
             </p>
           )}
         </div>
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
           <span className={`status status-${inspection.status} status-large`}>
             {inspection.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
           </span>
+          {canGenerateReport && (
+            <GenerateInspectionReportButton
+              inspectionId={inspection.id}
+              hasExistingReport={reportsPage.items.length > 0}
+              existingReportId={reportsPage.items[0]?.id}
+            />
+          )}
         </div>
       </header>
 
