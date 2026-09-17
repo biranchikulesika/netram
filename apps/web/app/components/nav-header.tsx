@@ -10,6 +10,7 @@ import {
   IconShieldCheck,
   IconAlertTriangle,
   IconBarChart,
+  IconTrendingUp,
   IconLock,
   IconBell,
   IconSettings,
@@ -34,7 +35,8 @@ export interface NavHeaderProps {
     | "audit"
     | "admin"
     | "account"
-    | "corrective-actions";
+    | "corrective-actions"
+    | "analytics";
 }
 
 interface NavItem {
@@ -52,6 +54,7 @@ const NAV_PERMISSIONS: Partial<Record<NavHeaderProps["activeSection"], string[]>
   "corrective-actions": ["corrective_action:read"],
   complaints: ["complaint:read"],
   reports: ["report:read"],
+  analytics: ["report:read", "project:read"],
   audit: ["audit:read"],
   notifications: ["notification:read"],
   admin: ["user:manage", "role:manage"],
@@ -65,6 +68,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/corrective-actions", label: "Corrective Actions", section: "corrective-actions", icon: IconShieldCheck },
   { href: "/complaints", label: "Complaints", section: "complaints", icon: IconAlertTriangle },
   { href: "/reports", label: "Reports", section: "reports", icon: IconBarChart },
+  { href: "/analytics", label: "Analytics", section: "analytics", icon: IconTrendingUp },
   { href: "/audit", label: "Audit Log", section: "audit", icon: IconLock },
   { href: "/notifications", label: "Notifications", section: "notifications", icon: IconBell },
   { href: "/admin", label: "Admin", section: "admin", icon: IconSettings },
@@ -78,6 +82,7 @@ const SECTION_LABELS: Record<NavHeaderProps["activeSection"], string> = {
   "corrective-actions": "Corrective Actions",
   complaints: "Complaints",
   reports: "Reports",
+  analytics: "Authority Analytics & SLA Oversight",
   audit: "Audit Log",
   notifications: "Notifications",
   admin: "Admin",
