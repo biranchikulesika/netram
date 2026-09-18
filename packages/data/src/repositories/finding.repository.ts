@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { findings as findingsTable, auditEvents, outboxEvents } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
+import { RepositoryNotFoundError } from "./errors.js";
 import type {
   AuditAction,
   DomainEventType,
@@ -136,7 +137,7 @@ export class FindingRepository {
 
   async transitionWithAuditAndEvent(cmd: TransitionFindingWrite): Promise<Finding> {
     const current = await this.findById(cmd.findingId);
-    if (!current) throw new Error("finding missing");
+    if (!current) throw new RepositoryNotFoundError("Finding");
 
     const transitioned: Finding = await this.db.transaction(async (tx) => {
       const rows = await tx

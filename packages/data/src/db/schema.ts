@@ -465,21 +465,28 @@ export const auditEvents = pgTable("audit_events", {
 
 /* ---------- Outbox ---------- */
 
-export const outboxEvents = pgTable("outbox_events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  type: varchar("type", { length: 80 }).notNull(),
-  correlationId: varchar("correlation_id", { length: 100 }).notNull(),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
-  actorUserId: uuid("actor_user_id").references(() => users.id),
-  resourceType: varchar("resource_type", { length: 50 }).notNull(),
-  resourceId: varchar("resource_id", { length: 100 }).notNull(),
-  payload: json("payload").$type<Record<string, unknown>>().default({}).notNull(),
-  status: varchar("status", { length: 20 }).notNull().default("pending"),
-  attemptCount: integer("attempt_count").notNull().default(0),
-  availableAfter: timestamp("available_after", { withTimezone: true }),
-  lastError: text("last_error"),
-  processedAt: timestamp("processed_at", { withTimezone: true }),
-});
+export const outboxEvents = pgTable(
+  "outbox_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: varchar("type", { length: 80 }).notNull(),
+    correlationId: varchar("correlation_id", { length: 100 }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+    actorUserId: uuid("actor_user_id").references(() => users.id),
+    resourceType: varchar("resource_type", { length: 50 }).notNull(),
+    resourceId: varchar("resource_id", { length: 100 }).notNull(),
+    payload: json("payload").$type<Record<string, unknown>>().default({}).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    availableAfter: timestamp("available_after", { withTimezone: true }),
+    lastError: text("last_error"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("outbox_status_available_occurred_idx").on(t.status, t.availableAfter, t.occurredAt),
+    index("outbox_resource_idx").on(t.resourceType, t.resourceId),
+  ],
+);
 
 /* ---------- Feature Flags ---------- */
 

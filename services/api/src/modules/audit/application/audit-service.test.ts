@@ -53,4 +53,21 @@ describe("AuditService", () => {
     await svc.listAuditEvents(ctx, { page: 3, pageSize: 50 });
     expect(repo.list).toHaveBeenCalledWith({ page: 3, pageSize: 50 });
   });
+
+  it("records audit events using recordEvent", async () => {
+    const repo = mockRepo();
+    const svc = new AuditService(mockAuthz(), repo);
+    const entry = {
+      action: "project.created" as const,
+      actorUserId: "u1",
+      resourceType: "project",
+      resourceId: "p1",
+      requestId: "req-1",
+      ipAddress: "127.0.0.1",
+      metadata: { name: "Test Project" },
+    };
+    await svc.recordEvent(entry);
+    expect(repo.append).toHaveBeenCalledWith(entry);
+  });
 });
+

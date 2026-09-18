@@ -98,6 +98,41 @@ export class ComplaintService {
     });
   }
 
+  /**
+   * Citizen/public complaint intake (§35).
+   * Does not require authority credentials; persists with null actor and emits outbox event.
+   */
+  async submitPublicComplaint(
+    input: CreateComplaintInput,
+    meta?: { requestId?: string | null; ipAddress?: string | null },
+  ): Promise<Complaint> {
+    const project = await this.projectRepo.findById(input.projectId);
+    if (!project) throw AppError.badRequest("Project does not exist.");
+
+    const id = randomUUID();
+    const trackingCode = newTrackingCode();
+    return this.repository.createWithAuditAndEvent({
+      id,
+      projectId: input.projectId,
+      complainantName: input.complainantName ?? null,
+      contactInfo: input.contactInfo ?? null,
+      trackingCode,
+      description: input.description,
+      actorUserId: null,
+      requestId: meta?.requestId ?? null,
+      ipAddress: meta?.ipAddress ?? null,
+      auditAction: "complaint.submitted",
+      auditMetadata: { projectId: input.projectId, publicSubmission: true },
+      eventType: "complaint.submitted",
+      eventPayload: {
+        complaintId: id,
+        projectId: input.projectId,
+        trackingCode,
+        publicSubmission: true,
+      },
+    });
+  }
+
   async transitionComplaint(
     ctx: RequestUserContext,
     complaintId: string,

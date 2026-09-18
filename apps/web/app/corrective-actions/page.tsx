@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClient, getSessionUser } from "../../lib/api";
+import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
-import { CorrectiveActionsLayout } from "./corrective-actions-layout";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +12,7 @@ export default async function CorrectiveActionsPage() {
   if (!session) redirect("/login");
 
   const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
-  const isAuthorized =
-    permissions.includes("corrective_action:read") || permissions.includes("*");
+  const isAuthorized = permissions.includes("corrective_action:read") || permissions.includes("*");
 
   if (!isAuthorized) {
     return (
@@ -50,22 +49,11 @@ export default async function CorrectiveActionsPage() {
             <IconAlertTriangle style={{ width: 22, height: 22 }} />
           </div>
 
-          <h3
-            style={{
-              margin: "0 0 0.5rem 0",
-              fontSize: "1.1rem",
-              fontWeight: 700,
-              color: "var(--color-navy-brand)",
-            }}
-          >
+          <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
             Access Restricted
           </h3>
-          <p
-            className="muted"
-            style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}
-          >
-            Your official account does not have authorization to view corrective actions. Please contact
-            your administrative supervisor if you require elevated access.
+          <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}>
+            Your official account does not have authorization to view corrective actions. Please contact your administrative supervisor if you require elevated access.
           </p>
 
           <Link
@@ -83,31 +71,61 @@ export default async function CorrectiveActionsPage() {
 
   const client = await getClient();
   const page = await client
-    .listCorrectiveActions({ pageSize: 100 })
-    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 100 }));
-
-  const canOrder =
-    permissions.includes("inspection:review") || permissions.includes("*");
-  const canTransition =
-    permissions.includes("corrective_action:submit") ||
-    permissions.includes("corrective_action:approve") ||
-    permissions.includes("*");
+    .listCorrectiveActions({ pageSize: 50 })
+    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
 
   return (
     <main>
       <NavHeader
         userEmail={session.user.email}
-        permissionsCount={permissions.length}
+        permissionsCount={session.permissions.length}
         permissions={permissions}
         activeSection="corrective-actions"
       />
 
-      <CorrectiveActionsLayout
-        initialActions={page.items}
-        totalActions={page.total}
-        canOrder={canOrder}
-        canTransition={canTransition}
-      />
+      <div className="section-header">
+        <div>
+          <h2>Corrective Actions</h2>
+          <p className="muted">Remediation tracking for formal inspection findings</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Finding</th>
+            <th>Status</th>
+            <th>Deadline</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {page.items.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="muted" style={{ textAlign: "center", padding: "2rem" }}>
+                No corrective actions recorded.
+              </td>
+            </tr>
+          ) : (
+            page.items.map((ca) => (
+              <tr key={ca.id}>
+                <td style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
+                  Deficiency Remediation
+                </td>
+                <td>
+                  <span className={`status status-${ca.status}`}>{ca.status.replace("_", " ")}</span>
+                </td>
+                <td className="muted">{formatDate(ca.deadline)}</td>
+                <td className="muted">{formatDate(ca.createdAt)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+
+      <p className="muted" style={{ marginTop: "1rem" }}>
+        Total: {page.total}
+      </p>
     </main>
   );
 }

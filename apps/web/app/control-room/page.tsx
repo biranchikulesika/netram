@@ -20,8 +20,6 @@ export default async function ControlRoomPage() {
       .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
   ]);
 
-  const canTransition = session.permissions.includes("ai:anomaly:transition");
-
   return (
     <main>
       <NavHeader
@@ -33,7 +31,7 @@ export default async function ControlRoomPage() {
 
       <div className="section-header" style={{ marginBottom: "1.25rem" }}>
         <div>
-          <h2>Control Room</h2>
+          <h2>Control Room &amp; Live Surveillance</h2>
           <p className="muted">Live surveillance feeds, camera endpoints, and advisory anomaly oversight</p>
         </div>
       </div>
@@ -42,7 +40,6 @@ export default async function ControlRoomPage() {
         cameras={camerasPage.items}
         anomalies={anomaliesPage.items}
         anomaliesTotal={anomaliesPage.total}
-        canTransition={canTransition}
       />
     </main>
   );

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getFacility, getFacilityCorrectiveActions, getFacilityInspections } from "../../../../lib/facility";
 import { formatDate } from "../../../../lib/presentation";
-import { IconChevronRight } from "../../../components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +27,7 @@ export default async function FacilityActionsPage({
           <h2>
             Corrective Actions <span className="count-chip">{actions.length}</span>
           </h2>
-          <p className="muted">Remediation tracking for this facility — inspection findings, deadlines, and closure (§32)</p>
+          <p className="muted">Remediation tracking for this facility — inspection findings, deadlines, and closure</p>
         </div>
         <div className="section-header-stats">
           <span className={`stat-chip ${openCount > 0 ? "warn" : "good"}`}>
@@ -44,18 +43,16 @@ export default async function FacilityActionsPage({
         <table>
           <thead>
             <tr>
-              <th>Remediation Item</th>
-              <th>Parent Inspection</th>
+              <th>Inspection</th>
               <th style={{ width: "150px" }}>Status</th>
               <th style={{ width: "150px" }}>Deadline</th>
               <th style={{ width: "150px" }}>Created</th>
-              <th style={{ width: "110px", textAlign: "right" }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {actions.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem" }}>
+                <td colSpan={4} style={{ textAlign: "center", padding: "3rem 1rem" }}>
                   <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
                     No corrective actions recorded for this facility.
                   </div>
@@ -68,29 +65,11 @@ export default async function FacilityActionsPage({
                 return (
                   <tr key={ca.id}>
                     <td>
-                      <div>
-                        <Link
-                          href={`/corrective-actions/${ca.id}`}
-                          style={{ fontWeight: 600, color: "var(--color-navy-brand)", textDecoration: "none" }}
-                        >
-                          Deficiency Remediation
-                        </Link>
-                        <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", fontFamily: "var(--font-mono)", marginTop: "2px" }}>
-                          Finding: {ca.findingId.slice(0, 8)}…
-                        </div>
-                      </div>
-                    </td>
-                    <td>
                       <Link
                         href={`/inspections/${ca.inspectionId}`}
-                        style={{
-                          fontSize: "0.82rem",
-                          color: "var(--text-primary)",
-                          textDecoration: "underline",
-                          textUnderlineOffset: "2px",
-                        }}
+                        style={{ fontWeight: 600, color: "var(--color-navy-brand)", textDecoration: "none" }}
                       >
-                        Inspection ({ca.inspectionId.slice(0, 8)})
+                        Deficiency Remediation
                       </Link>
                     </td>
                     <td>
@@ -101,26 +80,8 @@ export default async function FacilityActionsPage({
                         {ca.status.replace("_", " ")}
                       </span>
                     </td>
-                    <td className="muted" style={{ fontSize: "0.8rem" }}>{formatDate(ca.deadline)}</td>
-                    <td className="muted" style={{ fontSize: "0.8rem" }}>{formatDate(ca.createdAt)}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <Link
-                        href={`/corrective-actions/${ca.id}`}
-                        className="btn-secondary"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.25rem",
-                          fontSize: "0.78rem",
-                          padding: "0.3rem 0.65rem",
-                          textDecoration: "none",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span>Manage</span>
-                        <IconChevronRight style={{ width: 13, height: 13 }} />
-                      </Link>
-                    </td>
+                    <td className="muted">{formatDate(ca.deadline)}</td>
+                    <td className="muted">{formatDate(ca.createdAt)}</td>
                   </tr>
                 );
               })
@@ -130,7 +91,7 @@ export default async function FacilityActionsPage({
 
         <div className="table-footer-info">
           <span>
-            {actions.length} total · {openCount} outstanding for {project.name}
+            {actions.length} total · {openCount} outstanding
           </span>
         </div>
       </div>

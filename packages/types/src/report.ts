@@ -1,6 +1,6 @@
 import type { UUID, ISODateTime } from "./common.js";
 
-export const REPORT_FORMATS = ["json"] as const;
+export const REPORT_FORMATS = ["json", "csv", "pdf"] as const;
 export type ReportFormat = (typeof REPORT_FORMATS)[number];
 
 export const REPORT_STATUSES = ["requested", "generating", "ready", "failed", "finalized"] as const;
@@ -33,6 +33,7 @@ export interface Report {
   projectCode: string | null;
   projectName: string | null;
   districtId: UUID | null;
+  storageRef: string | null;
   requestedBy: UUID | null;
   requestedAt: ISODateTime;
   generatedBy: UUID | null;

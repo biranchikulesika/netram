@@ -390,6 +390,15 @@ export class NetramApiClient extends HttpClient {
     return this.post("/api/v1/complaints", input);
   }
 
+  async submitPublicComplaint(input: {
+    projectId: string;
+    description: string;
+    complainantName?: string;
+    contactInfo?: string;
+  }): Promise<Complaint> {
+    return this.post("/api/v1/complaints/public", input);
+  }
+
   async transitionComplaint(
     id: string,
     to: ComplaintStatus,
