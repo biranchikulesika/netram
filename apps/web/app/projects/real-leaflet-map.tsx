@@ -484,6 +484,21 @@ export default function RealLeafletMap({
 
       marker.bindPopup(popupHtml, { maxWidth: 280 });
 
+      // Persistent location label directly visible on the map
+      const shortName = f.name.length > 26 ? `${f.name.substring(0, 24)}…` : f.name;
+      marker.bindTooltip(
+        `<div class="netram-map-label ${isSelected ? "selected" : ""}">
+          <span class="label-code">${f.code}</span>
+          <span class="label-name" title="${f.name}">${shortName}</span>
+        </div>`,
+        {
+          permanent: true,
+          direction: "bottom",
+          offset: [0, 8],
+          className: `netram-leaflet-tooltip ${isSelected ? "selected" : ""}`,
+        }
+      );
+
       marker.on("click", () => {
         setSelectedProjectId(f.id);
       });
@@ -661,13 +676,14 @@ export default function RealLeafletMap({
     <div
       style={{
         position: "relative",
-        height: "700px",
+        height: "100%",
+        minHeight: "440px",
         width: "100%",
         borderRadius: "12px",
         overflow: "hidden",
         border: "1px solid var(--color-border-strong)",
         boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-        marginBottom: "2rem",
+        marginBottom: 0,
         background: "#e2e8f0",
       }}
     >

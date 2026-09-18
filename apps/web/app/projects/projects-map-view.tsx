@@ -9,7 +9,8 @@ const RealLeafletMap = dynamic(() => import("./real-leaflet-map"), {
   loading: () => (
     <div
       style={{
-        height: "620px",
+        height: "calc(100vh - 205px)",
+        minHeight: "440px",
         background: "var(--bg-subtle)",
         border: "1px solid var(--color-border-strong)",
         borderRadius: "8px",

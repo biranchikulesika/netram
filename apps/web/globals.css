@@ -3333,3 +3333,65 @@ a:hover {
   line-height: 1.4 !important;
 }
 
+/* Persistent GIS Map Location Labels */
+.leaflet-tooltip.netram-leaflet-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 5px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  padding: 2px 6px !important;
+  color: #0c2a52 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  z-index: 500 !important;
+}
+
+.leaflet-tooltip.netram-leaflet-tooltip::before {
+  border-bottom-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.leaflet-tooltip.netram-leaflet-tooltip:hover,
+.leaflet-tooltip.netram-leaflet-tooltip.selected {
+  background: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.28) !important;
+  z-index: 1000 !important;
+}
+
+.netram-map-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.netram-map-label .label-code {
+  font-family: monospace;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.2px;
+}
+
+.netram-map-label .label-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Zero-scroll viewport layout for GIS Map view */
+body.has-portal-sidebar:has(.map-view-wrapper) main {
+  padding-bottom: 0.5rem;
+}
+

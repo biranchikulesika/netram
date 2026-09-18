@@ -263,7 +263,7 @@ export function ProjectsView({
   return (
     <div>
       {/* Header */}
-      <div className="section-title-row" style={{ marginBottom: "1.25rem" }}>
+      <div className="section-title-row" style={{ marginBottom: viewMode === "map" ? "0.6rem" : "1.25rem" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
             Projects
@@ -294,7 +294,7 @@ export function ProjectsView({
       </div>
 
       {/* Toolbar: Search, Filters & View Toggle */}
-      <div className="registry-toolbar">
+      <div className="registry-toolbar" style={{ marginBottom: viewMode === "map" ? "0.6rem" : "1.25rem" }}>
         <div className="search-filter-group">
           <div className="search-input-wrap">
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
@@ -605,7 +605,11 @@ export function ProjectsView({
       )}
 
       {/* View Mode C: GIS Geographic Map View */}
-      {viewMode === "map" && <ProjectsMapView projects={filteredProjects} />}
+      {viewMode === "map" && (
+        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+          <ProjectsMapView projects={filteredProjects} />
+        </div>
+      )}
     </div>
   );
 }
