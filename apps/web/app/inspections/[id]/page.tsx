@@ -7,8 +7,6 @@ import { ObservationsSection } from "./observations-section";
 import { FindingsSection } from "./findings-section";
 import { EvidenceGallery } from "./evidence-gallery";
 import { VcPanel } from "./vc-panel";
-import { InspectionLifecyclePanel } from "./inspection-lifecycle-panel";
-import { GenerateInspectionReportButton } from "./generate-inspection-report-button";
 
 export const dynamic = "force-dynamic";
 
@@ -37,22 +35,12 @@ export default async function InspectionDetailPage({
     // optional
   }
 
-<<<<<<< HEAD
   const [evidenceList, observations, findings, vcSessionsPage] = await Promise.all([
-=======
-  const [evidenceList, observations, findings, vcSessionsPage, reportsPage] = await Promise.all([
->>>>>>> origin/production
     client.listEvidence(inspection.id).catch(() => []),
     client.listObservations(inspection.id).catch(() => []),
     client.listFindings(inspection.id).catch(() => []),
     client
       .listVcSessions({ inspectionId: inspection.id })
-<<<<<<< HEAD
-=======
-      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 20 })),
-    client
-      .listReports({ inspectionId: inspection.id })
->>>>>>> origin/production
       .catch(() => ({ items: [], total: 0, page: 1, pageSize: 20 })),
   ]);
 
@@ -66,18 +54,6 @@ export default async function InspectionDetailPage({
     session.permissions.includes("vc:create") ||
     session.permissions.includes("inspection:transition") ||
     session.permissions.includes("*");
-<<<<<<< HEAD
-=======
-  const canTransitionInspector =
-    session.permissions.includes("inspection:transition") ||
-    session.permissions.includes("*");
-  const canTransitionAuthority =
-    session.permissions.includes("inspection:review") ||
-    session.permissions.includes("*");
-  const canGenerateReport =
-    session.permissions.includes("report:generate") ||
-    session.permissions.includes("*");
->>>>>>> origin/production
 
   return (
     <main>
@@ -110,26 +86,12 @@ export default async function InspectionDetailPage({
             </p>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
+        <div>
           <span className={`status status-${inspection.status} status-large`}>
             {inspection.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
           </span>
-          {canGenerateReport && (
-            <GenerateInspectionReportButton
-              inspectionId={inspection.id}
-              hasExistingReport={reportsPage.items.length > 0}
-              existingReportId={reportsPage.items[0]?.id}
-            />
-          )}
         </div>
       </header>
-
-      {/* Lifecycle Progression Stepper (§32) */}
-      <InspectionLifecyclePanel
-        inspection={inspection}
-        canTransitionInspector={canTransitionInspector}
-        canTransitionAuthority={canTransitionAuthority}
-      />
 
       {/* Overview Cards */}
       <section className="overview-cards">

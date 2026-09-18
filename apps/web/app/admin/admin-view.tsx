@@ -1,36 +1,17 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-<<<<<<< HEAD
 import type { UserAdminView, RoleView } from "@netram/types";
-=======
-import type {
-  UserAdminView,
-  RoleView,
-  JurisdictionView,
-  RoleAssignmentView,
-} from "@netram/types";
->>>>>>> origin/production
 import {
   IconShieldCheck,
   IconSearch,
   IconCheck,
-<<<<<<< HEAD
 } from "../components/icons";
-=======
-  IconAlertTriangle,
-} from "../components/icons";
-import { AssignRoleModal } from "./assign-role-modal";
->>>>>>> origin/production
 
 export interface AdminViewProps {
   users: UserAdminView[];
   totalUsers: number;
   roles: RoleView[];
-<<<<<<< HEAD
-=======
-  jurisdictions?: JurisdictionView[];
->>>>>>> origin/production
   currentEmail: string;
   hasUserManage: boolean;
   hasRoleManage: boolean;
@@ -40,56 +21,19 @@ export function AdminView({
   users = [],
   totalUsers: _totalUsers = 0,
   roles = [],
-<<<<<<< HEAD
   currentEmail: _currentEmail,
   hasUserManage: _hasUserManage,
   hasRoleManage: _hasRoleManage,
 }: AdminViewProps) {
-=======
-  jurisdictions = [],
-  currentEmail,
-  hasUserManage,
-  hasRoleManage,
-}: AdminViewProps) {
-  const [userList, setUserList] = useState<UserAdminView[]>(users);
->>>>>>> origin/production
   const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [expandedRoleCode, setExpandedRoleCode] = useState<string | null>(null);
 
-<<<<<<< HEAD
   // Safe data arrays
   const safeUsers = useMemo(() => (Array.isArray(users) ? users : []), [users]);
   const safeRoles = useMemo(() => (Array.isArray(roles) ? roles : []), [roles]);
-=======
-  // Modal states
-  const [selectedUserForRole, setSelectedUserForRole] = useState<UserAdminView | null>(null);
-  const [userToConfirmStatus, setUserToConfirmStatus] = useState<{
-    user: UserAdminView;
-    targetStatus: "active" | "suspended";
-  } | null>(null);
-  const [assignmentToRevoke, setAssignmentToRevoke] = useState<{
-    assignmentId: string;
-    roleCode: string;
-    userEmail: string;
-    userId: string;
-  } | null>(null);
-
-  const [actionLoading, setActionLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
-    null,
-  );
-
-  // Safe data arrays
-  const safeUsers = useMemo(() => (Array.isArray(userList) ? userList : []), [userList]);
-  const safeRoles = useMemo(() => (Array.isArray(roles) ? roles : []), [roles]);
-  const safeJurisdictions = useMemo(
-    () => (Array.isArray(jurisdictions) ? jurisdictions : []),
-    [jurisdictions],
-  );
->>>>>>> origin/production
 
   // Metric calculations
   const activeCount = useMemo(
@@ -155,163 +99,20 @@ export function AdminView({
     return nameOrEmail.trim().charAt(0).toUpperCase();
   }
 
-<<<<<<< HEAD
-=======
-  // Action: Toggle Status
-  const handleConfirmStatusChange = async () => {
-    if (!userToConfirmStatus) return;
-    const { user, targetStatus } = userToConfirmStatus;
-
-    setActionLoading(true);
-    setFeedback(null);
-
-    try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: targetStatus }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data?.error?.message || `Failed to update status (status ${res.status})`,
-        );
-      }
-
-      setUserList((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, status: targetStatus } : u)),
-      );
-
-      setFeedback({
-        type: "success",
-        message: `User ${user.email} status changed to ${targetStatus.toUpperCase()} successfully.`,
-      });
-      setUserToConfirmStatus(null);
-    } catch (err) {
-      setFeedback({
-        type: "error",
-        message: err instanceof Error ? err.message : "Failed to update user status",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Action: Assign Role Callback
-  const handleRoleAssigned = (newAssignment: RoleAssignmentView, targetUserId: string) => {
-    setUserList((prev) =>
-      prev.map((u) => {
-        if (u.id !== targetUserId) return u;
-        return {
-          ...u,
-          assignments: [...u.assignments, newAssignment],
-        };
-      }),
-    );
-    setFeedback({
-      type: "success",
-      message: `Role ${newAssignment.roleCode} (${newAssignment.scope}) assigned successfully.`,
-    });
-  };
-
-  // Action: Revoke Role Assignment
-  const handleConfirmRevokeAssignment = async () => {
-    if (!assignmentToRevoke) return;
-    const { assignmentId, roleCode, userEmail, userId } = assignmentToRevoke;
-
-    setActionLoading(true);
-    setFeedback(null);
-
-    try {
-      const res = await fetch(`/api/admin/role-assignments/${assignmentId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok && res.status !== 204) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data?.error?.message || `Failed to revoke role assignment (status ${res.status})`,
-        );
-      }
-
-      setUserList((prev) =>
-        prev.map((u) => {
-          if (u.id !== userId) return u;
-          return {
-            ...u,
-            assignments: u.assignments.filter((a) => a.id !== assignmentId),
-          };
-        }),
-      );
-
-      setFeedback({
-        type: "success",
-        message: `Revoked role ${roleCode} from ${userEmail}.`,
-      });
-      setAssignmentToRevoke(null);
-    } catch (err) {
-      setFeedback({
-        type: "error",
-        message: err instanceof Error ? err.message : "Failed to revoke role assignment",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
->>>>>>> origin/production
   return (
     <div>
       {/* Clean Compact Header */}
       <div className="section-title-row" style={{ marginBottom: "1.25rem" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
-<<<<<<< HEAD
             User Administration
           </h2>
           <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
             Manage operators, role assignments, and permissions
-=======
-            User Administration &amp; Access Control
-          </h2>
-          <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
-            Manage operators, scoped role assignments, and access policies (&sect;16, &sect;17)
->>>>>>> origin/production
           </p>
         </div>
       </div>
 
-<<<<<<< HEAD
-=======
-      {/* Global Feedback Alert */}
-      {feedback && (
-        <div
-          style={{
-            padding: "0.65rem 0.85rem",
-            borderRadius: "6px",
-            marginBottom: "1rem",
-            fontSize: "0.82rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            background: feedback.type === "success" ? "#dcfce7" : "#fee2e2",
-            border: `1px solid ${feedback.type === "success" ? "#86efac" : "#fca5a5"}`,
-            color: feedback.type === "success" ? "#15803d" : "#991b1b",
-          }}
-        >
-          <span>{feedback.message}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "inherit" }}
-          >
-            &times;
-          </button>
-        </div>
-      )}
-
->>>>>>> origin/production
       {/* Navigation Toolbar & Tabs */}
       <div className="registry-toolbar">
         <div className="search-filter-group">
@@ -409,26 +210,15 @@ export function AdminView({
             <thead>
               <tr>
                 <th style={{ minWidth: "220px" }}>Operator Identity</th>
-<<<<<<< HEAD
                 <th style={{ width: "130px" }}>Account Status</th>
                 <th>Assigned Roles &amp; Jurisdiction Scopes</th>
                 <th style={{ width: "130px" }}>Registered Date</th>
-=======
-                <th style={{ width: "120px" }}>Account Status</th>
-                <th>Assigned Roles &amp; Scopes</th>
-                <th style={{ width: "120px" }}>Registered</th>
-                <th style={{ width: "180px", textAlign: "right" }}>Actions</th>
->>>>>>> origin/production
               </tr>
             </thead>
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-<<<<<<< HEAD
                   <td colSpan={4} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-=======
-                  <td colSpan={5} style={{ textAlign: "center", padding: "3rem 1rem" }}>
->>>>>>> origin/production
                     <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
                       {searchQuery || statusFilter !== "ALL" || roleFilter !== "ALL"
                         ? "No operators match the current filter criteria."
@@ -455,10 +245,6 @@ export function AdminView({
                   const initial = getAvatarInitial(u?.displayName || u?.email);
                   const isSuspended = u?.status === "suspended";
                   const assignments = Array.isArray(u?.assignments) ? u.assignments : [];
-<<<<<<< HEAD
-=======
-                  const isCurrentUser = u.email === currentEmail;
->>>>>>> origin/production
 
                   return (
                     <tr key={u.id}>
@@ -485,24 +271,6 @@ export function AdminView({
                           <div>
                             <div style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
                               {u.email}
-<<<<<<< HEAD
-=======
-                              {isCurrentUser && (
-                                <span
-                                  style={{
-                                    marginLeft: "0.4rem",
-                                    fontSize: "0.68rem",
-                                    padding: "0.1rem 0.35rem",
-                                    borderRadius: "3px",
-                                    background: "#e0f2fe",
-                                    color: "#0369a1",
-                                    fontWeight: 700,
-                                  }}
-                                >
-                                  YOU
-                                </span>
-                              )}
->>>>>>> origin/production
                             </div>
                             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                               {u.displayName || "Official Account"}
@@ -546,11 +314,7 @@ export function AdminView({
                         )}
                       </td>
 
-<<<<<<< HEAD
                       {/* Roles & Scopes */}
-=======
-                      {/* Roles & Scopes with Revocation Action */}
->>>>>>> origin/production
                       <td>
                         {assignments.length === 0 ? (
                           <span className="muted" style={{ fontStyle: "italic" }}>
@@ -594,37 +358,6 @@ export function AdminView({
                                 >
                                   {a.scope}
                                 </span>
-<<<<<<< HEAD
-=======
-
-                                {hasRoleManage && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setAssignmentToRevoke({
-                                        assignmentId: a.id,
-                                        roleCode: a.roleCode,
-                                        userEmail: u.email,
-                                        userId: u.id,
-                                      })
-                                    }
-                                    title={`Revoke ${a.roleCode} assignment`}
-                                    style={{
-                                      background: "none",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      color: "#94a3b8",
-                                      padding: "0 0.15rem",
-                                      fontSize: "0.85rem",
-                                      lineHeight: 1,
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
-                                    onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
-                                  >
-                                    &times;
-                                  </button>
-                                )}
->>>>>>> origin/production
                               </span>
                             ))}
                           </div>
@@ -635,71 +368,6 @@ export function AdminView({
                       <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                         {formatDate(u.createdAt)}
                       </td>
-<<<<<<< HEAD
-=======
-
-                      {/* Operational Actions */}
-                      <td style={{ textAlign: "right" }}>
-                        <div
-                          style={{
-                            display: "inline-flex",
-                            gap: "0.4rem",
-                            alignItems: "center",
-                            justifyContent: "flex-end",
-                          }}
-                        >
-                          {hasRoleManage && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedUserForRole(u)}
-                              className="btn-secondary"
-                              style={{
-                                padding: "0.25rem 0.55rem",
-                                fontSize: "0.75rem",
-                                background: "#f0fdf4",
-                                borderColor: "#bbf7d0",
-                                color: "#15803d",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                              }}
-                            >
-                              + Assign Role
-                            </button>
-                          )}
-
-                          {hasUserManage && (
-                            <button
-                              type="button"
-                              disabled={isCurrentUser}
-                              onClick={() =>
-                                setUserToConfirmStatus({
-                                  user: u,
-                                  targetStatus: isSuspended ? "active" : "suspended",
-                                })
-                              }
-                              className="btn-secondary"
-                              title={
-                                isCurrentUser
-                                  ? "Self-lockout guard: You cannot suspend your own administrative account"
-                                  : undefined
-                              }
-                              style={{
-                                padding: "0.25rem 0.55rem",
-                                fontSize: "0.75rem",
-                                background: isSuspended ? "#f0fdf4" : "#fef2f2",
-                                borderColor: isSuspended ? "#86efac" : "#fca5a5",
-                                color: isSuspended ? "#15803d" : "#dc2626",
-                                fontWeight: 600,
-                                cursor: isCurrentUser ? "not-allowed" : "pointer",
-                                opacity: isCurrentUser ? 0.5 : 1,
-                              }}
-                            >
-                              {isSuspended ? "Reactivate" : "Suspend"}
-                            </button>
-                          )}
-                        </div>
-                      </td>
->>>>>>> origin/production
                     </tr>
                   );
                 })
@@ -711,11 +379,7 @@ export function AdminView({
             <span>
               Showing {filteredUsers.length} of {safeUsers.length} registered operators
             </span>
-<<<<<<< HEAD
             <span>Server Authoritative Access Control &bull; AGENTS.md §16</span>
-=======
-            <span>Server Authoritative Access Control &bull; AGENTS.md &sect;16, &sect;17</span>
->>>>>>> origin/production
           </div>
         </div>
       )}
@@ -884,176 +548,6 @@ export function AdminView({
           </div>
         </div>
       )}
-<<<<<<< HEAD
-=======
-
-      {/* MODAL 1: Assign Scoped Role Modal */}
-      <AssignRoleModal
-        user={selectedUserForRole}
-        roles={safeRoles}
-        jurisdictions={safeJurisdictions}
-        isOpen={!!selectedUserForRole}
-        onClose={() => setSelectedUserForRole(null)}
-        onSuccess={handleRoleAssigned}
-      />
-
-      {/* MODAL 2: User Status Confirmation Dialog */}
-      {userToConfirmStatus && (
-        <div
-          className="lightbox-backdrop"
-          style={{ zIndex: 100 }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-status-title"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setUserToConfirmStatus(null);
-          }}
-        >
-          <div
-            className="modal-content"
-            style={{
-              maxWidth: "460px",
-              width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-            }}
-          >
-            <div
-              style={{
-                width: "44px",
-                height: "44px",
-                borderRadius: "50%",
-                background: userToConfirmStatus.targetStatus === "suspended" ? "#fee2e2" : "#dcfce7",
-                color: userToConfirmStatus.targetStatus === "suspended" ? "#dc2626" : "#15803d",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "1rem",
-              }}
-            >
-              <IconAlertTriangle style={{ width: 22, height: 22 }} />
-            </div>
-
-            <h3
-              id="confirm-status-title"
-              style={{ margin: "0 0 0.5rem", fontSize: "1.15rem", fontWeight: 700, color: "var(--color-navy-brand)" }}
-            >
-              {userToConfirmStatus.targetStatus === "suspended"
-                ? "Suspend Operator Account"
-                : "Reactivate Operator Account"}
-            </h3>
-
-            <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem" }}>
-              {userToConfirmStatus.targetStatus === "suspended"
-                ? `Are you sure you want to suspend access for ${userToConfirmStatus.user.email}? This immediately revokes operational permissions and suspends active session capabilities under governance policy §16.`
-                : `Are you sure you want to reactivate access for ${userToConfirmStatus.user.email}? This restores operational access under their assigned roles and jurisdictions.`}
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "0.75rem",
-                borderTop: "1px solid #e2e8f0",
-                paddingTop: "0.85rem",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setUserToConfirmStatus(null)}
-                className="btn-secondary"
-                disabled={actionLoading}
-                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmStatusChange}
-                disabled={actionLoading}
-                className="btn-primary"
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  fontSize: "0.85rem",
-                  background: userToConfirmStatus.targetStatus === "suspended" ? "#dc2626" : "#15803d",
-                  borderColor: userToConfirmStatus.targetStatus === "suspended" ? "#dc2626" : "#15803d",
-                }}
-              >
-                {actionLoading ? "Updating..." : `Confirm ${userToConfirmStatus.targetStatus === "suspended" ? "Suspension" : "Reactivation"}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: Revoke Role Assignment Dialog */}
-      {assignmentToRevoke && (
-        <div
-          className="lightbox-backdrop"
-          style={{ zIndex: 100 }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-revoke-title"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setAssignmentToRevoke(null);
-          }}
-        >
-          <div
-            className="modal-content"
-            style={{
-              maxWidth: "460px",
-              width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-            }}
-          >
-            <h3
-              id="confirm-revoke-title"
-              style={{ margin: "0 0 0.5rem", fontSize: "1.15rem", fontWeight: 700, color: "var(--color-navy-brand)" }}
-            >
-              Revoke Role Assignment
-            </h3>
-
-            <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem" }}>
-              Are you sure you want to revoke the role <strong>{assignmentToRevoke.roleCode}</strong> from{" "}
-              <strong>{assignmentToRevoke.userEmail}</strong>? This immediately removes all granted permissions under this role scope.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "0.75rem",
-                borderTop: "1px solid #e2e8f0",
-                paddingTop: "0.85rem",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setAssignmentToRevoke(null)}
-                className="btn-secondary"
-                disabled={actionLoading}
-                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmRevokeAssignment}
-                disabled={actionLoading}
-                className="btn-primary"
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  fontSize: "0.85rem",
-                  background: "#dc2626",
-                  borderColor: "#dc2626",
-                }}
-              >
-                {actionLoading ? "Revoking..." : "Confirm Revocation"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
->>>>>>> origin/production
     </div>
   );
 }

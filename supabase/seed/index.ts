@@ -433,12 +433,10 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         "inspection:transition",
         "inspection:review",
         "complaint:read",
-        "complaint:create",
         "complaint:resolve",
         "ai:anomaly:read",
         "ai:anomaly:transition",
         "corrective_action:read",
-        "corrective_action:submit",
         "corrective_action:approve",
         "report:read",
         "report:generate",
@@ -3514,7 +3512,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     ])
     .onConflictDoNothing();
 
-<<<<<<< HEAD
 
   // =====================================================================
   // DATA-03: Maharashtra — Multi-state expansion (§13: synthetic, no real PII)
@@ -3840,10 +3837,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   console.log(
     `Seed complete: ${projects.length + enrichedProjects.length} projects, ${users.length + enrichedUsers.length} users across ${districtRows.length} districts.`,
 
-=======
-  console.log(
-    `Seed complete: ${projects.length + enrichedProjects.length} projects, ${users.length + enrichedUsers.length} users across ${districtRows.length} districts.`,
->>>>>>> origin/production
   );
 }
 

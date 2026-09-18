@@ -5,15 +5,10 @@ import Link from "next/link";
 import type { Inspection } from "@netram/types";
 import { IconSearch, IconChevronRight } from "../components/icons";
 import { getProjectName, getProjectCode, formatDate } from "../../lib/presentation";
-<<<<<<< HEAD
-=======
-import { ScheduleInspectionModal, type ProjectOption } from "./schedule-inspection-modal";
->>>>>>> origin/production
 
 interface InspectionsViewProps {
   initialInspections: Inspection[];
   total: number;
-<<<<<<< HEAD
 }
 
 export function InspectionsView({ initialInspections, total }: InspectionsViewProps) {
@@ -26,44 +21,11 @@ export function InspectionsView({ initialInspections, total }: InspectionsViewPr
         (i) => i.status === "in_progress" || i.status === "evidence_collection",
       ).length,
     [initialInspections],
-=======
-  availableProjects?: ProjectOption[];
-  canCreate?: boolean;
-}
-
-export function InspectionsView({
-  initialInspections,
-  total: initialTotal,
-  availableProjects = [],
-  canCreate = false,
-}: InspectionsViewProps) {
-  const [inspections, setInspections] = useState<Inspection[]>(initialInspections);
-  const [total, setTotal] = useState(initialTotal);
-  const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "REVIEW" | "SCHEDULED" | "COMPLETED">("ALL");
-  const [search, setSearch] = useState("");
-  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-
-  const handleCreated = (newInspection: Inspection) => {
-    setInspections((prev) => [newInspection, ...prev]);
-    setTotal((prev) => prev + 1);
-  };
-
-  const activeCount = useMemo(
-    () =>
-      inspections.filter(
-        (i) => i.status === "in_progress" || i.status === "evidence_collection",
-      ).length,
-    [inspections],
->>>>>>> origin/production
   );
 
   const reviewCount = useMemo(
     () =>
-<<<<<<< HEAD
       initialInspections.filter(
-=======
-      inspections.filter(
->>>>>>> origin/production
         (i) =>
           i.status === "submitted" ||
           i.status === "under_review" ||
@@ -71,16 +33,11 @@ export function InspectionsView({
           i.status === "corrective_actions" ||
           i.status === "verification",
       ).length,
-<<<<<<< HEAD
     [initialInspections],
-=======
-    [inspections],
->>>>>>> origin/production
   );
 
   const scheduledCount = useMemo(
     () =>
-<<<<<<< HEAD
       initialInspections.filter(
         (i) => i.status === "scheduled" || i.status === "assigned",
       ).length,
@@ -94,21 +51,6 @@ export function InspectionsView({
 
   const filtered = useMemo(() => {
     return initialInspections.filter((i) => {
-=======
-      inspections.filter(
-        (i) => i.status === "scheduled" || i.status === "assigned",
-      ).length,
-    [inspections],
-  );
-
-  const completedCount = useMemo(
-    () => inspections.filter((i) => i.status === "closed").length,
-    [inspections],
-  );
-
-  const filtered = useMemo(() => {
-    return inspections.filter((i) => {
->>>>>>> origin/production
       // Status filter
       if (filter === "ACTIVE") {
         if (i.status !== "in_progress" && i.status !== "evidence_collection") return false;
@@ -139,65 +81,19 @@ export function InspectionsView({
 
       return true;
     });
-<<<<<<< HEAD
   }, [initialInspections, filter, search]);
 
   return (
     <div>
       <div className="section-title-row" style={{ marginBottom: "1.25rem" }}>
-=======
-  }, [inspections, filter, search]);
-
-  return (
-    <div>
-      <div
-        className="section-title-row"
-        style={{
-          marginBottom: "1.25rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "0.75rem",
-        }}
-      >
->>>>>>> origin/production
         <div>
           <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
             Inspections
           </h2>
           <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
-<<<<<<< HEAD
             Field inspection oversight, assignment tracking, and verification workflows · Total Inspections: <strong>{total}</strong>
           </p>
         </div>
-=======
-            Field inspection oversight, assignment tracking, and verification workflows
-          </p>
-        </div>
-        {canCreate && (
-          <button
-            type="button"
-            onClick={() => setScheduleModalOpen(true)}
-            style={{
-              background: "var(--color-navy-brand, #1e3a8a)",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "6px",
-              padding: "0.5rem 1rem",
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <span>+ Schedule Inspection</span>
-          </button>
-        )}
->>>>>>> origin/production
       </div>
 
       {/* Interactive Toolbar */}
@@ -376,18 +272,6 @@ export function InspectionsView({
           <span>Showing {filtered.length} of {total} inspections</span>
         </div>
       </div>
-<<<<<<< HEAD
-=======
-
-      {scheduleModalOpen && (
-        <ScheduleInspectionModal
-          isOpen={scheduleModalOpen}
-          onClose={() => setScheduleModalOpen(false)}
-          onSuccess={handleCreated}
-          availableProjects={availableProjects}
-        />
-      )}
->>>>>>> origin/production
     </div>
   );
 }

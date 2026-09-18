@@ -19,26 +19,6 @@ export async function registerComplaintRoutes(
 ): Promise<void> {
   const complaintService = container.complaintService;
   const paramsSchema = toJsonSchema("ComplaintIdParams", idParamsSchema);
-  const trackingParamsSchema = toJsonSchema(
-    "TrackingCodeParams",
-    z.object({ trackingCode: z.string().min(3).max(50) }),
-  );
-
-  // Citizen/Public Tracking Lookup (§35)
-  app.get(
-    "/complaints/track/:trackingCode",
-    {
-      schema: {
-        tags: ["complaints"],
-        params: trackingParamsSchema,
-        response: { 200: toJsonSchema("Complaint", complaintSchema) },
-      },
-    },
-    async (request) => {
-      const { trackingCode } = request.params as { trackingCode: string };
-      return complaintService.trackComplaint(trackingCode);
-    },
-  );
 
   // Citizen/Public Intake (§35)
   app.post(

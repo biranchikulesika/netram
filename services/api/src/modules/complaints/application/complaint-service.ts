@@ -69,18 +69,6 @@ export class ComplaintService {
     return complaint;
   }
 
-  /**
-   * Citizen/public tracking lookup by tracking code (§35).
-   * Does not require authenticated session.
-   */
-  async trackComplaint(trackingCode: string): Promise<Complaint> {
-    const complaint = await this.repository.findByTrackingCode(trackingCode);
-    if (!complaint) {
-      throw AppError.notFound(`Complaint with tracking code ${trackingCode} not found.`);
-    }
-    return complaint;
-  }
-
   async createComplaint(ctx: RequestUserContext, input: CreateComplaintInput): Promise<Complaint> {
     this.authz.requirePermission(ctx, CREATE);
 

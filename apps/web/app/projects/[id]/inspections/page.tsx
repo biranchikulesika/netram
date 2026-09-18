@@ -1,14 +1,7 @@
 import Link from "next/link";
 import { getFacility, getFacilityInspections } from "../../../../lib/facility";
-<<<<<<< HEAD
 import { formatDate } from "../../../../lib/presentation";
 import { IconChevronRight } from "../../../components/icons";
-=======
-import { getSessionUser } from "../../../../lib/api";
-import { formatDate } from "../../../../lib/presentation";
-import { IconChevronRight } from "../../../components/icons";
-import { ScheduleFacilityInspectionButton } from "./schedule-facility-inspection-button";
->>>>>>> origin/production
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +14,6 @@ export default async function FacilityInspectionsPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-<<<<<<< HEAD
-=======
-  const session = await getSessionUser();
-  const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
-  const canCreate = permissions.includes("inspection:create") || permissions.includes("*");
-
->>>>>>> origin/production
   const { id } = await params;
   const project = await getFacility(id);
   if (!project) return null;
@@ -51,12 +37,7 @@ export default async function FacilityInspectionsPage({
           </h2>
           <p className="muted">Field inspection oversight for this facility — assignment and verification workflow</p>
         </div>
-<<<<<<< HEAD
         <div className="section-header-stats">
-=======
-        <div className="section-header-stats" style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {canCreate && <ScheduleFacilityInspectionButton project={project} />}
->>>>>>> origin/production
           <span className={`stat-chip ${activeCount > 0 ? "warn" : ""}`}>
             {activeCount} in the field
           </span>

@@ -33,23 +33,6 @@ function walk(dir, out = []) {
     }
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
-<<<<<<< HEAD
-=======
-      if (
-        [
-          ".git",
-          "node_modules",
-          ".next",
-          "dist",
-          ".turbo",
-          ".expo",
-          "coverage",
-          ".pnpm",
-          ".temp",
-        ].includes(entry.name)
-      )
-        continue;
->>>>>>> origin/production
       walk(p, out);
     } else if (entry.isFile()) {
       out.push(p);

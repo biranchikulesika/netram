@@ -1,12 +1,5 @@
-<<<<<<< HEAD
 import { getFacility, getFacilityComplaints } from "../../../../lib/facility";
 import { formatDate } from "../../../../lib/presentation";
-=======
-import Link from "next/link";
-import { getFacility, getFacilityComplaints } from "../../../../lib/facility";
-import { formatDate } from "../../../../lib/presentation";
-import { IconChevronRight } from "../../../components/icons";
->>>>>>> origin/production
 
 export const dynamic = "force-dynamic";
 
@@ -32,11 +25,7 @@ export default async function FacilityComplaintsPage({
             Facility Complaints <span className="count-chip">{complaints.length}</span>
           </h2>
           <p className="muted">
-<<<<<<< HEAD
             Grievances regarding this facility — oversight inputs, not automatic findings of misconduct
-=======
-            Grievances regarding this facility — oversight inputs, not automatic findings of misconduct (§35)
->>>>>>> origin/production
           </p>
         </div>
         <div className="section-header-stats">
@@ -50,28 +39,16 @@ export default async function FacilityComplaintsPage({
         <table>
           <thead>
             <tr>
-<<<<<<< HEAD
               <th style={{ width: "150px" }}>Tracking Code</th>
               <th>Description</th>
               <th style={{ width: "140px" }}>Status</th>
               <th style={{ width: "150px" }}>Received</th>
-=======
-              <th style={{ width: "170px" }}>Tracking Code</th>
-              <th>Description</th>
-              <th style={{ width: "140px" }}>Status</th>
-              <th style={{ width: "150px" }}>Received</th>
-              <th style={{ width: "110px", textAlign: "right" }}>Action</th>
->>>>>>> origin/production
             </tr>
           </thead>
           <tbody>
             {complaints.length === 0 ? (
               <tr>
-<<<<<<< HEAD
                 <td colSpan={4} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-=======
-                <td colSpan={5} style={{ textAlign: "center", padding: "3rem 1rem" }}>
->>>>>>> origin/production
                   <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
                     No complaints recorded for this facility.
                   </div>
@@ -81,53 +58,10 @@ export default async function FacilityComplaintsPage({
               complaints.map((c) => (
                 <tr key={c.id}>
                   <td>
-<<<<<<< HEAD
                     <span className="code-badge">{c.trackingCode}</span>
                   </td>
                   <td style={{ maxWidth: "420px" }}>
                     <span style={{ color: "var(--color-navy-data)" }}>{c.description}</span>
-=======
-                    <div>
-                      <Link
-                        href={`/complaints/${c.id}`}
-                        className="code-badge"
-                        style={{
-                          textDecoration: "none",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "inline-block",
-                        }}
-                      >
-                        {c.trackingCode}
-                      </Link>
-                      <div style={{ marginTop: "4px" }}>
-                        <Link
-                          href={`/track-complaint?code=${c.trackingCode}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            fontSize: "0.72rem",
-                            color: "var(--text-muted)",
-                            textDecoration: "underline",
-                          }}
-                        >
-                          Citizen portal &nearr;
-                        </Link>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ maxWidth: "420px" }}>
-                    <Link
-                      href={`/complaints/${c.id}`}
-                      style={{
-                        color: "var(--color-navy-data)",
-                        textDecoration: "none",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {c.description}
-                    </Link>
->>>>>>> origin/production
                     {c.complainantName && (
                       <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", marginTop: "2px" }}>
                         Reported by {c.complainantName}
@@ -139,29 +73,7 @@ export default async function FacilityComplaintsPage({
                       {c.status.replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase())}
                     </span>
                   </td>
-<<<<<<< HEAD
                   <td className="muted">{formatDate(c.receivedAt)}</td>
-=======
-                  <td className="muted" style={{ fontSize: "0.8rem" }}>{formatDate(c.receivedAt)}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <Link
-                      href={`/complaints/${c.id}`}
-                      className="btn-secondary"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.25rem",
-                        fontSize: "0.78rem",
-                        padding: "0.3rem 0.65rem",
-                        textDecoration: "none",
-                        fontWeight: 600,
-                      }}
-                    >
-                      <span>Review</span>
-                      <IconChevronRight style={{ width: 13, height: 13 }} />
-                    </Link>
-                  </td>
->>>>>>> origin/production
                 </tr>
               ))
             )}
@@ -170,11 +82,7 @@ export default async function FacilityComplaintsPage({
 
         <div className="table-footer-info">
           <span>
-<<<<<<< HEAD
             {complaints.length} total · {openCount} open
-=======
-            {complaints.length} total · {openCount} open for {project.name}
->>>>>>> origin/production
           </span>
         </div>
       </div>

@@ -4,10 +4,6 @@ import { getClient, getSessionUser } from "../../lib/api";
 import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
-<<<<<<< HEAD
-=======
-import { ComplaintsLayout } from "./complaints-layout";
->>>>>>> origin/production
 
 export const dynamic = "force-dynamic";
 
@@ -74,44 +70,19 @@ export default async function ComplaintsPage() {
   }
 
   const client = await getClient();
-<<<<<<< HEAD
   const page = await client
     .listComplaints({ pageSize: 50 })
     .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
-=======
-  const [page, projectsPage] = await Promise.all([
-    client
-      .listComplaints({ pageSize: 50 })
-      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
-    client
-      .listProjects({ pageSize: 100 })
-      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 100 })),
-  ]);
-
-  const canCreate = permissions.includes("complaint:create") || permissions.includes("*");
-  const canResolve = permissions.includes("complaint:resolve") || permissions.includes("*");
-
-  const projectOptions = projectsPage.items.map((p) => ({
-    id: p.id,
-    code: p.code,
-    name: p.name,
-  }));
->>>>>>> origin/production
 
   return (
     <main>
       <NavHeader
         userEmail={session.user.email}
-<<<<<<< HEAD
         permissionsCount={session.permissions.length}
-=======
-        permissionsCount={permissions.length}
->>>>>>> origin/production
         permissions={permissions}
         activeSection="complaints"
       />
 
-<<<<<<< HEAD
       <div className="section-header">
         <div>
           <h2>Complaints</h2>
@@ -153,16 +124,6 @@ export default async function ComplaintsPage() {
       <p className="muted" style={{ marginTop: "1rem" }}>
         Total: {page.total}
       </p>
-=======
-      <ComplaintsLayout
-        initialComplaints={page.items}
-        totalComplaints={page.total}
-        projects={projectOptions}
-        canCreate={canCreate}
-        canResolve={canResolve}
-      />
->>>>>>> origin/production
     </main>
   );
 }
-
