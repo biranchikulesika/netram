@@ -31,7 +31,7 @@ interface GeofenceConfig {
   auditTx?: string;
 }
 
-// Canonical District Headquarters Coordinates (Odisha)
+// Canonical District Coordinates in Odisha
 const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number; name: string }> = {
   "5f6c6fcf-fc88-5bf1-9f63-cad86ee0bd3b": { lat: 20.2961, lng: 85.8245, name: "Khordha (Bhubaneswar)" },
   "92f0e386-2b80-5ca4-94a0-9c7d90d47dbf": { lat: 20.4625, lng: 85.8830, name: "Cuttack" },
@@ -96,12 +96,13 @@ export default function RealLeafletMap({
   const geofenceLayerRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
-  // Core Cartographic Controls
+  // Cartographic Controls
   const [mapType, setMapType] = useState<"streets" | "satellite">("streets");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     projects[0]?.id ?? null,
   );
-  const [showDrawer, setShowDrawer] = useState<boolean>(true);
+  // Default drawer closed so user sees the complete, unobstructed map view
+  const [showDrawer, setShowDrawer] = useState<boolean>(false);
 
   // Geofencing Interactive State
   const [geofenceMode, setGeofenceMode] = useState<"view" | "circle" | "polygon">("view");
@@ -125,7 +126,7 @@ export default function RealLeafletMap({
       radiusMeters: 300,
       polygonPoints: [],
       sealedAt: "2026-09-18T10:30:00Z",
-      sealedBy: "DSWO Puri (Govt. of Odisha)",
+      sealedBy: "DSWO Puri",
       auditTx: "0x8f2d...41a9",
     },
   });
@@ -161,7 +162,6 @@ export default function RealLeafletMap({
     });
   }, [projects]);
 
-  // Facilities mapped from projects prop (already filtered by top toolbar)
   const visibleFacilities = facilities;
 
   const selectedFacility = useMemo(() => {
@@ -181,23 +181,68 @@ export default function RealLeafletMap({
         type: "circle",
         radiusMeters: 250,
         polygonPoints: [],
-        sealedAt: "Pending Initial Seal",
-        sealedBy: "Awaiting Authority Action",
+        sealedAt: "Pending",
+        sealedBy: "DSWO",
       }
     );
   }, [selectedFacility, geofences]);
 
-  // Map Navigation Helpers
+  // Zoom to fit all facilities on the map
+  const fitAllFacilities = useCallback(() => {
+    if (!mapInstanceRef.current || facilities.length === 0) return;
+    const coords = facilities
+      .filter((f) => f.lat && f.lng)
+      .map((f) => [f.lat, f.lng] as [number, number]);
+
+    if (coords.length > 0) {
+      const bounds = L.latLngBounds(coords);
+      mapInstanceRef.current.fitBounds(bounds, {
+        padding: [60, 60],
+        maxZoom: 13,
+      });
+    } else {
+      mapInstanceRef.current.setView([20.4, 84.8], 7);
+    }
+  }, [facilities]);
+
   const flyToFacility = useCallback((lat: number, lng: number) => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 });
     }
   }, []);
 
-  const resetToOdisha = useCallback(() => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([20.35, 85.82], 8, { duration: 1 });
-    }
+  // Expose helper on window for popup button interactions
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__netram_open_dossier = (id: string) => {
+      setSelectedProjectId(id);
+      setShowDrawer(true);
+    };
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__netram_open_dossier;
+    };
+  }, []);
+
+  // Invalidate map size when drawer toggles to avoid tile clipping
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [showDrawer]);
+
+  // Listen for window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Initialize Map
@@ -206,11 +251,12 @@ export default function RealLeafletMap({
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
-        center: [20.35, 85.82],
-        zoom: 8,
+        center: [20.4, 84.8],
+        zoom: 7,
         minZoom: 6,
         maxZoom: 18,
         zoomControl: false,
+        scrollWheelZoom: true,
       });
 
       L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -218,8 +264,9 @@ export default function RealLeafletMap({
       const streetLayer = L.tileLayer(
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> • Netram GIS',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
           maxZoom: 19,
+          keepBuffer: 4,
         },
       );
       streetLayer.addTo(map);
@@ -232,7 +279,14 @@ export default function RealLeafletMap({
       geofenceLayerRef.current = geofenceGroup;
       mapInstanceRef.current = map;
 
-      // Click listener uses ref to avoid stale closure
+      // Invalidate size once DOM container is calculated, then frame all locations
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+          fitAllFacilities();
+        }
+      }, 150);
+
       map.on("click", (e: L.LeafletMouseEvent) => {
         if (geofenceModeRef.current === "polygon") {
           const { lat, lng } = e.latlng;
@@ -247,9 +301,9 @@ export default function RealLeafletMap({
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [fitAllFacilities]);
 
-  // Handle Tile Layer Switching (Streets vs Satellite)
+  // Tile layer switching
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -262,8 +316,9 @@ export default function RealLeafletMap({
       const satLayer = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
-          attribution: "Tiles &copy; Esri &bull; Netram Satellite",
+          attribution: "Tiles &copy; Esri",
           maxZoom: 18,
+          keepBuffer: 4,
         },
       );
       satLayer.addTo(map);
@@ -272,8 +327,9 @@ export default function RealLeafletMap({
       const streetLayer = L.tileLayer(
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> • Netram GIS',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
           maxZoom: 19,
+          keepBuffer: 4,
         },
       );
       streetLayer.addTo(map);
@@ -281,7 +337,7 @@ export default function RealLeafletMap({
     }
   }, [mapType]);
 
-  // Render Facility Markers
+  // Render Markers with Click Popups
   useEffect(() => {
     if (!mapInstanceRef.current || !markersGroupRef.current) return;
     const markersGroup = markersGroupRef.current;
@@ -292,26 +348,26 @@ export default function RealLeafletMap({
       const color = getStatusColor(f.status);
 
       const markerHtml = `
-        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
           ${
             isSelected
-              ? `<div style="position: absolute; inset: -6px; border-radius: 50%; border: 2.5px solid ${color}; opacity: 0.8; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>`
+              ? `<div style="position: absolute; inset: -5px; border-radius: 50%; border: 2.5px solid ${color}; opacity: 0.8; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>`
               : f.status === "Active"
                 ? `<div style="position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid ${color}; opacity: 0.35;"></div>`
                 : ""
           }
           <div style="
-            width: ${isSelected ? "26px" : "20px"};
-            height: ${isSelected ? "26px" : "20px"};
+            width: ${isSelected ? "24px" : "18px"};
+            height: ${isSelected ? "24px" : "18px"};
             border-radius: 50%;
             background: ${color};
             border: 2px solid #ffffff;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #ffffff;
-            font-size: ${isSelected ? "11px" : "9px"};
+            font-size: ${isSelected ? "10px" : "8px"};
             font-weight: 800;
             transition: all 0.2s ease;
           ">
@@ -323,32 +379,61 @@ export default function RealLeafletMap({
       const customIcon = L.divIcon({
         html: markerHtml,
         className: "leaflet-facility-marker",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -14],
       });
 
       const marker = L.marker([f.lat, f.lng], { icon: customIcon });
 
+      const districtName = getDistrictName(f.districtId, f.code);
+
+      // Interactive Popup on Dot Click
+      const popupHtml = `
+        <div style="font-family: inherit; padding: 8px 10px; min-width: 210px; max-width: 260px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; gap: 6px;">
+            <span style="font-family: monospace; font-size: 11px; font-weight: 800; background: #e2e8f0; color: #0c2a52; padding: 2px 6px; border-radius: 4px;">${f.code}</span>
+            <span style="font-size: 10px; font-weight: 700; color: ${color};">● ${f.status}</span>
+          </div>
+          <div style="font-weight: 700; font-size: 13px; color: #0c2a52; line-height: 1.3; margin-bottom: 4px;">
+            ${f.name}
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">
+            ${f.categoryLabel}
+          </div>
+          <div style="font-size: 11px; color: #334155; display: flex; flex-direction: column; gap: 2px; padding: 4px 0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px;">
+            <div><strong>District:</strong> ${districtName}</div>
+            <div><strong>Capacity:</strong> ${f.capacityLabel}</div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button
+              type="button"
+              onclick="window.__netram_open_dossier && window.__netram_open_dossier('${f.id}')"
+              style="flex: 1; padding: 5px 8px; font-size: 11px; font-weight: 700; background: #0c2a52; color: #ffffff; border: none; border-radius: 4px; cursor: pointer;"
+            >
+              Details
+            </button>
+            <a
+              href="/projects/${f.id}"
+              style="flex: 1; text-align: center; padding: 5px 8px; font-size: 11px; font-weight: 700; background: #15803d; color: #ffffff; text-decoration: none; border-radius: 4px; display: inline-block;"
+            >
+              Open →
+            </a>
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(popupHtml, { maxWidth: 280 });
+
       marker.on("click", () => {
         setSelectedProjectId(f.id);
-        setShowDrawer(true);
-        flyToFacility(f.lat, f.lng);
       });
-
-      marker.bindTooltip(
-        `<div style="font-family: inherit; padding: 2px 4px;">
-           <div style="font-weight: 700; font-size: 11px; color: #0f172a;">${f.code}</div>
-           <div style="font-size: 10px; color: #475569;">${f.name}</div>
-           <div style="font-size: 9px; color: ${color}; font-weight: 600; margin-top: 2px;">● ${f.status}</div>
-         </div>`,
-        { direction: "top", offset: [0, -12], opacity: 0.95 },
-      );
 
       marker.addTo(markersGroup);
     });
-  }, [visibleFacilities, selectedFacility, flyToFacility]);
+  }, [visibleFacilities, selectedFacility]);
 
-  // Render Geofence Buffers and Perimeter Overlays
+  // Render Geofences
   useEffect(() => {
     if (!mapInstanceRef.current || !geofenceLayerRef.current) return;
     const geofenceGroup = geofenceLayerRef.current;
@@ -360,7 +445,6 @@ export default function RealLeafletMap({
     const lng = selectedFacility.lng;
 
     if (geofenceMode === "polygon") {
-      // Actively drawing polygon
       if (polygonVertices.length > 0) {
         L.polygon(polygonVertices, {
           color: "#2563eb",
@@ -383,17 +467,13 @@ export default function RealLeafletMap({
         });
       }
     } else if (currentGeofence.type === "polygon" && currentGeofence.polygonPoints.length >= 3) {
-      // Saved statutory polygon
       L.polygon(currentGeofence.polygonPoints, {
         color: "#16a34a",
         weight: 2.5,
         fillColor: "#22c55e",
         fillOpacity: 0.2,
-      })
-        .bindTooltip(`Statutory Campus Geofence (${currentGeofence.sealedBy})`, { sticky: true })
-        .addTo(geofenceGroup);
+      }).addTo(geofenceGroup);
     } else {
-      // Circular statutory buffer
       const radius = geofenceMode === "circle" ? circleRadius : currentGeofence.radiusMeters;
       L.circle([lat, lng], {
         radius,
@@ -402,13 +482,11 @@ export default function RealLeafletMap({
         dashArray: geofenceMode === "circle" ? "5, 5" : undefined,
         fillColor: geofenceMode === "circle" ? "#3b82f6" : "#22c55e",
         fillOpacity: 0.18,
-      })
-        .bindTooltip(`Statutory Perimeter Buffer: ${radius}m`, { sticky: true })
-        .addTo(geofenceGroup);
+      }).addTo(geofenceGroup);
     }
   }, [selectedFacility, geofenceMode, circleRadius, polygonVertices, currentGeofence]);
 
-  // Seal Geofence Action (Authorized Authority Only)
+  // Seal Geofence
   const handleSealGeofence = () => {
     if (!selectedFacility) return;
 
@@ -430,7 +508,7 @@ export default function RealLeafletMap({
             radiusMeters: 0,
             polygonPoints: polygonVertices,
             sealedAt: new Date().toISOString(),
-            sealedBy: "District Social Welfare Officer",
+            sealedBy: "DSWO",
             auditTx: txHash,
           }
         : {
@@ -438,7 +516,7 @@ export default function RealLeafletMap({
             radiusMeters: circleRadius,
             polygonPoints: [],
             sealedAt: new Date().toISOString(),
-            sealedBy: "District Social Welfare Officer",
+            sealedBy: "DSWO",
             auditTx: txHash,
           };
 
@@ -462,15 +540,15 @@ export default function RealLeafletMap({
         borderRadius: "12px",
         overflow: "hidden",
         border: "1px solid var(--color-border-strong)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
         marginBottom: "2rem",
-        background: "#0f172a",
+        background: "#e2e8f0",
       }}
     >
-      {/* 1. The Real Leaflet Map DOM Canvas */}
+      {/* 1. Complete Leaflet Map DOM Canvas */}
       <div ref={mapContainerRef} style={{ width: "100%", height: "100%", zIndex: 1 }} />
 
-      {/* 2. Top-Right Floating Tool Controls (Adjusts right position when drawer is open) */}
+      {/* 2. Top-Right Cartographic Controls */}
       <div
         style={{
           position: "absolute",
@@ -483,7 +561,7 @@ export default function RealLeafletMap({
           transition: "right 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        {/* Street vs Satellite Switcher */}
+        {/* Layer Switcher */}
         <div
           style={{
             display: "flex",
@@ -529,11 +607,11 @@ export default function RealLeafletMap({
           </button>
         </div>
 
-        {/* Reset View Button */}
+        {/* Zoom to All Facilities */}
         <button
           type="button"
-          onClick={resetToOdisha}
-          title="Reset map view to whole of Odisha"
+          onClick={fitAllFacilities}
+          title="Zoom out to show all facility locations"
           style={{
             background: "rgba(255, 255, 255, 0.96)",
             backdropFilter: "blur(8px)",
@@ -543,14 +621,14 @@ export default function RealLeafletMap({
             padding: "0.35rem 0.6rem",
             fontSize: "0.74rem",
             fontWeight: 600,
-            color: "var(--text-muted)",
+            color: "var(--text-primary)",
             cursor: "pointer",
           }}
         >
-          ↺ Reset
+          ↺ Zoom to All
         </button>
 
-        {/* If Drawer is Closed: Show Toggle Pill */}
+        {/* Toggle Details Drawer Button */}
         {!showDrawer && selectedFacility && (
           <button
             type="button"
@@ -571,12 +649,12 @@ export default function RealLeafletMap({
             }}
           >
             <IconMapPin width={13} height={13} />
-            <span>Dossier: {selectedFacility.code}</span>
+            <span>Details ({selectedFacility.code})</span>
           </button>
         )}
       </div>
 
-      {/* 4. Bottom-Left Cartographic Legend */}
+      {/* 3. Bottom-Left Legend */}
       <div
         style={{
           position: "absolute",
@@ -588,37 +666,33 @@ export default function RealLeafletMap({
           borderRadius: "6px",
           border: "1px solid rgba(0,0,0,0.1)",
           boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-          padding: "0.4rem 0.65rem",
+          padding: "0.35rem 0.6rem",
           display: "flex",
           alignItems: "center",
-          gap: "0.75rem",
+          gap: "0.6rem",
           fontSize: "0.68rem",
           color: "var(--text-secondary)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />
           <span>Active</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#d97706", display: "inline-block" }} />
           <span>Pending</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#64748b", display: "inline-block" }} />
           <span>Draft</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          <span style={{ fontSize: "10px" }}>★</span>
-          <span>Govt. Institution</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
           <span style={{ width: 8, height: 8, borderRadius: "2px", border: "1px solid #16a34a", background: "rgba(34, 197, 94, 0.25)", display: "inline-block" }} />
-          <span>Statutory Geofence</span>
+          <span>Geofence</span>
         </div>
       </div>
 
-      {/* 5. Bottom Notification Toast */}
+      {/* 4. Bottom Toast Notification */}
       {toastMessage && (
         <div
           style={{
@@ -628,23 +702,23 @@ export default function RealLeafletMap({
             transform: "translateX(-50%)",
             background: "rgba(15, 23, 42, 0.95)",
             color: "#ffffff",
-            padding: "0.55rem 1.1rem",
-            borderRadius: "8px",
+            padding: "0.5rem 1rem",
+            borderRadius: "6px",
             fontSize: "0.78rem",
             fontWeight: 600,
             display: "flex",
             alignItems: "center",
-            gap: "0.5rem",
+            gap: "0.4rem",
             boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
             zIndex: 1100,
           }}
         >
-          <IconCheck width={15} height={15} style={{ color: "#22c55e" }} />
+          <IconCheck width={14} height={14} style={{ color: "#22c55e" }} />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* 6. Geofencing Active Workflow Bar (Bottom Docked HUD) */}
+      {/* 5. Geofencing Active Workflow Bar */}
       {geofenceMode !== "view" && selectedFacility && (
         <div
           style={{
@@ -656,14 +730,14 @@ export default function RealLeafletMap({
             backdropFilter: "blur(10px)",
             border: "2px solid #2563eb",
             borderRadius: "8px",
-            padding: "0.75rem 1.25rem",
+            padding: "0.65rem 1rem",
             zIndex: 1000,
             boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
             display: "flex",
             flexWrap: "wrap",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: "0.75rem",
+            gap: "0.6rem",
             transition: "right 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
@@ -680,15 +754,15 @@ export default function RealLeafletMap({
 
           {/* Circle Mode Radius Slider & Presets */}
           {geofenceMode === "circle" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <div style={{ display: "flex", gap: "0.25rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div style={{ display: "flex", gap: "0.2rem" }}>
                 {[100, 250, 500].map((preset) => (
                   <button
                     key={preset}
                     type="button"
                     onClick={() => setCircleRadius(preset)}
                     style={{
-                      padding: "0.2rem 0.45rem",
+                      padding: "0.2rem 0.4rem",
                       borderRadius: "4px",
                       fontSize: "0.7rem",
                       fontWeight: circleRadius === preset ? 700 : 500,
@@ -709,9 +783,9 @@ export default function RealLeafletMap({
                 step={25}
                 value={circleRadius}
                 onChange={(e) => setCircleRadius(parseInt(e.target.value, 10))}
-                style={{ width: "110px", cursor: "pointer" }}
+                style={{ width: "100px", cursor: "pointer" }}
               />
-              <span style={{ fontSize: "0.76rem", fontWeight: 700, color: "var(--text-primary)", minWidth: "40px" }}>
+              <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--text-primary)", minWidth: "36px" }}>
                 {circleRadius}m
               </span>
             </div>
@@ -719,13 +793,13 @@ export default function RealLeafletMap({
 
           {/* Polygon Drawing Controls */}
           {geofenceMode === "polygon" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
               {polygonVertices.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setPolygonVertices((prev) => prev.slice(0, -1))}
                   style={{
-                    padding: "0.25rem 0.55rem",
+                    padding: "0.2rem 0.5rem",
                     borderRadius: "4px",
                     fontSize: "0.72rem",
                     background: "var(--bg-subtle)",
@@ -733,7 +807,7 @@ export default function RealLeafletMap({
                     cursor: "pointer",
                   }}
                 >
-                  Undo Point
+                  Undo
                 </button>
               )}
               {polygonVertices.length > 0 && (
@@ -741,7 +815,7 @@ export default function RealLeafletMap({
                   type="button"
                   onClick={() => setPolygonVertices([])}
                   style={{
-                    padding: "0.25rem 0.55rem",
+                    padding: "0.2rem 0.5rem",
                     borderRadius: "4px",
                     fontSize: "0.72rem",
                     background: "var(--bg-subtle)",
@@ -756,7 +830,7 @@ export default function RealLeafletMap({
           )}
 
           {/* Workflow Action Buttons */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
             <button
               type="button"
               onClick={() => {
@@ -764,9 +838,9 @@ export default function RealLeafletMap({
                 setPolygonVertices([]);
               }}
               style={{
-                padding: "0.35rem 0.75rem",
+                padding: "0.3rem 0.65rem",
                 borderRadius: "5px",
-                fontSize: "0.75rem",
+                fontSize: "0.74rem",
                 background: "var(--bg-subtle)",
                 border: "1px solid var(--color-border-strong)",
                 cursor: "pointer",
@@ -781,9 +855,9 @@ export default function RealLeafletMap({
               onClick={handleSealGeofence}
               disabled={geofenceMode === "polygon" && polygonVertices.length < 3}
               style={{
-                padding: "0.35rem 0.85rem",
+                padding: "0.3rem 0.75rem",
                 borderRadius: "5px",
-                fontSize: "0.75rem",
+                fontSize: "0.74rem",
                 background: geofenceMode === "polygon" && polygonVertices.length < 3 ? "#94a3b8" : "#16a34a",
                 color: "#ffffff",
                 border: "none",
@@ -794,14 +868,14 @@ export default function RealLeafletMap({
                 gap: "0.3rem",
               }}
             >
-              <IconShieldCheck width={14} height={14} />
+              <IconShieldCheck width={13} height={13} />
               <span>Seal Geofence</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* 7. Collapsible Facility Dossier Sidebar (Right Side) */}
+      {/* 6. Collapsible Facility Dossier Sidebar */}
       <div
         style={{
           position: "absolute",
@@ -822,7 +896,7 @@ export default function RealLeafletMap({
       >
         {selectedFacility && (
           <>
-            {/* Sidebar Header */}
+            {/* Header */}
             <div
               style={{
                 padding: "0.85rem 1.1rem",
@@ -851,13 +925,13 @@ export default function RealLeafletMap({
                   cursor: "pointer",
                   padding: "0.15rem 0.35rem",
                 }}
-                title="Collapse dossier panel"
+                title="Close panel"
               >
                 &times;
               </button>
             </div>
 
-            {/* Sidebar Scrollable Body */}
+            {/* Body */}
             <div
               style={{
                 padding: "1rem 1.1rem",
@@ -868,7 +942,7 @@ export default function RealLeafletMap({
                 flex: 1,
               }}
             >
-              {/* Code + Status */}
+              {/* Code & Status */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span className="code-badge" style={{ fontSize: "0.75rem", fontWeight: 800 }}>
                   {selectedFacility.code}
@@ -876,7 +950,7 @@ export default function RealLeafletMap({
                 <StatusBadge status={selectedFacility.status} />
               </div>
 
-              {/* Title & Classification */}
+              {/* Title */}
               <div>
                 <h3
                   style={{
@@ -889,12 +963,12 @@ export default function RealLeafletMap({
                 >
                   {selectedFacility.name}
                 </h3>
-                <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", fontWeight: 500 }}>
+                <div style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
                   {selectedFacility.categoryLabel}
                 </div>
               </div>
 
-              {/* Facility Specifications */}
+              {/* Specifications */}
               <div
                 style={{
                   display: "flex",
@@ -911,7 +985,7 @@ export default function RealLeafletMap({
                   <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.66rem", fontWeight: 700 }}>
                     JURISDICTION
                   </span>
-                  <strong>{getDistrictName(selectedFacility.districtId, selectedFacility.code)} District, Odisha</strong>
+                  <strong>{getDistrictName(selectedFacility.districtId, selectedFacility.code)} District</strong>
                 </div>
 
                 <div>
@@ -927,22 +1001,22 @@ export default function RealLeafletMap({
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem", marginTop: "0.1rem" }}>
                   <div>
                     <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.66rem", fontWeight: 700 }}>
-                      SANCTIONED CAPACITY
+                      CAPACITY
                     </span>
                     <span>{selectedFacility.capacityLabel}</span>
                   </div>
                   <div>
                     <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.66rem", fontWeight: 700 }}>
-                      GPS LOCATION
+                      COORDINATES
                     </span>
                     <span style={{ fontFamily: "monospace", fontSize: "0.72rem" }}>
-                      {selectedFacility.lat.toFixed(4)}°N, {selectedFacility.lng.toFixed(4)}°E
+                      {selectedFacility.lat.toFixed(4)}°, {selectedFacility.lng.toFixed(4)}°
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Statutory Geofencing Governance Card */}
+              {/* Geofence Card */}
               <div
                 style={{
                   background: "var(--bg-surface)",
@@ -951,7 +1025,7 @@ export default function RealLeafletMap({
                   padding: "0.75rem",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "0.5rem",
+                  gap: "0.4rem",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -977,23 +1051,13 @@ export default function RealLeafletMap({
 
                 <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>
                   {currentGeofence.type === "polygon"
-                    ? `Perimeter Polygon (${currentGeofence.polygonPoints.length} vertices)`
-                    : `Circular Radius: ${currentGeofence.radiusMeters} meters`}
+                    ? `Perimeter Polygon (${currentGeofence.polygonPoints.length} points)`
+                    : `Circular Radius: ${currentGeofence.radiusMeters}m`}
                 </div>
 
-                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", borderTop: "1px dashed var(--color-border-subtle)", paddingTop: "0.4rem" }}>
-                  <div>Authority: <strong>{currentGeofence.sealedBy ?? "District Social Welfare Officer"}</strong></div>
-                  {currentGeofence.auditTx && (
-                    <div style={{ fontFamily: "monospace", color: "var(--text-subtle)", marginTop: "2px" }}>
-                      Audit Tx: {currentGeofence.auditTx}
-                    </div>
-                  )}
-                </div>
-
-                {/* Geofence Authoring Controls (Exclusively for Authority Officers) */}
                 {isAuthority ? (
                   geofenceMode === "view" ? (
-                    <div style={{ display: "flex", gap: "0.35rem", marginTop: "0.3rem" }}>
+                    <div style={{ display: "flex", gap: "0.35rem", marginTop: "0.2rem" }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -1011,7 +1075,7 @@ export default function RealLeafletMap({
                           cursor: "pointer",
                         }}
                       >
-                        📐 Adjust Buffer
+                        Adjust Buffer
                       </button>
                       <button
                         type="button"
@@ -1030,12 +1094,12 @@ export default function RealLeafletMap({
                           cursor: "pointer",
                         }}
                       >
-                        ✏️ Draw Polygon
+                        Draw Polygon
                       </button>
                     </div>
                   ) : (
                     <div style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: 600 }}>
-                      ● Geofencing edit session active on map canvas.
+                      ● Editing geofence on map
                     </div>
                   )
                 ) : (
@@ -1049,7 +1113,6 @@ export default function RealLeafletMap({
                       borderRadius: "4px",
                       fontSize: "0.68rem",
                       color: "var(--text-muted)",
-                      marginTop: "0.2rem",
                     }}
                   >
                     <IconLock width={12} height={12} />
@@ -1058,7 +1121,7 @@ export default function RealLeafletMap({
                 )}
               </div>
 
-              {/* Action Buttons */}
+              {/* Actions */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "auto", paddingTop: "0.5rem" }}>
                 <button
                   type="button"
