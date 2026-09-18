@@ -1,5 +1,6 @@
 /** @jsxRuntime automatic */
 import type { AttendanceAnomaly, AttendanceReviewAction } from "@netram/types";
+import { formatDateTime } from "../../lib/presentation";
 
 interface AnomalyReviewProps {
   anomaly: AttendanceAnomaly;
@@ -134,7 +135,7 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
           </div>
           {anomaly.reviewedAt && (
             <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "0.25rem" }}>
-              Reviewed {new Date(anomaly.reviewedAt).toLocaleString()}
+              Reviewed {formatDateTime(anomaly.reviewedAt)}
             </div>
           )}
         </div>
@@ -262,7 +263,7 @@ export function AnomalyReviewActions({ anomaly, actions }: { anomaly: Attendance
             </div>
           )}
           <div style={{ fontSize: "0.65rem", color: "#94a3b8", marginTop: "0.15rem" }}>
-            {new Date(a.createdAt).toLocaleString()}
+            {formatDateTime(a.createdAt)}
           </div>
         </div>
       ))}

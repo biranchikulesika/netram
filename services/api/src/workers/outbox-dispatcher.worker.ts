@@ -15,6 +15,13 @@ export interface OutboxDispatcherOptions {
   maxRetries?: number;
 }
 
+export const DISPATCHER_HANDLED_EVENT_TYPES = [
+  "inspection.assigned",
+  "corrective_action.overdue",
+  "report.requested",
+  "ai.anomaly_detected",
+] as const;
+
 export class OutboxDispatcher {
   private running = false;
   private processing = false;
@@ -79,7 +86,7 @@ export class OutboxDispatcher {
    * Can be called directly in integration tests or workers.
    */
   async tick(): Promise<{ claimed: number; processed: number; retried: number; deadLettered: number }> {
-    const records = await this.outboxRepo.claimPending(this.batchSize);
+    const records = await this.outboxRepo.claimPending(this.batchSize, DISPATCHER_HANDLED_EVENT_TYPES);
     let processed = 0;
     let retried = 0;
     let deadLettered = 0;
@@ -135,7 +142,8 @@ export class OutboxDispatcher {
             {
               jobId: `notif-insp-assign-${record.id}-${uid}`,
               attempts: 3,
-              removeOnComplete: true,
+              removeOnComplete: { count: 500 },
+              removeOnFail: { count: 1000 },
             },
           );
         }
@@ -157,7 +165,8 @@ export class OutboxDispatcher {
             jobId: `notif-ca-overdue-${record.id}`,
             priority: 1, // High priority in BullMQ
             attempts: 3,
-            removeOnComplete: true,
+            removeOnComplete: { count: 500 },
+            removeOnFail: { count: 1000 },
           },
         );
         break;
@@ -174,7 +183,8 @@ export class OutboxDispatcher {
               jobId: reportId,
               attempts: 3,
               backoff: { type: "exponential", delay: 1000 },
-              removeOnComplete: true,
+              removeOnComplete: { count: 500 },
+              removeOnFail: { count: 1000 },
             },
           );
         }
@@ -195,7 +205,8 @@ export class OutboxDispatcher {
           {
             jobId: `notif-ai-anomaly-${record.id}`,
             attempts: 3,
-            removeOnComplete: true,
+            removeOnComplete: { count: 500 },
+            removeOnFail: { count: 1000 },
           },
         );
         break;

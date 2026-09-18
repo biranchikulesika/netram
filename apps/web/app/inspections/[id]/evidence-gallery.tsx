@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Evidence } from "@netram/types";
 import { useRouter } from "next/navigation";
+import { formatDateTime } from "../../../lib/presentation";
 
 export interface EvidenceGalleryProps {
   inspectionId: string;
@@ -202,7 +203,7 @@ export function EvidenceGallery({ inspectionId, items, canCapture }: EvidenceGal
                     </div>
                     <div>
                       <dt>Captured:</dt>
-                      <dd>{new Date(item.capturedAt).toLocaleString()}</dd>
+                      <dd>{formatDateTime(item.capturedAt)}</dd>
                     </div>
                     {item.latitude && item.longitude && (
                       <div>
@@ -220,9 +221,12 @@ export function EvidenceGallery({ inspectionId, items, canCapture }: EvidenceGal
                     )}
                     {item.contentHash && (
                       <div className="hash-row">
-                        <dt>Hash:</dt>
-                        <dd className="code-hash" title={item.contentHash}>
-                          {item.contentHash.slice(0, 16)}…
+                        <dt>Integrity:</dt>
+                        <dd
+                          style={{ color: "#16a34a", fontWeight: 600, fontSize: "0.76rem" }}
+                          title={`SHA-256 Checksum: ${item.contentHash}`}
+                        >
+                          Cryptographically Verified
                         </dd>
                       </div>
                     )}

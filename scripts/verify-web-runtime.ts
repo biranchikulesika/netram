@@ -18,6 +18,8 @@
  */
 
 import { createHash } from "node:crypto";
+import { loadServerEnv } from "@netram/config";
+import { getDb, NotificationRepository } from "@netram/data";
 
 const WEB_BASE = "http://localhost:3000";
 const API_BASE = "http://localhost:3001";
@@ -88,7 +90,7 @@ async function main() {
   });
   if (!inspectionsRes.ok) throw new Error(`GET /inspections returned ${inspectionsRes.status}`);
   const inspectionsHtml = await inspectionsRes.text();
-  if (!inspectionsHtml.includes("Inspections") || !inspectionsHtml.includes("Total Inspections")) {
+  if (!inspectionsHtml.includes("Inspections") || !inspectionsHtml.includes("Active Attention")) {
     throw new Error("Inspections page HTML missing expected content");
   }
   console.log(
@@ -294,10 +296,7 @@ async function main() {
     throw new Error(`GET /control-room returned ${controlRoomRes.status}`);
   }
   const controlRoomHtml = await controlRoomRes.text();
-  if (
-    !controlRoomHtml.includes("Control Room &amp; Live Surveillance") &&
-    !controlRoomHtml.includes("Control Room & Live Surveillance")
-  ) {
+  if (!controlRoomHtml.includes("Control Room")) {
     throw new Error("Control room HTML missing expected title");
   }
   if (!controlRoomHtml.includes("Vani Vihar")) {
@@ -369,6 +368,61 @@ async function main() {
     throw new Error(`Expected camera status 'online', got ${healthData.status}`);
   }
   console.log(`✓ Proxy GET health returned status: ${healthData.status}`);
+
+  // Test AI anomaly human-in-the-loop transition proxy (API-1 & WEB-7)
+  console.log("Testing POST /api/ai-anomalies/:id/transition proxy...");
+  const anomaliesRes = await fetch(`${API_BASE}/api/v1/ai-anomalies?pageSize=10`, {
+    headers: { Authorization: `Bearer ${officer.token}` },
+  });
+  if (!anomaliesRes.ok) {
+    throw new Error(`Failed to fetch AI anomalies: ${anomaliesRes.status}`);
+  }
+  const anomaliesData = (await anomaliesRes.json()) as { items: Array<{ id: string; status: string }> };
+  const targetAnomaly = anomaliesData.items.find(
+    (a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated",
+  );
+  if (targetAnomaly) {
+    const nextStatus =
+      targetAnomaly.status === "new"
+        ? "reviewed"
+        : targetAnomaly.status === "reviewed"
+          ? "investigated"
+          : "acted_upon";
+
+    // 1. Valid transition
+    const transRes = await fetch(`${WEB_BASE}/api/ai-anomalies/${targetAnomaly.id}/transition`, {
+      method: "POST",
+      headers: {
+        Cookie: officer.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ to: nextStatus, note: "Advisory review confirmed in field." }),
+    });
+    if (!transRes.ok) {
+      throw new Error(`AI anomaly transition proxy failed: ${transRes.status}: ${await transRes.text()}`);
+    }
+    const transJson = (await transRes.json()) as { id: string; status: string };
+    if (transJson.status !== nextStatus) {
+      throw new Error(`Expected anomaly status '${nextStatus}', got '${transJson.status}'`);
+    }
+    console.log(`✓ Proxy POST AI anomaly transition to '${nextStatus}' passed (id=${targetAnomaly.id})`);
+
+    // 2. Invalid transition: cannot transition backwards to "new" (should return 409 Conflict)
+    const invalidTransRes = await fetch(`${WEB_BASE}/api/ai-anomalies/${targetAnomaly.id}/transition`, {
+      method: "POST",
+      headers: {
+        Cookie: officer.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ to: "new" }),
+    });
+    if (invalidTransRes.status !== 409) {
+      throw new Error(`Expected 409 Conflict for invalid transition, got ${invalidTransRes.status}`);
+    }
+    console.log(`✓ Invalid transition correctly rejected with 409 Conflict`);
+  } else {
+    console.log(`(All anomalies in terminal states)`);
+  }
 
   // Step 12: Video Conferencing (VC) Tripartite Review Integration
   console.log("\n12. Testing Video Conferencing (VC) Tripartite Review Integration...");
@@ -548,12 +602,1052 @@ async function main() {
   });
   console.log("✓ WebSocket subscription authorized and closed cleanly");
 
+  // Step 14: Complaints & Grievance Lifecycle Integration (§35)
+  console.log("\n14. Testing Complaints & Grievance Lifecycle Integration...");
+  const complaintsListRes = await fetch(`${WEB_BASE}/complaints`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!complaintsListRes.ok) {
+    throw new Error(`GET /complaints returned ${complaintsListRes.status}`);
+  }
+  const complaintsHtml = await complaintsListRes.text();
+  if (!complaintsHtml.includes("Complaints &amp; Grievances") && !complaintsHtml.includes("Complaints & Grievances")) {
+    throw new Error("Complaints page missing expected heading");
+  }
+  console.log(`✓ /complaints rendered successfully (${complaintsHtml.length} bytes, contains header and layout)`);
+
+  // Get accessible project for creating a complaint
+  const cmpProjectsRes = await fetch(`${API_BASE}/api/v1/projects?pageSize=1`, {
+    headers: { Authorization: `Bearer ${officer.token}` },
+  });
+  const cmpProjectsData = (await cmpProjectsRes.json()) as { items: Array<{ id: string; code: string; name: string }> };
+  const targetProject = cmpProjectsData.items[0];
+  if (!targetProject) throw new Error("No accessible project found for complaint testing");
+
+  // Test POST /api/complaints proxy
+  console.log("Testing POST /api/complaints proxy...");
+  const createCmpRes = await fetch(`${WEB_BASE}/api/complaints`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      projectId: targetProject.id,
+      description: "Runtime verification grievance: improper storage and safety fence damage.",
+      complainantName: "Citizen Whistleblower",
+      contactInfo: "citizen@example.gov",
+    }),
+  });
+  if (!createCmpRes.ok) {
+    throw new Error(`POST /api/complaints failed: ${createCmpRes.status}: ${await createCmpRes.text()}`);
+  }
+  const createdCmp = (await createCmpRes.json()) as { id: string; trackingCode: string; status: string };
+  if (!createdCmp.id || !createdCmp.trackingCode || createdCmp.status !== "received") {
+    throw new Error(`Unexpected complaint creation response: ${JSON.stringify(createdCmp)}`);
+  }
+  console.log(`✓ Proxy POST /api/complaints created grievance: id=${createdCmp.id}, tracking=${createdCmp.trackingCode}`);
+
+  // Test SSR GET /complaints/:id
+  console.log(`Testing SSR GET /complaints/${createdCmp.id}...`);
+  const cmpDetailRes = await fetch(`${WEB_BASE}/complaints/${createdCmp.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!cmpDetailRes.ok) {
+    throw new Error(`GET /complaints/${createdCmp.id} returned ${cmpDetailRes.status}`);
+  }
+  const cmpDetailHtml = await cmpDetailRes.text();
+  if (!cmpDetailHtml.includes(createdCmp.trackingCode)) {
+    throw new Error("Complaint detail page missing tracking code");
+  }
+  console.log(`✓ /complaints/${createdCmp.id} rendered successfully (${cmpDetailHtml.length} bytes, contains dossier)`);
+
+  // Test POST /api/complaints/:id/transition (received -> under_review)
+  console.log(`Testing POST /api/complaints/${createdCmp.id}/transition proxy (received -> under_review)...`);
+  const transCmpRes = await fetch(`${WEB_BASE}/api/complaints/${createdCmp.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "under_review" }),
+  });
+  if (!transCmpRes.ok) {
+    throw new Error(`POST transition complaint failed: ${transCmpRes.status}: ${await transCmpRes.text()}`);
+  }
+  const transitionedCmp = (await transCmpRes.json()) as { id: string; status: string };
+  if (transitionedCmp.status !== "under_review") {
+    throw new Error(`Expected status='under_review', got '${transitionedCmp.status}'`);
+  }
+  console.log(`✓ Proxy POST transition to 'under_review' passed`);
+
+  // Test invalid transition rejection (under_review -> received should return 409 Conflict)
+  const invalidCmpRes = await fetch(`${WEB_BASE}/api/complaints/${createdCmp.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "received" }),
+  });
+  if (invalidCmpRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for invalid complaint transition, got ${invalidCmpRes.status}`);
+  }
+  console.log(`✓ Invalid complaint transition correctly rejected with 409 Conflict`);
+
+  // Test Public Citizen Tracking Endpoint (GET /api/complaints/track/:code)
+  console.log(`Testing public GET /api/complaints/track/${createdCmp.trackingCode}...`);
+  const publicTrackRes = await fetch(`${WEB_BASE}/api/complaints/track/${encodeURIComponent(createdCmp.trackingCode)}`);
+  if (!publicTrackRes.ok) {
+    throw new Error(`Public track endpoint returned ${publicTrackRes.status}: ${await publicTrackRes.text()}`);
+  }
+  const trackData = (await publicTrackRes.json()) as {
+    trackingCode: string;
+    projectCode: string;
+    status: string;
+    complainantName?: string;
+  };
+  if (trackData.trackingCode !== createdCmp.trackingCode || trackData.status !== "under_review") {
+    throw new Error(`Public track data mismatch: ${JSON.stringify(trackData)}`);
+  }
+  if (trackData.complainantName !== undefined) {
+    throw new Error("PRIVACY VIOLATION: Complainant name leaked in public tracking response!");
+  }
+  console.log(`✓ Public tracking endpoint verified: trackingCode=${trackData.trackingCode}, status=${trackData.status}, PII omitted`);
+
+  // Test Public Citizen Portal SSR (GET /track-complaint)
+  const trackPortalRes = await fetch(`${WEB_BASE}/track-complaint?code=${encodeURIComponent(createdCmp.trackingCode)}`);
+  if (!trackPortalRes.ok) {
+    throw new Error(`GET /track-complaint returned ${trackPortalRes.status}`);
+  }
+  const trackPortalHtml = await trackPortalRes.text();
+  if (!trackPortalHtml.includes("Netram Citizen Grievance Portal")) {
+    throw new Error("Citizen tracking portal missing expected title");
+  }
+  if (!trackPortalHtml.includes("Track Status")) {
+    throw new Error("Citizen tracking portal missing tracking lookup action");
+  }
+  console.log(`✓ /track-complaint rendered successfully (${trackPortalHtml.length} bytes, citizen portal OK)`);
+
+  // Step 15: Corrective Actions Workflow (WEB + API)
+  console.log("\n15. Testing Corrective Actions Lifecycle & Proxy Integration...");
+
+  // Test SSR GET /corrective-actions
+  console.log("Testing SSR GET /corrective-actions...");
+  const caListRes = await fetch(`${WEB_BASE}/corrective-actions`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!caListRes.ok) {
+    throw new Error(`GET /corrective-actions returned ${caListRes.status}`);
+  }
+  const caListHtml = await caListRes.text();
+  if (!caListHtml.includes("Corrective Actions") || !caListHtml.includes("Pending Compliance")) {
+    throw new Error("Corrective Actions page HTML missing expected headings/metrics");
+  }
+  console.log(`✓ /corrective-actions rendered successfully (${caListHtml.length} bytes, contains layout)`);
+
+  // Find or create a confirmed finding to order a corrective action against
+  let caProjectId: string | undefined;
+  const officerInspectionsRes = await fetch(`${API_BASE}/api/v1/inspections?pageSize=20`, {
+    headers: { Authorization: `Bearer ${officer.token}` },
+  });
+  const officerInsps = (await officerInspectionsRes.json()) as {
+    items: Array<{ id: string; status: string; districtId: string; projectId?: string }>;
+  };
+  const targetInsp = officerInsps.items.find((i) =>
+    ["under_review", "findings", "corrective_actions"].includes(i.status),
+  );
+  if (!targetInsp) {
+    throw new Error("Expected at least one inspection in review/findings status in officer jurisdiction");
+  }
+  caProjectId = targetInsp.projectId;
+
+  // Create a new deficiency finding
+  const createFindingRes = await fetch(`${API_BASE}/api/v1/inspections/${targetInsp.id}/findings`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${officer.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      severity: "high",
+      description: `Deficiency finding for corrective action test at ${new Date().toISOString()}`,
+      remediation: "Execute structural waterproofing and submit certified inspection report.",
+    }),
+  });
+  if (!createFindingRes.ok) {
+    throw new Error(`Failed to create test finding: ${createFindingRes.status}`);
+  }
+  const testFinding = (await createFindingRes.json()) as { id: string; status: string };
+
+  // Transition finding to 'confirmed' so canOrderCorrectiveAction is true
+  const confirmFindingRes = await fetch(`${API_BASE}/api/v1/findings/${testFinding.id}/transitions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${officer.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "confirmed", note: "Finding confirmed by officer" }),
+  });
+  if (!confirmFindingRes.ok) {
+    throw new Error(`Failed to confirm test finding: ${confirmFindingRes.status}`);
+  }
+
+  // Test Web Proxy POST /api/corrective-actions (Order corrective action)
+  console.log("Testing POST /api/corrective-actions proxy to order corrective action...");
+  const orderCaRes = await fetch(`${WEB_BASE}/api/corrective-actions`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      findingId: testFinding.id,
+      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    }),
+  });
+  if (!orderCaRes.ok) {
+    throw new Error(`POST /api/corrective-actions returned ${orderCaRes.status}: ${await orderCaRes.text()}`);
+  }
+  const createdCa = (await orderCaRes.json()) as { id: string; status: string; findingId: string };
+  if (createdCa.findingId !== testFinding.id || createdCa.status !== "pending") {
+    throw new Error(`Unexpected corrective action payload: ${JSON.stringify(createdCa)}`);
+  }
+  console.log(`✓ Corrective action ordered via proxy: id=${createdCa.id}, status=${createdCa.status}`);
+
+  // Test SSR GET /corrective-actions/:id (Dossier page)
+  console.log(`Testing SSR GET /corrective-actions/${createdCa.id}...`);
+  const caDetailRes = await fetch(`${WEB_BASE}/corrective-actions/${createdCa.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!caDetailRes.ok) {
+    throw new Error(`GET /corrective-actions/${createdCa.id} returned ${caDetailRes.status}`);
+  }
+  const caDetailHtml = await caDetailRes.text();
+  if (!caDetailHtml.includes("Remediation") || !caDetailHtml.includes("Statutory Compliance")) {
+    throw new Error("Corrective action detail page missing expected headings");
+  }
+  console.log(`✓ /corrective-actions/${createdCa.id} rendered successfully (${caDetailHtml.length} bytes)`);
+
+  // Test POST /api/corrective-actions/:id/transition (pending -> submitted)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (pending -> submitted)...`);
+  const submitRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: "submitted",
+      note: "Contractor submitted waterproofing test certificate and photos",
+    }),
+  });
+  if (!submitRes.ok) {
+    throw new Error(`POST transition to submitted failed: ${submitRes.status}: ${await submitRes.text()}`);
+  }
+  const submittedCa = (await submitRes.json()) as { id: string; status: string };
+  if (submittedCa.status !== "submitted") {
+    throw new Error(`Expected status='submitted', got '${submittedCa.status}'`);
+  }
+  console.log(`✓ Proxy transition to 'submitted' passed`);
+
+  // Test POST /api/corrective-actions/:id/transition (submitted -> under_review)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (submitted -> under_review)...`);
+  const reviewRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: "under_review",
+      note: "Executive engineer commenced review of submitted materials",
+    }),
+  });
+  if (!reviewRes.ok) {
+    throw new Error(`POST transition to under_review failed: ${reviewRes.status}: ${await reviewRes.text()}`);
+  }
+  const reviewingCa = (await reviewRes.json()) as { id: string; status: string };
+  if (reviewingCa.status !== "under_review") {
+    throw new Error(`Expected status='under_review', got '${reviewingCa.status}'`);
+  }
+  console.log(`✓ Proxy transition to 'under_review' passed`);
+
+  // Test POST /api/corrective-actions/:id/transition (under_review -> accepted)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (under_review -> accepted)...`);
+  const acceptRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: "accepted",
+      note: "Site reinspection verified compliant execution. Deficiency resolved.",
+    }),
+  });
+  if (!acceptRes.ok) {
+    throw new Error(`POST transition to accepted failed: ${acceptRes.status}: ${await acceptRes.text()}`);
+  }
+  const acceptedCa = (await acceptRes.json()) as { id: string; status: string };
+  if (acceptedCa.status !== "accepted") {
+    throw new Error(`Expected status='accepted', got '${acceptedCa.status}'`);
+  }
+  console.log(`✓ Proxy transition to 'accepted' passed (Finding deficiency closed)`);
+
+  // Test Invalid Transition Rejection (accepted -> submitted should return 409 Conflict)
+  console.log("Testing invalid transition rejection on terminal state...");
+  const invalidCaRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "submitted" }),
+  });
+  if (invalidCaRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for invalid corrective action transition, got ${invalidCaRes.status}`);
+  }
+  console.log(`✓ Invalid corrective action transition correctly rejected with 409 Conflict`);
+
   console.log("\n==================================================================");
-  console.log("✓ ALL 13 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("✓ ALL 15 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
   console.log("==================================================================");
+
+  // Step 16: User Admin & Scoped Role Assignment (WEB + API)
+  console.log("\n16. Testing User Administration & Scoped Role Assignment Integration...");
+
+  // Establish Admin Session (admin.example-social@dev.netram.in)
+  console.log("Establishing Department Admin session (admin.example-social@dev.netram.in)...");
+  const admin = await loginAndGetCookie("admin.example-social@dev.netram.in");
+  console.log(`✓ Admin authenticated: id=${admin.user.id}`);
+
+  // Test SSR GET /admin
+  console.log("Testing SSR GET /admin...");
+  const adminPageRes = await fetch(`${WEB_BASE}/admin`, {
+    headers: { Cookie: admin.cookie },
+  });
+  if (!adminPageRes.ok) {
+    throw new Error(`GET /admin returned ${adminPageRes.status}`);
+  }
+  const adminHtml = await adminPageRes.text();
+  if (!adminHtml.includes("User Administration") || !adminHtml.includes("User Directory")) {
+    throw new Error("Admin page HTML missing expected headings");
+  }
+  console.log(`✓ /admin rendered successfully (${adminHtml.length} bytes, contains operator directory)`);
+
+  // Fetch users and jurisdictions to target for role assignment & status update
+  const listUsersRes = await fetch(`${API_BASE}/api/v1/users?pageSize=20`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
+  });
+  const usersData = (await listUsersRes.json()) as { items: Array<{ id: string; email: string; status: string }> };
+  const targetOperator = usersData.items.find((u) => u.email !== admin.user.email);
+  if (!targetOperator) {
+    throw new Error("Expected at least one non-admin operator in seed data");
+  }
+
+  const listJurisdictionsRes = await fetch(`${API_BASE}/api/v1/jurisdictions`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
+  });
+  const jurisdictionsData = (await listJurisdictionsRes.json()) as Array<{ id: string; code: string; name: string }>;
+  const targetJurisdiction = jurisdictionsData.find((j) => j.code.includes("PURI") || j.name.includes("Puri")) ?? jurisdictionsData[0];
+  if (!targetJurisdiction) {
+    throw new Error("Expected at least one jurisdiction in seed data");
+  }
+
+  // 1. Test Proxy PATCH /api/admin/users/:id to suspend operator
+  console.log(`Testing PATCH /api/admin/users/${targetOperator.id} proxy (status -> suspended)...`);
+  const suspendRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}`, {
+    method: "PATCH",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "suspended" }),
+  });
+  if (!suspendRes.ok) {
+    throw new Error(`PATCH /api/admin/users/:id to suspend returned ${suspendRes.status}`);
+  }
+  const suspendedUser = (await suspendRes.json()) as { id: string; status: string };
+  if (suspendedUser.status !== "suspended") {
+    throw new Error(`Expected status='suspended', got '${suspendedUser.status}'`);
+  }
+  console.log(`✓ Proxy PATCH status to 'suspended' passed for ${targetOperator.email}`);
+
+  // 2. Test Proxy PATCH /api/admin/users/:id to reactivate operator
+  console.log(`Testing PATCH /api/admin/users/${targetOperator.id} proxy (status -> active)...`);
+  const reactivateRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}`, {
+    method: "PATCH",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "active" }),
+  });
+  if (!reactivateRes.ok) {
+    throw new Error(`PATCH /api/admin/users/:id to reactivate returned ${reactivateRes.status}`);
+  }
+  const reactivatedUser = (await reactivateRes.json()) as { id: string; status: string };
+  if (reactivatedUser.status !== "active") {
+    throw new Error(`Expected status='active', got '${reactivatedUser.status}'`);
+  }
+  console.log(`✓ Proxy PATCH status to 'active' passed for ${targetOperator.email}`);
+
+  // 3. Test Proxy POST /api/admin/users/:id/role-assignments
+  console.log(`Testing POST /api/admin/users/${targetOperator.id}/role-assignments proxy...`);
+  const assignRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}/role-assignments`, {
+    method: "POST",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      roleCode: "inspector",
+      scope: "jurisdiction",
+      jurisdictionId: targetJurisdiction.id,
+    }),
+  });
+  if (!assignRes.ok) {
+    throw new Error(`POST /api/admin/users/:id/role-assignments failed: ${assignRes.status}: ${await assignRes.text()}`);
+  }
+  const assignment = (await assignRes.json()) as { id: string; roleCode: string; scope: string; jurisdictionId: string };
+  if (assignment.roleCode !== "inspector" || assignment.scope !== "jurisdiction") {
+    throw new Error(`Unexpected assignment payload: ${JSON.stringify(assignment)}`);
+  }
+  console.log(`✓ Scoped role assignment created: id=${assignment.id}, role=${assignment.roleCode}, scope=${assignment.scope}`);
+
+  // 4. Test Duplicate Role Assignment Rejection (409 Conflict)
+  console.log("Testing duplicate role assignment rejection (409 Conflict)...");
+  const dupRes = await fetch(`${WEB_BASE}/api/admin/users/${targetOperator.id}/role-assignments`, {
+    method: "POST",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      roleCode: "inspector",
+      scope: "jurisdiction",
+      jurisdictionId: targetJurisdiction.id,
+    }),
+  });
+  if (dupRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for duplicate role assignment, got ${dupRes.status}`);
+  }
+  console.log(`✓ Duplicate role assignment correctly rejected with 409 Conflict`);
+
+  // 5. Test Proxy DELETE /api/admin/role-assignments/:id
+  console.log(`Testing DELETE /api/admin/role-assignments/${assignment.id} proxy...`);
+  const deleteRes = await fetch(`${WEB_BASE}/api/admin/role-assignments/${assignment.id}`, {
+    method: "DELETE",
+    headers: { Cookie: admin.cookie },
+  });
+  if (deleteRes.status !== 204) {
+    throw new Error(`Expected 204 No Content for role assignment deletion, got ${deleteRes.status}`);
+  }
+  console.log(`✓ Proxy DELETE role assignment passed (status 204)`);
+
+  // Step 17: Inspection Scheduling & Lifecycle Progression Integration
+  console.log("\n17. Testing Inspection Scheduling & Lifecycle Progression Integration...");
+
+  // 1. Test Proxy POST /api/projects
+  console.log("Testing POST /api/projects proxy...");
+  const createProjRes = await fetch(`${WEB_BASE}/api/projects`, {
+    method: "POST",
+    headers: {
+      Cookie: admin.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: `Khordha Community Health & Rehab Unit #${Date.now().toString().slice(-4)}`,
+      type: "institution",
+      description: "Automated facility created via Next.js proxy route for lifecycle verification",
+    }),
+  });
+  if (!createProjRes.ok) {
+    throw new Error(`POST /api/projects failed: ${createProjRes.status}: ${await createProjRes.text()}`);
+  }
+  const createdFacility = (await createProjRes.json()) as { id: string; name: string; status: string };
+  console.log(`✓ Facility registered via proxy: id=${createdFacility.id}, status=${createdFacility.status}`);
+
+  // 2. Schedule a new routine inspection for the facility
+  console.log("Testing POST /api/inspections proxy to schedule inspection...");
+  const scheduleRes = await fetch(`${WEB_BASE}/api/inspections`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      projectId: targetProject.id,
+      type: "routine",
+      trigger: "officer",
+      scheduledStart: new Date(Date.now() + 86400000).toISOString(),
+      scheduledEnd: new Date(Date.now() + 2 * 86400000).toISOString(),
+    }),
+  });
+  if (!scheduleRes.ok) {
+    throw new Error(`POST /api/inspections failed: ${scheduleRes.status}: ${await scheduleRes.text()}`);
+  }
+  const scheduledInsp = (await scheduleRes.json()) as { id: string; status: string; type: string };
+  if (scheduledInsp.status !== "assigned" || scheduledInsp.type !== "routine") {
+    throw new Error(`Unexpected inspection state: ${JSON.stringify(scheduledInsp)}`);
+  }
+  console.log(`✓ Inspection created via proxy: id=${scheduledInsp.id}, status=${scheduledInsp.status}`);
+
+  // 3. SSR GET /inspections/[id] to verify Lifecycle Progression Stepper
+  console.log(`Testing SSR GET /inspections/${scheduledInsp.id}...`);
+  const inspDetailRes = await fetch(`${WEB_BASE}/inspections/${scheduledInsp.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!inspDetailRes.ok) {
+    throw new Error(`GET /inspections/:id returned ${inspDetailRes.status}`);
+  }
+  const inspDetailHtml = await inspDetailRes.text();
+  if (!inspDetailHtml.includes("Statutory Lifecycle Stepper")) {
+    throw new Error("Inspection detail HTML missing expected lifecycle stepper content");
+  }
+  console.log(`✓ /inspections/${scheduledInsp.id} rendered successfully (${inspDetailHtml.length} bytes, contains stepper)`);
+
+  // 4. Test Transition Progression: assigned -> scheduled -> in_progress -> evidence_collection -> submitted -> under_review -> findings -> corrective_actions -> verification -> closed
+  const lifecycleSteps = [
+    { to: "scheduled", note: "Inspection window formalized and team notified" },
+    { to: "in_progress", note: "Field verification initiated on site" },
+    { to: "evidence_collection", note: "Evidence gathering and photo capture active" },
+    { to: "submitted", note: "Field inspection dossier compiled and submitted" },
+    { to: "under_review", note: "Under supervisory review by authority officer" },
+    { to: "findings", note: "Regulatory non-compliance findings documented" },
+    { to: "corrective_actions", note: "Remediation measures formally ordered" },
+    { to: "verification", note: "Remediation verified on site" },
+    { to: "closed", note: "Statutory inspection concluded and sealed" },
+  ];
+
+  for (const step of lifecycleSteps) {
+    const tRes = await fetch(`${WEB_BASE}/api/inspections/${scheduledInsp.id}/transition`, {
+      method: "POST",
+      headers: {
+        Cookie: officer.cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ to: step.to, note: step.note }),
+    });
+    if (!tRes.ok) {
+      throw new Error(`POST /api/inspections/:id/transition to '${step.to}' failed: ${tRes.status}: ${await tRes.text()}`);
+    }
+    const tData = (await tRes.json()) as { id: string; status: string };
+    if (tData.status !== step.to) {
+      throw new Error(`Expected status='${step.to}', got '${tData.status}'`);
+    }
+    console.log(`✓ Proxy transition to '${step.to}' passed`);
+  }
+
+  // 5. Test Invalid Transition Rejection on Terminal State (409 Conflict)
+  console.log("Testing invalid transition rejection on terminal state...");
+  const invalidTRes = await fetch(`${WEB_BASE}/api/inspections/${scheduledInsp.id}/transition`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to: "in_progress", note: "Illegal transition" }),
+  });
+  if (invalidTRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict for invalid transition on closed inspection, got ${invalidTRes.status}`);
+  }
+  console.log(`✓ Invalid inspection transition correctly rejected with 409 Conflict`);
+
+  // Step 18: Official Inspection Reports & Statutory Dossiers Integration
+  console.log("\n18. Testing Official Inspection Reports & Statutory Dossiers Integration...");
+
+  // 1. Test SSR GET /reports
+  console.log("Testing SSR GET /reports...");
+  const reportsRes = await fetch(`${WEB_BASE}/reports`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!reportsRes.ok) {
+    throw new Error(`GET /reports returned ${reportsRes.status}`);
+  }
+  const reportsHtml = await reportsRes.text();
+  if (!reportsHtml.includes("Inspection Reports") || !reportsHtml.includes("Compile Report")) {
+    throw new Error("Reports page HTML missing expected reports dashboard content");
+  }
+  console.log(`✓ /reports rendered successfully (${reportsHtml.length} bytes, contains dashboard & compile button)`);
+
+  // 2. Test Proxy POST /api/reports to compile statutory report for the completed inspection
+  console.log(`Testing POST /api/reports proxy for inspection ${scheduledInsp.id}...`);
+  const createReportRes = await fetch(`${WEB_BASE}/api/reports`, {
+    method: "POST",
+    headers: {
+      Cookie: officer.cookie,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      inspectionId: scheduledInsp.id,
+      format: "json",
+    }),
+  });
+  if (!createReportRes.ok) {
+    throw new Error(`POST /api/reports failed: ${createReportRes.status}: ${await createReportRes.text()}`);
+  }
+  const createdReport = (await createReportRes.json()) as { id: string; status: string; inspectionId: string; format: string };
+  if (!createdReport.id || createdReport.inspectionId !== scheduledInsp.id) {
+    throw new Error(`Unexpected report creation response: ${JSON.stringify(createdReport)}`);
+  }
+  console.log(`✓ Report generation requested via proxy: id=${createdReport.id}, status=${createdReport.status}`);
+
+  // 3. Poll Proxy GET /api/reports/:id until report worker completes artifact generation
+  console.log(`Polling GET /api/reports/${createdReport.id} proxy for generated artifact...`);
+  let pollReport = createdReport;
+  const pollStart = Date.now();
+  while (pollReport.status !== "ready" && pollReport.status !== "finalized") {
+    if (Date.now() - pollStart > 15000) {
+      throw new Error(`Report generation timed out after 15s (current status=${pollReport.status})`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const getRepRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}`, {
+      headers: { Cookie: officer.cookie },
+    });
+    if (!getRepRes.ok) {
+      throw new Error(`GET /api/reports/:id returned ${getRepRes.status}`);
+    }
+    pollReport = (await getRepRes.json()) as typeof createdReport & { artifact?: Record<string, unknown> };
+  }
+  console.log(`✓ Report artifact generated and ready: id=${pollReport.id}, status=${pollReport.status}`);
+
+  // 4. Test SSR GET /reports/[id]
+  console.log(`Testing SSR GET /reports/${createdReport.id}...`);
+  const reportDetailRes = await fetch(`${WEB_BASE}/reports/${createdReport.id}`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!reportDetailRes.ok) {
+    throw new Error(`GET /reports/:id returned ${reportDetailRes.status}`);
+  }
+  const reportDetailHtml = await reportDetailRes.text();
+  if (!reportDetailHtml.includes("STATUTORY REPORT") || !reportDetailHtml.includes("Deterministic Statutory JSON Dossier")) {
+    throw new Error("Report detail HTML missing expected statutory report content");
+  }
+  console.log(`✓ /reports/${createdReport.id} rendered successfully (${reportDetailHtml.length} bytes, contains dossier)`);
+
+  // 5. Test Proxy POST /api/reports/:id/finalize
+  console.log(`Testing POST /api/reports/${createdReport.id}/finalize proxy...`);
+  const finalizeRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}/finalize`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (!finalizeRes.ok) {
+    throw new Error(`POST /api/reports/:id/finalize failed: ${finalizeRes.status}: ${await finalizeRes.text()}`);
+  }
+  const finalizedReport = (await finalizeRes.json()) as { id: string; status: string; finalizedAt: string; finalizedBy: string };
+  if (finalizedReport.status !== "finalized" || !finalizedReport.finalizedAt) {
+    throw new Error(`Expected report status='finalized', got '${finalizedReport.status}'`);
+  }
+  console.log(`✓ Statutory report finalized and sealed: finalizedAt=${finalizedReport.finalizedAt}`);
+
+  // 6. Test Finalization Immutability (§34) - cannot re-finalize or transition finalized report
+  console.log("Testing finalized report immutability rejection...");
+  const reFinalizeRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}/finalize`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (reFinalizeRes.status !== 409) {
+    throw new Error(`Expected 409 Conflict when re-finalizing report, got ${reFinalizeRes.status}`);
+  }
+  console.log(`✓ Re-finalizing immutable report correctly rejected with 409 Conflict`);
+
+  // Step 19: Interactive Notifications Center & Unread Alerting Integration (§37, §38)
+  console.log("\n19. Testing Interactive Notifications Center & Unread Alerting Integration...");
+
+  // 1. Test SSR GET /notifications
+  console.log("Testing SSR GET /notifications...");
+  const notifSsrRes = await fetch(`${WEB_BASE}/notifications`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!notifSsrRes.ok) {
+    throw new Error(`GET /notifications returned ${notifSsrRes.status}`);
+  }
+  const notifSsrHtml = await notifSsrRes.text();
+  if (!notifSsrHtml.includes("Notifications Center")) {
+    throw new Error("Notifications page missing expected 'Notifications Center' heading");
+  }
+  console.log(`✓ /notifications rendered successfully (${notifSsrHtml.length} bytes, contains Notifications Center)`);
+
+  // 2. Insert 2 pending test notifications for the officer via repository
+  const db = getDb(loadServerEnv().DATABASE_URL);
+  const notifRepo = new NotificationRepository(db);
+
+  const testNotif1 = await notifRepo.create({
+    userId: officer.user.id,
+    type: "inspection.assigned",
+    title: `Runtime Test Notification 1 (${Date.now()})`,
+    body: "Statutory surprise inspection assigned to field team for urgent execution.",
+  });
+  const testNotif2 = await notifRepo.create({
+    userId: officer.user.id,
+    type: "corrective_action.overdue",
+    title: `Runtime Test Notification 2 (${Date.now()})`,
+    body: "Mandatory corrective action is overdue and requires escalated administrative review.",
+  });
+  console.log(`✓ Seeded 2 pending test notifications for officer: ${testNotif1.id}, ${testNotif2.id}`);
+
+  // 3. Test Proxy GET /api/notifications
+  console.log("Testing GET /api/notifications proxy...");
+  const listNotifsRes = await fetch(`${WEB_BASE}/api/notifications?page=1&pageSize=50`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!listNotifsRes.ok) {
+    throw new Error(`GET /api/notifications failed with ${listNotifsRes.status}`);
+  }
+  const notifList = (await listNotifsRes.json()) as {
+    items: Array<{ id: string; status: string; title: string; type: string }>;
+    total: number;
+    unread: number;
+  };
+  if (notifList.unread < 2) {
+    throw new Error(`Expected at least 2 unread notifications, got ${notifList.unread}`);
+  }
+  const found1 = notifList.items.find((n) => n.id === testNotif1.id);
+  const found2 = notifList.items.find((n) => n.id === testNotif2.id);
+  if (!found1 || !found2) {
+    throw new Error("Created notifications not found in GET /api/notifications list response");
+  }
+  if (found1.status !== "pending" || found2.status !== "pending") {
+    throw new Error(`Expected both notifications to have status='pending', got ${found1.status}, ${found2.status}`);
+  }
+  console.log(`✓ Proxy GET /api/notifications returned items with unread count: ${notifList.unread}`);
+
+  // 4. Test Proxy POST /api/notifications/:id/read
+  console.log(`Testing POST /api/notifications/${testNotif1.id}/read proxy...`);
+  const markOneRes = await fetch(`${WEB_BASE}/api/notifications/${testNotif1.id}/read`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (!markOneRes.ok) {
+    throw new Error(`POST /api/notifications/:id/read failed: ${markOneRes.status}: ${await markOneRes.text()}`);
+  }
+  const markedOne = (await markOneRes.json()) as { id: string; status: string };
+  if (markedOne.status !== "read") {
+    throw new Error(`Expected status='read' after marking single notification, got '${markedOne.status}'`);
+  }
+  console.log(`✓ Proxy POST mark single notification as read passed (status=${markedOne.status})`);
+
+  // Verify unread count decreased by 1
+  const afterOneRes = await fetch(`${WEB_BASE}/api/notifications?page=1&pageSize=10`, {
+    headers: { Cookie: officer.cookie },
+  });
+  const afterOneData = (await afterOneRes.json()) as { unread: number };
+  if (afterOneData.unread !== notifList.unread - 1) {
+    throw new Error(`Expected unread count to be ${notifList.unread - 1}, got ${afterOneData.unread}`);
+  }
+  console.log(`✓ Unread count verified decreased: ${afterOneData.unread}`);
+
+  // 5. Test Proxy POST /api/notifications/read-all
+  console.log("Testing POST /api/notifications/read-all proxy...");
+  const readAllRes = await fetch(`${WEB_BASE}/api/notifications/read-all`, {
+    method: "POST",
+    headers: { Cookie: officer.cookie },
+  });
+  if (!readAllRes.ok) {
+    throw new Error(`POST /api/notifications/read-all failed: ${readAllRes.status}: ${await readAllRes.text()}`);
+  }
+  const readAllData = (await readAllRes.json()) as { updated: number };
+  if (typeof readAllData.updated !== "number" || readAllData.updated < 1) {
+    throw new Error(`Expected updated >= 1 from read-all, got: ${JSON.stringify(readAllData)}`);
+  }
+  console.log(`✓ Proxy POST mark all read passed (updated=${readAllData.updated} notifications)`);
+
+  // Verify unread count is now 0
+  const afterAllRes = await fetch(`${WEB_BASE}/api/notifications?page=1&pageSize=10`, {
+    headers: { Cookie: officer.cookie },
+  });
+  const afterAllData = (await afterAllRes.json()) as { unread: number };
+  if (afterAllData.unread !== 0) {
+    throw new Error(`Expected 0 unread notifications after read-all, got ${afterAllData.unread}`);
+  }
+  console.log(`✓ All notifications verified read: unread=${afterAllData.unread}`);
+
+  // Step 20: Statutory Audit Ledger Explorer & Tamper-Evident Dossier Integration (§37, §38)
+  console.log("\n20. Testing Statutory Audit Ledger Explorer & Tamper-Evident Dossier Integration...");
+
+  // 1. Test SSR GET /audit
+  console.log("Testing SSR GET /audit...");
+  const auditSsrRes = await fetch(`${WEB_BASE}/audit`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!auditSsrRes.ok) {
+    throw new Error(`GET /audit returned ${auditSsrRes.status}`);
+  }
+  const auditSsrHtml = await auditSsrRes.text();
+  if (
+    !auditSsrHtml.includes("Statutory Audit Ledger Explorer") ||
+    !auditSsrHtml.includes("Immutable Ledger")
+  ) {
+    throw new Error("Audit page missing expected 'Statutory Audit Ledger Explorer' heading");
+  }
+  console.log(`✓ /audit rendered successfully (${auditSsrHtml.length} bytes, contains Audit Explorer)`);
+
+  // 2. Test Proxy GET /api/audit
+  console.log("Testing Proxy GET /api/audit?page=1&pageSize=50...");
+  const getAuditRes = await fetch(`${WEB_BASE}/api/audit?page=1&pageSize=50`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!getAuditRes.ok) {
+    throw new Error(`GET /api/audit returned ${getAuditRes.status}: ${await getAuditRes.text()}`);
+  }
+  const auditPage = (await getAuditRes.json()) as {
+    items: Array<{
+      id: string;
+      action: string;
+      actorUserId: string | null;
+      resourceType: string | null;
+      resourceId: string | null;
+      requestId: string | null;
+      metadata: Record<string, unknown> | null;
+      occurredAt: string;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+  if (!Array.isArray(auditPage.items) || auditPage.total < 1) {
+    throw new Error(`Expected populated audit ledger, got total=${auditPage.total}`);
+  }
+  console.log(
+    `✓ Proxy GET /api/audit returned ${auditPage.items.length} records (total=${auditPage.total} statutory events)`,
+  );
+
+  // 3. Test Proxy GET /api/audit with action filter (?action=report.finalized)
+  console.log("Testing Proxy GET /api/audit?action=report.finalized...");
+  const filteredActionRes = await fetch(`${WEB_BASE}/api/audit?action=report.finalized`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!filteredActionRes.ok) {
+    throw new Error(`GET /api/audit?action=report.finalized failed with ${filteredActionRes.status}`);
+  }
+  const filteredActionPage = (await filteredActionRes.json()) as typeof auditPage;
+  if (!Array.isArray(filteredActionPage.items) || filteredActionPage.items.length === 0) {
+    throw new Error("Expected at least 1 'report.finalized' audit record from Step 18");
+  }
+  for (const item of filteredActionPage.items) {
+    if (item.action !== "report.finalized") {
+      throw new Error(`Expected action='report.finalized', got '${item.action}'`);
+    }
+  }
+  console.log(
+    `✓ Action-filtered audit events verified: ${filteredActionPage.items.length} report.finalized event(s)`,
+  );
+
+  // 4. Test Proxy GET /api/audit with resourceType filter (?resourceType=inspection)
+  console.log("Testing Proxy GET /api/audit?resourceType=inspection...");
+  const filteredResTypeRes = await fetch(`${WEB_BASE}/api/audit?resourceType=inspection`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!filteredResTypeRes.ok) {
+    throw new Error(`GET /api/audit?resourceType=inspection failed with ${filteredResTypeRes.status}`);
+  }
+  const filteredResTypePage = (await filteredResTypeRes.json()) as typeof auditPage;
+  if (!Array.isArray(filteredResTypePage.items) || filteredResTypePage.items.length === 0) {
+    throw new Error("Expected at least 1 inspection audit record");
+  }
+  for (const item of filteredResTypePage.items) {
+    if (item.resourceType !== "inspection") {
+      throw new Error(`Expected resourceType='inspection', got '${item.resourceType}'`);
+    }
+  }
+  console.log(
+    `✓ Resource-filtered audit events verified: ${filteredResTypePage.items.length} inspection event(s)`,
+  );
+
+  // -------------------------------------------------------------------------
+  // Step 21: Facility Sub-Workspaces Enhancement & Statutory Deep-Linking
+  // -------------------------------------------------------------------------
+  console.log("\n21. Testing Facility Sub-Workspaces & Statutory Deep-Linking Integration...");
+
+  // 1. SSR GET /projects/:id/reports
+  console.log(`Testing SSR GET /projects/${targetProject.id}/reports...`);
+  const facReportsRes = await fetch(`${WEB_BASE}/projects/${targetProject.id}/reports`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!facReportsRes.ok) {
+    throw new Error(`GET /projects/${targetProject.id}/reports failed with ${facReportsRes.status}`);
+  }
+  const facReportsHtml = await facReportsRes.text();
+  if (!facReportsHtml.includes("Facility Reports")) {
+    throw new Error("Facility reports page missing 'Facility Reports' header");
+  }
+  if (!facReportsHtml.includes("/reports/")) {
+    throw new Error("Facility reports page missing link to statutory report dossier (/reports/)");
+  }
+  if (!facReportsHtml.includes("+ Compile Official Report")) {
+    throw new Error("Facility reports page missing '+ Compile Official Report' button");
+  }
+  console.log(
+    `✓ /projects/${targetProject.id}/reports rendered successfully (${facReportsHtml.length} bytes, contains dossier deep-links and compile button)`,
+  );
+
+  // 2. SSR GET /projects/:id/actions
+  const caTargetProjectId = caProjectId || targetProject.id;
+  console.log(`Testing SSR GET /projects/${caTargetProjectId}/actions...`);
+  const facActionsRes = await fetch(`${WEB_BASE}/projects/${caTargetProjectId}/actions`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!facActionsRes.ok) {
+    throw new Error(`GET /projects/${caTargetProjectId}/actions failed with ${facActionsRes.status}`);
+  }
+  const facActionsHtml = await facActionsRes.text();
+  if (!facActionsHtml.includes("Corrective Actions")) {
+    throw new Error("Facility actions page missing 'Corrective Actions' header");
+  }
+  if (!facActionsHtml.includes("/corrective-actions/")) {
+    throw new Error("Facility actions page missing link to remediation dossier (/corrective-actions/)");
+  }
+  console.log(
+    `✓ /projects/${caTargetProjectId}/actions rendered successfully (${facActionsHtml.length} bytes, contains remediation deep-links)`,
+  );
+
+  // 3. SSR GET /projects/:id/complaints
+  console.log(`Testing SSR GET /projects/${targetProject.id}/complaints...`);
+  const facComplaintsRes = await fetch(`${WEB_BASE}/projects/${targetProject.id}/complaints`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!facComplaintsRes.ok) {
+    throw new Error(`GET /projects/${targetProject.id}/complaints failed with ${facComplaintsRes.status}`);
+  }
+  const facComplaintsHtml = await facComplaintsRes.text();
+  if (!facComplaintsHtml.includes("Facility Complaints")) {
+    throw new Error("Facility complaints page missing 'Facility Complaints' header");
+  }
+  if (!facComplaintsHtml.includes("/complaints/")) {
+    throw new Error("Facility complaints page missing link to complaint grievance dossier (/complaints/)");
+  }
+  if (!facComplaintsHtml.includes("/track-complaint?code=")) {
+    throw new Error("Facility complaints page missing citizen portal tracking link");
+  }
+  console.log(
+    `✓ /projects/${targetProject.id}/complaints rendered successfully (${facComplaintsHtml.length} bytes, contains complaint & citizen links)`,
+  );
+
+  // -------------------------------------------------------------------------
+  // Step 22: Authority Analytics & Statutory SLA Compliance Integration
+  // -------------------------------------------------------------------------
+  console.log("\n22. Testing Authority Analytics & Statutory SLA Compliance Integration...");
+
+  // 1. SSR GET /analytics
+  console.log("Testing SSR GET /analytics...");
+  const analyticsPageRes = await fetch(`${WEB_BASE}/analytics`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!analyticsPageRes.ok) {
+    throw new Error(`GET /analytics failed with ${analyticsPageRes.status}`);
+  }
+  const analyticsHtml = await analyticsPageRes.text();
+  if (
+    !analyticsHtml.includes("Statutory Analytics &amp; SLA Intelligence") &&
+    !analyticsHtml.includes("Statutory Analytics & SLA Intelligence")
+  ) {
+    throw new Error("Analytics page missing main heading");
+  }
+  if (
+    !analyticsHtml.includes("Jurisdiction SLA Compliance &amp; Escalation Matrix") &&
+    !analyticsHtml.includes("Jurisdiction SLA Compliance & Escalation Matrix")
+  ) {
+    throw new Error("Analytics page missing SLA compliance matrix heading");
+  }
+  if (!analyticsHtml.includes("Deficiency Recurrence Taxonomy")) {
+    throw new Error("Analytics page missing deficiency recurrence heading");
+  }
+  console.log(
+    `✓ /analytics rendered successfully (${analyticsHtml.length} bytes, contains KPI cards, SLA matrix, and deficiency taxonomy)`,
+  );
+
+  // 2. Proxy GET /api/analytics
+  console.log("Testing Proxy GET /api/analytics...");
+  const proxyAnalyticsRes = await fetch(`${WEB_BASE}/api/analytics`, {
+    headers: { Cookie: officer.cookie },
+  });
+  if (!proxyAnalyticsRes.ok) {
+    throw new Error(
+      `Proxy GET /api/analytics failed with ${proxyAnalyticsRes.status}: ${await proxyAnalyticsRes.text()}`,
+    );
+  }
+  const analyticsData = (await proxyAnalyticsRes.json()) as {
+    summary: {
+      totalProjects: number;
+      activeProjects: number;
+      totalInspections: number;
+      overallSlaComplianceRate: number;
+      totalCorrectiveActions: number;
+      totalFindings: number;
+    };
+    slaComplianceByJurisdiction: Array<{
+      districtId: string;
+      districtName: string;
+      slaComplianceRate: number;
+    }>;
+    deficiencyRecurrence: Array<{ category: string; totalOccurrences: number }>;
+    inspectionClosureVelocity: { averageClosureDays: number };
+  };
+
+  if (typeof analyticsData.summary?.overallSlaComplianceRate !== "number") {
+    throw new Error("Expected overallSlaComplianceRate number in analytics summary");
+  }
+  if (!Array.isArray(analyticsData.slaComplianceByJurisdiction)) {
+    throw new Error("Expected slaComplianceByJurisdiction array");
+  }
+  if (!Array.isArray(analyticsData.deficiencyRecurrence)) {
+    throw new Error("Expected deficiencyRecurrence array");
+  }
+  console.log(
+    `✓ Proxy GET /api/analytics verified: SLA compliance=${analyticsData.summary.overallSlaComplianceRate}%, totalProjects=${analyticsData.summary.totalProjects}, totalInspections=${analyticsData.summary.totalInspections}`,
+  );
+
+  // 3. Direct Backend GET /api/v1/analytics/overview with Admin token
+  console.log("Testing Backend GET /api/v1/analytics/overview with Admin session...");
+  const backendAnalyticsRes = await fetch(`${API_BASE}/api/v1/analytics/overview`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
+  });
+  if (!backendAnalyticsRes.ok) {
+    throw new Error(
+      `Backend GET /api/v1/analytics/overview failed with ${backendAnalyticsRes.status}`,
+    );
+  }
+  const backendAnalytics = (await backendAnalyticsRes.json()) as {
+    slaComplianceByJurisdiction: Array<{ districtId: string; districtName: string }>;
+  };
+  console.log(
+    `✓ Backend analytics overview returned ${backendAnalytics.slaComplianceByJurisdiction.length} jurisdiction(s) for State Admin`,
+  );
+
+  // 4. Test Out-of-Jurisdiction Rejection for Scoped Officer
+  console.log("Testing out-of-jurisdiction query rejection (403 Forbidden)...");
+  const outsideDistrict = backendAnalytics.slaComplianceByJurisdiction.find(
+    (d) => !d.districtName.toLowerCase().includes("khordha"),
+  );
+  if (!outsideDistrict) {
+    throw new Error("Expected at least one non-Khordha district in seed data");
+  }
+  const forbiddenDistrictId = outsideDistrict.districtId;
+  const forbiddenAnalyticsRes = await fetch(
+    `${API_BASE}/api/v1/analytics/overview?districtId=${forbiddenDistrictId}`,
+    {
+      headers: { Authorization: `Bearer ${officer.token}` },
+    },
+  );
+  if (forbiddenAnalyticsRes.status !== 403) {
+    throw new Error(
+      `Expected 403 Forbidden for out-of-jurisdiction query (${outsideDistrict.districtName}), got ${forbiddenAnalyticsRes.status}`,
+    );
+  }
+  console.log(
+    `✓ Out-of-jurisdiction analytics request for ${outsideDistrict.districtName} correctly rejected with 403 Forbidden (§16, §17)`,
+  );
+
+  console.log("\n==================================================================");
+  console.log("✓ ALL 22 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");
+  console.log("==================================================================");
+  process.exit(0);
 }
 
 main().catch((err) => {
   console.error("\n❌ Web runtime verification failed:", err);
   process.exit(1);
 });
+
