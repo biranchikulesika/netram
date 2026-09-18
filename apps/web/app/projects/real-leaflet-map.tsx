@@ -13,13 +13,9 @@ import {
   IconSearch,
   IconCheck,
   IconLock,
-  IconAlertTriangle,
   IconBuilding,
 } from "../components/icons";
 import { getDistrictName, getOrganisationName } from "../../lib/presentation";
-
-// Statutory Disclosure & Visibility Levels (AGENTS.md §34)
-export type VisibilityLevel = "authority" | "district" | "institution" | "public";
 
 interface RealLeafletMapProps {
   projects: Project[];
@@ -103,7 +99,6 @@ export default function RealLeafletMap({
 
   // Core Cartographic Controls
   const [mapType, setMapType] = useState<"streets" | "satellite">("streets");
-  const [visibilityLevel, setVisibilityLevel] = useState<VisibilityLevel>("authority");
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -679,30 +674,6 @@ export default function RealLeafletMap({
           </button>
         </div>
 
-        {/* Statutory Scope / Disclosure Lens Dropdown (§34) */}
-        <select
-          value={visibilityLevel}
-          onChange={(e) => setVisibilityLevel(e.target.value as VisibilityLevel)}
-          style={{
-            background: "rgba(255, 255, 255, 0.96)",
-            backdropFilter: "blur(8px)",
-            borderRadius: "6px",
-            border: "1px solid rgba(0,0,0,0.12)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            padding: "0.35rem 0.6rem",
-            fontSize: "0.74rem",
-            fontWeight: 700,
-            color: "var(--color-navy-brand)",
-            cursor: "pointer",
-            outline: "none",
-          }}
-        >
-          <option value="authority">👁️ Authority Scope</option>
-          <option value="district">🏛️ District Scope</option>
-          <option value="institution">🏢 Operating Agency</option>
-          <option value="public">🌐 Citizen Oversight</option>
-        </select>
-
         {/* Reset View Button */}
         <button
           type="button"
@@ -1068,25 +1039,8 @@ export default function RealLeafletMap({
                 </div>
               </div>
 
-              {/* Statutory Disclosure Notice (§34) */}
-              {visibilityLevel === "public" ? (
-                <div
-                  style={{
-                    background: "#fef2f2",
-                    border: "1px solid #fecaca",
-                    padding: "0.4rem 0.6rem",
-                    borderRadius: "6px",
-                    fontSize: "0.7rem",
-                    color: "#991b1b",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "0.35rem",
-                  }}
-                >
-                  <IconAlertTriangle width={14} height={14} style={{ flexShrink: 0, marginTop: "1px" }} />
-                  <span>Public Oversight Lens: Surveillance streams and inspector identity hashes are redacted.</span>
-                </div>
-              ) : (
+              {/* Statutory Oversight Clearance (AGENTS.md §16 & §34) */}
+              {isAuthority ? (
                 <div
                   style={{
                     background: "#f0fdf4",
@@ -1101,7 +1055,24 @@ export default function RealLeafletMap({
                   }}
                 >
                   <IconShieldCheck width={14} height={14} style={{ flexShrink: 0, marginTop: "1px" }} />
-                  <span>Authorized Authority Scope: Unredacted statutory ledger & telemetry access enabled.</span>
+                  <span>Authority Clearance Active: Full statutory audit trail, telemetry & geofence administration enabled.</span>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    padding: "0.4rem 0.6rem",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    color: "#475569",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "0.35rem",
+                  }}
+                >
+                  <IconLock width={14} height={14} style={{ flexShrink: 0, marginTop: "1px" }} />
+                  <span>Operating Agency Mode: Viewing approved facility boundary.</span>
                 </div>
               )}
 
@@ -1202,7 +1173,7 @@ export default function RealLeafletMap({
                 </div>
 
                 {/* Geofence Authoring Controls (Exclusively for Authority Officers) */}
-                {isAuthority && visibilityLevel === "authority" ? (
+                {isAuthority ? (
                   geofenceMode === "view" ? (
                     <div style={{ display: "flex", gap: "0.35rem", marginTop: "0.3rem" }}>
                       <button
