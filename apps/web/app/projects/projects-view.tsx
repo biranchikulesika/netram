@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import type { Project } from "@netram/types";
 import { StatusBadge } from "./[id]/status-badge";
-import { CreateProjectForm } from "./create-project-form";
 import {
   IconBuilding,
   IconSearch,
@@ -193,14 +192,13 @@ export function ProjectsView({
   serverPage = 1,
   serverPageSize = 20,
   initialStatus = "ALL",
-  apiUrl,
+  apiUrl: _apiUrl,
 }: ProjectsViewProps) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [showRegisterForm, setShowRegisterForm] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [jumpPage, setJumpPage] = useState("");
 
@@ -275,20 +273,25 @@ export function ProjectsView({
         </div>
 
         <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button
-            type="button"
-            onClick={() => setShowRegisterForm((prev) => !prev)}
+          <Link
+            href="/projects/new"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "0.35rem",
               fontSize: "0.8rem",
               padding: "0.45rem 0.85rem",
+              background: "linear-gradient(to right, var(--action-green), var(--action-green-dark))",
+              color: "#ffffff",
+              borderRadius: "6px",
+              fontWeight: 600,
+              textDecoration: "none",
+              boxShadow: "0 1px 2px 0 rgba(14, 122, 52, 0.2)",
             }}
           >
             <IconPlus style={{ width: 14, height: 14 }} />
-            <span>{showRegisterForm ? "Cancel" : "Register Project"}</span>
-          </button>
+            <span>Register Project</span>
+          </Link>
         </div>
       </div>
 
@@ -383,15 +386,6 @@ export function ProjectsView({
           </div>
         </div>
       </div>
-
-      {/* Collapsible Register Form */}
-      {showRegisterForm && (
-        <CreateProjectForm
-          apiUrl={apiUrl}
-          onCancel={() => setShowRegisterForm(false)}
-          onCreated={() => setShowRegisterForm(false)}
-        />
-      )}
 
       {/* View Mode A: Official Institutional Table View */}
       {viewMode === "table" && (
