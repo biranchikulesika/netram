@@ -9,7 +9,6 @@ export const DOMAIN_EVENT_TYPES = [
   "inspection.created",
   "inspection.started",
   "inspection.submitted",
-  "inspection.overdue",
   "inspection.status_transitioned",
   "inspection.operation_accepted",
   "inspection.operation_rejected",

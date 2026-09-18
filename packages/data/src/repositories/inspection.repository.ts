@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   projects as projectsTable,
   inspections as inspectionsTable,
@@ -8,7 +8,6 @@ import {
   outboxEvents,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
-import { RepositoryNotFoundError } from "./errors.js";
 import type {
   AuditAction,
   DomainEventType,
@@ -268,7 +267,7 @@ export class InspectionRepository {
       .from(inspectionsTable)
       .where(eq(inspectionsTable.id, cmd.inspectionId))
       .limit(1);
-    if (cursor.length === 0) throw new RepositoryNotFoundError("Inspection");
+    if (cursor.length === 0) throw new Error("inspection missing");
 
     const upstream = await this.db
       .select({
@@ -289,7 +288,7 @@ export class InspectionRepository {
       .leftJoin(disclosurePolicies, eq(inspectionsTable.disclosurePolicyId, disclosurePolicies.id))
       .where(eq(inspectionsTable.id, cmd.inspectionId))
       .limit(1);
-    if (upstream.length === 0) throw new RepositoryNotFoundError("Inspection");
+    if (upstream.length === 0) throw new Error("inspection missing");
 
     const previous = upstream[0]!;
 
@@ -343,62 +342,7 @@ export class InspectionRepository {
     });
     return transitioned;
   }
-
-  /**
-   * Identifies inspections past their scheduledEnd in pre-submission statuses
-   * and emits InspectionOverdue domain events to the outbox (§26, §29).
-   * Does not alter inspection status; the outbox drives authority notification.
-   */
-  async markOverdueInspections(actorUserId: string | null = null): Promise<{
-    count: number;
-    inspectionIds: string[];
-  }> {
-    const overdueStatuses = ["assigned", "scheduled", "in_progress"] as const;
-    const now = new Date();
-
-    const overdue = await this.db
-      .select({ id: inspectionsTable.id })
-      .from(inspectionsTable)
-      .where(
-        and(
-          inArray(inspectionsTable.status, [...overdueStatuses]),
-          lt(inspectionsTable.scheduledEnd, now),
-        ),
-      );
-
-    if (overdue.length === 0) return { count: 0, inspectionIds: [] };
-
-    const ids = overdue.map((r) => r.id);
-
-    await this.db.transaction(async (tx) => {
-      await tx.insert(auditEvents).values(
-        ids.map((id) => ({
-          action: "inspection.overdue" as const,
-          actorUserId,
-          resourceType: "inspection",
-          resourceId: id,
-          requestId: null,
-          ipAddress: null,
-          metadata: { detectedAt: now.toISOString() },
-        })),
-      );
-
-      await tx.insert(outboxEvents).values(
-        ids.map((id) => ({
-          type: "inspection.overdue" as const,
-          correlationId: id,
-          actorUserId,
-          resourceType: "inspection",
-          resourceId: id,
-          payload: { inspectionId: id, detectedAt: now.toISOString() },
-        })),
-      );
-    });
-
-    return { count: ids.length, inspectionIds: ids };
-  }
 }
-
 
 export interface CreateInspectionWrite {
   id: string;

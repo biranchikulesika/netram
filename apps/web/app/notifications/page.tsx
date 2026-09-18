@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClient, getSessionUser } from "../../lib/api";
-import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
+import { NotificationsView } from "./notifications-view";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +72,7 @@ export default async function NotificationsPage() {
   const client = await getClient();
   const page = await client
     .listNotifications({ pageSize: 50 })
-    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
+    .catch(() => ({ items: [], total: 0, unread: 0, page: 1, pageSize: 50 }));
 
   return (
     <main>
@@ -80,52 +80,16 @@ export default async function NotificationsPage() {
         userEmail={session.user.email}
         permissionsCount={permissions.length}
         permissions={permissions}
+        unreadNotificationsCount={page.unread}
         activeSection="notifications"
       />
 
-      <div className="section-header">
-        <div>
-          <h2>Notifications</h2>
-          <p className="muted">Administrative alerts, inspection assignments, and system notices</p>
-        </div>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {page.items.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="muted" style={{ textAlign: "center", padding: "2rem" }}>
-                No notifications received yet.
-              </td>
-            </tr>
-          ) : (
-            page.items.map((n) => (
-              <tr key={n.id}>
-                <td>
-                  <span className="badge badge-routine">{n.type}</span>
-                </td>
-                <td>{n.title}</td>
-                <td>
-                  <span className={`status status-${n.status}`}>{n.status}</span>
-                </td>
-                <td className="muted">{formatDate(n.createdAt)}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-
-      <p className="muted" style={{ marginTop: "1rem" }}>
-        Total: {page.total}
-      </p>
+      <NotificationsView
+        initialNotifications={page.items}
+        initialTotal={page.total}
+        initialUnread={page.unread}
+      />
     </main>
   );
 }
+

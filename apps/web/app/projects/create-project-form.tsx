@@ -2,16 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { NetramApiClient, ApiError } from "@netram/api-client";
 import type { ProjectType } from "@netram/types";
 
 interface CreateProjectFormProps {
-  apiUrl: string;
+  apiUrl?: string;
   onCancel?: () => void;
   onCreated?: () => void;
 }
 
-export function CreateProjectForm({ apiUrl, onCancel, onCreated }: CreateProjectFormProps) {
+export function CreateProjectForm({ onCancel, onCreated }: CreateProjectFormProps) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [type, setType] = useState<ProjectType>("institution");
@@ -25,11 +24,19 @@ export function CreateProjectForm({ apiUrl, onCancel, onCreated }: CreateProject
     setBusy(true);
     setError(null);
     try {
-      await new NetramApiClient({ baseUrl: apiUrl }).createProject({
-        name: name.trim(),
-        type,
-        description: description.trim() || undefined,
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          type,
+          description: description.trim() || undefined,
+        }),
       });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error?.message ?? `Failed with status ${res.status}`);
+      }
       setName("");
       setDescription("");
       setType("institution");
@@ -38,13 +45,7 @@ export function CreateProjectForm({ apiUrl, onCancel, onCreated }: CreateProject
       }
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? `${err.code}: ${err.message}`
-          : err instanceof Error
-            ? err.message
-            : String(err),
-      );
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }

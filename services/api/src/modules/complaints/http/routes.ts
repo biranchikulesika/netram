@@ -20,27 +20,6 @@ export async function registerComplaintRoutes(
   const complaintService = container.complaintService;
   const paramsSchema = toJsonSchema("ComplaintIdParams", idParamsSchema);
 
-  // Citizen/Public Intake (§35)
-  app.post(
-    "/complaints/public",
-    {
-      schema: {
-        tags: ["complaints"],
-        body: toJsonSchema("CreateComplaintBody", createComplaintSchema),
-        response: { 201: toJsonSchema("Complaint", complaintSchema) },
-      },
-    },
-    async (request, reply) => {
-      const body = request.body as z.infer<typeof createComplaintSchema>;
-      const complaint = await complaintService.submitPublicComplaint(body, {
-        requestId: request.id,
-        ipAddress: request.ip,
-      });
-      void reply.code(201);
-      return complaint;
-    },
-  );
-
   app.get(
     "/complaints",
     {
