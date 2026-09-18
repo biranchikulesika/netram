@@ -425,6 +425,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Authority Officer",
       permissions: [
         "project:read",
+        "project:create",
         "project:transition",
         "project:approve",
         "inspection:read",

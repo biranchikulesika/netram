@@ -10,6 +10,9 @@ export default async function NewProjectPage() {
   if (!session) redirect("/login");
 
   const canCreate = session.permissions.includes("project:create");
+  const canApprove = session.permissions.includes("project:approve");
+  const isAuthority = canApprove;
+  const isInstitutionAdmin = canCreate && !canApprove;
 
   return (
     <main>
@@ -23,6 +26,9 @@ export default async function NewProjectPage() {
       <ProjectRegistrationView
         userEmail={session.user.email}
         canCreate={canCreate}
+        canApprove={canApprove}
+        isAuthority={isAuthority}
+        isInstitutionAdmin={isInstitutionAdmin}
       />
     </main>
   );

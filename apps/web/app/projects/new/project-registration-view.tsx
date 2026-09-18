@@ -104,9 +104,18 @@ const FACILITY_CATEGORIES = [
 interface ProjectRegistrationViewProps {
   userEmail: string;
   canCreate: boolean;
+  canApprove?: boolean;
+  isAuthority?: boolean;
+  isInstitutionAdmin?: boolean;
 }
 
-export function ProjectRegistrationView({ userEmail, canCreate }: ProjectRegistrationViewProps) {
+export function ProjectRegistrationView({
+  userEmail,
+  canCreate,
+  canApprove: _canApprove = false,
+  isAuthority = false,
+  isInstitutionAdmin = false,
+}: ProjectRegistrationViewProps) {
   const router = useRouter();
 
   // Section 1: Facility Identity
@@ -290,30 +299,166 @@ export function ProjectRegistrationView({ userEmail, canCreate }: ProjectRegistr
         </p>
       </div>
 
-      {/* Governance & Lifecycle Notice Banner (§33) */}
+      {/* Statutory 3-Stage Lifecycle Stepper (§33) */}
       <div
         style={{
-          background: "#eff6ff",
-          border: "1px solid #bfdbfe",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--color-border-strong)",
           borderRadius: "8px",
           padding: "1rem 1.25rem",
-          marginBottom: "1.75rem",
-          display: "flex",
-          gap: "0.85rem",
-          alignItems: "flex-start",
+          marginBottom: "1.25rem",
         }}
       >
-        <IconShieldCheck width={22} height={22} style={{ color: "#1d4ed8", flexShrink: 0, marginTop: 2 }} />
-        <div style={{ fontSize: "0.82rem", color: "#1e3a8a", lineHeight: 1.5 }}>
-          <strong style={{ display: "block", marginBottom: "0.2rem", fontWeight: 700 }}>
-            Statutory Project Lifecycle Policy (AGENTS.md §33)
-          </strong>
-          Newly registered facilities are created in the initial <strong>Draft</strong> state. Before active
-          operations or scheduled field inspections commence, the facility must be transitioned through{" "}
-          <strong>Pending Verification</strong> &rarr; <strong>Approved</strong> by an authorized Departmental
-          Officer. Registration actions are immutably logged to the public audit ledger.
+        <div
+          style={{
+            fontSize: "0.7rem",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            color: "var(--color-navy-brand)",
+            marginBottom: "0.75rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <span>STATUTORY ENROLLMENT PIPELINE (AGENTS.MD §33)</span>
+          <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500, textTransform: "none" }}>
+            Enforcing Separation of Powers & Jurisdictional Oversight
+          </span>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: "0.75rem",
+          }}
+        >
+          <div
+            style={{
+              borderLeft: "3px solid var(--action-green)",
+              padding: "0.65rem 0.85rem",
+              background: "var(--bg-subtle)",
+              borderRadius: "0 6px 6px 0",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" }}>
+              <span style={{ fontSize: "0.68rem", background: "var(--action-green)", color: "#fff", padding: "0.1rem 0.35rem", borderRadius: "3px", fontWeight: 700 }}>
+                STAGE 1 (CURRENT)
+              </span>
+              <strong style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>Facility Enrollment</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+              Operating Agency or Authority enters statutory dossier, geolocation, and capacity. Enters registry as <strong>Draft</strong>.
+            </p>
+          </div>
+
+          <div
+            style={{
+              borderLeft: "3px solid var(--color-border-strong)",
+              padding: "0.65rem 0.85rem",
+              background: "var(--bg-subtle)",
+              borderRadius: "0 6px 6px 0",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" }}>
+              <span style={{ fontSize: "0.68rem", background: "var(--text-muted)", color: "#fff", padding: "0.1rem 0.35rem", borderRadius: "3px", fontWeight: 700 }}>
+                STAGE 2
+              </span>
+              <strong style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>Jurisdictional Scrutiny</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+              Dossier submitted to DSWO. Field Inspector dispatched for physical premises audit (<strong>Pending Verification</strong>).
+            </p>
+          </div>
+
+          <div
+            style={{
+              borderLeft: "3px solid var(--color-border-strong)",
+              padding: "0.65rem 0.85rem",
+              background: "var(--bg-subtle)",
+              borderRadius: "0 6px 6px 0",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" }}>
+              <span style={{ fontSize: "0.68rem", background: "var(--text-muted)", color: "#fff", padding: "0.1rem 0.35rem", borderRadius: "3px", fontWeight: 700 }}>
+                STAGE 3
+              </span>
+              <strong style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>Authority Sanction</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+              District Social Welfare Authority issues sanction sign-off. Facility marked <strong>Approved</strong> &rarr; <strong>Active</strong>.
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Role-Specific Protocol Notice */}
+      {isAuthority ? (
+        <div
+          style={{
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: "8px",
+            padding: "0.9rem 1.15rem",
+            marginBottom: "1.75rem",
+            display: "flex",
+            gap: "0.85rem",
+            alignItems: "flex-start",
+          }}
+        >
+          <IconShieldCheck width={20} height={20} style={{ color: "#16a34a", flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: "0.82rem", color: "#14532d", lineHeight: 1.5 }}>
+            <strong style={{ display: "block", marginBottom: "0.15rem", fontWeight: 700 }}>
+              Authority Officer Mode &mdash; Direct Departmental & Supervisory Enrollment
+            </strong>
+            Authenticated with Departmental Authority privileges ({userEmail}). You have authority to enroll <strong>Direct Departmental Facilities</strong> (state residential hostels, welfare shelters) or onboard accredited <strong>NGO Institutions</strong> within your district jurisdiction. As an Authority Officer, you hold statutory approval rights.
+          </div>
+        </div>
+      ) : isInstitutionAdmin ? (
+        <div
+          style={{
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: "8px",
+            padding: "0.9rem 1.15rem",
+            marginBottom: "1.75rem",
+            display: "flex",
+            gap: "0.85rem",
+            alignItems: "flex-start",
+          }}
+        >
+          <IconBuilding width={20} height={20} style={{ color: "#d97706", flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: "0.82rem", color: "#78350f", lineHeight: 1.5 }}>
+            <strong style={{ display: "block", marginBottom: "0.15rem", fontWeight: 700 }}>
+              Operating Agency Mode &mdash; Institutional Enrollment Application
+            </strong>
+            You are registering an Institutional Facility dossier on behalf of your operating organisation ({userEmail}). In compliance with Netram separation of powers (AGENTS.md §33), <strong>facilities cannot be self-approved</strong>. Submission places the record in <strong>Draft</strong> state for formal inspection and approval by the District Social Welfare Office.
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: "8px",
+            padding: "0.9rem 1.15rem",
+            marginBottom: "1.75rem",
+            display: "flex",
+            gap: "0.85rem",
+            alignItems: "flex-start",
+          }}
+        >
+          <IconShieldCheck width={20} height={20} style={{ color: "#1d4ed8", flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: "0.82rem", color: "#1e3a8a", lineHeight: 1.5 }}>
+            <strong style={{ display: "block", marginBottom: "0.15rem", fontWeight: 700 }}>
+              System Administrator Mode &mdash; State-Wide Oversight
+            </strong>
+            Authenticated as System Administrator ({userEmail}). State-wide enrollment scope across all jurisdictions, schemes, and facility classifications.
+          </div>
+        </div>
+      )}
 
       {/* Status Banners */}
       {error && (
@@ -406,23 +551,27 @@ export function ProjectRegistrationView({ userEmail, canCreate }: ProjectRegistr
                 id="classification-type"
                 value={type}
                 onChange={(e) => setType(e.target.value as ProjectType)}
-                disabled={busy}
+                disabled={busy || isInstitutionAdmin}
                 style={{
-                  background: "var(--bg-surface)",
+                  background: isInstitutionAdmin ? "var(--bg-subtle)" : "var(--bg-surface)",
                   color: "var(--text-primary)",
                   border: "1px solid var(--color-border-strong)",
                   padding: "0.5rem 0.85rem",
                   borderRadius: "6px",
                   fontFamily: "inherit",
                   fontSize: "0.85rem",
+                  fontWeight: 600,
+                  cursor: isInstitutionAdmin ? "not-allowed" : "default",
                 }}
               >
-                <option value="institution">Institution / NGO Facility</option>
-                <option value="authority_project">Authority Infrastructure Project</option>
-                <option value="other">Other Sanctioned Initiative</option>
+                <option value="institution">Institution / NGO Facility (Grant-in-Aid / Society)</option>
+                <option value="authority_project">Authority Infrastructure Project (Direct Govt. Run)</option>
+                <option value="other">Other Sanctioned Welfare Initiative</option>
               </select>
               <span className="form-helper">
-                Defines statutory oversight hierarchy and reporting requirements
+                {isInstitutionAdmin
+                  ? "Operating Agency Scope: Strictly locked to Institution / NGO Facility (§33)"
+                  : "Defines statutory hierarchy: NGO-managed (institution) vs Direct Govt-run (authority_project)"}
               </span>
             </div>
 
@@ -650,7 +799,7 @@ export function ProjectRegistrationView({ userEmail, canCreate }: ProjectRegistr
           <div className="form-card-grid">
             <div className="form-field" style={{ gridColumn: "1 / -1" }}>
               <label className="form-label" htmlFor="org-select">
-                Implementing Agency / Society / Trust
+                Implementing Agency / Society / Directorate
               </label>
               <select
                 id="org-select"
@@ -668,6 +817,9 @@ export function ProjectRegistrationView({ userEmail, canCreate }: ProjectRegistr
                   fontWeight: 600,
                 }}
               >
+                {type === "authority_project" && (
+                  <option value="">(Direct Departmental Directorate &mdash; State/District Unit)</option>
+                )}
                 {ORGANISATIONS.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.name} [{o.code}] &mdash; {o.category}
@@ -675,7 +827,9 @@ export function ProjectRegistrationView({ userEmail, canCreate }: ProjectRegistr
                 ))}
               </select>
               <span className="form-helper">
-                Registered non-governmental organization, autonomous trust, or departmental unit
+                {type === "authority_project" && !organisationId
+                  ? "Direct Department Initiative: Operated under direct Authority Directorate jurisdiction (no external NGO required)"
+                  : "Registered non-governmental organization, autonomous trust, or implementing society"}
               </span>
             </div>
 
@@ -889,18 +1043,27 @@ export function ProjectRegistrationView({ userEmail, canCreate }: ProjectRegistr
           </div>
           <div>
             <span style={{ color: "var(--text-subtle)", display: "block", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-              Operating Agency
+              Operating Agency / Directorate
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontWeight: 600, color: "var(--color-navy-brand)" }}>
-              <IconBuilding width={14} height={14} /> {selectedOrg?.name}
+              <IconBuilding width={14} height={14} />{" "}
+              {selectedOrg ? selectedOrg.name : "(Direct Departmental Facility — No External NGO)"}
             </span>
           </div>
           <div>
             <span style={{ color: "var(--text-subtle)", display: "block", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-              Officer Account
+              Enrolled By
             </span>
             <span style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
-              {userEmail}
+              {userEmail} {isAuthority ? "(Authority Officer)" : isInstitutionAdmin ? "(Operating Agency)" : "(System Admin)"}
+            </span>
+          </div>
+          <div>
+            <span style={{ color: "var(--text-subtle)", display: "block", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
+              Initial Status
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontWeight: 700, color: "var(--action-green)" }}>
+              <IconShieldCheck width={14} height={14} /> Draft (Pending Verification)
             </span>
           </div>
         </div>
