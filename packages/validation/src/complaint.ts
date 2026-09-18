@@ -48,6 +48,16 @@ export const transitionComplaintSchema = z
   })
   .strict();
 
+export const publicComplaintTrackingSchema = z.object({
+  trackingCode: z.string(),
+  projectCode: z.string(),
+  projectName: z.string(),
+  status: z.enum(COMPLAINT_STATUSES),
+  receivedAt: z.string().datetime(),
+  resolvedAt: z.string().datetime().nullable(),
+  resolutionText: z.string().nullable(),
+});
+
 export function isAllowedComplaintTransition(
   from: (typeof COMPLAINT_STATUSES)[number],
   to: (typeof COMPLAINT_STATUSES)[number],

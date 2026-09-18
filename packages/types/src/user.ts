@@ -30,6 +30,13 @@ export interface RoleView {
   permissions: string[];
 }
 
+export interface JurisdictionView {
+  id: UUID;
+  code: string;
+  name: string;
+  scopeLevel: string;
+}
+
 export interface UserListQuery {
   page?: number;
   pageSize?: number;

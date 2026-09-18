@@ -20,6 +20,7 @@ import {
   CctvRepository,
   VcSessionRepository,
   AttendanceRepository,
+  AnalyticsRepository,
 } from "@netram/data";
 import type { AppConfig } from "../config.js";
 import { AppError } from "./errors.js";
@@ -27,6 +28,7 @@ import { AuthService } from "../modules/auth/application/auth-service.js";
 import { DevAuthProvider } from "../modules/auth/infrastructure/providers/dev-auth-provider.js";
 import { SupabaseAuthProvider } from "../modules/auth/infrastructure/providers/supabase-auth-provider.js";
 import { AuthorizationService } from "../modules/authorization/application/authorization-service.js";
+import { AnalyticsService } from "../modules/analytics/application/analytics-service.js";
 import { ProjectService } from "../modules/projects/application/project-service.js";
 import { InspectionService } from "../modules/inspections/application/inspection-service.js";
 import { InspectionSyncService } from "../modules/inspections/application/inspection-sync-service.js";
@@ -79,6 +81,7 @@ export interface Container {
   auditRepo: AuditRepository;
   outboxRepo: OutboxRepository;
   attendanceService: AttendanceService;
+  analyticsService: AnalyticsService;
 }
 
 export function buildContainer(config: AppConfig): Container {
@@ -194,6 +197,9 @@ export function buildContainer(config: AppConfig): Container {
     exportJobs: attendanceExportJobs,
   });
 
+  const analyticsRepo = new AnalyticsRepository(db);
+  const analyticsService = new AnalyticsService(authorizationService, analyticsRepo);
+
   let provider: AuthProvider;
   let devAuthProvider: DevAuthProvider | null = null;
 
@@ -247,5 +253,6 @@ export function buildContainer(config: AppConfig): Container {
     auditRepo,
     outboxRepo,
     attendanceService,
+    analyticsService,
   };
 }

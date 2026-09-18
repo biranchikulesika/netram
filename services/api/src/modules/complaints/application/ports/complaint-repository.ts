@@ -36,6 +36,7 @@ export interface ComplaintListFilter {
 export interface ComplaintRepositoryPort {
   list(filter: ComplaintListFilter): Promise<{ items: Complaint[]; total: number }>;
   findById(id: UUID): Promise<Complaint | null>;
+  findByTrackingCode(trackingCode: string): Promise<Complaint | null>;
   createWithAuditAndEvent(cmd: CreateComplaintCommand): Promise<Complaint>;
   transitionWithAuditAndEvent(cmd: TransitionComplaintCommand): Promise<Complaint>;
 }

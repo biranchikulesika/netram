@@ -14,9 +14,17 @@ function walk(dir, out = []) {
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
       if (
-        [".git", "node_modules", ".next", "dist", ".turbo", ".expo", "coverage", ".pnpm"].includes(
-          entry.name,
-        )
+        [
+          ".git",
+          "node_modules",
+          ".next",
+          "dist",
+          ".turbo",
+          ".expo",
+          "coverage",
+          ".pnpm",
+          ".temp",
+        ].includes(entry.name)
       )
         continue;
       walk(p, out);

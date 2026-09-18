@@ -1,17 +1,36 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loadClientEnv } from "@netram/config";
+import type { ProjectStatus } from "@netram/types";
 import { getClient, getSessionUser } from "../../lib/api";
-import { CreateProjectForm } from "./create-project-form";
 import { NavHeader } from "../components/nav-header";
+import { ProjectsView } from "./projects-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; pageSize?: string; status?: string }>;
+}) {
   const session = await getSessionUser();
   if (!session) redirect("/login");
+
+  const params = await searchParams;
+  const pageNumber = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const pageSize = Math.min(100, Math.max(10, parseInt(params.pageSize ?? "20", 10) || 20));
+  const validStatus =
+    params.status && params.status !== "ALL"
+      ? (params.status as ProjectStatus)
+      : undefined;
+
   const client = await getClient();
-  const page = await client.listProjects({ pageSize: 50 });
+  const page = await client
+    .listProjects({
+      page: pageNumber,
+      pageSize,
+      status: validStatus,
+    })
+    .catch(() => ({ items: [], total: 0, page: 1, pageSize }));
   const apiUrl = loadClientEnv().NEXT_PUBLIC_API_URL;
 
   return (
@@ -19,43 +38,18 @@ export default async function ProjectsPage() {
       <NavHeader
         userEmail={session.user.email}
         permissionsCount={session.permissions.length}
+        permissions={session.permissions}
         activeSection="projects"
       />
 
-      <div className="section-header">
-        <div>
-          <h2>Projects</h2>
-          <p className="muted">Monitored programmes, institutions, and infrastructure</p>
-        </div>
-      </div>
-
-      <CreateProjectForm apiUrl={apiUrl} />
-
-      <table>
-        <thead>
-          <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Organisation</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {page.items.map((p) => (
-            <tr key={p.id}>
-              <td>
-                <Link href={`/projects/${p.id}`}>{p.code}</Link>
-              </td>
-              <td>{p.name}</td>
-              <td className="muted">{p.organisationId ? p.organisationId.slice(0, 8) : "—"}</td>
-              <td>
-                <span className="status">{p.status}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="muted">Total: {page.total}</p>
+      <ProjectsView
+        initialProjects={page.items}
+        totalProjects={page.total}
+        serverPage={page.page}
+        serverPageSize={page.pageSize}
+        initialStatus={params.status ?? "ALL"}
+        apiUrl={apiUrl}
+      />
     </main>
   );
 }

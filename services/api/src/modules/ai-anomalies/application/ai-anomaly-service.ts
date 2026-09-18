@@ -59,6 +59,7 @@ export class AiAnomalyService {
     ctx: RequestUserContext,
     anomalyId: string,
     to: AnomalyStatus,
+    note?: string,
   ): Promise<AIAnomaly> {
     const anomaly = await this.repository.findById(anomalyId);
     if (!anomaly || !anomaly.districtId) throw AppError.notFound("AI anomaly not found.");
@@ -78,7 +79,7 @@ export class AiAnomalyService {
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
       auditAction,
-      auditMetadata: { from: anomaly.status, to },
+      auditMetadata: { from: anomaly.status, to, ...(note ? { note } : {}) },
       eventType,
       eventPayload: {
         anomalyId,
@@ -86,6 +87,7 @@ export class AiAnomalyService {
         to,
         type: anomaly.type,
         severity: anomaly.severity,
+        ...(note ? { note } : {}),
       },
     });
   }
