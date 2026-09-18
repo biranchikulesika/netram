@@ -119,16 +119,32 @@ export default function RealLeafletMap({
     }
   }, [geofenceMode]);
 
-  // In-memory Geofences Registry (Per facility)
-  const [geofences, setGeofences] = useState<Record<string, GeofenceConfig>>({
-    "50e7100e-8ac6-4d46-ae2a-93663249ce45": {
-      type: "circle",
-      radiusMeters: 300,
-      polygonPoints: [],
-      sealedAt: "2026-09-18T10:30:00Z",
-      sealedBy: "DSWO Puri",
-      auditTx: "0x8f2d...41a9",
-    },
+  const STORAGE_KEY = "netram_geofences_registry";
+
+  // Persistent Geofences Registry (Per facility, synced to localStorage)
+  const [geofences, setGeofences] = useState<Record<string, GeofenceConfig>>(() => {
+    const defaultGeofences: Record<string, GeofenceConfig> = {
+      "50e7100e-8ac6-4d46-ae2a-93663249ce45": {
+        type: "circle",
+        radiusMeters: 300,
+        polygonPoints: [],
+        sealedAt: "2026-09-18T10:30:00Z",
+        sealedBy: "DSWO Puri",
+        auditTx: "0x8f2d...41a9",
+      },
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("netram_geofences_registry");
+        if (stored) {
+          return { ...defaultGeofences, ...JSON.parse(stored) };
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+    return defaultGeofences;
   });
 
   // Calculate project coordinates with deterministic spread for co-located institutions
@@ -520,14 +536,46 @@ export default function RealLeafletMap({
             auditTx: txHash,
           };
 
-    setGeofences((prev) => ({
-      ...prev,
-      [selectedFacility.id]: newConfig,
-    }));
+    setGeofences((prev) => {
+      const updated = {
+        ...prev,
+        [selectedFacility.id]: newConfig,
+      };
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {
+          // localStorage full or unavailable
+        }
+      }
+      return updated;
+    });
 
     setGeofenceMode("view");
     setPolygonVertices([]);
-    setToastMessage(`Geofence sealed for ${selectedFacility.code}`);
+    setToastMessage(`Geofence sealed & saved for ${selectedFacility.code}`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleResetGeofence = () => {
+    if (!selectedFacility || !isAuthority) return;
+
+    setGeofences((prev) => {
+      const next = { ...prev };
+      delete next[selectedFacility.id];
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // localStorage unavailable
+        }
+      }
+      return next;
+    });
+
+    setGeofenceMode("view");
+    setPolygonVertices([]);
+    setToastMessage(`Geofence reset to default for ${selectedFacility.code}`);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -1096,6 +1144,25 @@ export default function RealLeafletMap({
                       >
                         Draw Polygon
                       </button>
+                      {geofences[selectedFacility.id] && (
+                        <button
+                          type="button"
+                          onClick={handleResetGeofence}
+                          title="Reset geofence"
+                          style={{
+                            padding: "0.3rem 0.45rem",
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            background: "transparent",
+                            border: "1px solid var(--color-border-subtle)",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            color: "var(--text-muted)",
+                          }}
+                        >
+                          ↺
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: 600 }}>
