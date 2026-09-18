@@ -16,6 +16,7 @@ import {
   IconShieldCheck,
 } from "../components/icons";
 import { getDistrictName, getOrganisationName } from "../../lib/presentation";
+import { ProjectsMapView } from "./projects-map-view";
 
 interface ProjectsViewProps {
   initialProjects: Project[];
@@ -199,7 +200,7 @@ export function ProjectsView({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [viewMode, setViewMode] = useState<"table" | "cards" | "map">("table");
   const [jumpPage, setJumpPage] = useState("");
 
   useEffect(() => {
@@ -382,6 +383,15 @@ export function ProjectsView({
             >
               <IconGrid style={{ width: 14, height: 14 }} />
               <span>Cards</span>
+            </button>
+            <button
+              type="button"
+              className={`view-btn ${viewMode === "map" ? "active" : ""}`}
+              onClick={() => setViewMode("map")}
+              title="Geographic Map View"
+            >
+              <IconMapPin style={{ width: 14, height: 14 }} />
+              <span>Map View</span>
             </button>
           </div>
         </div>
@@ -599,6 +609,9 @@ export function ProjectsView({
           )}
         </div>
       )}
+
+      {/* View Mode C: GIS Geographic Map View */}
+      {viewMode === "map" && <ProjectsMapView projects={filteredProjects} />}
     </div>
   );
 }
