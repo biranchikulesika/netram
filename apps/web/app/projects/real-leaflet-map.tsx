@@ -10,7 +10,6 @@ import {
   IconMapPin,
   IconShieldCheck,
   IconChevronRight,
-  IconSearch,
   IconCheck,
   IconLock,
   IconBuilding,
@@ -99,9 +98,6 @@ export default function RealLeafletMap({
 
   // Core Cartographic Controls
   const [mapType, setMapType] = useState<"streets" | "satellite">("streets");
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string>("ALL");
-  const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     projects[0]?.id ?? null,
   );
@@ -165,34 +161,16 @@ export default function RealLeafletMap({
     });
   }, [projects]);
 
-  // Filtered facilities based on search, district, and status
-  const visibleFacilities = useMemo(() => {
-    return facilities.filter((f) => {
-      if (selectedDistrictId !== "ALL" && f.districtId !== selectedDistrictId) {
-        return false;
-      }
-      if (selectedStatus !== "ALL" && f.status !== selectedStatus) {
-        return false;
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (
-          f.name.toLowerCase().includes(q) ||
-          f.code.toLowerCase().includes(q) ||
-          (f.description ?? "").toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [facilities, selectedDistrictId, selectedStatus, searchQuery]);
+  // Facilities mapped from projects prop (already filtered by top toolbar)
+  const visibleFacilities = facilities;
 
   const selectedFacility = useMemo(() => {
     return (
       facilities.find((f) => f.id === selectedProjectId) ??
-      visibleFacilities[0] ??
+      facilities[0] ??
       null
     );
-  }, [facilities, selectedProjectId, visibleFacilities]);
+  }, [facilities, selectedProjectId]);
 
   const currentGeofence: GeofenceConfig = useMemo(() => {
     if (!selectedFacility) {
@@ -219,9 +197,6 @@ export default function RealLeafletMap({
   const resetToOdisha = useCallback(() => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([20.35, 85.82], 8, { duration: 1 });
-      setSelectedDistrictId("ALL");
-      setSelectedStatus("ALL");
-      setSearchQuery("");
     }
   }, []);
 
@@ -495,127 +470,7 @@ export default function RealLeafletMap({
       {/* 1. The Real Leaflet Map DOM Canvas */}
       <div ref={mapContainerRef} style={{ width: "100%", height: "100%", zIndex: 1 }} />
 
-      {/* 2. Top-Left Floating Exploration Bar */}
-      <div
-        style={{
-          position: "absolute",
-          top: "1rem",
-          left: "1rem",
-          zIndex: 1000,
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.45rem",
-          maxWidth: "460px",
-        }}
-      >
-        {/* Unified Search & District Selector */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            background: "rgba(255, 255, 255, 0.96)",
-            backdropFilter: "blur(10px)",
-            padding: "0.35rem 0.6rem",
-            borderRadius: "8px",
-            border: "1px solid rgba(0,0,0,0.12)",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
-            gap: "0.5rem",
-          }}
-        >
-          <IconSearch width={16} height={16} style={{ color: "var(--text-muted)" }} />
-          <input
-            type="text"
-            placeholder="Search facility name, code…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              fontSize: "0.82rem",
-              width: "170px",
-              padding: "0.2rem",
-              color: "var(--text-primary)",
-            }}
-          />
-
-          <div style={{ width: "1px", height: "18px", background: "var(--color-border-subtle)" }} />
-
-          {/* District Dropdown */}
-          <select
-            value={selectedDistrictId}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSelectedDistrictId(val);
-              if (val !== "ALL" && DISTRICT_COORDINATES[val] && mapInstanceRef.current) {
-                const d = DISTRICT_COORDINATES[val]!;
-                mapInstanceRef.current.flyTo([d.lat, d.lng], 12, { duration: 1 });
-              }
-            }}
-            style={{
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              fontSize: "0.78rem",
-              fontWeight: 600,
-              color: "var(--text-primary)",
-              cursor: "pointer",
-              padding: "0.2rem 0.4rem",
-            }}
-          >
-            <option value="ALL">All Odisha ({facilities.length})</option>
-            {Object.entries(DISTRICT_COORDINATES).map(([id, dist]) => (
-              <option key={id} value={id}>
-                {dist.name} ({facilities.filter((f) => f.districtId === id).length})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Quick Status Filter Chips */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.25rem",
-            background: "rgba(255, 255, 255, 0.92)",
-            backdropFilter: "blur(8px)",
-            padding: "0.25rem 0.45rem",
-            borderRadius: "6px",
-            border: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-            width: "fit-content",
-          }}
-        >
-          {["ALL", "Active", "Pending Verification", "Draft"].map((st) => {
-            const isSelected = selectedStatus === st;
-            const label = st === "ALL" ? "All" : st === "Pending Verification" ? "Pending" : st;
-            const count = st === "ALL" ? facilities.length : facilities.filter((f) => f.status === st).length;
-            return (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setSelectedStatus(st)}
-                style={{
-                  border: "none",
-                  background: isSelected ? "var(--color-navy-dark)" : "transparent",
-                  color: isSelected ? "#ffffff" : "var(--text-muted)",
-                  padding: "0.2rem 0.5rem",
-                  borderRadius: "4px",
-                  fontSize: "0.72rem",
-                  fontWeight: isSelected ? 700 : 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                {label} ({count})
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 3. Top-Right Floating Tool Controls (Adjusts right position when drawer is open) */}
+      {/* 2. Top-Right Floating Tool Controls (Adjusts right position when drawer is open) */}
       <div
         style={{
           position: "absolute",
