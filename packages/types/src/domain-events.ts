@@ -5,6 +5,7 @@ export const DOMAIN_EVENT_TYPES = [
   "project.status_transitioned",
   "project.approved",
   "project.suspended",
+  "project.geofence_sealed",
   "inspection.assigned",
   "inspection.created",
   "inspection.started",

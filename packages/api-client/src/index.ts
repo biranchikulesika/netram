@@ -40,6 +40,8 @@ import type {
   Observation,
   OutboxRecord,
   Project,
+  ProjectGeofence,
+  SealGeofenceCommand,
   ProjectListQuery,
   ProjectStatus,
   Report,
@@ -180,6 +182,18 @@ export class NetramApiClient extends HttpClient {
 
   async transitionProject(id: string, to: ProjectStatus, note?: string): Promise<Project> {
     return this.post(`/api/v1/projects/${id}/transitions`, { to, note });
+  }
+
+  async getProjectGeofence(id: string): Promise<ProjectGeofence | null> {
+    return this.get(`/api/v1/projects/${id}/geofence`);
+  }
+
+  async listProjectGeofences(): Promise<ProjectGeofence[]> {
+    return this.get("/api/v1/projects/geofences");
+  }
+
+  async sealProjectGeofence(id: string, input: SealGeofenceCommand): Promise<ProjectGeofence> {
+    return this.post(`/api/v1/projects/${id}/geofence`, input);
   }
 
   // inspections

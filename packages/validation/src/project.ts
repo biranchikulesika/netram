@@ -2,6 +2,33 @@ import { z } from "zod";
 import { PROJECT_STATUSES, PROJECT_TYPES, PROJECT_TRANSITIONS } from "@netram/types";
 import { paginationSchema, uuidSchema } from "./common.js";
 
+export const geofenceTypeSchema = z.enum(["circle", "polygon"]);
+
+export const projectGeofenceSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  type: geofenceTypeSchema,
+  radiusMeters: z.number().int().nonnegative(),
+  centerLat: z.number().nullable(),
+  centerLng: z.number().nullable(),
+  polygonVertices: z.array(z.tuple([z.number(), z.number()])),
+  sealedById: z.string().uuid().nullable(),
+  sealedAt: z.string().datetime(),
+  auditTx: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const sealGeofenceSchema = z
+  .object({
+    type: geofenceTypeSchema,
+    radiusMeters: z.number().int().min(10).max(50000).optional(),
+    centerLat: z.number().min(-90).max(90).optional(),
+    centerLng: z.number().min(-180).max(180).optional(),
+    polygonVertices: z.array(z.tuple([z.number(), z.number()])).optional(),
+  })
+  .strict();
+
 export const projectSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
@@ -15,6 +42,7 @@ export const projectSchema = z.object({
   approvedById: z.string().uuid().nullable(),
   approvedAt: z.string().datetime().nullable(),
   programmeIds: z.array(z.string().uuid()),
+  geofence: projectGeofenceSchema.nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

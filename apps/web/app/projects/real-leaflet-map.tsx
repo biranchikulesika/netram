@@ -147,6 +147,49 @@ export default function RealLeafletMap({
     return defaultGeofences;
   });
 
+  // Fetch authoritative geofences from Netram backend on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function loadServerGeofences() {
+      try {
+        const res = await fetch("/api/projects/geofences");
+        if (!res.ok) return;
+        const list = await res.json();
+        if (Array.isArray(list) && !cancelled) {
+          setGeofences((prev) => {
+            const merged = { ...prev };
+            for (const g of list) {
+              if (g && g.projectId) {
+                merged[g.projectId] = {
+                  type: g.type,
+                  radiusMeters: g.radiusMeters,
+                  polygonPoints: Array.isArray(g.polygonVertices) ? g.polygonVertices : [],
+                  sealedAt: g.sealedAt,
+                  sealedBy: "DSWO",
+                  auditTx: g.auditTx ?? undefined,
+                };
+              }
+            }
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+              } catch {
+                // Ignore
+              }
+            }
+            return merged;
+          });
+        }
+      } catch {
+        // Fallback to local storage silently if network unavailable
+      }
+    }
+    void loadServerGeofences();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Calculate project coordinates with deterministic spread for co-located institutions
   const facilities = useMemo(() => {
     return projects.map((p, index) => {
@@ -503,7 +546,7 @@ export default function RealLeafletMap({
   }, [selectedFacility, geofenceMode, circleRadius, polygonVertices, currentGeofence]);
 
   // Seal Geofence
-  const handleSealGeofence = () => {
+  const handleSealGeofence = async () => {
     if (!selectedFacility) return;
 
     if (!isAuthority) {
@@ -516,8 +559,38 @@ export default function RealLeafletMap({
       return;
     }
 
+    const payload = {
+      type: geofenceMode === "polygon" ? "polygon" : "circle",
+      radiusMeters: geofenceMode === "polygon" ? 0 : circleRadius,
+      centerLat: selectedFacility.lat,
+      centerLng: selectedFacility.lng,
+      polygonVertices: geofenceMode === "polygon" ? polygonVertices : [],
+    };
+
+    let serverGeofence: GeofenceConfig | null = null;
+    try {
+      const res = await fetch(`/api/projects/${selectedFacility.id}/geofence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        serverGeofence = {
+          type: data.type,
+          radiusMeters: data.radiusMeters,
+          polygonPoints: Array.isArray(data.polygonVertices) ? data.polygonVertices : [],
+          sealedAt: data.sealedAt,
+          sealedBy: "DSWO",
+          auditTx: data.auditTx ?? undefined,
+        };
+      }
+    } catch {
+      // Offline fallback
+    }
+
     const txHash = `0x${Math.random().toString(16).substring(2, 8)}...${Math.random().toString(16).substring(2, 6)}`;
-    const newConfig: GeofenceConfig =
+    const newConfig: GeofenceConfig = serverGeofence ?? (
       geofenceMode === "polygon"
         ? {
             type: "polygon",
@@ -534,7 +607,8 @@ export default function RealLeafletMap({
             sealedAt: new Date().toISOString(),
             sealedBy: "DSWO",
             auditTx: txHash,
-          };
+          }
+    );
 
     setGeofences((prev) => {
       const updated = {
@@ -553,7 +627,11 @@ export default function RealLeafletMap({
 
     setGeofenceMode("view");
     setPolygonVertices([]);
-    setToastMessage(`Geofence sealed & saved for ${selectedFacility.code}`);
+    setToastMessage(
+      serverGeofence
+        ? `Geofence sealed & synced to server for ${selectedFacility.code}`
+        : `Geofence sealed locally for ${selectedFacility.code}`
+    );
     setTimeout(() => setToastMessage(null), 3000);
   };
 

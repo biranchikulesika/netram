@@ -10,6 +10,7 @@ import {
   boolean,
   integer,
   real,
+  doublePrecision,
   unique,
 } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
@@ -169,6 +170,24 @@ export const projects = pgTable("projects", {
   approvedById: uuid("approved_by_id").references(() => users.id),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   programmeIds: json("programme_ids").$type<string[]>().default([]).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const projectGeofences = pgTable("project_geofences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .unique()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 30 }).notNull().default("circle"),
+  radiusMeters: integer("radius_meters").notNull().default(250),
+  centerLat: doublePrecision("center_lat"),
+  centerLng: doublePrecision("center_lng"),
+  polygonVertices: json("polygon_vertices").$type<[number, number][]>().default([]).notNull(),
+  sealedById: uuid("sealed_by_id").references(() => users.id),
+  sealedAt: timestamp("sealed_at", { withTimezone: true }).defaultNow().notNull(),
+  auditTx: varchar("audit_tx", { length: 128 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

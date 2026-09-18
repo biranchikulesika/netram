@@ -1,4 +1,11 @@
-import type { DomainEventType, Page, Project, ProjectStatus } from "@netram/types";
+import type {
+  DomainEventType,
+  Page,
+  Project,
+  ProjectGeofence,
+  GeofenceType,
+  ProjectStatus,
+} from "@netram/types";
 import type { AuditAction } from "@netram/types";
 
 export interface CreateProjectCommand {
@@ -35,6 +42,25 @@ export interface TransitionProjectCommand {
   eventPayload: Record<string, unknown>;
 }
 
+export interface SealGeofencePortCommand {
+  projectId: string;
+  type: GeofenceType;
+  radiusMeters: number;
+  centerLat: number | null;
+  centerLng: number | null;
+  polygonVertices: [number, number][];
+  sealedById: string | null;
+  sealedAt: Date;
+  auditTx: string | null;
+  actorUserId: string | null;
+  requestId: string | null;
+  ipAddress: string | null;
+  auditAction: AuditAction;
+  auditMetadata: Record<string, unknown>;
+  eventType: DomainEventType;
+  eventPayload: Record<string, unknown>;
+}
+
 export interface ProjectListFilter {
   status?: ProjectStatus;
   organisationId?: string;
@@ -49,4 +75,8 @@ export interface ProjectRepositoryPort {
   list(filter: ProjectListFilter): Promise<Page<Project>>;
   createWithAuditAndEvent(cmd: CreateProjectCommand): Promise<Project>;
   transitionProjectWithAuditAndEvent(cmd: TransitionProjectCommand): Promise<Project>;
+  findGeofenceByProjectId(projectId: string): Promise<ProjectGeofence | null>;
+  listGeofences(projectIds?: string[]): Promise<ProjectGeofence[]>;
+  sealGeofenceWithAuditAndEvent(cmd: SealGeofencePortCommand): Promise<ProjectGeofence>;
 }
+

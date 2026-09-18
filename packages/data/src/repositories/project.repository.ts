@@ -1,7 +1,19 @@
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
-import { projects as projectsTable, auditEvents, outboxEvents } from "../db/schema.js";
+import {
+  projects as projectsTable,
+  projectGeofences as projectGeofencesTable,
+  auditEvents,
+  outboxEvents,
+} from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
-import type { Page, Project, ProjectStatus, ProjectType } from "@netram/types";
+import type {
+  Page,
+  Project,
+  ProjectGeofence,
+  GeofenceType,
+  ProjectStatus,
+  ProjectType,
+} from "@netram/types";
 import type { AuditAction } from "@netram/types";
 import type { DomainEventType } from "@netram/types";
 
@@ -225,4 +237,135 @@ export class ProjectRepository {
     });
     return transitioned;
   }
+
+  async findGeofenceByProjectId(projectId: string): Promise<ProjectGeofence | null> {
+    const rows = await this.db
+      .select()
+      .from(projectGeofencesTable)
+      .where(eq(projectGeofencesTable.projectId, projectId))
+      .limit(1);
+    if (!rows[0]) return null;
+    return toProjectGeofence(rows[0] as unknown as ProjectGeofenceRow);
+  }
+
+  async listGeofences(projectIds?: string[]): Promise<ProjectGeofence[]> {
+    if (projectIds && projectIds.length === 0) return [];
+    const query = projectIds
+      ? this.db.select().from(projectGeofencesTable).where(inArray(projectGeofencesTable.projectId, projectIds))
+      : this.db.select().from(projectGeofencesTable);
+    const rows = await query;
+    return rows.map((r) => toProjectGeofence(r as unknown as ProjectGeofenceRow));
+  }
+
+  async sealGeofenceWithAuditAndEvent(write: SealGeofenceWrite): Promise<ProjectGeofence> {
+    const sealed: ProjectGeofence = await this.db.transaction(async (tx) => {
+      const now = new Date();
+      const rows = await tx
+        .insert(projectGeofencesTable)
+        .values({
+          projectId: write.projectId,
+          type: write.type,
+          radiusMeters: write.radiusMeters,
+          centerLat: write.centerLat,
+          centerLng: write.centerLng,
+          polygonVertices: write.polygonVertices,
+          sealedById: write.sealedById,
+          sealedAt: write.sealedAt,
+          auditTx: write.auditTx,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: projectGeofencesTable.projectId,
+          set: {
+            type: write.type,
+            radiusMeters: write.radiusMeters,
+            centerLat: write.centerLat,
+            centerLng: write.centerLng,
+            polygonVertices: write.polygonVertices,
+            sealedById: write.sealedById,
+            sealedAt: write.sealedAt,
+            auditTx: write.auditTx,
+            updatedAt: now,
+          },
+        })
+        .returning();
+
+      const geofence = toProjectGeofence(rows[0] as unknown as ProjectGeofenceRow);
+
+      await tx.insert(auditEvents).values({
+        action: write.auditAction,
+        actorUserId: write.actorUserId,
+        resourceType: "project_geofence",
+        resourceId: geofence.id,
+        requestId: write.requestId,
+        ipAddress: write.ipAddress,
+        metadata: { ...write.auditMetadata, geofenceId: geofence.id },
+      });
+
+      await tx.insert(outboxEvents).values({
+        type: write.eventType,
+        correlationId: write.projectId,
+        actorUserId: write.actorUserId,
+        resourceType: "project_geofence",
+        resourceId: geofence.id,
+        payload: { ...write.eventPayload, geofenceId: geofence.id },
+      });
+
+      return geofence;
+    });
+
+    return sealed;
+  }
 }
+
+export interface ProjectGeofenceRow {
+  id: string;
+  projectId: string;
+  type: GeofenceType;
+  radiusMeters: number;
+  centerLat: number | null;
+  centerLng: number | null;
+  polygonVertices: [number, number][];
+  sealedById: string | null;
+  sealedAt: Date;
+  auditTx: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export function toProjectGeofence(row: ProjectGeofenceRow): ProjectGeofence {
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    type: row.type,
+    radiusMeters: row.radiusMeters,
+    centerLat: row.centerLat,
+    centerLng: row.centerLng,
+    polygonVertices: row.polygonVertices ?? [],
+    sealedById: row.sealedById,
+    sealedAt: row.sealedAt instanceof Date ? row.sealedAt.toISOString() : String(row.sealedAt),
+    auditTx: row.auditTx,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
+  };
+}
+
+export interface SealGeofenceWrite {
+  projectId: string;
+  type: GeofenceType;
+  radiusMeters: number;
+  centerLat: number | null;
+  centerLng: number | null;
+  polygonVertices: [number, number][];
+  sealedById: string | null;
+  sealedAt: Date;
+  auditTx: string | null;
+  actorUserId: string | null;
+  requestId: string | null;
+  ipAddress: string | null;
+  auditAction: AuditAction;
+  auditMetadata: Record<string, unknown>;
+  eventType: DomainEventType;
+  eventPayload: Record<string, unknown>;
+}
+
