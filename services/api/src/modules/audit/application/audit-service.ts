@@ -1,7 +1,7 @@
 import type { AuthorizationService } from "../../authorization/application/authorization-service.js";
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { AuditEvent, AuditListQuery } from "@netram/types";
-import type { AuditAppendCommand, AuditRepositoryPort } from "./ports/audit-repository.js";
+import type { AuditRepositoryPort } from "./ports/audit-repository.js";
 
 const READ = "audit:read" as const;
 
@@ -10,10 +10,6 @@ export class AuditService {
     private readonly authz: AuthorizationService,
     private readonly repository: AuditRepositoryPort,
   ) {}
-
-  async recordEvent(entry: AuditAppendCommand): Promise<void> {
-    await this.repository.append(entry);
-  }
 
   async listAuditEvents(
     ctx: RequestUserContext,
@@ -36,4 +32,3 @@ export class AuditService {
     return { items: page.items, total: page.total, page: pageNum, pageSize };
   }
 }
-

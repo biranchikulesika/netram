@@ -8,7 +8,6 @@ import {
   outboxEvents,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
-import { RepositoryNotFoundError } from "./errors.js";
 import type { CorrectiveAction, CorrectiveActionStatus } from "@netram/types";
 import type { FindingWriteContext } from "./finding.repository.js";
 
@@ -196,7 +195,7 @@ export class CorrectiveActionRepository {
     cmd: TransitionCorrectiveActionWrite,
   ): Promise<CorrectiveActionWithDistrict> {
     const current = await this.findById(cmd.correctiveActionId);
-    if (!current) throw new RepositoryNotFoundError("CorrectiveAction");
+    if (!current) throw new Error("corrective action missing");
 
     const transitioned: CorrectiveAction = await this.db.transaction(async (tx) => {
       const submittedAt =

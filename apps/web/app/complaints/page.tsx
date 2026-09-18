@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClient, getSessionUser } from "../../lib/api";
-import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
+import { ComplaintsLayout } from "./complaints-layout";
 
 export const dynamic = "force-dynamic";
 
@@ -70,60 +70,41 @@ export default async function ComplaintsPage() {
   }
 
   const client = await getClient();
-  const page = await client
-    .listComplaints({ pageSize: 50 })
-    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
+  const [page, projectsPage] = await Promise.all([
+    client
+      .listComplaints({ pageSize: 50 })
+      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
+    client
+      .listProjects({ pageSize: 100 })
+      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 100 })),
+  ]);
+
+  const canCreate = permissions.includes("complaint:create") || permissions.includes("*");
+  const canResolve = permissions.includes("complaint:resolve") || permissions.includes("*");
+
+  const projectOptions = projectsPage.items.map((p) => ({
+    id: p.id,
+    code: p.code,
+    name: p.name,
+  }));
 
   return (
     <main>
       <NavHeader
         userEmail={session.user.email}
-        permissionsCount={session.permissions.length}
+        permissionsCount={permissions.length}
         permissions={permissions}
         activeSection="complaints"
       />
 
-      <div className="section-header">
-        <div>
-          <h2>Complaints</h2>
-          <p className="muted">Public and internal grievances regarding monitored facilities</p>
-        </div>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Tracking Code</th>
-            <th>Project Code</th>
-            <th>Status</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {page.items.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="muted" style={{ textAlign: "center", padding: "2rem" }}>
-                No complaints recorded.
-              </td>
-            </tr>
-          ) : (
-            page.items.map((c) => (
-              <tr key={c.id}>
-                <td className="muted">{c.trackingCode}</td>
-                <td className="muted">{c.projectCode}</td>
-                <td>
-                  <span className={`status status-${c.status}`}>{c.status}</span>
-                </td>
-                <td className="muted">{formatDate(c.createdAt)}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-
-      <p className="muted" style={{ marginTop: "1rem" }}>
-        Total: {page.total}
-      </p>
+      <ComplaintsLayout
+        initialComplaints={page.items}
+        totalComplaints={page.total}
+        projects={projectOptions}
+        canCreate={canCreate}
+        canResolve={canResolve}
+      />
     </main>
   );
 }
+

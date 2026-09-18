@@ -3,12 +3,7 @@ import { Worker, type Job } from "bullmq";
 import { Redis } from "ioredis";
 import { getDb, ReportRepository } from "@netram/data";
 import { loadWorkerEnv } from "@netram/config";
-import {
-  buildReportArtifact,
-  buildReportCsv,
-  buildReportText,
-} from "../modules/reports/application/report-builder.js";
-import { MinioObjectStorage, type ObjectStoragePort } from "../infrastructure/object-storage.js";
+import { buildReportArtifact } from "../modules/reports/application/report-builder.js";
 
 const QUEUE_NAME = "netram-reports";
 
@@ -20,14 +15,6 @@ export interface ReportWorkerOptions {
   redisUrl: string;
   databaseUrl: string;
   concurrency?: number;
-  objectStorage?: ObjectStoragePort;
-  storageConfig?: {
-    endpoint: string;
-    accessKey: string;
-    secretKey: string;
-    bucket: string;
-    useSSL: boolean;
-  };
 }
 
 /**
@@ -41,15 +28,6 @@ export async function startReportWorker(
   const db = getDb(opts.databaseUrl);
   const repo = new ReportRepository(db);
   const connection = new Redis(opts.redisUrl, { maxRetriesPerRequest: null });
-
-  let storage: ObjectStoragePort | null = opts.objectStorage ?? null;
-  if (!storage && opts.storageConfig) {
-    try {
-      storage = new MinioObjectStorage(opts.storageConfig);
-    } catch (err) {
-      console.warn("[report-worker] could not initialize MinioObjectStorage:", err);
-    }
-  }
 
   const worker = new Worker<ReportJobData>(
     QUEUE_NAME,
@@ -66,31 +44,6 @@ export async function startReportWorker(
         await repo.markGenerating(reportId);
         const snapshot = await repo.loadSnapshot(report.inspectionId);
         const artifact = buildReportArtifact(snapshot);
-
-        let storageRef: string | null = null;
-        if (storage) {
-          try {
-            if (report.format === "csv") {
-              const csv = buildReportCsv(snapshot);
-              const key = `reports/${reportId}.csv`;
-              await storage.put(key, Buffer.from(csv, "utf-8"), "text/csv");
-              storageRef = key;
-            } else if (report.format === "pdf") {
-              const text = buildReportText(snapshot);
-              const key = `reports/${reportId}.txt`;
-              await storage.put(key, Buffer.from(text, "utf-8"), "text/plain");
-              storageRef = key;
-            } else {
-              const jsonBuffer = Buffer.from(JSON.stringify(artifact, null, 2), "utf-8");
-              const key = `reports/${reportId}.json`;
-              await storage.put(key, jsonBuffer, "application/json");
-              storageRef = key;
-            }
-          } catch (storageErr) {
-            console.warn(`[report-worker] storage upload failed for report ${reportId}:`, storageErr);
-          }
-        }
-
         const updated = await repo.generateWithArtifact({
           reportId,
           generatedBy: null,
@@ -98,13 +51,12 @@ export async function startReportWorker(
           requestId: null,
           ipAddress: null,
           artifact,
-          storageRef,
           eventType: "report.generated",
         });
         job.log(
-          `report ${reportId} generated (${snapshot.findings.length} findings, format=${report.format}, storageRef=${storageRef})`,
+          `report ${reportId} generated (${snapshot.findings.length} findings, ${snapshot.evidence.length} evidence)`,
         );
-        return { generated: true, status: updated.status, storageRef };
+        return { generated: true, status: updated.status };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         await repo.markFailed({
@@ -141,13 +93,6 @@ export async function main(): Promise<void> {
   const instance = await startReportWorker({
     redisUrl: env.REDIS_URL,
     databaseUrl: env.DATABASE_URL,
-    storageConfig: {
-      endpoint: env.NETRAM_OBJECT_STORAGE_ENDPOINT,
-      accessKey: env.NETRAM_OBJECT_STORAGE_ACCESS_KEY,
-      secretKey: env.NETRAM_OBJECT_STORAGE_SECRET_KEY,
-      bucket: env.NETRAM_OBJECT_STORAGE_BUCKET,
-      useSSL: env.NETRAM_OBJECT_STORAGE_USE_SSL,
-    },
   });
   const shutdown = async () => {
     await instance.close();
