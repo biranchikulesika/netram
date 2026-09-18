@@ -8,6 +8,7 @@ import {
   outboxEvents,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
+import { RepositoryInsertError, RepositoryNotFoundError } from "./errors.js";
 import type {
   VcSession,
   VcParticipant,
@@ -184,7 +185,7 @@ export class VcSessionRepository {
         .returning();
 
       if (!sessionRow) {
-        throw new Error("Failed to insert VC session record");
+        throw new RepositoryInsertError("Failed to insert VC session record");
       }
 
       // Add host as a participant automatically
@@ -269,7 +270,7 @@ export class VcSessionRepository {
         .returning();
 
       if (!updated) {
-        throw new Error(`VC session ${id} not found`);
+        throw new RepositoryNotFoundError("VcSession", id);
       }
 
       const participantRows = await tx

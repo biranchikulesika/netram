@@ -6,6 +6,7 @@ import {
   outboxEvents,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
+import { RepositoryInsertError } from "./errors.js";
 import type {
   CctvCamera,
   CctvStreamSession,
@@ -136,7 +137,7 @@ export class CctvRepository {
         .returning();
 
       if (!streamRow) {
-        throw new Error("Failed to create CCTV stream session record");
+        throw new RepositoryInsertError("Failed to create CCTV stream session record");
       }
 
       await tx.insert(auditEvents).values({

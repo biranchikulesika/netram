@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClient, getSessionUser } from "../../lib/api";
+import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
-import { ReportsView } from "./reports-view";
 
 export const dynamic = "force-dynamic";
 
@@ -69,16 +69,10 @@ export default async function ReportsPage() {
     );
   }
 
-  const canGenerate = permissions.includes("report:generate") || permissions.includes("*");
-  const canFinalize = permissions.includes("report:finalize") || permissions.includes("*");
-
   const client = await getClient();
-  const [page, inspectionsPage] = await Promise.all([
-    client.listReports({ pageSize: 50 }).catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
-    canGenerate
-      ? client.listInspections({ pageSize: 50 }).catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }))
-      : Promise.resolve({ items: [], total: 0, page: 1, pageSize: 0 }),
-  ]);
+  const page = await client
+    .listReports({ pageSize: 50 })
+    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
 
   return (
     <main>
@@ -89,19 +83,56 @@ export default async function ReportsPage() {
         activeSection="reports"
       />
 
-      <ReportsView
-        initialReports={page.items}
-        total={page.total}
-        canGenerate={canGenerate}
-        canFinalize={canFinalize}
-        availableInspections={inspectionsPage.items.map((i) => ({
-          id: i.id,
-          projectCode: i.projectCode,
-          projectName: i.projectName,
-          type: i.type,
-          status: i.status,
-        }))}
-      />
+      <div className="section-header">
+        <div>
+          <h2>Reports</h2>
+          <p className="muted">Inspection reports — generated, draft, and finalized</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Inspection Report</th>
+            <th>Format</th>
+            <th>Status</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {page.items.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="muted" style={{ textAlign: "center", padding: "2rem" }}>
+                No reports generated yet.
+              </td>
+            </tr>
+          ) : (
+            page.items.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  <Link
+                    href={`/inspections/${r.inspectionId}`}
+                    style={{ fontWeight: 600, color: "var(--color-navy-brand)", textDecoration: "none" }}
+                  >
+                    Official Inspection Report
+                  </Link>
+                </td>
+                <td>
+                  <span className="badge badge-routine">{r.format.toUpperCase()}</span>
+                </td>
+                <td>
+                  <span className={`status status-${r.status}`}>{r.status}</span>
+                </td>
+                <td className="muted">{formatDate(r.createdAt)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+
+      <p className="muted" style={{ marginTop: "1rem" }}>
+        Total: {page.total}
+      </p>
     </main>
   );
 }

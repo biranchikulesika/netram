@@ -12,6 +12,7 @@ export const reportSchema = z.object({
   projectCode: z.string().max(50).nullable(),
   projectName: z.string().max(300).nullable(),
   districtId: z.string().uuid().nullable(),
+  storageRef: z.string().nullable().optional(),
   requestedBy: z.string().uuid().nullable(),
   requestedAt: z.string().datetime(),
   generatedBy: z.string().uuid().nullable(),

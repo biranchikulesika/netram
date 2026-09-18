@@ -126,7 +126,13 @@ export async function reset(databaseUrl?: string) {
   }
 }
 
-const action = process.argv.find((a, i) => process.argv[i - 1] === "action");
+const action =
+  process.argv.find((a, i) => process.argv[i - 1] === "action") ??
+  (process.argv.includes("migrate")
+    ? "migrate"
+    : process.argv.includes("reset")
+      ? "reset"
+      : undefined);
 
 if (action === "migrate") {
   migrate()
