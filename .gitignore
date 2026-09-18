@@ -57,8 +57,6 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
-*.egg-info/
-*.egg
 
 # ================= Mobile (Expo / React Native) =================
 apps/inspector-mobile/.expo/

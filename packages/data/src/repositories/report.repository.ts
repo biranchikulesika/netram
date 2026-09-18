@@ -11,7 +11,6 @@ import {
   outboxEvents,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
-import { RepositoryNotFoundError } from "./errors.js";
 import type { Report, ReportFormat, ReportStatus, DomainEventType } from "@netram/types";
 
 export interface ReportRow {
@@ -19,7 +18,6 @@ export interface ReportRow {
   inspectionId: string;
   format: ReportFormat;
   status: ReportStatus;
-  storageRef: string | null;
   requestedBy: string | null;
   requestedAt: Date;
   artifact?: Record<string, unknown> | null;
@@ -43,7 +41,6 @@ export function toReport(row: ReportRow): Report {
     inspectionId: row.inspectionId,
     format: row.format,
     status: row.status,
-    storageRef: row.storageRef ?? null,
     inspectionType: row.inspectionType,
     inspectionStatus: row.inspectionStatus,
     projectCode: row.projectCode,
@@ -78,7 +75,6 @@ export interface GenerateReportWrite extends ReportWriteContext {
   reportId: string;
   generatedBy: string | null;
   artifact: Record<string, unknown>;
-  storageRef?: string | null;
   eventType: DomainEventType;
 }
 
@@ -262,7 +258,6 @@ export class ReportRepository {
         .set({
           status: "ready",
           artifact: cmd.artifact,
-          storageRef: cmd.storageRef ?? null,
           generatedBy: cmd.generatedBy ?? null,
           generatedAt: new Date(),
           error: null,
@@ -375,7 +370,7 @@ export class ReportRepository {
       ]);
 
     const inspection = inspectionRows[0];
-    if (!inspection) throw new RepositoryNotFoundError("Inspection", inspectionId);
+    if (!inspection) throw new Error(`Inspection not found: ${inspectionId}`);
 
     return {
       inspectionId,

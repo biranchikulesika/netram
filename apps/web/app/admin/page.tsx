@@ -108,7 +108,7 @@ export default async function AdminPage() {
 
   // Fetch users and roles with permission checks and defensive fallback
   const client = await getClient();
-  const [usersPage, roles] = await Promise.all([
+  const [usersPage, roles, jurisdictions] = await Promise.all([
     hasUserManage
       ? client.listUsers({ pageSize: 100 }).catch((err) => {
           console.error("Failed to load users for admin:", err);
@@ -121,11 +121,18 @@ export default async function AdminPage() {
           return [];
         })
       : Promise.resolve([]),
+    isAuthorized
+      ? client.listJurisdictions().catch((err) => {
+          console.error("Failed to load jurisdictions for admin:", err);
+          return [];
+        })
+      : Promise.resolve([]),
   ]);
 
   const safeUsers = Array.isArray(usersPage?.items) ? usersPage.items : [];
   const totalUsers = typeof usersPage?.total === "number" ? usersPage.total : safeUsers.length;
   const safeRoles = Array.isArray(roles) ? roles : [];
+  const safeJurisdictions = Array.isArray(jurisdictions) ? jurisdictions : [];
 
   return (
     <main>
@@ -140,6 +147,7 @@ export default async function AdminPage() {
         users={safeUsers}
         totalUsers={totalUsers}
         roles={safeRoles}
+        jurisdictions={safeJurisdictions}
         currentEmail={session.user.email}
         hasUserManage={hasUserManage}
         hasRoleManage={hasRoleManage}

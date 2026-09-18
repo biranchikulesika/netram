@@ -81,8 +81,7 @@ export class OutboxRepository {
       .from(outboxEvents)
       .where(and(...conditions))
       .orderBy(outboxEvents.occurredAt)
-      .limit(limit)
-      .for("update", { skipLocked: true });
+      .limit(limit);
     return rows.map((r) => toOutboxRecord(r as unknown as OutboxRow));
   }
 

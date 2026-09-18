@@ -9,32 +9,26 @@ import { join, resolve } from "node:path";
 const ROOT = resolve(import.meta.dirname, "..");
 const problems = [];
 
-const IGNORE_DIRS = new Set([
-  ".git",
-  "node_modules",
-  ".next",
-  "dist",
-  ".turbo",
-  ".expo",
-  "coverage",
-  ".pnpm",
-  ".venv",
-  "venv",
-  "__pycache__",
-  ".pytest_cache",
-  ".mypy_cache",
-  ".ruff_cache",
-]);
-
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (IGNORE_DIRS.has(entry.name) || entry.name.endsWith(".egg-info")) {
-      continue;
-    }
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
+      if (
+        [
+          ".git",
+          "node_modules",
+          ".next",
+          "dist",
+          ".turbo",
+          ".expo",
+          "coverage",
+          ".pnpm",
+          ".temp",
+        ].includes(entry.name)
+      )
+        continue;
       walk(p, out);
-    } else if (entry.isFile()) {
+    } else {
       out.push(p);
     }
   }

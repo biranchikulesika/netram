@@ -31,13 +31,6 @@ export async function main(): Promise<void> {
     const reportWorker = await startReportWorker({
       redisUrl: env.REDIS_URL,
       databaseUrl: env.DATABASE_URL,
-      storageConfig: {
-        endpoint: env.NETRAM_OBJECT_STORAGE_ENDPOINT,
-        accessKey: env.NETRAM_OBJECT_STORAGE_ACCESS_KEY,
-        secretKey: env.NETRAM_OBJECT_STORAGE_SECRET_KEY,
-        bucket: env.NETRAM_OBJECT_STORAGE_BUCKET,
-        useSSL: env.NETRAM_OBJECT_STORAGE_USE_SSL,
-      },
     });
     closers.push(reportWorker.close);
     console.log("✓ Report Generation Worker online");

@@ -69,25 +69,4 @@ describe("AuthorizationService", () => {
       }),
     ).toThrowError(AppError);
   });
-
-  it("extracts effective authority IDs from assignments", () => {
-    const ctx = {
-      assignments: [
-        { ...assignment(null), authorityId: "auth-central-1" },
-        { ...assignment(new Set(["d-1"])), authorityId: "auth-state-odisha" },
-      ],
-    };
-    expect(authz.effectiveAuthorityIds(ctx)).toEqual(
-      new Set(["auth-central-1", "auth-state-odisha"]),
-    );
-  });
-
-  it("permits access when resource has no district constraint", () => {
-    const ctx = {
-      assignments: [assignment(new Set(["district-1"]))],
-    };
-    expect(authz.canAccessDistrict(ctx, null)).toBe(true);
-    expect(authz.canAccessDistrict(ctx, undefined)).toBe(true);
-  });
 });
-

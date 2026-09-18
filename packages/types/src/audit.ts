@@ -13,7 +13,6 @@ export const AUDIT_ACTIONS = [
   "inspection.assigned",
   "inspection.created",
   "inspection.transitioned",
-  "inspection.overdue",
   "inspection.operation_accepted",
   "inspection.operation_rejected",
   "inspection.operation_conflict",
