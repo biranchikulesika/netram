@@ -7,6 +7,7 @@ export const PUBLIC_PATH_PREFIXES = [
   "/ready",
   "/api/v1/auth/dev-login",
   "/api/v1/info",
+  "/api/v1/complaints/track",
 ];
 
 export function isPublicRoute(req: FastifyRequest): boolean {

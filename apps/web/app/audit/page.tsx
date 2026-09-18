@@ -4,6 +4,10 @@ import { getClient, getSessionUser } from "../../lib/api";
 import { getUserDisplayName, getProjectCode, formatDateTime } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
+<<<<<<< HEAD
+=======
+import { AuditExplorerView } from "./audit-explorer-view";
+>>>>>>> origin/production
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +87,7 @@ export default async function AuditPage() {
         activeSection="audit"
       />
 
+<<<<<<< HEAD
       <div className="section-header">
         <div>
           <h2>Audit Log</h2>
@@ -136,6 +141,10 @@ export default async function AuditPage() {
       <p className="muted" style={{ marginTop: "1rem" }}>
         Total: {page.total}
       </p>
+=======
+      <AuditExplorerView initialEvents={page.items} initialTotal={page.total} />
+>>>>>>> origin/production
     </main>
   );
 }
+

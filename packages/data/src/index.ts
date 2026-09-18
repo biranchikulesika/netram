@@ -20,4 +20,8 @@ export * from "./repositories/inspection-sync.repository.js";
 export * from "./repositories/cctv.repository.js";
 export * from "./repositories/vc-session.repository.js";
 export * from "./repositories/attendance.repository.js";
+<<<<<<< HEAD
 export * from "./repositories/errors.js";
+=======
+export * from "./repositories/analytics.repository.js";
+>>>>>>> origin/production

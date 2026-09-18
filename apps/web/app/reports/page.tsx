@@ -4,6 +4,10 @@ import { getClient, getSessionUser } from "../../lib/api";
 import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
+<<<<<<< HEAD
+=======
+import { ReportsView } from "./reports-view";
+>>>>>>> origin/production
 
 export const dynamic = "force-dynamic";
 
@@ -69,10 +73,23 @@ export default async function ReportsPage() {
     );
   }
 
+<<<<<<< HEAD
   const client = await getClient();
   const page = await client
     .listReports({ pageSize: 50 })
     .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
+=======
+  const canGenerate = permissions.includes("report:generate") || permissions.includes("*");
+  const canFinalize = permissions.includes("report:finalize") || permissions.includes("*");
+
+  const client = await getClient();
+  const [page, inspectionsPage] = await Promise.all([
+    client.listReports({ pageSize: 50 }).catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
+    canGenerate
+      ? client.listInspections({ pageSize: 50 }).catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }))
+      : Promise.resolve({ items: [], total: 0, page: 1, pageSize: 0 }),
+  ]);
+>>>>>>> origin/production
 
   return (
     <main>
@@ -83,6 +100,7 @@ export default async function ReportsPage() {
         activeSection="reports"
       />
 
+<<<<<<< HEAD
       <div className="section-header">
         <div>
           <h2>Reports</h2>
@@ -133,6 +151,21 @@ export default async function ReportsPage() {
       <p className="muted" style={{ marginTop: "1rem" }}>
         Total: {page.total}
       </p>
+=======
+      <ReportsView
+        initialReports={page.items}
+        total={page.total}
+        canGenerate={canGenerate}
+        canFinalize={canFinalize}
+        availableInspections={inspectionsPage.items.map((i) => ({
+          id: i.id,
+          projectCode: i.projectCode,
+          projectName: i.projectName,
+          type: i.type,
+          status: i.status,
+        }))}
+      />
+>>>>>>> origin/production
     </main>
   );
 }

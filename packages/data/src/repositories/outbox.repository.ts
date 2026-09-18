@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { outboxEvents } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
 import type { OutboxRecord, DomainEventType, UUID } from "@netram/types";
@@ -65,18 +65,21 @@ export class OutboxRepository {
   /**
    * Claims a batch of pending outbox records ready for processing.
    * Considers events where availableAfter is null or in the past (§27).
+   * Supports optional domain event type filtering to avoid multi-consumer contention.
    */
-  async claimPending(limit = 100): Promise<OutboxRecord[]> {
+  async claimPending(limit = 100, types?: readonly string[]): Promise<OutboxRecord[]> {
     const now = new Date();
+    const conditions = [
+      eq(outboxEvents.status, "pending"),
+      or(isNull(outboxEvents.availableAfter), lte(outboxEvents.availableAfter, now)),
+    ];
+    if (types && types.length > 0) {
+      conditions.push(inArray(outboxEvents.type, types as string[]));
+    }
     const rows = await this.db
       .select()
       .from(outboxEvents)
-      .where(
-        and(
-          eq(outboxEvents.status, "pending"),
-          or(isNull(outboxEvents.availableAfter), lte(outboxEvents.availableAfter, now)),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(outboxEvents.occurredAt)
       .limit(limit)
       .for("update", { skipLocked: true });

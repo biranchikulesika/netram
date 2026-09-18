@@ -22,6 +22,7 @@ export interface ReportRow {
   storageRef: string | null;
   requestedBy: string | null;
   requestedAt: Date;
+  artifact?: Record<string, unknown> | null;
   generatedBy: string | null;
   generatedAt: Date | null;
   error: string | null;
@@ -55,6 +56,7 @@ export function toReport(row: ReportRow): Report {
     error: row.error,
     finalizedBy: row.finalizedBy,
     finalizedAt: row.finalizedAt ? row.finalizedAt.toISOString() : null,
+    artifact: row.artifact ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

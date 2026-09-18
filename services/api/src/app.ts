@@ -39,6 +39,7 @@ import { registerRealtimeAuthorizeRoutes } from "./modules/realtime/http/routes.
 import { registerCctvRoutes } from "./modules/cctv/http/routes.js";
 import { registerVcRoutes } from "./modules/vc/http/routes.js";
 import { registerAttendanceRoutes } from "./modules/attendance/http/routes.js";
+import { registerAnalyticsRoutes } from "./modules/analytics/http/routes.js";
 import { InvalidVcSessionTransitionError } from "./modules/vc/domain/vc-session.js";
 
 export async function buildApp(container: Container) {
@@ -252,6 +253,7 @@ export async function buildApp(container: Container) {
       await registerCctvRoutes(api, container);
       await registerVcRoutes(api, container);
       await registerAttendanceRoutes(api, container);
+      await registerAnalyticsRoutes(api, container);
     },
     { prefix: "/api/v1" },
   );

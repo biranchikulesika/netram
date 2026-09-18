@@ -8,6 +8,7 @@ import {
   complaintSchema,
   createComplaintSchema,
   idParamsSchema,
+  publicComplaintTrackingSchema,
   transitionComplaintSchema,
 } from "@netram/validation";
 import type { ComplaintListQuery, ComplaintStatus } from "@netram/types";
@@ -133,6 +134,27 @@ export async function registerComplaintRoutes(
         body.to,
         body.resolutionText,
       );
+    },
+  );
+
+  app.get(
+    "/complaints/track/:trackingCode",
+    {
+      config: { public: true },
+      schema: {
+        tags: ["complaints"],
+        params: toJsonSchema(
+          "TrackComplaintParams",
+          z.object({ trackingCode: z.string().min(1).max(50) }),
+        ),
+        response: {
+          200: toJsonSchema("PublicComplaintTracking", publicComplaintTrackingSchema),
+        },
+      },
+    },
+    async (request) => {
+      const { trackingCode } = request.params as { trackingCode: string };
+      return complaintService.trackComplaint(trackingCode);
     },
   );
 }

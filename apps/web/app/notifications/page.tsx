@@ -4,6 +4,10 @@ import { getClient, getSessionUser } from "../../lib/api";
 import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
+<<<<<<< HEAD
+=======
+import { NotificationsView } from "./notifications-view";
+>>>>>>> origin/production
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +76,11 @@ export default async function NotificationsPage() {
   const client = await getClient();
   const page = await client
     .listNotifications({ pageSize: 50 })
+<<<<<<< HEAD
     .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
+=======
+    .catch(() => ({ items: [], total: 0, unread: 0, page: 1, pageSize: 50 }));
+>>>>>>> origin/production
 
   return (
     <main>
@@ -80,6 +88,7 @@ export default async function NotificationsPage() {
         userEmail={session.user.email}
         permissionsCount={permissions.length}
         permissions={permissions}
+<<<<<<< HEAD
         activeSection="notifications"
       />
 
@@ -126,6 +135,18 @@ export default async function NotificationsPage() {
       <p className="muted" style={{ marginTop: "1rem" }}>
         Total: {page.total}
       </p>
+=======
+        unreadNotificationsCount={page.unread}
+        activeSection="notifications"
+      />
+
+      <NotificationsView
+        initialNotifications={page.items}
+        initialTotal={page.total}
+        initialUnread={page.unread}
+      />
+>>>>>>> origin/production
     </main>
   );
 }
+

@@ -4,6 +4,10 @@ import { getClient, getSessionUser } from "../../lib/api";
 import { formatDate } from "../../lib/presentation";
 import { NavHeader } from "../components/nav-header";
 import { IconAlertTriangle, IconBuilding } from "../components/icons";
+<<<<<<< HEAD
+=======
+import { CorrectiveActionsLayout } from "./corrective-actions-layout";
+>>>>>>> origin/production
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +16,12 @@ export default async function CorrectiveActionsPage() {
   if (!session) redirect("/login");
 
   const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
+<<<<<<< HEAD
   const isAuthorized = permissions.includes("corrective_action:read") || permissions.includes("*");
+=======
+  const isAuthorized =
+    permissions.includes("corrective_action:read") || permissions.includes("*");
+>>>>>>> origin/production
 
   if (!isAuthorized) {
     return (
@@ -49,11 +58,30 @@ export default async function CorrectiveActionsPage() {
             <IconAlertTriangle style={{ width: 22, height: 22 }} />
           </div>
 
+<<<<<<< HEAD
           <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
             Access Restricted
           </h3>
           <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}>
             Your official account does not have authorization to view corrective actions. Please contact your administrative supervisor if you require elevated access.
+=======
+          <h3
+            style={{
+              margin: "0 0 0.5rem 0",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              color: "var(--color-navy-brand)",
+            }}
+          >
+            Access Restricted
+          </h3>
+          <p
+            className="muted"
+            style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}
+          >
+            Your official account does not have authorization to view corrective actions. Please contact
+            your administrative supervisor if you require elevated access.
+>>>>>>> origin/production
           </p>
 
           <Link
@@ -71,18 +99,35 @@ export default async function CorrectiveActionsPage() {
 
   const client = await getClient();
   const page = await client
+<<<<<<< HEAD
     .listCorrectiveActions({ pageSize: 50 })
     .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
+=======
+    .listCorrectiveActions({ pageSize: 100 })
+    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 100 }));
+
+  const canOrder =
+    permissions.includes("inspection:review") || permissions.includes("*");
+  const canTransition =
+    permissions.includes("corrective_action:submit") ||
+    permissions.includes("corrective_action:approve") ||
+    permissions.includes("*");
+>>>>>>> origin/production
 
   return (
     <main>
       <NavHeader
         userEmail={session.user.email}
+<<<<<<< HEAD
         permissionsCount={session.permissions.length}
+=======
+        permissionsCount={permissions.length}
+>>>>>>> origin/production
         permissions={permissions}
         activeSection="corrective-actions"
       />
 
+<<<<<<< HEAD
       <div className="section-header">
         <div>
           <h2>Corrective Actions</h2>
@@ -126,6 +171,14 @@ export default async function CorrectiveActionsPage() {
       <p className="muted" style={{ marginTop: "1rem" }}>
         Total: {page.total}
       </p>
+=======
+      <CorrectiveActionsLayout
+        initialActions={page.items}
+        totalActions={page.total}
+        canOrder={canOrder}
+        canTransition={canTransition}
+      />
+>>>>>>> origin/production
     </main>
   );
 }

@@ -1,6 +1,8 @@
 import type {
   AIAnomaly,
   AIAnomalyListQuery,
+  AnalyticsQuery,
+  AuthorityAnalyticsOverview,
   AnomalyStatus,
   AssignRoleInput,
   AssignmentListQuery,
@@ -19,6 +21,7 @@ import type {
   Complaint,
   ComplaintListQuery,
   ComplaintStatus,
+  PublicComplaintTracking,
   CorrectiveAction,
   CorrectiveActionListQuery,
   CorrectiveActionStatus,
@@ -30,6 +33,7 @@ import type {
   InspectionAssignment,
   InspectionListQuery,
   InspectionStatus,
+  JurisdictionView,
   Notification,
   NotificationListQuery,
   NotificationListResponse,
@@ -410,6 +414,10 @@ export class NetramApiClient extends HttpClient {
     });
   }
 
+  async trackComplaint(trackingCode: string): Promise<PublicComplaintTracking> {
+    return this.get(`/api/v1/complaints/track/${encodeURIComponent(trackingCode)}`);
+  }
+
   async listAuditEvents(query: AuditListQuery = {}): Promise<AuditPage> {
     return this.get(`/api/v1/audit-events${queryString(query)}`);
   }
@@ -422,8 +430,8 @@ export class NetramApiClient extends HttpClient {
     return this.get(`/api/v1/ai-anomalies/${id}`);
   }
 
-  async transitionAiAnomaly(id: string, to: AnomalyStatus): Promise<AIAnomaly> {
-    return this.post(`/api/v1/ai-anomalies/${id}/transitions`, { to });
+  async transitionAiAnomaly(id: string, to: AnomalyStatus, note?: string): Promise<AIAnomaly> {
+    return this.post(`/api/v1/ai-anomalies/${id}/transitions`, { to, note });
   }
 
   async listInspectionAssignments(inspectionId: string): Promise<InspectionAssignment[]> {
@@ -505,6 +513,10 @@ export class NetramApiClient extends HttpClient {
     return this.put(`/api/v1/roles/${roleCode}/permissions`, { permissions });
   }
 
+  async listJurisdictions(): Promise<JurisdictionView[]> {
+    return this.get("/api/v1/jurisdictions");
+  }
+
   async listCameras(query: ListCamerasFilter = {}): Promise<CctvCameraPage> {
     return this.get(`/api/v1/cctv/cameras${queryString(query)}`);
   }
@@ -555,6 +567,11 @@ export class NetramApiClient extends HttpClient {
 
   async leaveVcSession(id: string): Promise<void> {
     return this.post(`/api/v1/vc/sessions/${id}/leave`, {});
+  }
+
+  // analytics & statutory SLA compliance
+  async getAnalyticsOverview(query: AnalyticsQuery = {}): Promise<AuthorityAnalyticsOverview> {
+    return this.get(`/api/v1/analytics/overview${queryString(query)}`);
   }
 }
 
