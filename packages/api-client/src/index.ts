@@ -381,10 +381,6 @@ export class NetramApiClient extends HttpClient {
     return this.get(`/api/v1/complaints/${id}`);
   }
 
-  async trackComplaint(trackingCode: string): Promise<Complaint> {
-    return this.get(`/api/v1/complaints/track/${encodeURIComponent(trackingCode)}`);
-  }
-
   async createComplaint(input: {
     projectId: string;
     description: string;
