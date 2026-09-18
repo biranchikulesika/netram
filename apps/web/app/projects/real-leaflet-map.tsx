@@ -413,12 +413,12 @@ export default function RealLeafletMap({
     if (!selectedFacility) return;
 
     if (!isAuthority) {
-      alert("Statutory Violation: Only Department Authority Officers have legal power to seal facility perimeters (AGENTS.md §40).");
+      alert("Only Authority Officers can seal geofences.");
       return;
     }
 
     if (geofenceMode === "polygon" && polygonVertices.length < 3) {
-      alert("A valid campus perimeter polygon requires at least 3 boundary points.");
+      alert("Draw at least 3 points for the perimeter.");
       return;
     }
 
@@ -449,8 +449,8 @@ export default function RealLeafletMap({
 
     setGeofenceMode("view");
     setPolygonVertices([]);
-    setToastMessage(`✓ Statutory Geofence sealed for ${selectedFacility.code}. Signed to tamper-evident audit ledger.`);
-    setTimeout(() => setToastMessage(null), 4000);
+    setToastMessage(`Geofence sealed for ${selectedFacility.code}`);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   return (
@@ -669,12 +669,12 @@ export default function RealLeafletMap({
         >
           <div>
             <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e40af" }}>
-              {geofenceMode === "circle" ? "📐 Setting Statutory Circular Buffer" : "✏️ Drawing Campus Perimeter"} &bull; {selectedFacility.code}
+              {geofenceMode === "circle" ? "Circular Buffer" : "Campus Perimeter"} &bull; {selectedFacility.code}
             </div>
             <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "0.1rem" }}>
               {geofenceMode === "circle"
-                ? `Buffer Radius: ${circleRadius} meters (${((Math.PI * circleRadius * circleRadius) / 10000).toFixed(2)} ha / ${(((Math.PI * circleRadius * circleRadius) / 10000) * 2.471).toFixed(2)} acres)`
-                : `Click anywhere on the map around the campus to place perimeter vertices (${polygonVertices.length} points placed, min 3 required)`}
+                ? `${circleRadius}m (${((Math.PI * circleRadius * circleRadius) / 10000).toFixed(1)} ha)`
+                : `${polygonVertices.length} points placed (min 3)`}
             </div>
           </div>
 
@@ -795,7 +795,7 @@ export default function RealLeafletMap({
               }}
             >
               <IconShieldCheck width={14} height={14} />
-              <span>Seal Geofence (Sign Ledger)</span>
+              <span>Seal Geofence</span>
             </button>
           </div>
         </div>
@@ -893,43 +893,6 @@ export default function RealLeafletMap({
                   {selectedFacility.categoryLabel}
                 </div>
               </div>
-
-              {/* Statutory Oversight Clearance (AGENTS.md §16 & §34) */}
-              {isAuthority ? (
-                <div
-                  style={{
-                    background: "#f0fdf4",
-                    border: "1px solid #bbf7d0",
-                    padding: "0.4rem 0.6rem",
-                    borderRadius: "6px",
-                    fontSize: "0.7rem",
-                    color: "#166534",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "0.35rem",
-                  }}
-                >
-                  <IconShieldCheck width={14} height={14} style={{ flexShrink: 0, marginTop: "1px" }} />
-                  <span>Authority Clearance Active: Full statutory audit trail, telemetry & geofence administration enabled.</span>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    padding: "0.4rem 0.6rem",
-                    borderRadius: "6px",
-                    fontSize: "0.7rem",
-                    color: "#475569",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "0.35rem",
-                  }}
-                >
-                  <IconLock width={14} height={14} style={{ flexShrink: 0, marginTop: "1px" }} />
-                  <span>Operating Agency Mode: Viewing approved facility boundary.</span>
-                </div>
-              )}
 
               {/* Facility Specifications */}
               <div
@@ -1090,27 +1053,9 @@ export default function RealLeafletMap({
                     }}
                   >
                     <IconLock width={12} height={12} />
-                    <span>Perimeter is locked. Only DSWO can alter geofences.</span>
+                    <span>Locked</span>
                   </div>
                 )}
-              </div>
-
-              {/* Authority Rule Notice Card (AGENTS.md §40 & §16) */}
-              <div
-                style={{
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "6px",
-                  padding: "0.6rem 0.75rem",
-                  fontSize: "0.68rem",
-                  color: "#475569",
-                  lineHeight: 1.4,
-                }}
-              >
-                <div style={{ fontWeight: 700, color: "var(--color-navy-dark)", marginBottom: "0.2rem" }}>
-                  ⚖️ Who decides geofencing?
-                </div>
-                Per <strong>AGENTS.md §40</strong>, geofences are sealed exclusively by the <strong>District Social Welfare Officer (DSWO)</strong>. Operating Agencies (NGOs) and Field Inspectors are strictly forbidden from self-setting boundaries to eliminate anti-spoofing fraud.
               </div>
 
               {/* Action Buttons */}
@@ -1121,7 +1066,7 @@ export default function RealLeafletMap({
                   style={{
                     padding: "0.4rem",
                     fontSize: "0.75rem",
-                    fontWeight: 700,
+                    fontWeight: 600,
                     background: "var(--bg-subtle)",
                     border: "1px solid var(--color-border-strong)",
                     borderRadius: "5px",
@@ -1133,7 +1078,7 @@ export default function RealLeafletMap({
                   }}
                 >
                   <IconMapPin width={13} height={13} />
-                  <span>Center Facility on Map</span>
+                  <span>Center on Map</span>
                 </button>
 
                 <Link
@@ -1153,7 +1098,7 @@ export default function RealLeafletMap({
                     boxShadow: "0 2px 6px rgba(22, 163, 74, 0.25)",
                   }}
                 >
-                  <span>Open Full Facility Workspace</span>
+                  <span>Open Facility</span>
                   <IconChevronRight width={14} height={14} />
                 </Link>
               </div>

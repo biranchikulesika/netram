@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ProjectType } from "@netram/types";
 import {
-  IconBuilding,
-  IconMapPin,
-  IconShieldCheck,
   IconChevronLeft,
   IconCheck,
   IconAlertTriangle,
@@ -32,7 +29,6 @@ interface ProgrammeOption {
   code: string;
 }
 
-// Known statutory districts in Odisha (matching synthetic seed data)
 const DISTRICTS: DistrictOption[] = [
   { id: "5f6c6fcf-fc88-5bf1-9f63-cad86ee0bd3b", name: "Khordha", code: "KHOL" },
   { id: "92f0e386-2b80-5ca4-94a0-9c7d90d47dbf", name: "Cuttack", code: "CUT" },
@@ -41,7 +37,6 @@ const DISTRICTS: DistrictOption[] = [
   { id: "e71c0cc4-6569-5e2b-bb73-cc3cae07fb8d", name: "Sundargarh", code: "SNDR" },
 ];
 
-// Known registered implementing organisations
 const ORGANISATIONS: OrgOption[] = [
   {
     id: "5266b3f3-5695-5db7-8d95-2c4a945db254",
@@ -75,7 +70,6 @@ const ORGANISATIONS: OrgOption[] = [
   },
 ];
 
-// Known statutory welfare programmes
 const PROGRAMMES: ProgrammeOption[] = [
   {
     id: "3c704771-9317-50bb-9479-7c4c9ff4f46c",
@@ -110,42 +104,36 @@ interface ProjectRegistrationViewProps {
 }
 
 export function ProjectRegistrationView({
-  userEmail,
+  userEmail: _userEmail,
   canCreate,
   canApprove: _canApprove = false,
-  isAuthority = false,
+  isAuthority: _isAuthority = false,
   isInstitutionAdmin = false,
 }: ProjectRegistrationViewProps) {
   const router = useRouter();
 
-  // Section 1: Facility Identity
+  // Form State
   const [name, setName] = useState("");
   const [type, setType] = useState<ProjectType>("institution");
   const [category, setCategory] = useState(FACILITY_CATEGORIES[0] ?? "");
   const [sanctionRef, setSanctionRef] = useState("");
   const [sanctionDate, setSanctionDate] = useState("");
 
-  // Section 2: Administrative Jurisdiction & Geographic Location
   const [districtId, setDistrictId] = useState(DISTRICTS[0]!.id);
   const [block, setBlock] = useState("");
   const [address, setAddress] = useState("");
   const [pinCode, setPinCode] = useState("");
   const [coordinates, setCoordinates] = useState("");
 
-  // Section 3: Implementing Organisation & In-Charge
   const [organisationId, setOrganisationId] = useState(ORGANISATIONS[0]!.id);
   const [inChargeName, setInChargeName] = useState("");
   const [inChargePhone, setInChargePhone] = useState("");
   const [inChargeEmail, setInChargeEmail] = useState("");
 
-  // Section 4: Programme Linkage
   const [selectedProgrammes, setSelectedProgrammes] = useState<string[]>([PROGRAMMES[0]!.id]);
-
-  // Section 5: Capacity & Operational Scope
   const [capacity, setCapacity] = useState("100");
   const [operationalNotes, setOperationalNotes] = useState("");
 
-  // UI state
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -184,19 +172,19 @@ export function ProjectRegistrationView({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canCreate) {
-      setError("Unauthorized: Your user role lacks the required 'project:create' permission.");
+      setError("Unauthorized: You lack permission to register projects.");
       return;
     }
     if (name.trim().length < 3) {
-      setError("Project title must contain at least 3 characters.");
+      setError("Project name must be at least 3 characters.");
       return;
     }
     if (pinCode.trim() && !/^[1-9][0-9]{5}$/.test(pinCode.trim())) {
-      setError("PIN Code must be a valid 6-digit postal code.");
+      setError("PIN code must be a valid 6-digit code.");
       return;
     }
     if (inChargePhone.trim() && !/^[0-9+\-\s()]{7,15}$/.test(inChargePhone.trim())) {
-      setError("Contact phone number contains invalid characters.");
+      setError("Phone number is invalid.");
       return;
     }
 
@@ -227,240 +215,44 @@ export function ProjectRegistrationView({
         throw new Error(
           data?.error?.message ||
             data?.message ||
-            `Server returned HTTP ${res.status}: ${res.statusText}`,
+            `Server error (${res.status})`,
         );
       }
 
-      setSuccess(`Project "${data.name}" successfully registered with code ${data.code}! Redirecting to facility dossier...`);
+      setSuccess(`Project "${data.name}" registered (${data.code}).`);
       setTimeout(() => {
         router.push(`/projects/${data.id}`);
-      }, 1200);
+      }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setBusy(false);
     }
   }
 
-  const selectedDistrict = DISTRICTS.find((d) => d.id === districtId);
-  const selectedOrg = ORGANISATIONS.find((o) => o.id === organisationId);
-
   return (
-    <div style={{ maxWidth: 1040, margin: "0 auto" }}>
-      {/* Top Breadcrumb Navigation */}
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      {/* Breadcrumb */}
       <div className="breadcrumb" style={{ marginBottom: "1rem" }}>
         <Link href="/projects" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-          <IconChevronLeft width={14} height={14} /> Back to Projects Registry
+          <IconChevronLeft width={14} height={14} /> Projects
         </Link>
       </div>
 
-      {/* Institutional Masthead */}
-      <div className="section-header" style={{ marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
-          <span
-            style={{
-              fontSize: "0.68rem",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 700,
-              background: "var(--color-navy-dark)",
-              color: "#ffffff",
-              padding: "0.2rem 0.5rem",
-              borderRadius: "4px",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
-          >
-            DEPARTMENT OF SOCIAL JUSTICE & EMPOWERMENT
-          </span>
-          <span
-            style={{
-              fontSize: "0.72rem",
-              color: "var(--text-muted)",
-              fontWeight: 500,
-            }}
-          >
-            Govt. of Odisha • Statutory Portal
-          </span>
-        </div>
+      {/* Header */}
+      <div style={{ marginBottom: "1.5rem" }}>
         <h1
           style={{
-            margin: "0 0 0.35rem 0",
-            fontSize: "1.65rem",
-            fontWeight: 800,
-            color: "var(--color-navy-brand)",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Register New Project / Institutional Facility
-        </h1>
-        <p className="muted" style={{ fontSize: "0.88rem", maxWidth: 840, lineHeight: 1.5 }}>
-          Formal statutory enrollment into the Netram unified inspection and monitoring registry.
-          Enrolled facilities are subject to scheduled inspections, biometric verification, CCTV stream
-          acquisition, and automated SLA compliance oversight under DoSJE governance.
-        </p>
-      </div>
-
-      {/* Statutory 3-Stage Lifecycle Stepper (§33) */}
-      <div
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--color-border-strong)",
-          borderRadius: "8px",
-          padding: "1rem 1.25rem",
-          marginBottom: "1.25rem",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "0.7rem",
+            margin: 0,
+            fontSize: "1.5rem",
             fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
             color: "var(--color-navy-brand)",
-            marginBottom: "0.75rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
           }}
         >
-          <span>STATUTORY ENROLLMENT PIPELINE (AGENTS.MD §33)</span>
-          <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500, textTransform: "none" }}>
-            Enforcing Separation of Powers & Jurisdictional Oversight
-          </span>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "0.75rem",
-          }}
-        >
-          <div
-            style={{
-              borderLeft: "3px solid var(--action-green)",
-              padding: "0.65rem 0.85rem",
-              background: "var(--bg-subtle)",
-              borderRadius: "0 6px 6px 0",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" }}>
-              <span style={{ fontSize: "0.68rem", background: "var(--action-green)", color: "#fff", padding: "0.1rem 0.35rem", borderRadius: "3px", fontWeight: 700 }}>
-                STAGE 1 (CURRENT)
-              </span>
-              <strong style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>Facility Enrollment</strong>
-            </div>
-            <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-              Operating Agency or Authority enters statutory dossier, geolocation, and capacity. Enters registry as <strong>Draft</strong>.
-            </p>
-          </div>
-
-          <div
-            style={{
-              borderLeft: "3px solid var(--color-border-strong)",
-              padding: "0.65rem 0.85rem",
-              background: "var(--bg-subtle)",
-              borderRadius: "0 6px 6px 0",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" }}>
-              <span style={{ fontSize: "0.68rem", background: "var(--text-muted)", color: "#fff", padding: "0.1rem 0.35rem", borderRadius: "3px", fontWeight: 700 }}>
-                STAGE 2
-              </span>
-              <strong style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>Jurisdictional Scrutiny</strong>
-            </div>
-            <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-              Dossier submitted to DSWO. Field Inspector dispatched for physical premises audit (<strong>Pending Verification</strong>).
-            </p>
-          </div>
-
-          <div
-            style={{
-              borderLeft: "3px solid var(--color-border-strong)",
-              padding: "0.65rem 0.85rem",
-              background: "var(--bg-subtle)",
-              borderRadius: "0 6px 6px 0",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" }}>
-              <span style={{ fontSize: "0.68rem", background: "var(--text-muted)", color: "#fff", padding: "0.1rem 0.35rem", borderRadius: "3px", fontWeight: 700 }}>
-                STAGE 3
-              </span>
-              <strong style={{ fontSize: "0.82rem", color: "var(--text-primary)" }}>Authority Sanction</strong>
-            </div>
-            <p style={{ margin: 0, fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-              District Social Welfare Authority issues sanction sign-off. Facility marked <strong>Approved</strong> &rarr; <strong>Active</strong>.
-            </p>
-          </div>
-        </div>
+          Register Project
+        </h1>
       </div>
 
-      {/* Role-Specific Protocol Notice */}
-      {isAuthority ? (
-        <div
-          style={{
-            background: "#f0fdf4",
-            border: "1px solid #bbf7d0",
-            borderRadius: "8px",
-            padding: "0.9rem 1.15rem",
-            marginBottom: "1.75rem",
-            display: "flex",
-            gap: "0.85rem",
-            alignItems: "flex-start",
-          }}
-        >
-          <IconShieldCheck width={20} height={20} style={{ color: "#16a34a", flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: "0.82rem", color: "#14532d", lineHeight: 1.5 }}>
-            <strong style={{ display: "block", marginBottom: "0.15rem", fontWeight: 700 }}>
-              Authority Officer Mode &mdash; Direct Departmental & Supervisory Enrollment
-            </strong>
-            Authenticated with Departmental Authority privileges ({userEmail}). You have authority to enroll <strong>Direct Departmental Facilities</strong> (state residential hostels, welfare shelters) or onboard accredited <strong>NGO Institutions</strong> within your district jurisdiction. As an Authority Officer, you hold statutory approval rights.
-          </div>
-        </div>
-      ) : isInstitutionAdmin ? (
-        <div
-          style={{
-            background: "#fffbeb",
-            border: "1px solid #fde68a",
-            borderRadius: "8px",
-            padding: "0.9rem 1.15rem",
-            marginBottom: "1.75rem",
-            display: "flex",
-            gap: "0.85rem",
-            alignItems: "flex-start",
-          }}
-        >
-          <IconBuilding width={20} height={20} style={{ color: "#d97706", flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: "0.82rem", color: "#78350f", lineHeight: 1.5 }}>
-            <strong style={{ display: "block", marginBottom: "0.15rem", fontWeight: 700 }}>
-              Operating Agency Mode &mdash; Institutional Enrollment Application
-            </strong>
-            You are registering an Institutional Facility dossier on behalf of your operating organisation ({userEmail}). In compliance with Netram separation of powers (AGENTS.md §33), <strong>facilities cannot be self-approved</strong>. Submission places the record in <strong>Draft</strong> state for formal inspection and approval by the District Social Welfare Office.
-          </div>
-        </div>
-      ) : (
-        <div
-          style={{
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            borderRadius: "8px",
-            padding: "0.9rem 1.15rem",
-            marginBottom: "1.75rem",
-            display: "flex",
-            gap: "0.85rem",
-            alignItems: "flex-start",
-          }}
-        >
-          <IconShieldCheck width={20} height={20} style={{ color: "#1d4ed8", flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: "0.82rem", color: "#1e3a8a", lineHeight: 1.5 }}>
-            <strong style={{ display: "block", marginBottom: "0.15rem", fontWeight: 700 }}>
-              System Administrator Mode &mdash; State-Wide Oversight
-            </strong>
-            Authenticated as System Administrator ({userEmail}). State-wide enrollment scope across all jurisdictions, schemes, and facility classifications.
-          </div>
-        </div>
-      )}
-
-      {/* Status Banners */}
+      {/* Error & Success Banners */}
       {error && (
         <div
           className="error-banner"
@@ -468,11 +260,11 @@ export function ProjectRegistrationView({
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
-            marginBottom: "1.5rem",
+            marginBottom: "1.25rem",
             borderRadius: "6px",
           }}
         >
-          <IconAlertTriangle width={18} height={18} />
+          <IconAlertTriangle width={16} height={16} />
           <span>{error}</span>
         </div>
       )}
@@ -483,69 +275,50 @@ export function ProjectRegistrationView({
             background: "#f0fdf4",
             border: "1px solid #bbf7d0",
             color: "#166534",
-            padding: "0.85rem 1rem",
+            padding: "0.75rem 1rem",
             borderRadius: "6px",
-            marginBottom: "1.5rem",
+            marginBottom: "1.25rem",
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
-            fontSize: "0.88rem",
+            fontSize: "0.85rem",
             fontWeight: 600,
           }}
         >
-          <IconCheck width={18} height={18} style={{ color: "#16a34a" }} />
+          <IconCheck width={16} height={16} style={{ color: "#16a34a" }} />
           <span>{success}</span>
         </div>
       )}
 
-      {/* Comprehensive Registration Form */}
+      {/* Form */}
       <form onSubmit={handleSubmit}>
-        {/* Card 1: Facility Identity */}
+        {/* Card 1: Details */}
         <div className="form-card">
           <div className="form-card-header">
-            <div>
-              <div className="section-eyebrow">SECTION 1 OF 5</div>
-              <h3>Facility Identity & Classification</h3>
-            </div>
-            <span
-              style={{
-                fontSize: "0.72rem",
-                fontFamily: "var(--font-mono)",
-                color: "var(--text-muted)",
-                background: "var(--bg-subtle)",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "4px",
-              }}
-            >
-              PRIMARY IDENTIFIER
-            </span>
+            <h3>Facility Details</h3>
           </div>
 
           <div className="form-card-grid">
             <div className="form-field" style={{ gridColumn: "1 / -1" }}>
               <label className="form-label" htmlFor="facility-name">
-                Official Facility / Project Name *
+                Project Name *
               </label>
               <input
                 id="facility-name"
                 type="text"
-                placeholder="e.g. Sambalpur SC/ST Model Residential Hostel & Skill Centre"
+                placeholder="e.g. Sambalpur SC/ST Model Residential Hostel"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 minLength={3}
                 maxLength={200}
                 required
                 disabled={busy}
-                style={{ fontSize: "0.95rem", fontWeight: 600 }}
               />
-              <span className="form-helper">
-                Official name as sanctioned in government order (min 3 characters, max 200)
-              </span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="classification-type">
-                Project Classification Type *
+                Type *
               </label>
               <select
                 id="classification-type"
@@ -558,26 +331,20 @@ export function ProjectRegistrationView({
                   border: "1px solid var(--color-border-strong)",
                   padding: "0.5rem 0.85rem",
                   borderRadius: "6px",
-                  fontFamily: "inherit",
                   fontSize: "0.85rem",
                   fontWeight: 600,
                   cursor: isInstitutionAdmin ? "not-allowed" : "default",
                 }}
               >
-                <option value="institution">Institution / NGO Facility (Grant-in-Aid / Society)</option>
-                <option value="authority_project">Authority Infrastructure Project (Direct Govt. Run)</option>
-                <option value="other">Other Sanctioned Welfare Initiative</option>
+                <option value="institution">Institution / NGO Facility</option>
+                <option value="authority_project">Authority Project (Govt. Run)</option>
+                <option value="other">Other</option>
               </select>
-              <span className="form-helper">
-                {isInstitutionAdmin
-                  ? "Operating Agency Scope: Strictly locked to Institution / NGO Facility (§33)"
-                  : "Defines statutory hierarchy: NGO-managed (institution) vs Direct Govt-run (authority_project)"}
-              </span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="facility-category">
-                Specific Welfare Category
+                Category
               </label>
               <select
                 id="facility-category"
@@ -590,7 +357,6 @@ export function ProjectRegistrationView({
                   border: "1px solid var(--color-border-strong)",
                   padding: "0.5rem 0.85rem",
                   borderRadius: "6px",
-                  fontFamily: "inherit",
                   fontSize: "0.85rem",
                 }}
               >
@@ -600,28 +366,26 @@ export function ProjectRegistrationView({
                   </option>
                 ))}
               </select>
-              <span className="form-helper">Statutory facility purpose and beneficiary profile</span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="sanction-ref">
-                Government Sanction Order Reference
+                Sanction Reference
               </label>
               <input
                 id="sanction-ref"
                 type="text"
-                placeholder="e.g. DOSJE/OD/2026/F-1049 or SANCTION/OR/SC-402"
+                placeholder="e.g. DOSJE/OD/2026/F-1049"
                 value={sanctionRef}
                 onChange={(e) => setSanctionRef(e.target.value)}
                 maxLength={100}
                 disabled={busy}
               />
-              <span className="form-helper">Official sanction letter or grant order code</span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="sanction-date">
-                Sanction / Inception Date
+                Sanction Date
               </label>
               <input
                 id="sanction-date"
@@ -630,54 +394,33 @@ export function ProjectRegistrationView({
                 onChange={(e) => setSanctionDate(e.target.value)}
                 disabled={busy}
               />
-              <span className="form-helper">Date of formal departmental sanction</span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Administrative Jurisdiction & Geographic Location */}
+        {/* Card 2: Location */}
         <div className="form-card">
           <div className="form-card-header">
-            <div>
-              <div className="section-eyebrow">SECTION 2 OF 5</div>
-              <h3>Administrative Jurisdiction & Geographical Location</h3>
-            </div>
-            <span
-              style={{
-                fontSize: "0.72rem",
-                fontFamily: "var(--font-mono)",
-                color: "var(--text-muted)",
-                background: "var(--bg-subtle)",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "4px",
-              }}
-            >
-              BOUNDARIES (§16, §17)
-            </span>
+            <h3>Location</h3>
           </div>
 
           <div className="form-card-grid">
             <div className="form-field">
               <label className="form-label" htmlFor="state-fixed">
-                State Jurisdiction
+                State
               </label>
               <input
                 id="state-fixed"
                 type="text"
-                value="Odisha (OD)"
+                value="Odisha"
                 disabled
-                style={{
-                  background: "var(--bg-subtle)",
-                  color: "var(--text-muted)",
-                  fontWeight: 600,
-                }}
+                style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
               />
-              <span className="form-helper">Jurisdiction state authority (Department of Social Justice)</span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="district-select">
-                District Jurisdiction *
+                District *
               </label>
               <select
                 id="district-select"
@@ -691,7 +434,6 @@ export function ProjectRegistrationView({
                   border: "1px solid var(--color-border-strong)",
                   padding: "0.5rem 0.85rem",
                   borderRadius: "6px",
-                  fontFamily: "inherit",
                   fontSize: "0.85rem",
                   fontWeight: 600,
                 }}
@@ -702,30 +444,26 @@ export function ProjectRegistrationView({
                   </option>
                 ))}
               </select>
-              <span className="form-helper">
-                Enforces district-level access control & officer jurisdiction boundaries
-              </span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="block-input">
-                Block / Tehsil / Municipality
+                Block / Tehsil
               </label>
               <input
                 id="block-input"
                 type="text"
-                placeholder="e.g. Bhubaneswar Urban (BMC) / Barabati Tehsil"
+                placeholder="e.g. Bhubaneswar Urban"
                 value={block}
                 onChange={(e) => setBlock(e.target.value)}
                 maxLength={100}
                 disabled={busy}
               />
-              <span className="form-helper">Administrative subdivision or urban local body</span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="pincode-input">
-                Postal PIN Code
+                PIN Code
               </label>
               <input
                 id="pincode-input"
@@ -736,28 +474,26 @@ export function ProjectRegistrationView({
                 maxLength={6}
                 disabled={busy}
               />
-              <span className="form-helper">6-digit Indian postal code</span>
             </div>
 
             <div className="form-field" style={{ gridColumn: "1 / -1" }}>
               <label className="form-label" htmlFor="address-input">
-                Physical Campus Street Address & Landmark
+                Street Address
               </label>
               <input
                 id="address-input"
                 type="text"
-                placeholder="e.g. Plot 42, Vani Vihar Campus, Near Main Library, Saheed Nagar"
+                placeholder="e.g. Plot 42, Vani Vihar Campus, Saheed Nagar"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 maxLength={250}
                 disabled={busy}
               />
-              <span className="form-helper">Complete street address for mobile navigation & field visits</span>
             </div>
 
             <div className="form-field" style={{ gridColumn: "1 / -1" }}>
               <label className="form-label" htmlFor="coordinates-input">
-                Geographical Coordinates (Latitude, Longitude)
+                GPS Coordinates
               </label>
               <input
                 id="coordinates-input"
@@ -768,38 +504,20 @@ export function ProjectRegistrationView({
                 maxLength={50}
                 disabled={busy}
               />
-              <span className="form-helper">
-                Supports geofenced evidence capture validation & CCTV alignment (AGENTS.md §40)
-              </span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Implementing Organisation & Personnel */}
+        {/* Card 3: Agency & Contact */}
         <div className="form-card">
           <div className="form-card-header">
-            <div>
-              <div className="section-eyebrow">SECTION 3 OF 5</div>
-              <h3>Implementing Agency & Facility In-Charge</h3>
-            </div>
-            <span
-              style={{
-                fontSize: "0.72rem",
-                fontFamily: "var(--font-mono)",
-                color: "var(--text-muted)",
-                background: "var(--bg-subtle)",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "4px",
-              }}
-            >
-              OPERATING ENTITY
-            </span>
+            <h3>Operating Agency & Contact</h3>
           </div>
 
           <div className="form-card-grid">
             <div className="form-field" style={{ gridColumn: "1 / -1" }}>
               <label className="form-label" htmlFor="org-select">
-                Implementing Agency / Society / Directorate
+                Agency / Society
               </label>
               <select
                 id="org-select"
@@ -812,30 +530,24 @@ export function ProjectRegistrationView({
                   border: "1px solid var(--color-border-strong)",
                   padding: "0.5rem 0.85rem",
                   borderRadius: "6px",
-                  fontFamily: "inherit",
                   fontSize: "0.85rem",
                   fontWeight: 600,
                 }}
               >
                 {type === "authority_project" && (
-                  <option value="">(Direct Departmental Directorate &mdash; State/District Unit)</option>
+                  <option value="">(Direct Departmental Directorate)</option>
                 )}
                 {ORGANISATIONS.map((o) => (
                   <option key={o.id} value={o.id}>
-                    {o.name} [{o.code}] &mdash; {o.category}
+                    {o.name} [{o.code}]
                   </option>
                 ))}
               </select>
-              <span className="form-helper">
-                {type === "authority_project" && !organisationId
-                  ? "Direct Department Initiative: Operated under direct Authority Directorate jurisdiction (no external NGO required)"
-                  : "Registered non-governmental organization, autonomous trust, or implementing society"}
-              </span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="incharge-name">
-                Superintendent / Facility In-Charge
+                In-Charge / Superintendent
               </label>
               <input
                 id="incharge-name"
@@ -846,12 +558,11 @@ export function ProjectRegistrationView({
                 maxLength={100}
                 disabled={busy}
               />
-              <span className="form-helper">Designated administrative officer / head of facility</span>
             </div>
 
             <div className="form-field">
               <label className="form-label" htmlFor="incharge-phone">
-                In-Charge Contact Mobile
+                Phone
               </label>
               <input
                 id="incharge-phone"
@@ -862,12 +573,11 @@ export function ProjectRegistrationView({
                 maxLength={20}
                 disabled={busy}
               />
-              <span className="form-helper">Official contact number for inspection notices & alerts</span>
             </div>
 
             <div className="form-field" style={{ gridColumn: "1 / -1" }}>
               <label className="form-label" htmlFor="incharge-email">
-                In-Charge Institutional Email
+                Email
               </label>
               <input
                 id="incharge-email"
@@ -878,37 +588,17 @@ export function ProjectRegistrationView({
                 maxLength={120}
                 disabled={busy}
               />
-              <span className="form-helper">Receives statutory audit notes & inspection reports</span>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Programme Linkages & Schemes */}
+        {/* Card 4: Programmes */}
         <div className="form-card">
           <div className="form-card-header">
-            <div>
-              <div className="section-eyebrow">SECTION 4 OF 5</div>
-              <h3>Sanctioned Welfare Programmes & Schemes</h3>
-            </div>
-            <span
-              style={{
-                fontSize: "0.72rem",
-                fontFamily: "var(--font-mono)",
-                color: "var(--text-muted)",
-                background: "var(--bg-subtle)",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "4px",
-              }}
-            >
-              FUNDING LINKAGES
-            </span>
+            <h3>Programmes</h3>
           </div>
 
-          <p className="muted" style={{ fontSize: "0.82rem", marginBottom: "0.75rem" }}>
-            Select all approved welfare programmes and inspection drives associated with this facility:
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {PROGRAMMES.map((prog) => {
               const isChecked = selectedProgrammes.includes(prog.id);
               return (
@@ -917,13 +607,12 @@ export function ProjectRegistrationView({
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.75rem",
-                    padding: "0.65rem 0.85rem",
+                    gap: "0.6rem",
+                    padding: "0.6rem 0.8rem",
                     borderRadius: "6px",
                     border: `1px solid ${isChecked ? "var(--color-navy-light)" : "var(--color-border-subtle)"}`,
                     background: isChecked ? "#f0f7ff" : "var(--bg-surface)",
                     cursor: "pointer",
-                    transition: "all 0.15s ease",
                   }}
                 >
                   <input
@@ -937,8 +626,8 @@ export function ProjectRegistrationView({
                     <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-navy-brand)" }}>
                       {prog.name}
                     </div>
-                    <div style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
-                      Scheme Code: {prog.code}
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                      {prog.code}
                     </div>
                   </div>
                 </label>
@@ -947,60 +636,44 @@ export function ProjectRegistrationView({
           </div>
         </div>
 
-        {/* Card 5: Operational Capacity & Narrative Scope */}
+        {/* Card 5: Capacity & Notes */}
         <div className="form-card">
           <div className="form-card-header">
-            <div>
-              <div className="section-eyebrow">SECTION 5 OF 5</div>
-              <h3>Capacity, Operational Scope & Mission Details</h3>
-            </div>
-            <span
-              style={{
-                fontSize: "0.72rem",
-                fontFamily: "var(--font-mono)",
-                color: "var(--text-muted)",
-                background: "var(--bg-subtle)",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "4px",
-              }}
-            >
-              DOSSIER SPECIFICATION
-            </span>
+            <h3>Capacity & Notes</h3>
           </div>
 
           <div className="form-card-grid">
             <div className="form-field">
               <label className="form-label" htmlFor="capacity-input">
-                Sanctioned Beneficiary / Bed Capacity
+                Sanctioned Capacity
               </label>
               <input
                 id="capacity-input"
                 type="number"
-                placeholder="e.g. 120"
+                placeholder="e.g. 100"
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
                 min={1}
                 max={5000}
                 disabled={busy}
               />
-              <span className="form-helper">Approved resident student or patient intake limit</span>
             </div>
 
             <div className="form-field" style={{ gridColumn: "1 / -1" }}>
               <label className="form-label" htmlFor="operational-notes">
-                Operational Mandate & Baseline Infrastructure Notes
+                Notes
               </label>
               <textarea
                 id="operational-notes"
-                placeholder="Provide detailed information regarding facility infrastructure, target demographic, hostel blocks, security provisions, CCTV coverage, and statutory conditions..."
+                placeholder="Operational notes, infrastructure details, intake scope..."
                 value={operationalNotes}
                 onChange={(e) => setOperationalNotes(e.target.value)}
-                rows={4}
+                rows={3}
                 maxLength={1200}
                 disabled={busy}
                 style={{
                   width: "100%",
-                  padding: "0.6rem 0.85rem",
+                  padding: "0.5rem 0.8rem",
                   borderRadius: "6px",
                   border: "1px solid var(--color-border-strong)",
                   fontFamily: "inherit",
@@ -1011,72 +684,18 @@ export function ProjectRegistrationView({
                   boxSizing: "border-box",
                 }}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "var(--text-subtle)", marginTop: 2 }}>
-                <span>Recorded in official dossier and verified during inspection audits</span>
-                <span>{operationalNotes.length} / 1200 characters</span>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Pre-Submission Verification Summary */}
-        <div
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--color-border-subtle)",
-            borderRadius: "8px",
-            padding: "1rem 1.25rem",
-            marginBottom: "1rem",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "0.75rem",
-            fontSize: "0.82rem",
-          }}
-        >
-          <div>
-            <span style={{ color: "var(--text-subtle)", display: "block", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-              Selected Jurisdiction
-            </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontWeight: 600, color: "var(--color-navy-brand)" }}>
-              <IconMapPin width={14} height={14} /> {selectedDistrict?.name} District ({selectedDistrict?.code})
-            </span>
-          </div>
-          <div>
-            <span style={{ color: "var(--text-subtle)", display: "block", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-              Operating Agency / Directorate
-            </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontWeight: 600, color: "var(--color-navy-brand)" }}>
-              <IconBuilding width={14} height={14} />{" "}
-              {selectedOrg ? selectedOrg.name : "(Direct Departmental Facility — No External NGO)"}
-            </span>
-          </div>
-          <div>
-            <span style={{ color: "var(--text-subtle)", display: "block", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-              Enrolled By
-            </span>
-            <span style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
-              {userEmail} {isAuthority ? "(Authority Officer)" : isInstitutionAdmin ? "(Operating Agency)" : "(System Admin)"}
-            </span>
-          </div>
-          <div>
-            <span style={{ color: "var(--text-subtle)", display: "block", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-              Initial Status
-            </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontWeight: 700, color: "var(--action-green)" }}>
-              <IconShieldCheck width={14} height={14} /> Draft (Pending Verification)
-            </span>
-          </div>
-        </div>
-
-        {/* Action Bar */}
+        {/* Actions */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "1.25rem 0",
+            padding: "1rem 0",
             borderTop: "1px solid var(--color-border-subtle)",
-            marginTop: "1rem",
             marginBottom: "3rem",
           }}
         >
@@ -1085,34 +704,29 @@ export function ProjectRegistrationView({
             className="btn-secondary"
             style={{
               textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.35rem",
-              padding: "0.55rem 1rem",
+              padding: "0.5rem 1rem",
               fontSize: "0.85rem",
             }}
           >
-            Discard & Return
+            Cancel
           </Link>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <button
-              type="submit"
-              disabled={busy || !canCreate || name.trim().length < 3}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.45rem",
-                padding: "0.55rem 1.25rem",
-                fontSize: "0.88rem",
-                fontWeight: 700,
-                opacity: busy || !canCreate || name.trim().length < 3 ? 0.65 : 1,
-              }}
-            >
-              <IconCheck width={16} height={16} />
-              <span>{busy ? "Registering in Registry…" : "Register Facility in Netram Registry"}</span>
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={busy || !canCreate || name.trim().length < 3}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.55rem 1.25rem",
+              fontSize: "0.88rem",
+              fontWeight: 700,
+              opacity: busy || !canCreate || name.trim().length < 3 ? 0.65 : 1,
+            }}
+          >
+            <IconCheck width={15} height={15} />
+            <span>{busy ? "Registering…" : "Register Project"}</span>
+          </button>
         </div>
       </form>
     </div>

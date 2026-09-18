@@ -262,15 +262,12 @@ export function ProjectsView({
 
   return (
     <div>
-      {/* Clean Compact Header */}
+      {/* Header */}
       <div className="section-title-row" style={{ marginBottom: "1.25rem" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
-            Projects Registry
+            Projects
           </h2>
-          <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
-            Sanctioned facilities and live monitoring status
-          </p>
         </div>
 
         <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -296,14 +293,14 @@ export function ProjectsView({
         </div>
       </div>
 
-      {/* Interactive Toolbar: Search, Filters & View Toggle */}
+      {/* Toolbar: Search, Filters & View Toggle */}
       <div className="registry-toolbar">
         <div className="search-filter-group">
           <div className="search-input-wrap">
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
             <input
               type="search"
-              placeholder="Search facilities by Code (e.g. PRJ-DEL-001) or Name..."
+              placeholder="Search projects..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input-with-icon"
@@ -414,11 +411,8 @@ export function ProjectsView({
               {filteredProjects.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem" }}>
-                      No matching records found
-                    </div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
-                      Try adjusting the search query or status filter criteria.
+                    <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                      No projects found
                     </div>
                   </td>
                 </tr>

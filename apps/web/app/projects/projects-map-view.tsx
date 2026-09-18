@@ -31,11 +31,8 @@ const RealLeafletMap = dynamic(() => import("./real-leaflet-map"), {
           animation: "spin 1s linear infinite",
         }}
       />
-      <div style={{ fontSize: "0.88rem", fontWeight: 600 }}>
-        Loading Official Odisha GIS & Geofencing Map Tiles…
-      </div>
-      <div style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }}>
-        Acquiring OpenStreetMap cartographic tiles and statutory facility perimeters
+      <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+        Loading map…
       </div>
     </div>
   ),
