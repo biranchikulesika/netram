@@ -12,17 +12,33 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { OfflineInspectionQueue } from "../../src/offline/queue";
-import { captureEvidenceOffline } from "../../src/offline/evidence";
+import { OfflineInspectionQueue } from "../../src/offline/queue.js";
+import { captureEvidenceOffline as captureEvidenceOfflineFn } from "../../src/offline/evidence.js"; // alias to avoid duplicate name
+
+/**
+ * Capture evidence bytes, compute SHA‑256 hash, and enqueue an offline operation.
+ * Returns the generated evidenceId and contentHash for UI feedback.
+ */
+
+
 import type {
   CachedInspectionRecord,
   CachedObservationRecord,
   CachedEvidenceRecord,
+  CachedFindingDraftRecord,
   OfflineOperationRecord,
-} from "../../src/offline/queue";
-import type { EvidenceType } from "@netram/types";
+} from "../../src/offline/queue.js";
+import type { EvidenceType, FindingSeverity } from "@netram/types";
 
 const queue = new OfflineInspectionQueue();
+
+function generateObsId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
 function getStatusStyle(status: string) {
   switch (status) {
@@ -46,6 +62,7 @@ export default function InspectionDetailScreen() {
   const [operations, setOperations] = useState<OfflineOperationRecord[]>([]);
   const [cachedObservations, setCachedObservations] = useState<CachedObservationRecord[]>([]);
   const [cachedEvidence, setCachedEvidence] = useState<CachedEvidenceRecord[]>([]);
+  const [findingDrafts, setFindingDrafts] = useState<CachedFindingDraftRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Observation form
@@ -57,21 +74,28 @@ export default function InspectionDetailScreen() {
   const [evidenceType, setEvidenceType] = useState<EvidenceType>("photo");
   const [evidenceName, setEvidenceName] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+  const [showFindingModal, setShowFindingModal] = useState(false);
+  const [editingFinding, setEditingFinding] = useState<CachedFindingDraftRecord | null>(null);
+  const [findingSeverity, setFindingSeverity] = useState<FindingSeverity>("medium");
+  const [findingDescription, setFindingDescription] = useState("");
+  const [findingRemediation, setFindingRemediation] = useState("");
 
   const loadData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      const [cached, ops, obs, ev] = await Promise.all([
+      const [cached, ops, obs, ev, drafts] = await Promise.all([
         queue.getCachedInspection(id),
         queue.getAllOperations(id),
         queue.getCachedObservations(id),
         queue.getCachedEvidence(id),
+        queue.getCachedFindingDrafts(id),
       ]);
       setInspection(cached);
       setOperations(ops);
       setCachedObservations(obs);
       setCachedEvidence(ev);
+      setFindingDrafts(drafts);
     } finally {
       setLoading(false);
     }
@@ -95,11 +119,37 @@ export default function InspectionDetailScreen() {
     }
   };
 
+  const openFindingDraft = (draft?: CachedFindingDraftRecord) => {
+    setEditingFinding(draft ?? null);
+    setFindingSeverity((draft?.severity as FindingSeverity | undefined) ?? "medium");
+    setFindingDescription(draft?.description ?? "");
+    setFindingRemediation(draft?.remediation ?? "");
+    setShowFindingModal(true);
+  };
+
+  const handleSaveFindingDraft = async () => {
+    if (!id || !findingDescription.trim()) return;
+    setActionBusy(true);
+    try {
+      await queue.saveFindingDraft(id, {
+        findingId: editingFinding?.id,
+        operationId: editingFinding?.operation_id,
+        severity: findingSeverity,
+        description: findingDescription.trim(),
+        remediation: findingRemediation.trim() || null,
+      });
+      setShowFindingModal(false);
+      await loadData();
+      Alert.alert("Finding Draft Saved", "This is an inspector draft and will be submitted for authority review during sync.");
+    } catch (err) { Alert.alert("Error", String(err)); } finally { setActionBusy(false); }
+  };
+
   const handleRecordObservation = async () => {
     if (!id || !obsText.trim()) return;
     setActionBusy(true);
     try {
-      await queue.enqueueOperation(id, "record_observation", { text: obsText.trim() });
+      const observationId = generateObsId();
+      await queue.enqueueOperation(id, "record_observation", { text: obsText.trim(), observationId });
       setObsText("");
       setShowObsModal(false);
       await loadData();
@@ -120,7 +170,7 @@ export default function InspectionDetailScreen() {
       const mockPhotoBytes = new TextEncoder().encode(
         `Mock JPEG binary for ${fileName} - ${Date.now()}`,
       );
-      const res = await captureEvidenceOffline(queue, {
+      const res = await captureEvidenceOfflineFn(queue, {
         inspectionId: id,
         evidenceType,
         fileName,
@@ -226,6 +276,10 @@ export default function InspectionDetailScreen() {
                   <Text style={styles.actionBtnText}>+ Observation</Text>
                 </Pressable>
 
+                <Pressable style={[styles.actionBtn, styles.btnFinding]} onPress={() => openFindingDraft()} disabled={actionBusy}>
+                  <Text style={styles.actionBtnText}>+ Finding Draft</Text>
+                </Pressable>
+
                 <Pressable
                   style={[styles.actionBtn, styles.btnEv]}
                   onPress={() => setShowEvidenceModal(true)}
@@ -263,6 +317,20 @@ export default function InspectionDetailScreen() {
                   {obs.is_local === 1 && <Text style={styles.localTag}>Offline Stored</Text>}
                 </View>
               </View>
+            ))}
+          </View>
+        )}
+
+        {findingDrafts.length > 0 && (
+          <View style={styles.queueCard}>
+            <View style={styles.queueHeader}><Text style={styles.sectionTitle}>Finding Drafts</Text><Text style={styles.badgeCount}>{findingDrafts.length} saved</Text></View>
+            <Text style={styles.sectionSubtitle}>Drafts are submitted as new findings for authority review; they are not decisions.</Text>
+            {findingDrafts.map((draft) => (
+              <Pressable key={draft.id} style={styles.opItem} onPress={() => draft.sync_state !== "submitted_for_review" && openFindingDraft(draft)}>
+                <View style={styles.opHeader}><Text style={styles.opType}>{draft.severity.toUpperCase()} · {draft.sync_state.replaceAll("_", " ")}</Text><Text style={styles.editHint}>{draft.sync_state === "submitted_for_review" ? "Awaiting review" : "Edit & resync"}</Text></View>
+                <Text style={styles.obsText}>{draft.description}</Text>
+                {draft.remediation ? <Text style={styles.opTime}>Suggested remediation: {draft.remediation}</Text> : null}
+              </Pressable>
             ))}
           </View>
         )}
@@ -387,6 +455,17 @@ export default function InspectionDetailScreen() {
         </View>
       </Modal>
 
+      <Modal visible={showFindingModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}><View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>{editingFinding ? "Edit Finding Draft" : "New Finding Draft"}</Text>
+          <Text style={styles.modalSubtitle}>Saved offline first; authority review remains server-controlled.</Text>
+          <View style={styles.typeSelector}>{(["critical", "high", "medium", "low"] as FindingSeverity[]).map((severity) => <Pressable key={severity} style={[styles.typePill, findingSeverity === severity && styles.typePillActive]} onPress={() => setFindingSeverity(severity)}><Text style={[styles.typePillText, findingSeverity === severity && styles.typePillTextActive]}>{severity.toUpperCase()}</Text></Pressable>)}</View>
+          <TextInput style={styles.textInput} placeholder="Describe the condition observed..." placeholderTextColor="#64748b" value={findingDescription} onChangeText={setFindingDescription} multiline numberOfLines={4} />
+          <TextInput style={styles.textInputSmall} placeholder="Suggested remediation (optional)" placeholderTextColor="#64748b" value={findingRemediation} onChangeText={setFindingRemediation} />
+          <View style={styles.modalActions}><Pressable style={[styles.modalBtn, styles.btnCancel]} onPress={() => setShowFindingModal(false)}><Text style={styles.modalBtnText}>Cancel</Text></Pressable><Pressable style={[styles.modalBtn, styles.btnConfirm]} onPress={handleSaveFindingDraft} disabled={!findingDescription.trim() || actionBusy}><Text style={styles.modalBtnText}>Save Draft</Text></Pressable></View>
+        </View></View>
+      </Modal>
+
       {/* Modal: Capture Evidence */}
       <Modal visible={showEvidenceModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -492,6 +571,7 @@ const styles = StyleSheet.create({
   btnStart: { backgroundColor: "#16a34a" },
   btnObs: { backgroundColor: "#0284c7" },
   btnEv: { backgroundColor: "#7c3aed" },
+  btnFinding: { backgroundColor: "#0f766e" },
   btnSubmit: { backgroundColor: "#d97706" },
   queueCard: {
     backgroundColor: "#1e293b",
@@ -537,6 +617,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   opErrorText: { color: "#fca5a5", fontSize: 11 },
+  editHint: { color: "#7dd3fc", fontSize: 12, fontWeight: "600" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",
