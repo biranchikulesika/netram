@@ -18,6 +18,7 @@ cache/
 # ================= Environment & secrets =================
 # Local and environment-specific `.env` files always carry secrets.
 .env
+.env.local
 .env.*
 !.env.example
 !.env.sample
@@ -40,7 +41,7 @@ cache/
 *.db-shm
 *.db-wal
 supabase/.temp/
-supabase/.branch/
+supabase/.branches/
 
 # ================= Logs & runtime output =================
 *.log
@@ -86,6 +87,7 @@ coverage/
 # Root repository documentation
 !README.md
 !AGENTS.md
+!DESIGN.md
 
 # Canonical docs
 !docs/OWNERSHIP.md

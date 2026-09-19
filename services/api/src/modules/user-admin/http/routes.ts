@@ -5,6 +5,7 @@ import { toJsonSchema } from "../../../infrastructure/schema-helper.js";
 import {
   assignRoleSchema,
   idParamsSchema,
+  jurisdictionViewSchema,
   roleAssignmentViewSchema,
   roleViewSchema,
   updateRolePermissionsSchema,
@@ -154,5 +155,19 @@ export async function registerUserAdminRoutes(
       const body = request.body as { permissions: string[] };
       return userAdminService.updateRolePermissions(request.netram!, code, body);
     },
+  );
+
+  app.get(
+    "/jurisdictions",
+    {
+      schema: {
+        tags: ["user-admin"],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: toJsonSchema("JurisdictionViewList", z.array(jurisdictionViewSchema)),
+        },
+      },
+    },
+    async (request) => userAdminService.listJurisdictions(request.netram!),
   );
 }

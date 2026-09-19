@@ -50,3 +50,13 @@ export interface ComplaintListQuery {
   status?: ComplaintStatus;
   projectId?: UUID;
 }
+
+export interface PublicComplaintTracking {
+  trackingCode: string;
+  projectCode: string;
+  projectName: string;
+  status: ComplaintStatus;
+  receivedAt: ISODateTime;
+  resolvedAt: ISODateTime | null;
+  resolutionText: string | null;
+}

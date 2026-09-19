@@ -40,6 +40,7 @@ export interface Report {
   error: string | null;
   finalizedBy: UUID | null;
   finalizedAt: ISODateTime | null;
+  artifact?: Record<string, unknown> | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }

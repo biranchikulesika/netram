@@ -6,6 +6,7 @@ import { DuplicateRoleAssignmentError } from "@netram/data";
 import { PERMISSIONS } from "@netram/types";
 import type {
   AssignRoleInput,
+  JurisdictionView,
   RoleAssignmentView,
   RoleView,
   UpdateRolePermissionsInput,
@@ -79,6 +80,7 @@ export class UserAdminService {
         auditAction: "role.changed";
         eventType: "role.permissions_changed";
       }): Promise<RoleView | null>;
+      listJurisdictions(): Promise<JurisdictionView[]>;
     },
   ) {}
 
@@ -175,6 +177,13 @@ export class UserAdminService {
   async listRoles(ctx: RequestUserContext): Promise<RoleView[]> {
     this.authz.requirePermission(ctx, ROLE_MANAGE);
     return this.repository.listRolesWithPermissions();
+  }
+
+  async listJurisdictions(ctx: RequestUserContext): Promise<JurisdictionView[]> {
+    if (!this.authz.hasPermission(ctx, ROLE_MANAGE) && !this.authz.hasPermission(ctx, USER_MANAGE)) {
+      this.authz.requirePermission(ctx, ROLE_MANAGE);
+    }
+    return this.repository.listJurisdictions();
   }
 
   async updateRolePermissions(
