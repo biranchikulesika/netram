@@ -73,6 +73,7 @@ export default function LoginScreen() {
             {/* Header / Emblem */}
             <View style={styles.header}>
               <Image
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 source={require("../assets/ashoka_stambh.png")}
                 style={styles.ashokaStambh}
                 resizeMode="contain"

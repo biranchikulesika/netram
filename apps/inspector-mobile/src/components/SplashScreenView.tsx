@@ -16,6 +16,7 @@ interface SplashScreenProps {
   statusText?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars=
 export function SplashScreenView({ onFinish, statusText }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
@@ -141,6 +142,7 @@ export function SplashScreenView({ onFinish, statusText }: SplashScreenProps) {
         <View style={styles.topHeader}>
           <View style={styles.govEmblemBox}>
             <Image
+               // eslint-disable-next-line @typescript-eslint/no-require-imports
               source={require("../../assets/ashoka_stambh.png")}
               style={styles.ashokaStambh}
               resizeMode="contain"
