@@ -12,14 +12,14 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { OfflineInspectionQueue } from "../../src/offline/queue.js";
-import { captureEvidenceOffline } from "../../src/offline/evidence.js";
+import { OfflineInspectionQueue } from "../../src/offline/queue";
+import { captureEvidenceOffline } from "../../src/offline/evidence";
 import type {
   CachedInspectionRecord,
   CachedObservationRecord,
   CachedEvidenceRecord,
   OfflineOperationRecord,
-} from "../../src/offline/queue.js";
+} from "../../src/offline/queue";
 import type { EvidenceType } from "@netram/types";
 
 const queue = new OfflineInspectionQueue();

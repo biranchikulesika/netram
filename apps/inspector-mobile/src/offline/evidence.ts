@@ -1,5 +1,5 @@
 import type { EvidenceType, OfflineOperation } from "@netram/types";
-import type { OfflineInspectionQueue } from "./queue.js";
+import type { OfflineInspectionQueue } from "./queue";
 
 function uuidv4(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {

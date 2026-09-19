@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,8 +11,9 @@ import {
   View,
 } from "react-native";
 import { NetramApiClient } from "@netram/api-client";
-import { OfflineInspectionQueue } from "../src/offline/queue.js";
-import type { CachedInspectionRecord } from "../src/offline/queue.js";
+import { OfflineInspectionQueue } from "../src/offline/queue";
+import type { CachedInspectionRecord } from "../src/offline/queue";
+import { getStoredSession, clearSession } from "../src/auth/session";
 
 const queue = new OfflineInspectionQueue();
 
@@ -33,12 +34,12 @@ function getStatusStyle(status: string) {
 
 export default function InspectorHomeScreen() {
   const router = useRouter();
+  const [session, setSession] = useState(getStoredSession());
   const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [inspectorEmail] = useState("inspector.two@dev.netram.in");
 
   const loadLocalState = useCallback(async () => {
     const cached = await queue.getCachedInspections();
@@ -48,19 +49,32 @@ export default function InspectorHomeScreen() {
   }, []);
 
   useEffect(() => {
+    const current = getStoredSession();
+    if (!current) return;
+    setSession(current);
     loadLocalState();
   }, [loadLocalState]);
+
+  const handleSignOut = () => {
+    clearSession();
+    setSession(null);
+  };
+
+  if (!session) {
+    return <Redirect href="/login" />;
+  }
 
   const handleFetchFromServer = async () => {
     setRefreshing(true);
     setSyncMessage(null);
     try {
-      // In dev environment, login as inspector to fetch fresh inspections
-      const client = new NetramApiClient({ baseUrl: "http://localhost:3001" });
-      const { token } = await client.devLogin(inspectorEmail);
+      const current = getStoredSession();
+      const apiUrl = current?.apiUrl ?? "http://localhost:3001";
+      const token = current?.token;
+
       const authClient = new NetramApiClient({
-        baseUrl: "http://localhost:3001",
-        getToken: () => token,
+        baseUrl: apiUrl,
+        getToken: () => token ?? null,
       });
 
       const page = await authClient.listInspections({ pageSize: 50 });
@@ -85,11 +99,13 @@ export default function InspectorHomeScreen() {
     setSyncing(true);
     setSyncMessage(null);
     try {
-      const client = new NetramApiClient({ baseUrl: "http://localhost:3001" });
-      const { token } = await client.devLogin(inspectorEmail);
+      const current = getStoredSession();
+      const apiUrl = current?.apiUrl ?? "http://localhost:3001";
+      const token = current?.token;
+
       const authClient = new NetramApiClient({
-        baseUrl: "http://localhost:3001",
-        getToken: () => token,
+        baseUrl: apiUrl,
+        getToken: () => token ?? null,
       });
 
       const summary = await queue.sync(authClient);
@@ -115,10 +131,19 @@ export default function InspectorHomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.appName}>DoSJE Netram</Text>
-            <Text style={styles.appSubtitle}>Inspector Field Terminal</Text>
+            <Text style={styles.appSubtitle}>
+              {session?.user.displayName ?? session?.user.email ?? "Inspector Field Terminal"}
+            </Text>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{inspectorEmail.split("@")[0]}</Text>
+          <View style={styles.headerRight}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {session?.user.email.split("@")[0] ?? "inspector"}
+              </Text>
+            </View>
+            <Pressable style={styles.signOutButton} onPress={handleSignOut}>
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -241,6 +266,24 @@ const styles = StyleSheet.create({
     borderColor: "#475569",
   },
   badgeText: { color: "#e2e8f0", fontSize: 12, fontWeight: "600" },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  signOutButton: {
+    backgroundColor: "#334155",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#475569",
+  },
+  signOutText: {
+    color: "#f8fafc",
+    fontSize: 11,
+    fontWeight: "600",
+  },
   syncCard: {
     backgroundColor: "#1e293b",
     padding: 14,
