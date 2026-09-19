@@ -16,8 +16,7 @@ interface SplashScreenProps {
   statusText?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars=
-export function SplashScreenView({ onFinish, statusText }: SplashScreenProps) {
+export function SplashScreenView({ onFinish: _onFinish, statusText }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
