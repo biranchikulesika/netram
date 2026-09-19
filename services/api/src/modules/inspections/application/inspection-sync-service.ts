@@ -4,6 +4,7 @@ import type {
   InspectionRepository,
   ObservationRepository,
   EvidenceRepository,
+  FindingRepository,
 } from "@netram/data";
 import type {
   OfflineOperation,
@@ -22,6 +23,7 @@ export class InspectionSyncService {
     private syncRepo: InspectionSyncRepository,
     private observationRepo: ObservationRepository,
     private evidenceRepo: EvidenceRepository,
+    private findingRepo?: FindingRepository,
   ) {}
 
   async syncBatch(ctx: RequestUserContext, input: SyncBatchRequest): Promise<SyncBatchResponse> {
@@ -197,6 +199,28 @@ export class InspectionSyncService {
           eventPayload: { inspectionId: op.inspectionId, id: observationId, text },
         });
         resultData = { observationId: obs.id, inspectionId: op.inspectionId };
+        break;
+      }
+
+      case "draft_finding": {
+        if (!this.findingRepo) throw new Error("Finding repository is required for finding drafts.");
+        const findingId = typeof op.payload.findingId === "string" ? op.payload.findingId : randomUUID();
+        const finding = await this.findingRepo.createWithAuditAndEvent({
+          id: findingId,
+          inspectionId: op.inspectionId,
+          observationId: typeof op.payload.observationId === "string" ? op.payload.observationId : null,
+          severity: op.payload.severity as "critical" | "high" | "medium" | "low",
+          description: String(op.payload.description ?? ""),
+          remediation: typeof op.payload.remediation === "string" ? op.payload.remediation : null,
+          actorUserId: ctx.userId,
+          requestId: ctx.requestId ?? null,
+          ipAddress: ctx.ipAddress ?? null,
+          auditAction: "finding.created",
+          auditMetadata: { inspectionId: op.inspectionId, operationId: op.operationId, source: "inspector_draft" },
+          eventType: "finding.created",
+          eventPayload: { inspectionId: op.inspectionId, findingId, source: "inspector_draft" },
+        });
+        resultData = { findingId: finding.id, inspectionId: op.inspectionId, status: finding.status };
         break;
       }
 

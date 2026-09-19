@@ -1,6 +1,18 @@
 {
   "extends": "./packages/config/tsconfig/base.json",
-  "include": [],
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "packages/**/*.js",
+    "packages/**/*.jsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ],
   "compilerOptions": {
     "composite": false
   }

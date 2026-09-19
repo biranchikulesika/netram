@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "InspectorMobile",
+    "slug": "inspector-mobile",
+    "version": "1.0.0",
+    "entryPoint": "expo-router/entry",
+    "plugins": ["expo-router"],
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
+  }
+}

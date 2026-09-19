@@ -129,6 +129,44 @@ describe("OfflineInspectionQueue", () => {
     expect(obs[0]?.is_local).toBe(1);
   });
 
+  it("saves and edits one pending finding draft without duplicating its operation", async () => {
+    const draft = await queue.saveFindingDraft(inspectionId, {
+      severity: "high",
+      description: "Emergency exit is obstructed.",
+      remediation: "Clear the exit immediately.",
+    });
+    const findingId = String(draft.payload.findingId);
+    await queue.saveFindingDraft(inspectionId, {
+      findingId,
+      operationId: draft.operationId,
+      severity: "critical",
+      description: "Emergency exit remains obstructed.",
+    });
+
+    const pending = await queue.getPendingOperations();
+    const drafts = await queue.getCachedFindingDrafts(inspectionId);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.type).toBe("draft_finding");
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]?.severity).toBe("critical");
+    expect(drafts[0]?.description).toBe("Emergency exit remains obstructed.");
+  });
+
+  it("requeues a conflicted finding draft with the same draft ID", async () => {
+    const draft = await queue.saveFindingDraft(inspectionId, { severity: "high", description: "Blocked exit" });
+    const mockApiClient = {
+      syncOfflineOperations: vi.fn().mockResolvedValue({ results: [{ operationId: draft.operationId, inspectionId, type: "draft_finding", status: "conflict", code: "INSPECTION_NOT_IN_FIELD_STAGE", message: "Inspection closed", syncedAt: new Date().toISOString() }], processedAt: new Date().toISOString() }),
+    } as unknown as NetramApiClient;
+    await queue.sync(mockApiClient);
+    await queue.saveFindingDraft(inspectionId, { findingId: String(draft.payload.findingId), operationId: draft.operationId, severity: "high", description: "Corrected description" });
+
+    const pending = await queue.getPendingOperations();
+    const drafts = await queue.getCachedFindingDrafts(inspectionId);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.operationId).not.toBe(draft.operationId);
+    expect(drafts[0]?.sync_state).toBe("pending");
+  });
+
   it("retrieves cached evidence records with capture-time hashes in SQLite", async () => {
     const fileBytes = new TextEncoder().encode("Hostel Dining Hall Photo Bytes");
     const evResult = await captureEvidenceOffline(queue, {

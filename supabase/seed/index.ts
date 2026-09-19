@@ -1746,11 +1746,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   );
 }
 
-if (process.argv[1]?.endsWith("seed/index.ts")) {
-  seedDatabase()
-    .then(() => process.exit(0))
-    .catch((err) => {
-      console.error(err);
-      process.exit(1);
-    });
-}
+seedDatabase()
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

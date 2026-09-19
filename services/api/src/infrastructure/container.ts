@@ -123,6 +123,7 @@ export function buildContainer(config: AppConfig): Container {
     syncRepo,
     observationRepo,
     evidenceRepo,
+    findingRepo,
   );
   const findingService = new FindingService(authorizationService, inspectionService, findingRepo);
   const correctiveActionService = new CorrectiveActionService(

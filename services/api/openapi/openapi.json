@@ -2309,6 +2309,7 @@
                         "type": {
                           "type": "string",
                           "enum": [
+                            "draft_finding",
                             "start_inspection",
                             "record_observation",
                             "capture_evidence",
