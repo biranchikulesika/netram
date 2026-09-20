@@ -1,5 +1,8 @@
-const path = require('path');
-const { getDefaultConfig } = require('expo/metro-config');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const path = require("path");
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { getDefaultConfig } = require("expo/metro-config");
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
@@ -55,7 +58,7 @@ defaultConfig.resolver.resolveRequest = (context, moduleName, platform) => {
       const withoutJs = moduleName.slice(0, -3);
       try {
         return context.resolveRequest(context, withoutJs, platform);
-      } catch (_) {}
+      } catch { }
     }
     throw error;
   }

@@ -30,9 +30,14 @@ export default function LoginScreen() {
 
     try {
       await login(email.trim());
-    } catch (e: any) {
-      console.error(e);
-      setErrorMessage(e?.message ?? "Login failed. Please try again.");
+    } catch (error: unknown) {
+      console.error(error);
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Login failed. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
