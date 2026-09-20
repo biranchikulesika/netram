@@ -43,7 +43,7 @@ export default function LoginScreen() {
       await new Promise((resolve) => setTimeout(resolve, 800));
       loginOfflineDemo(email.trim() || "inspector.one@dev.netram.in");
       router.replace("/");
-    } catch (err) {
+    } catch {
       setErrorMessage("Biometric sensor verification failed. Please enter your PIN.");
     } finally {
       setBiometricBusy(false);
