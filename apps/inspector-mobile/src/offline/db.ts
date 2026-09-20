@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 /**
  * SQLite local persistence for Inspector Mobile application (§5, §31).
  * Supports offline queuing, inspection caching, and media upload tracking.
@@ -245,6 +247,13 @@ let currentDb: ISqliteDatabase | null = null;
 
 export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
   if (currentDb) return currentDb;
+
+  if (Platform.OS === "web") {
+    const inMem = new InMemorySqliteDatabase();
+    await inMem.execAsync(DDL_SCHEMA);
+    currentDb = inMem;
+    return inMem;
+  }
 
   try {
     // Attempt dynamic import of expo-sqlite

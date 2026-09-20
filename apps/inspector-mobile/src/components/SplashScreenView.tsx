@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { colors, typography } from "../theme/colors";
 
 interface SplashScreenProps {
   onFinish?: () => void;
@@ -201,7 +202,7 @@ export function SplashScreenView({ onFinish: _onFinish, statusText }: SplashScre
         {/* Bottom Loading / Diagnostics Bar */}
         <View style={styles.bottomSection}>
           <View style={styles.loaderRow}>
-            <ActivityIndicator size="small" color="#38bdf8" />
+            <ActivityIndicator size="small" color={colors.navyLight} />
             <Text style={styles.statusText}>{displayStatus}</Text>
           </View>
 
@@ -220,7 +221,7 @@ export function SplashScreenView({ onFinish: _onFinish, statusText }: SplashScre
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: colors.navyDark,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -240,30 +241,30 @@ const styles = StyleSheet.create({
   },
   govEmblemBox: {
     alignItems: "center",
-    backgroundColor: "#1e293b99",
+    backgroundColor: colors.backdrop + "cc",
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.navyData,
   },
   ashokaStambh: {
     width: 64,
     height: 96,
-    tintColor: "#f59e0b",
+    tintColor: colors.gold,
     marginBottom: 8,
   },
   govMinistry: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#e2e8f0",
+    color: colors.bgCanvas,
     letterSpacing: 0.8,
     textAlign: "center",
   },
   govSubtext: {
     fontSize: 9,
     fontWeight: "600",
-    color: "#94a3b8",
+    color: colors.navyLight,
     letterSpacing: 1,
     marginTop: 2,
   },
@@ -286,19 +287,19 @@ const styles = StyleSheet.create({
     height: 130,
     borderRadius: 65,
     borderWidth: 2,
-    borderColor: "#38bdf8",
+    borderColor: colors.navyLight,
     backgroundColor: "transparent",
   },
   emblemCore: {
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.navyBrand,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#3b82f6",
-    shadowColor: "#38bdf8",
+    borderColor: colors.accentBlue,
+    shadowColor: colors.navyLight,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 18,
@@ -309,7 +310,7 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 44,
     borderWidth: 1.5,
-    borderColor: "#60a5fa44",
+    borderColor: colors.navyLight + "55",
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
@@ -319,7 +320,7 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 31,
     borderWidth: 2.5,
-    borderColor: "#38bdf8",
+    borderColor: colors.navyLight,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#2563eb",
+    backgroundColor: colors.accentBlue,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.textInverse,
   },
   radarSweepLine: {
     position: "absolute",
@@ -346,32 +347,33 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#67e8f9",
+    backgroundColor: colors.navyLight,
   },
   brandTitle: {
     fontSize: 34,
     fontWeight: "900",
-    color: "#f8fafc",
+    color: colors.textInverse,
     letterSpacing: 5,
   },
   badgePill: {
-    backgroundColor: "#1e3a8a44",
+    backgroundColor: colors.navyData + "99",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#3b82f666",
+    borderColor: colors.accentBlue,
     marginTop: 6,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#60a5fa",
+    color: colors.navyLight,
+    fontFamily: typography.mono,
     letterSpacing: 1.2,
   },
   tagline: {
     fontSize: 12,
-    color: "#94a3b8",
+    color: colors.navyLight,
     textAlign: "center",
     marginTop: 10,
     maxWidth: 280,
@@ -386,16 +388,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#1e293b88",
+    backgroundColor: colors.backdrop + "cc",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.navyData,
   },
   statusText: {
     fontSize: 12,
-    color: "#cbd5e1",
+    color: colors.bgCanvas,
     fontWeight: "500",
   },
   securityMeta: {
@@ -403,7 +405,8 @@ const styles = StyleSheet.create({
   },
   securityMetaText: {
     fontSize: 11,
-    color: "#64748b",
+    color: colors.navyLight,
+    fontFamily: typography.mono,
     letterSpacing: 0.4,
   },
 });

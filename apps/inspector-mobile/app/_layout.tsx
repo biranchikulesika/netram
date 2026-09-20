@@ -1,8 +1,10 @@
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import { useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { getStoredSession } from "../src/auth/session";
 import { getOfflineDatabase } from "../src/offline/db";
 import { SplashScreenView } from "../src/components/SplashScreenView";
+import { colors } from "../src/theme/colors";
 
 export default function RootLayout() {
   const rootNavigationState = useRootNavigationState();
@@ -45,32 +47,44 @@ export default function RootLayout() {
     if (isBootstrapping || !rootNavigationState?.key) return;
 
     const session = getStoredSession();
-    const isLoginPage = segments[0] === "login";
+    const isAuthPage = segments[0] === "login" || segments[0] === "signup";
 
-    if (!session && !isLoginPage) {
+    if (!session && !isAuthPage) {
       router.replace("/login");
-    } else if (session && isLoginPage) {
+    } else if (session && isAuthPage) {
       router.replace("/");
     }
   }, [isBootstrapping, segments, router, rootNavigationState?.key]);
 
-  if (isBootstrapping) {
-    return <SplashScreenView />;
-  }
-
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: "#1e293b" },
-        headerTintColor: "#f8fafc",
-        headerTitleStyle: { fontWeight: "bold" },
-      }}
-    >
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="index" options={{ title: "Netram Inspector" }} />
-      <Stack.Screen name="inspections/[id]" options={{ title: "Field Inspection" }} />
-    </Stack>
+    <View style={styles.rootContainer}>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.navyDark },
+          headerTintColor: "#ffffff",
+          headerTitleStyle: { fontWeight: "bold" },
+        }}
+      >
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ title: "Netram Inspector" }} />
+        <Stack.Screen name="inspections/[id]" options={{ title: "Field Inspection" }} />
+      </Stack>
+      {isBootstrapping && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
+          <SplashScreenView />
+        </View>
+      )}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  rootContainer: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+});
 
 

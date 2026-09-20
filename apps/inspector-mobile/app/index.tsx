@@ -14,6 +14,7 @@ import { NetramApiClient } from "@netram/api-client";
 import { OfflineInspectionQueue } from "../src/offline/queue";
 import type { CachedInspectionRecord } from "../src/offline/queue";
 import { getStoredSession, clearSession } from "../src/auth/session";
+import { colors, typography } from "../src/theme/colors";
 
 const queue = new OfflineInspectionQueue();
 
@@ -29,6 +30,21 @@ function getStatusStyle(status: string) {
       return styles.status_closed;
     default:
       return styles.status_assigned;
+  }
+}
+
+function getStatusTextStyle(status: string) {
+  switch (status) {
+    case "in_progress":
+      return { color: "#1d4ed8" };
+    case "submitted":
+      return { color: colors.actionGreen };
+    case "findings":
+      return { color: colors.tagRust };
+    case "closed":
+      return { color: colors.textMuted };
+    default:
+      return { color: colors.navyData };
   }
 }
 
@@ -221,7 +237,9 @@ export default function InspectorHomeScreen() {
                     <Text style={styles.projectCode}>{item.project_code}</Text>
                   </View>
                   <View style={[styles.statusPill, getStatusStyle(item.status)]}>
-                    <Text style={styles.statusText}>{item.status.replace("_", " ")}</Text>
+                    <Text style={[styles.statusText, getStatusTextStyle(item.status)]}>
+                      {item.status.replace("_", " ")}
+                    </Text>
                   </View>
                 </View>
 
@@ -245,51 +263,56 @@ export default function InspectorHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#0f172a" },
+  safeArea: { flex: 1, backgroundColor: colors.bgCanvas },
   container: { flex: 1, padding: 16, gap: 16 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#334155",
+    borderBottomColor: colors.borderSubtle,
   },
-  appName: { fontSize: 20, fontWeight: "bold", color: "#f8fafc" },
-  appSubtitle: { fontSize: 13, color: "#94a3b8" },
+  appName: { fontSize: 20, fontWeight: "800", color: colors.textPrimary, letterSpacing: -0.2 },
+  appSubtitle: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   badge: {
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.bgSubtle,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#475569",
+    borderColor: colors.borderSubtle,
   },
-  badgeText: { color: "#e2e8f0", fontSize: 12, fontWeight: "600" },
+  badgeText: { color: colors.textPrimary, fontSize: 12, fontWeight: "600", fontFamily: typography.mono },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
   signOutButton: {
-    backgroundColor: "#334155",
+    backgroundColor: "#fee2e2",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#475569",
+    borderColor: "#fecaca",
   },
   signOutText: {
-    color: "#f8fafc",
-    fontSize: 11,
+    color: colors.error,
+    fontSize: 12,
     fontWeight: "600",
   },
   syncCard: {
-    backgroundColor: "#1e293b",
-    padding: 14,
+    backgroundColor: colors.bgSurface,
+    padding: 16,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.borderSubtle,
+    shadowColor: colors.navyBrand,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
     gap: 10,
   },
   syncCardRow: {
@@ -297,41 +320,51 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  syncTitle: { fontSize: 15, fontWeight: "700", color: "#f1f5f9" },
-  syncSubtitle: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
+  syncTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
+  syncSubtitle: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   syncButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: colors.actionGreen,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 6,
     minWidth: 100,
     alignItems: "center",
+    shadowColor: colors.actionGreenDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  syncButtonDisabled: { backgroundColor: "#475569", opacity: 0.6 },
-  syncButtonText: { color: "#ffffff", fontWeight: "600", fontSize: 13 },
+  syncButtonDisabled: { backgroundColor: colors.borderStrong, opacity: 0.6 },
+  syncButtonText: { color: colors.textInverse, fontWeight: "600", fontSize: 13 },
   syncMessageBanner: {
-    backgroundColor: "#0f172a",
-    padding: 8,
+    backgroundColor: colors.bgSubtle,
+    padding: 10,
     borderRadius: 6,
     borderLeftWidth: 3,
-    borderLeftColor: "#3b82f6",
+    borderLeftColor: colors.accentBlue,
   },
-  syncMessageText: { color: "#cbd5e1", fontSize: 12 },
+  syncMessageText: { color: colors.textPrimary, fontSize: 12, lineHeight: 16 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 4,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#f8fafc" },
-  refreshLink: { color: "#38bdf8", fontSize: 13, fontWeight: "600" },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+  refreshLink: { color: colors.accentBlue, fontSize: 13, fontWeight: "600" },
   card: {
-    backgroundColor: "#1e293b",
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: colors.bgSurface,
+    borderRadius: 10,
+    padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.borderSubtle,
+    shadowColor: colors.navyBrand,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
     gap: 8,
   },
   cardHeader: {
@@ -341,38 +374,41 @@ const styles = StyleSheet.create({
   },
   tagRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   typeTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
     borderRadius: 4,
     fontSize: 11,
     fontWeight: "700",
+    fontFamily: typography.mono,
+    letterSpacing: 0.5,
   },
-  tagRoutine: { backgroundColor: "#1e3a8a", color: "#bfdbfe" },
-  tagSurprise: { backgroundColor: "#7f1d1d", color: "#fecaca" },
-  projectCode: { color: "#94a3b8", fontSize: 12, fontFamily: "monospace" },
+  tagRoutine: { backgroundColor: "#eff6ff", color: "#1d4ed8", borderWidth: 1, borderColor: "#bfdbfe" },
+  tagSurprise: { backgroundColor: "#fef2f2", color: colors.error, borderWidth: 1, borderColor: "#fecaca" },
+  projectCode: { color: colors.textMuted, fontSize: 12, fontFamily: typography.mono },
   statusPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     borderRadius: 12,
+    borderWidth: 1,
   },
-  statusText: { fontSize: 11, fontWeight: "600", textTransform: "uppercase" },
-  status_assigned: { backgroundColor: "#334155" },
-  status_in_progress: { backgroundColor: "#14532d" },
-  status_submitted: { backgroundColor: "#581c87" },
-  status_findings: { backgroundColor: "#78350f" },
-  status_closed: { backgroundColor: "#022c22" },
-  projectName: { fontSize: 15, fontWeight: "600", color: "#f8fafc" },
+  statusText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
+  status_assigned: { backgroundColor: "#f3f6fb", borderColor: "#cbd5e1" },
+  status_in_progress: { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" },
+  status_submitted: { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" },
+  status_findings: { backgroundColor: "#fff7ed", borderColor: "#fed7aa" },
+  status_closed: { backgroundColor: "#f1f5f9", borderColor: "#cbd5e1" },
+  projectName: { fontSize: 15, fontWeight: "700", color: colors.textPrimary },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 4,
     borderTopWidth: 1,
-    borderTopColor: "#334155",
-    paddingTop: 8,
+    borderTopColor: colors.borderSubtle,
+    paddingTop: 10,
   },
-  footerDate: { color: "#94a3b8", fontSize: 12 },
-  openLink: { color: "#60a5fa", fontSize: 13, fontWeight: "600" },
+  footerDate: { color: colors.textMuted, fontSize: 12 },
+  openLink: { color: colors.accentBlue, fontSize: 13, fontWeight: "600" },
   emptyBox: {
     flex: 1,
     alignItems: "center",
@@ -380,6 +416,6 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 8,
   },
-  emptyText: { color: "#cbd5e1", fontSize: 15, fontWeight: "600" },
-  emptySubtext: { color: "#64748b", fontSize: 13, textAlign: "center" },
+  emptyText: { color: colors.textPrimary, fontSize: 15, fontWeight: "700" },
+  emptySubtext: { color: colors.textMuted, fontSize: 13, textAlign: "center" },
 });
