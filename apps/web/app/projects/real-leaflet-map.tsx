@@ -10,11 +10,20 @@ import {
   IconMapPin,
   IconShieldCheck,
   IconChevronRight,
+  IconChevronLeft,
   IconCheck,
-  IconLock,
   IconBuilding,
+  IconClipboard,
+  IconClock,
+  IconX,
 } from "../components/icons";
-import { getDistrictName, getOrganisationName } from "../../lib/presentation";
+import {
+  getDistrictName,
+  getOrganisationName,
+  getAuthorityName,
+  getProgrammeName,
+  formatDate,
+} from "../../lib/presentation";
 
 interface RealLeafletMapProps {
   projects: Project[];
@@ -33,11 +42,15 @@ interface GeofenceConfig {
 
 // Canonical District Coordinates in Odisha
 const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number; name: string }> = {
-  "5f6c6fcf-fc88-5bf1-9f63-cad86ee0bd3b": { lat: 20.2961, lng: 85.8245, name: "Khordha (Bhubaneswar)" },
-  "92f0e386-2b80-5ca4-94a0-9c7d90d47dbf": { lat: 20.4625, lng: 85.8830, name: "Cuttack" },
+  "5f6c6fcf-fc88-5bf1-9f63-cad86ee0bd3b": {
+    lat: 20.2961,
+    lng: 85.8245,
+    name: "Khordha (Bhubaneswar)",
+  },
+  "92f0e386-2b80-5ca4-94a0-9c7d90d47dbf": { lat: 20.4625, lng: 85.883, name: "Cuttack" },
   "ec220eb3-d4a3-5b12-9412-26d8badeafe7": { lat: 19.8135, lng: 85.8312, name: "Puri" },
-  "a2dfd214-5aa0-5c7a-aa78-7b59865ba0a3": { lat: 19.3800, lng: 84.8500, name: "Ganjam (Berhampur)" },
-  "e71c0cc4-6569-5e2b-bb73-cc3cae07fb8d": { lat: 22.1200, lng: 84.0300, name: "Sundargarh (Rourkela)" },
+  "a2dfd214-5aa0-5c7a-aa78-7b59865ba0a3": { lat: 19.38, lng: 84.85, name: "Ganjam (Berhampur)" },
+  "e71c0cc4-6569-5e2b-bb73-cc3cae07fb8d": { lat: 22.12, lng: 84.03, name: "Sundargarh (Rourkela)" },
 };
 
 function parseGpsCoordinates(desc: string | null): { lat: number; lng: number } | null {
@@ -53,16 +66,20 @@ function parseGpsCoordinates(desc: string | null): { lat: number; lng: number } 
   return null;
 }
 
-function parseSanctionedCapacity(desc: string | null): string {
-  if (!desc) return "100 beneficiaries";
-  const match = desc.match(/Sanctioned Capacity:\s*([^|]+)/i);
-  return match && match[1] ? match[1].trim() : "100 beneficiaries";
-}
-
 function parseWelfareCategory(desc: string | null): string {
   if (!desc) return "General Welfare Facility";
   const match = desc.match(/Category:\s*([^|]+)/i);
   return match && match[1] ? match[1].trim() : "General Welfare Facility";
+}
+
+function getCleanDescription(desc: string | null): string | null {
+  if (!desc) return null;
+  const cleaned = desc
+    .replace(/GPS Coordinates:\s*[0-9.-]+\s*,\s*[0-9.-]+/gi, "")
+    .replace(/Category:\s*[^|]+/gi, "")
+    .replace(/\|/g, "")
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
 }
 
 function getStatusColor(status: ProjectStatus): string {
@@ -98,28 +115,61 @@ export default function RealLeafletMap({
 
   // Cartographic Controls
   const [mapType, setMapType] = useState<"streets" | "satellite">("streets");
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    projects[0]?.id ?? null,
-  );
-  // Default drawer closed so user sees the complete, unobstructed map view
-  const [showDrawer, setShowDrawer] = useState<boolean>(false);
+  // No projects selected by default; show full map with left-side browse list (Google Maps style)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  // Default drawer open on the left so user immediately sees the browse list of all projects
+  const [showDrawer, setShowDrawer] = useState<boolean>(true);
+
+  // Zoom-aware location label display (Google Maps style)
+  // When zoomed out (< 10), unselected facility labels hide; when zoomed in (>= 10), all labels show.
+  const ZOOM_LABEL_THRESHOLD = 10;
+  const [isZoomedIn, setIsZoomedIn] = useState<boolean>(false);
 
   // Geofencing Interactive State
-  const [geofenceMode, setGeofenceMode] = useState<"view" | "circle" | "polygon">("view");
+  const [geofenceMode, setGeofenceMode] = useState<"view" | "circle" | "polygon" | "location">(
+    "view",
+  );
   const [circleRadius, setCircleRadius] = useState<number>(250); // meters
   const [polygonVertices, setPolygonVertices] = useState<[number, number][]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Location pinning state: draft pin synced between GPS coordinate inputs and map clicks
+  const [draftLocation, setDraftLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [latInput, setLatInput] = useState("");
+  const [lngInput, setLngInput] = useState("");
+
   // Ref to always provide latest geofenceMode inside Leaflet map event callbacks
-  const geofenceModeRef = useRef<"view" | "circle" | "polygon">(geofenceMode);
+  const geofenceModeRef = useRef<"view" | "circle" | "polygon" | "location">(geofenceMode);
   useEffect(() => {
     geofenceModeRef.current = geofenceMode;
     if (mapContainerRef.current) {
-      mapContainerRef.current.style.cursor = geofenceMode === "polygon" ? "crosshair" : "";
+      mapContainerRef.current.style.cursor =
+        geofenceMode === "polygon" || geofenceMode === "location" ? "crosshair" : "";
+      if (geofenceMode === "polygon") {
+        mapContainerRef.current.classList.add("drawing-polygon");
+      } else {
+        mapContainerRef.current.classList.remove("drawing-polygon");
+      }
     }
   }, [geofenceMode]);
 
   const STORAGE_KEY = "netram_geofences_registry";
+  const LOCATION_KEY = "netram_location_overrides";
+
+  // Pinned location overrides per project (survives reload)
+  const [locationOverrides, setLocationOverrides] = useState<
+    Record<string, { lat: number; lng: number }>
+  >(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(LOCATION_KEY);
+        if (stored) return JSON.parse(stored);
+      } catch {
+        // Ignore
+      }
+    }
+    return {};
+  });
 
   // Persistent Geofences Registry (Per facility, synced to localStorage)
   const [geofences, setGeofences] = useState<Record<string, GeofenceConfig>>(() => {
@@ -205,30 +255,32 @@ export default function RealLeafletMap({
         // Deterministic offset to prevent marker overlapping
         const hash = (p.id + p.code).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
         const angle = ((hash + index * 47) % 360) * (Math.PI / 180);
-        const offsetDist = 0.012 + ((hash % 7) * 0.005);
+        const offsetDist = 0.012 + (hash % 7) * 0.005;
 
         lat = baseLat + Math.sin(angle) * offsetDist;
         lng = baseLng + Math.cos(angle) * offsetDist;
+      }
+
+      const override = locationOverrides[p.id];
+      if (override) {
+        lat = override.lat;
+        lng = override.lng;
       }
 
       return {
         ...p,
         lat,
         lng,
-        capacityLabel: parseSanctionedCapacity(p.description),
         categoryLabel: parseWelfareCategory(p.description),
       };
     });
-  }, [projects]);
+  }, [projects, locationOverrides]);
 
   const visibleFacilities = facilities;
 
   const selectedFacility = useMemo(() => {
-    return (
-      facilities.find((f) => f.id === selectedProjectId) ??
-      facilities[0] ??
-      null
-    );
+    if (!selectedProjectId) return null;
+    return facilities.find((f) => f.id === selectedProjectId) ?? null;
   }, [facilities, selectedProjectId]);
 
   const currentGeofence: GeofenceConfig = useMemo(() => {
@@ -264,24 +316,80 @@ export default function RealLeafletMap({
     }
   }, [facilities]);
 
-  const flyToFacility = useCallback((lat: number, lng: number) => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 });
+  // Focus on a facility with Google Maps-style offset so it centers in the right-hand visible map area
+  const focusFacility = useCallback((lat: number, lng: number, withOffset = true) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const targetZoom = Math.max(map.getZoom(), 14);
+    const containerWidth =
+      mapContainerRef.current?.clientWidth ??
+      (typeof window !== "undefined" ? window.innerWidth : 1000);
+    const isDesktop = containerWidth >= 768;
+
+    if (withOffset && isDesktop) {
+      const panelWidth = 380;
+      // Project target lat/lng to container pixel coordinates at targetZoom
+      const targetPoint = map.project([lat, lng], targetZoom);
+      // Center the marker in the open right portion of the container
+      const offsetPoint = L.point(targetPoint.x - panelWidth / 2, targetPoint.y);
+      const newCenter = map.unproject(offsetPoint, targetZoom);
+      map.flyTo(newCenter, targetZoom, { duration: 1.0 });
+    } else {
+      map.flyTo([lat, lng], targetZoom, { duration: 1.0 });
     }
   }, []);
 
-  // Expose helper on window for popup button interactions
+  // Smoothly pan map by specified dx/dy pixel offsets (accessible 4-directional navigation)
+  const panMap = useCallback((dx: number, dy: number) => {
+    if (!mapInstanceRef.current) return;
+    mapInstanceRef.current.panBy([dx, dy], { animate: true, duration: 0.25 });
+  }, []);
+
+  // Smoothly zoom in / out
+  const handleZoomIn = useCallback(() => {
+    if (!mapInstanceRef.current) return;
+    mapInstanceRef.current.zoomIn();
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (!mapInstanceRef.current) return;
+    mapInstanceRef.current.zoomOut();
+  }, []);
+
+  const handleSelectFacility = useCallback(
+    (f: (typeof facilities)[0]) => {
+      setSelectedProjectId(f.id);
+      setShowDrawer(true);
+      focusFacility(f.lat, f.lng, true);
+    },
+    [focusFacility],
+  );
+
+  // Expose helper on window for popup or DOM button interactions
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__netram_select_facility = (id: string) => {
+      if (geofenceModeRef.current === "polygon") return;
+      const facility = facilities.find((f) => f.id === id);
+      if (facility) {
+        handleSelectFacility(facility);
+      }
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__netram_open_dossier = (id: string) => {
-      setSelectedProjectId(id);
-      setShowDrawer(true);
+      const facility = facilities.find((f) => f.id === id);
+      if (facility) {
+        handleSelectFacility(facility);
+      }
     };
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__netram_select_facility;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).__netram_open_dossier;
     };
-  }, []);
+  }, [facilities, handleSelectFacility]);
 
   // Invalidate map size when drawer toggles to avoid tile clipping
   useEffect(() => {
@@ -304,6 +412,37 @@ export default function RealLeafletMap({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Pin a new facility location. The move invalidates the old boundary (geofence is removed),
+  // so a fresh perimeter must be drawn at the pinned spot.
+  const pinNewLocation = useCallback(
+    (facility: (typeof facilities)[0], latlng: { lat: number; lng: number }) => {
+      setLocationOverrides((prev) => {
+        const next = { ...prev, [facility.id]: { lat: latlng.lat, lng: latlng.lng } };
+        try {
+          localStorage.setItem(LOCATION_KEY, JSON.stringify(next));
+        } catch {
+          // Ignore
+        }
+        return next;
+      });
+      setGeofences((prev) => {
+        const next = { ...prev };
+        delete next[facility.id];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // Ignore
+        }
+        return next;
+      });
+      setPolygonVertices([]);
+      setGeofenceMode("polygon");
+      setToastMessage(`Location pinned for ${facility.name}. Draw the new perimeter.`);
+      setTimeout(() => setToastMessage(null), 3000);
+    },
+    [],
+  );
+
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -318,16 +457,11 @@ export default function RealLeafletMap({
         scrollWheelZoom: true,
       });
 
-      L.control.zoom({ position: "bottomright" }).addTo(map);
-
-      const streetLayer = L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          maxZoom: 19,
-          keepBuffer: 4,
-        },
-      );
+      const streetLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+        keepBuffer: 4,
+      });
       streetLayer.addTo(map);
       tileLayerRef.current = streetLayer;
 
@@ -338,18 +472,33 @@ export default function RealLeafletMap({
       geofenceLayerRef.current = geofenceGroup;
       mapInstanceRef.current = map;
 
-      // Invalidate size once DOM container is calculated, then frame all locations
+      // Invalidate size once DOM container is calculated
       setTimeout(() => {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.invalidateSize();
-          fitAllFacilities();
         }
       }, 150);
+
+      // Track zoom level for Google Maps-style label display (threshold >= 10)
+      const handleZoomChange = () => {
+        const z = map.getZoom();
+        setIsZoomedIn((prev) => {
+          const next = z >= ZOOM_LABEL_THRESHOLD;
+          return prev !== next ? next : prev;
+        });
+      };
+      map.on("zoomend", handleZoomChange);
+      handleZoomChange();
 
       map.on("click", (e: L.LeafletMouseEvent) => {
         if (geofenceModeRef.current === "polygon") {
           const { lat, lng } = e.latlng;
           setPolygonVertices((prev) => [...prev, [lat, lng]]);
+        } else if (geofenceModeRef.current === "location") {
+          const { lat, lng } = e.latlng;
+          setDraftLocation({ lat, lng });
+          setLatInput(lat.toFixed(6));
+          setLngInput(lng.toFixed(6));
         }
       });
     }
@@ -360,7 +509,21 @@ export default function RealLeafletMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [fitAllFacilities]);
+  }, []);
+
+  // Fit all facilities once the first batch loads (avoids rebuilding the map per data change)
+  const hasFittedRef = useRef(false);
+  useEffect(() => {
+    if (facilities.length === 0 || hasFittedRef.current) return;
+    hasFittedRef.current = true;
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+        fitAllFacilities();
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [facilities]);
 
   // Tile layer switching
   useEffect(() => {
@@ -383,14 +546,11 @@ export default function RealLeafletMap({
       satLayer.addTo(map);
       tileLayerRef.current = satLayer;
     } else {
-      const streetLayer = L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          maxZoom: 19,
-          keepBuffer: 4,
-        },
-      );
+      const streetLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+        keepBuffer: 4,
+      });
       streetLayer.addTo(map);
       tileLayerRef.current = streetLayer;
     }
@@ -405,107 +565,150 @@ export default function RealLeafletMap({
     visibleFacilities.forEach((f) => {
       const isSelected = selectedFacility?.id === f.id;
       const color = getStatusColor(f.status);
+      const width = isSelected ? 34 : 26;
+      const height = isSelected ? 44 : 35;
 
       const markerHtml = `
-        <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <div class="netram-pin-wrap" onclick="window.__netram_select_facility && window.__netram_select_facility('${f.id}')" style="
+          position: relative;
+          width: ${width}px;
+          height: ${height}px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          pointer-events: auto;
+        ">
           ${
             isSelected
-              ? `<div style="position: absolute; inset: -5px; border-radius: 50%; border: 2.5px solid ${color}; opacity: 0.8; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>`
-              : f.status === "Active"
-                ? `<div style="position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid ${color}; opacity: 0.35;"></div>`
-                : ""
+              ? `<div style="
+                  position: absolute;
+                  bottom: -4px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  width: 20px;
+                  height: 9px;
+                  border-radius: 50%;
+                  border: 2px solid ${color};
+                  opacity: 0.85;
+                  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+                "></div>
+                <div style="
+                  position: absolute;
+                  bottom: -2px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  width: 12px;
+                  height: 5px;
+                  border-radius: 50%;
+                  background: rgba(0, 0, 0, 0.35);
+                "></div>`
+              : `<div style="
+                  position: absolute;
+                  bottom: -2px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  width: 10px;
+                  height: 4px;
+                  border-radius: 50%;
+                  background: rgba(0, 0, 0, 0.22);
+                "></div>`
           }
-          <div style="
-            width: ${isSelected ? "24px" : "18px"};
-            height: ${isSelected ? "24px" : "18px"};
-            border-radius: 50%;
-            background: ${color};
-            border: 2px solid #ffffff;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-size: ${isSelected ? "10px" : "8px"};
-            font-weight: 800;
-            transition: all 0.2s ease;
-          ">
-            ${f.type === "authority_project" ? "★" : "●"}
-          </div>
+          <svg
+            viewBox="0 0 28 38"
+            width="${width}"
+            height="${height}"
+            style="display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M14 0C6.27 0 0 6.27 0 14C0 24.5 10.5 33.5 14 38C17.5 33.5 28 24.5 28 14C28 6.27 21.73 0 14 0Z"
+              fill="${color}"
+              stroke="#ffffff"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+            />
+            <circle cx="14" cy="14" r="5" fill="#ffffff"/>
+            ${
+              f.type === "authority_project"
+                ? `<polygon points="14,10.5 15.2,13 17.8,13.3 15.9,15.1 16.4,17.7 14,16.4 11.6,17.7 12.1,15.1 10.2,13.3 12.8,13" fill="${color}"/>`
+                : `<circle cx="14" cy="14" r="2.3" fill="${color}"/>`
+            }
+          </svg>
         </div>
       `;
 
       const customIcon = L.divIcon({
         html: markerHtml,
         className: "leaflet-facility-marker",
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -14],
+        iconSize: [width, height],
+        iconAnchor: [width / 2, height],
+        popupAnchor: [0, -height],
       });
 
       const marker = L.marker([f.lat, f.lng], { icon: customIcon });
 
-      const districtName = getDistrictName(f.districtId, f.code);
+      // Click on the location dot: open details panel on left and focus on right (Google Maps style)
+      marker.on("click", (e: L.LeafletMouseEvent) => {
+        if (geofenceModeRef.current === "polygon") {
+          const { lat, lng } = e.latlng;
+          setPolygonVertices((prev) => [...prev, [lat, lng]]);
+          return;
+        }
+        if (geofenceModeRef.current === "location") {
+          const { lat, lng } = e.latlng;
+          setDraftLocation({ lat, lng });
+          setLatInput(lat.toFixed(6));
+          setLngInput(lng.toFixed(6));
+          return;
+        }
+        L.DomEvent.stopPropagation(e);
+        handleSelectFacility(f);
+      });
 
-      // Interactive Popup on Dot Click
-      const popupHtml = `
-        <div style="font-family: inherit; padding: 8px 10px; min-width: 210px; max-width: 260px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; gap: 6px;">
-            <span style="font-family: monospace; font-size: 11px; font-weight: 800; background: #e2e8f0; color: #0c2a52; padding: 2px 6px; border-radius: 4px;">${f.code}</span>
-            <span style="font-size: 10px; font-weight: 700; color: ${color};">● ${f.status}</span>
-          </div>
-          <div style="font-weight: 700; font-size: 13px; color: #0c2a52; line-height: 1.3; margin-bottom: 4px;">
-            ${f.name}
-          </div>
-          <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">
-            ${f.categoryLabel}
-          </div>
-          <div style="font-size: 11px; color: #334155; display: flex; flex-direction: column; gap: 2px; padding: 4px 0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px;">
-            <div><strong>District:</strong> ${districtName}</div>
-            <div><strong>Capacity:</strong> ${f.capacityLabel}</div>
-          </div>
-          <div style="display: flex; gap: 6px;">
-            <button
-              type="button"
-              onclick="window.__netram_open_dossier && window.__netram_open_dossier('${f.id}')"
-              style="flex: 1; padding: 5px 8px; font-size: 11px; font-weight: 700; background: #0c2a52; color: #ffffff; border: none; border-radius: 4px; cursor: pointer;"
-            >
-              Details
-            </button>
-            <a
-              href="/projects/${f.id}"
-              style="flex: 1; text-align: center; padding: 5px 8px; font-size: 11px; font-weight: 700; background: #15803d; color: #ffffff; text-decoration: none; border-radius: 4px; display: inline-block;"
-            >
-              Open →
-            </a>
-          </div>
-        </div>
-      `;
+      // Google Maps style: show label permanently when zoomed in (zoom >= 10) OR if facility is selected.
+      // When zoomed out (< 10), unselected markers hide their label to prevent clutter, but show on hover!
+      const showLabelPermanent = isZoomedIn || isSelected;
 
-      marker.bindPopup(popupHtml, { maxWidth: 280 });
-
-      // Persistent location label directly visible on the map
-      const shortName = f.name.length > 26 ? `${f.name.substring(0, 24)}…` : f.name;
+      // Location label directly visible on the map (Clickable like Google Maps)
+      const shortName = f.name.length > 34 ? `${f.name.substring(0, 32)}…` : f.name;
       marker.bindTooltip(
-        `<div class="netram-map-label ${isSelected ? "selected" : ""}">
-          <span class="label-code">${f.code}</span>
+        `<div class="netram-map-label ${isSelected ? "selected" : ""}" data-id="${f.id}" onclick="window.__netram_select_facility && window.__netram_select_facility('${f.id}')">
           <span class="label-name" title="${f.name}">${shortName}</span>
         </div>`,
         {
-          permanent: true,
+          permanent: showLabelPermanent,
           direction: "bottom",
           offset: [0, 8],
           className: `netram-leaflet-tooltip ${isSelected ? "selected" : ""}`,
-        }
+          interactive: true,
+        },
       );
 
-      marker.on("click", () => {
-        setSelectedProjectId(f.id);
-      });
+      const tooltip = marker.getTooltip();
+      if (tooltip) {
+        tooltip.on("click", (e: L.LeafletMouseEvent) => {
+          if (geofenceModeRef.current === "polygon") {
+            const { lat, lng } = e.latlng;
+            setPolygonVertices((prev) => [...prev, [lat, lng]]);
+            return;
+          }
+          if (geofenceModeRef.current === "location") {
+            const { lat, lng } = e.latlng;
+            setDraftLocation({ lat, lng });
+            setLatInput(lat.toFixed(6));
+            setLngInput(lng.toFixed(6));
+            return;
+          }
+          L.DomEvent.stopPropagation(e);
+          handleSelectFacility(f);
+        });
+      }
 
       marker.addTo(markersGroup);
     });
-  }, [visibleFacilities, selectedFacility]);
+  }, [visibleFacilities, selectedFacility, handleSelectFacility, isZoomedIn]);
 
   // Render Geofences
   useEffect(() => {
@@ -515,31 +718,58 @@ export default function RealLeafletMap({
 
     if (!selectedFacility) return;
 
+    if (geofenceMode === "location") {
+      if (draftLocation) {
+        const draftIcon = L.divIcon({
+          html: `
+            <div style="position: relative; width: 30px; height: 42px; display: flex; align-items: center; justify-content: center;">
+              <div style="position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 18px; height: 9px; border-radius: 50%; border: 2px solid #2563eb; opacity: 0.85; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+              <svg viewBox="0 0 28 38" width="30" height="42" style="display: block; filter: drop-shadow(0 2px 6px rgba(37,99,235,0.6));" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 0C6.27 0 0 6.27 0 14C0 24.5 10.5 33.5 14 38C17.5 33.5 28 24.5 28 14C28 6.27 21.73 0 14 0Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+                <circle cx="14" cy="14" r="5" fill="#ffffff"/>
+                <circle cx="14" cy="14" r="2.3" fill="#2563eb"/>
+              </svg>
+            </div>`,
+          className: "leaflet-facility-marker",
+          iconSize: [30, 42],
+          iconAnchor: [15, 42],
+        });
+        L.marker([draftLocation.lat, draftLocation.lng], { icon: draftIcon }).addTo(geofenceGroup);
+      }
+      return;
+    }
+
     const lat = selectedFacility.lat;
     const lng = selectedFacility.lng;
 
     if (geofenceMode === "polygon") {
-      if (polygonVertices.length > 0) {
+      if (polygonVertices.length >= 3) {
         L.polygon(polygonVertices, {
           color: "#2563eb",
           weight: 2.5,
-          dashArray: "6, 6",
+          dashArray: "5, 5",
           fillColor: "#3b82f6",
-          fillOpacity: 0.22,
+          fillOpacity: 0.2,
         }).addTo(geofenceGroup);
-
-        polygonVertices.forEach((pt, i) => {
-          L.circleMarker(pt, {
-            radius: 5,
-            color: "#1d4ed8",
-            fillColor: "#ffffff",
-            fillOpacity: 1,
-            weight: 2,
-          })
-            .bindTooltip(`Point ${i + 1}`, { permanent: false })
-            .addTo(geofenceGroup);
-        });
+      } else if (polygonVertices.length === 2) {
+        L.polyline(polygonVertices, {
+          color: "#2563eb",
+          weight: 2.5,
+          dashArray: "5, 5",
+        }).addTo(geofenceGroup);
       }
+
+      polygonVertices.forEach((pt, i) => {
+        L.circleMarker(pt, {
+          radius: 6,
+          color: "#1d4ed8",
+          fillColor: i === 0 ? "#16a34a" : "#ffffff",
+          fillOpacity: 1,
+          weight: 2,
+        })
+          .bindTooltip(`Point ${i + 1}${i === 0 ? " (Start)" : ""}`, { permanent: false })
+          .addTo(geofenceGroup);
+      });
     } else if (currentGeofence.type === "polygon" && currentGeofence.polygonPoints.length >= 3) {
       L.polygon(currentGeofence.polygonPoints, {
         color: "#16a34a",
@@ -558,7 +788,14 @@ export default function RealLeafletMap({
         fillOpacity: 0.18,
       }).addTo(geofenceGroup);
     }
-  }, [selectedFacility, geofenceMode, circleRadius, polygonVertices, currentGeofence]);
+  }, [
+    selectedFacility,
+    geofenceMode,
+    circleRadius,
+    polygonVertices,
+    currentGeofence,
+    draftLocation,
+  ]);
 
   // Seal Geofence
   const handleSealGeofence = async () => {
@@ -605,8 +842,9 @@ export default function RealLeafletMap({
     }
 
     const txHash = `0x${Math.random().toString(16).substring(2, 8)}...${Math.random().toString(16).substring(2, 6)}`;
-    const newConfig: GeofenceConfig = serverGeofence ?? (
-      geofenceMode === "polygon"
+    const newConfig: GeofenceConfig =
+      serverGeofence ??
+      (geofenceMode === "polygon"
         ? {
             type: "polygon",
             radiusMeters: 0,
@@ -622,8 +860,7 @@ export default function RealLeafletMap({
             sealedAt: new Date().toISOString(),
             sealedBy: "DSWO",
             auditTx: txHash,
-          }
-    );
+          });
 
     setGeofences((prev) => {
       const updated = {
@@ -644,33 +881,73 @@ export default function RealLeafletMap({
     setPolygonVertices([]);
     setToastMessage(
       serverGeofence
-        ? `Geofence sealed & synced to server for ${selectedFacility.code}`
-        : `Geofence sealed locally for ${selectedFacility.code}`
+        ? `Geofence saved for ${selectedFacility.name}`
+        : `Geofence saved locally for ${selectedFacility.name}`,
     );
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleResetGeofence = () => {
-    if (!selectedFacility || !isAuthority) return;
+  const handleStartAdjustRadius = () => {
+    setCircleRadius(currentGeofence.radiusMeters || 250);
+    setGeofenceMode("circle");
+  };
 
-    setGeofences((prev) => {
-      const next = { ...prev };
-      delete next[selectedFacility.id];
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // localStorage unavailable
-        }
-      }
-      return next;
-    });
+  const handleStartSetLocation = () => {
+    if (!selectedFacility) return;
+    setDraftLocation({ lat: selectedFacility.lat, lng: selectedFacility.lng });
+    setLatInput(selectedFacility.lat.toFixed(6));
+    setLngInput(selectedFacility.lng.toFixed(6));
+    setGeofenceMode("location");
+  };
 
+  const handleGoToCoordinates = () => {
+    const lat = parseFloat(latInput);
+    const lng = parseFloat(lngInput);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setToastMessage("Enter valid latitude (-90 to 90) and longitude (-180 to 180).");
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    setDraftLocation({ lat, lng });
+    focusFacility(lat, lng, false);
+  };
+
+  const handleCommitLocation = () => {
+    if (!selectedFacility || !draftLocation) return;
+    pinNewLocation(selectedFacility, draftLocation);
+    setDraftLocation(null);
+  };
+
+  const handleStartDrawPolygon = () => {
+    if (currentGeofence.type === "polygon" && currentGeofence.polygonPoints.length > 0) {
+      setPolygonVertices([...currentGeofence.polygonPoints]);
+    } else {
+      setPolygonVertices([]);
+    }
+    setGeofenceMode("polygon");
+  };
+
+  const handleCancelGeofenceEdit = () => {
     setGeofenceMode("view");
     setPolygonVertices([]);
-    setToastMessage(`Geofence reset to default for ${selectedFacility.code}`);
-    setTimeout(() => setToastMessage(null), 3000);
+    setCircleRadius(currentGeofence.radiusMeters || 250);
   };
+
+  const resetGeofenceState = useCallback(() => {
+    setGeofenceMode("view");
+    setPolygonVertices([]);
+    setDraftLocation(null);
+  }, []);
+
+  const handleBackToAllProjects = useCallback(() => {
+    setSelectedProjectId(null);
+    resetGeofenceState();
+  }, [resetGeofenceState]);
+
+  const handleClosePanel = useCallback(() => {
+    setShowDrawer(false);
+    resetGeofenceState();
+  }, [resetGeofenceState]);
 
   return (
     <div
@@ -690,17 +967,59 @@ export default function RealLeafletMap({
       {/* 1. Complete Leaflet Map DOM Canvas */}
       <div ref={mapContainerRef} style={{ width: "100%", height: "100%", zIndex: 1 }} />
 
-      {/* 2. Top-Right Cartographic Controls */}
+      {/* 2. Google Maps-style Floating Re-open Button (Top-Left) */}
+      {!showDrawer && (
+        <button
+          type="button"
+          onClick={() => {
+            setShowDrawer(true);
+            if (selectedFacility) {
+              focusFacility(selectedFacility.lat, selectedFacility.lng, true);
+            }
+          }}
+          style={{
+            position: "absolute",
+            top: "1rem",
+            left: "1rem",
+            zIndex: 1000,
+            background: "rgba(255, 255, 255, 0.98)",
+            backdropFilter: "blur(10px)",
+            color: "var(--color-navy-brand)",
+            borderRadius: "8px",
+            border: "1px solid rgba(0, 26, 56, 0.15)",
+            boxShadow: "0 4px 14px rgba(12, 42, 82, 0.12)",
+            padding: "0.45rem 0.85rem",
+            fontSize: "0.78rem",
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.45rem",
+            transition: "all 0.15s ease",
+          }}
+          title={selectedFacility ? "Open project details" : "Show projects list"}
+        >
+          <IconMapPin width={14} height={14} style={{ color: "#2563eb" }} />
+          <span>
+            {selectedFacility
+              ? selectedFacility.name.length > 24
+                ? `${selectedFacility.name.substring(0, 22)}…`
+                : selectedFacility.name
+              : `Projects (${visibleFacilities.length})`}
+          </span>
+        </button>
+      )}
+
+      {/* 3. Top-Right Cartographic Controls */}
       <div
         style={{
           position: "absolute",
           top: "1rem",
-          right: showDrawer ? "365px" : "1rem",
+          right: "1rem",
           zIndex: 1000,
           display: "flex",
           alignItems: "center",
           gap: "0.4rem",
-          transition: "right 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         {/* Layer Switcher */}
@@ -749,7 +1068,7 @@ export default function RealLeafletMap({
           </button>
         </div>
 
-        {/* Zoom to All Facilities */}
+        {/* Zoom Out All Locations Button */}
         <button
           type="button"
           onClick={fitAllFacilities}
@@ -760,48 +1079,255 @@ export default function RealLeafletMap({
             borderRadius: "6px",
             border: "1px solid rgba(0,0,0,0.12)",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            padding: "0.35rem 0.6rem",
+            padding: "0.32rem 0.65rem",
             fontSize: "0.74rem",
             fontWeight: 600,
             color: "var(--text-primary)",
             cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            transition: "all 0.15s ease",
           }}
         >
-          ↺ Zoom to All
+          <span>↺</span>
+          <span>Zoom to All</span>
         </button>
-
-        {/* Toggle Details Drawer Button */}
-        {!showDrawer && selectedFacility && (
-          <button
-            type="button"
-            onClick={() => setShowDrawer(true)}
-            style={{
-              background: "var(--color-navy-dark)",
-              color: "#ffffff",
-              borderRadius: "6px",
-              border: "none",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-              padding: "0.35rem 0.75rem",
-              fontSize: "0.74rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.35rem",
-            }}
-          >
-            <IconMapPin width={13} height={13} />
-            <span>Details ({selectedFacility.code})</span>
-          </button>
-        )}
       </div>
 
-      {/* 3. Bottom-Left Legend */}
+      {/* 4. Bottom-Right 2 x 3 Navigation & Zoom Controls Grid */}
       <div
         style={{
           position: "absolute",
           bottom: "1rem",
-          left: "1rem",
+          right: "1rem",
+          zIndex: 1000,
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 34px)",
+          gridTemplateRows: "repeat(2, 34px)",
+          gap: "4px",
+          userSelect: "none",
+        }}
+        aria-label="Map navigation and zoom controls"
+      >
+        {/* Row 1: [Left] [Right] [Zoom In] */}
+        <button
+          type="button"
+          onClick={() => panMap(-180, 0)}
+          className="netram-nav-btn"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+          }}
+          title="Pan Left (West)"
+          aria-label="Pan Left"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => panMap(180, 0)}
+          className="netram-nav-btn"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+          }}
+          title="Pan Right (East)"
+          aria-label="Pan Right"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleZoomIn}
+          className="netram-nav-btn"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+          }}
+          title="Zoom In"
+          aria-label="Zoom In"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="15"
+            height="15"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+
+        {/* Row 2: [Up] [Down] [Zoom Out] */}
+        <button
+          type="button"
+          onClick={() => panMap(0, -180)}
+          className="netram-nav-btn"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+          }}
+          title="Pan Up (North)"
+          aria-label="Pan Up"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => panMap(0, 180)}
+          className="netram-nav-btn"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+          }}
+          title="Pan Down (South)"
+          aria-label="Pan Down"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          className="netram-nav-btn"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+          }}
+          title="Zoom Out"
+          aria-label="Zoom Out"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="15"
+            height="15"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* 5. Bottom-Left Legend (Smoothly glides right when drawer is open) */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: "1rem",
+          left: showDrawer ? "405px" : "1rem",
           zIndex: 1000,
           background: "rgba(255, 255, 255, 0.94)",
           backdropFilter: "blur(6px)",
@@ -814,33 +1340,67 @@ export default function RealLeafletMap({
           gap: "0.6rem",
           fontSize: "0.68rem",
           color: "var(--text-secondary)",
+          transition: "left 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#16a34a",
+              display: "inline-block",
+            }}
+          />
           <span>Active</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#d97706", display: "inline-block" }} />
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#d97706",
+              display: "inline-block",
+            }}
+          />
           <span>Pending</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#64748b", display: "inline-block" }} />
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#64748b",
+              display: "inline-block",
+            }}
+          />
           <span>Draft</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "2px", border: "1px solid #16a34a", background: "rgba(34, 197, 94, 0.25)", display: "inline-block" }} />
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "2px",
+              border: "1px solid #16a34a",
+              background: "rgba(34, 197, 94, 0.25)",
+              display: "inline-block",
+            }}
+          />
           <span>Geofence</span>
         </div>
       </div>
 
-      {/* 4. Bottom Toast Notification */}
+      {/* 5. Bottom Toast Notification */}
       {toastMessage && (
         <div
           style={{
             position: "absolute",
             bottom: "1.5rem",
-            left: "50%",
+            left: showDrawer ? "calc(50% + 190px)" : "50%",
             transform: "translateX(-50%)",
             background: "rgba(15, 23, 42, 0.95)",
             color: "#ffffff",
@@ -853,6 +1413,7 @@ export default function RealLeafletMap({
             gap: "0.4rem",
             boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
             zIndex: 1100,
+            transition: "left 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
           <IconCheck width={14} height={14} style={{ color: "#22c55e" }} />
@@ -860,451 +1421,871 @@ export default function RealLeafletMap({
         </div>
       )}
 
-      {/* 5. Geofencing Active Workflow Bar */}
-      {geofenceMode !== "view" && selectedFacility && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "1rem",
-            left: "1rem",
-            right: showDrawer ? "365px" : "1rem",
-            background: "rgba(255, 255, 255, 0.98)",
-            backdropFilter: "blur(10px)",
-            border: "2px solid #2563eb",
-            borderRadius: "8px",
-            padding: "0.65rem 1rem",
-            zIndex: 1000,
-            boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "0.6rem",
-            transition: "right 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
-        >
-          <div>
-            <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e40af" }}>
-              {geofenceMode === "circle" ? "Circular Buffer" : "Campus Perimeter"} &bull; {selectedFacility.code}
-            </div>
-            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "0.1rem" }}>
-              {geofenceMode === "circle"
-                ? `${circleRadius}m (${((Math.PI * circleRadius * circleRadius) / 10000).toFixed(1)} ha)`
-                : `${polygonVertices.length} points placed (min 3)`}
-            </div>
-          </div>
-
-          {/* Circle Mode Radius Slider & Presets */}
-          {geofenceMode === "circle" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <div style={{ display: "flex", gap: "0.2rem" }}>
-                {[100, 250, 500].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setCircleRadius(preset)}
-                    style={{
-                      padding: "0.2rem 0.4rem",
-                      borderRadius: "4px",
-                      fontSize: "0.7rem",
-                      fontWeight: circleRadius === preset ? 700 : 500,
-                      background: circleRadius === preset ? "#2563eb" : "var(--bg-subtle)",
-                      color: circleRadius === preset ? "#ffffff" : "var(--text-secondary)",
-                      border: "1px solid var(--color-border-strong)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {preset}m
-                  </button>
-                ))}
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={1000}
-                step={25}
-                value={circleRadius}
-                onChange={(e) => setCircleRadius(parseInt(e.target.value, 10))}
-                style={{ width: "100px", cursor: "pointer" }}
-              />
-              <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--text-primary)", minWidth: "36px" }}>
-                {circleRadius}m
-              </span>
-            </div>
-          )}
-
-          {/* Polygon Drawing Controls */}
-          {geofenceMode === "polygon" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-              {polygonVertices.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setPolygonVertices((prev) => prev.slice(0, -1))}
-                  style={{
-                    padding: "0.2rem 0.5rem",
-                    borderRadius: "4px",
-                    fontSize: "0.72rem",
-                    background: "var(--bg-subtle)",
-                    border: "1px solid var(--color-border-strong)",
-                    cursor: "pointer",
-                  }}
-                >
-                  Undo
-                </button>
-              )}
-              {polygonVertices.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setPolygonVertices([])}
-                  style={{
-                    padding: "0.2rem 0.5rem",
-                    borderRadius: "4px",
-                    fontSize: "0.72rem",
-                    background: "var(--bg-subtle)",
-                    border: "1px solid var(--color-border-strong)",
-                    cursor: "pointer",
-                  }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Workflow Action Buttons */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-            <button
-              type="button"
-              onClick={() => {
-                setGeofenceMode("view");
-                setPolygonVertices([]);
-              }}
-              style={{
-                padding: "0.3rem 0.65rem",
-                borderRadius: "5px",
-                fontSize: "0.74rem",
-                background: "var(--bg-subtle)",
-                border: "1px solid var(--color-border-strong)",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSealGeofence}
-              disabled={geofenceMode === "polygon" && polygonVertices.length < 3}
-              style={{
-                padding: "0.3rem 0.75rem",
-                borderRadius: "5px",
-                fontSize: "0.74rem",
-                background: geofenceMode === "polygon" && polygonVertices.length < 3 ? "#94a3b8" : "#16a34a",
-                color: "#ffffff",
-                border: "none",
-                fontWeight: 700,
-                cursor: geofenceMode === "polygon" && polygonVertices.length < 3 ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.3rem",
-              }}
-            >
-              <IconShieldCheck width={13} height={13} />
-              <span>Seal Geofence</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 6. Collapsible Facility Dossier Sidebar */}
+      {/* 7. Google Maps-style Facility Details Panel (Left-side) */}
       <div
         style={{
           position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: "350px",
+          top: "0.75rem",
+          left: "0.75rem",
+          bottom: "0.75rem",
+          width: "380px",
+          maxWidth: "calc(100% - 1.5rem)",
           background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(12px)",
-          borderLeft: "1px solid rgba(0,0,0,0.15)",
-          boxShadow: "-4px 0 20px rgba(0,0,0,0.12)",
+          backdropFilter: "blur(14px)",
+          border: "1px solid rgba(0, 26, 56, 0.14)",
+          borderRadius: "12px",
+          boxShadow: "0 8px 32px rgba(12, 42, 82, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08)",
           zIndex: 1001,
           display: "flex",
           flexDirection: "column",
-          transform: showDrawer ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+          overflow: "hidden",
+          transform: showDrawer ? "translateX(0)" : "translateX(calc(-100% - 1.5rem))",
+          transition: "transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        {selectedFacility && (
+        {selectedFacility ? (
           <>
-            {/* Header */}
+            {/* Top Navigation Bar / Facility Details Header */}
             <div
               style={{
-                padding: "0.85rem 1.1rem",
-                background: "var(--bg-subtle)",
+                padding: "0.85rem 1rem",
+                background: "#f8fafc",
                 borderBottom: "1px solid var(--color-border-subtle)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
+                gap: "0.5rem",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <IconShieldCheck width={16} height={16} style={{ color: "var(--action-green-dark)" }} />
-                <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--color-navy-brand)" }}>
-                  FACILITY DOSSIER
-                </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", minWidth: 0 }}>
+                <button
+                  type="button"
+                  onClick={handleBackToAllProjects}
+                  title="Back to all projects"
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    borderRadius: "6px",
+                    padding: "0.28rem 0.6rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.3rem",
+                    cursor: "pointer",
+                    color: "var(--color-navy-brand)",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    flexShrink: 0,
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f8fafc";
+                    e.currentTarget.style.borderColor = "#94a3b8";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#ffffff";
+                    e.currentTarget.style.borderColor = "#cbd5e1";
+                  }}
+                >
+                  <IconChevronLeft width={14} height={14} />
+                  <span>All Projects</span>
+                </button>
               </div>
               <button
                 type="button"
-                onClick={() => setShowDrawer(false)}
+                onClick={handleClosePanel}
                 style={{
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--text-muted)",
-                  fontSize: "1.25rem",
-                  lineHeight: 1,
+                  border: "1.5px solid #94a3b8",
+                  background: "#ffffff",
+                  borderRadius: "6px",
+                  padding: "0.28rem 0.6rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
                   cursor: "pointer",
-                  padding: "0.15rem 0.35rem",
+                  color: "#0f172a",
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  transition: "all 0.15s ease",
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f8fafc";
+                  e.currentTarget.style.borderColor = "#64748b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#ffffff";
+                  e.currentTarget.style.borderColor = "#94a3b8";
+                }}
+                aria-label="Close panel"
                 title="Close panel"
               >
-                &times;
+                <IconX width={16} height={16} style={{ strokeWidth: 2.5 }} />
+                <span>Close</span>
               </button>
             </div>
 
-            {/* Body */}
+            {/* Scrollable Content Body */}
             <div
               style={{
                 padding: "1rem 1.1rem",
                 overflowY: "auto",
                 display: "flex",
                 flexDirection: "column",
-                gap: "0.85rem",
+                gap: "1rem",
                 flex: 1,
               }}
             >
-              {/* Code & Status */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span className="code-badge" style={{ fontSize: "0.75rem", fontWeight: 800 }}>
-                  {selectedFacility.code}
-                </span>
-                <StatusBadge status={selectedFacility.status} />
-              </div>
+              {/* Facility Header & Identity */}
+              {(() => {
+                const cleanDesc = getCleanDescription(selectedFacility.description);
+                return (
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.45rem",
+                        flexWrap: "wrap",
+                        marginBottom: "0.35rem",
+                      }}
+                    >
+                      <StatusBadge status={selectedFacility.status} />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.25rem",
+                          fontSize: "0.74rem",
+                          color: "var(--text-muted)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <IconMapPin width={12} height={12} style={{ color: "var(--text-muted)" }} />
+                        <span>
+                          {getDistrictName(selectedFacility.districtId, selectedFacility.code)}
+                        </span>
+                      </div>
+                    </div>
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: "1.12rem",
+                        fontWeight: 800,
+                        color: "var(--color-navy-brand)",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {selectedFacility.name}
+                    </h3>
+                    {cleanDesc && (
+                      <p
+                        style={{
+                          margin: "0.4rem 0 0 0",
+                          fontSize: "0.78rem",
+                          lineHeight: 1.45,
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {cleanDesc}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
-              {/* Title */}
-              <div>
-                <h3
+              {/* Geofence Perimeter Controls & Action Row */}
+              {geofenceMode === "location" ? (
+                /* LOCATION PINNING MODE */
+                <div
                   style={{
-                    margin: "0 0 0.2rem 0",
-                    fontSize: "0.98rem",
-                    fontWeight: 800,
-                    color: "var(--color-navy-brand)",
-                    lineHeight: 1.35,
+                    background: "#eff6ff",
+                    border: "1.5px solid #93c5fd",
+                    borderRadius: "8px",
+                    padding: "0.8rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.6rem",
+                    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
                   }}
                 >
-                  {selectedFacility.name}
-                </h3>
-                <div style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
-                  {selectedFacility.categoryLabel}
-                </div>
-              </div>
-
-              {/* Specifications */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.45rem",
-                  fontSize: "0.76rem",
-                  background: "var(--bg-subtle)",
-                  padding: "0.65rem 0.8rem",
-                  borderRadius: "6px",
-                  border: "1px solid var(--color-border-subtle)",
-                }}
-              >
-                <div>
-                  <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.66rem", fontWeight: 700 }}>
-                    JURISDICTION
-                  </span>
-                  <strong>{getDistrictName(selectedFacility.districtId, selectedFacility.code)} District</strong>
-                </div>
-
-                <div>
-                  <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.66rem", fontWeight: 700 }}>
-                    OPERATING AGENCY
-                  </span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <IconBuilding width={13} height={13} style={{ color: "var(--text-muted)" }} />
-                    <strong>{getOrganisationName(selectedFacility.organisationId)}</strong>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem", marginTop: "0.1rem" }}>
-                  <div>
-                    <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.66rem", fontWeight: 700 }}>
-                      CAPACITY
-                    </span>
-                    <span>{selectedFacility.capacityLabel}</span>
-                  </div>
-                  <div>
-                    <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.66rem", fontWeight: 700 }}>
-                      COORDINATES
-                    </span>
-                    <span style={{ fontFamily: "monospace", fontSize: "0.72rem" }}>
-                      {selectedFacility.lat.toFixed(4)}°, {selectedFacility.lng.toFixed(4)}°
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Geofence Card */}
-              <div
-                style={{
-                  background: "var(--bg-surface)",
-                  border: "1px solid var(--color-border-strong)",
-                  borderRadius: "8px",
-                  padding: "0.75rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.4rem",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <IconMapPin width={14} height={14} style={{ color: "#16a34a" }} />
-                    <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                      STATUTORY GEOFENCE
-                    </span>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: "0.65rem",
-                      background: "#dcfce7",
-                      color: "#15803d",
-                      padding: "0.08rem 0.35rem",
-                      borderRadius: "3px",
-                      fontWeight: 800,
-                    }}
-                  >
-                    SEALED
-                  </span>
-                </div>
-
-                <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>
-                  {currentGeofence.type === "polygon"
-                    ? `Perimeter Polygon (${currentGeofence.polygonPoints.length} points)`
-                    : `Circular Radius: ${currentGeofence.radiusMeters}m`}
-                </div>
-
-                {isAuthority ? (
-                  geofenceMode === "view" ? (
-                    <div style={{ display: "flex", gap: "0.35rem", marginTop: "0.2rem" }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCircleRadius(currentGeofence.radiusMeters || 250);
-                          setGeofenceMode("circle");
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "0.3rem 0.45rem",
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          background: "var(--bg-subtle)",
-                          border: "1px solid var(--color-border-strong)",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Adjust Buffer
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPolygonVertices([[selectedFacility.lat, selectedFacility.lng]]);
-                          setGeofenceMode("polygon");
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "0.3rem 0.45rem",
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          background: "var(--bg-subtle)",
-                          border: "1px solid var(--color-border-strong)",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Draw Polygon
-                      </button>
-                      {geofences[selectedFacility.id] && (
-                        <button
-                          type="button"
-                          onClick={handleResetGeofence}
-                          title="Reset geofence"
-                          style={{
-                            padding: "0.3rem 0.45rem",
-                            fontSize: "0.72rem",
-                            fontWeight: 600,
-                            background: "transparent",
-                            border: "1px solid var(--color-border-subtle)",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            color: "var(--text-muted)",
-                          }}
-                        >
-                          ↺
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: 600 }}>
-                      ● Editing geofence on map
-                    </div>
-                  )
-                ) : (
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "0.35rem",
-                      background: "var(--bg-subtle)",
-                      padding: "0.35rem 0.5rem",
-                      borderRadius: "4px",
-                      fontSize: "0.68rem",
-                      color: "var(--text-muted)",
+                      justifyContent: "space-between",
                     }}
                   >
-                    <IconLock width={12} height={12} />
-                    <span>Locked</span>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
+                      Set Facility Location
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.71rem",
+                      color: "#475569",
+                      background: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "5px",
+                      padding: "0.4rem 0.55rem",
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    Paste GPS coordinates and click "Go", or click on the map to pin the exact
+                    position. The coordinates and map pin stay in sync.
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Latitude (e.g. 20.296100)"
+                      aria-label="Latitude"
+                      value={latInput}
+                      onChange={(e) => setLatInput(e.target.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: "0.4rem 0.5rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 600,
+                        color: "var(--text-main)",
+                        background: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "5px",
+                        outline: "none",
+                      }}
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Longitude (e.g. 85.824500)"
+                      aria-label="Longitude"
+                      value={lngInput}
+                      onChange={(e) => setLngInput(e.target.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: "0.4rem 0.5rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 600,
+                        color: "var(--text-main)",
+                        background: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "5px",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                  {draftLocation && (
+                    <div style={{ fontSize: "0.68rem", color: "#1d4ed8", fontWeight: 600 }}>
+                      Draft pin: {draftLocation.lat.toFixed(6)}, {draftLocation.lng.toFixed(6)}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.1rem" }}>
+                    <button
+                      type="button"
+                      onClick={handleCancelGeofenceEdit}
+                      style={{
+                        flex: 1,
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 600,
+                        background: "#ffffff",
+                        color: "#475569",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGoToCoordinates}
+                      title="Fly the map to these coordinates"
+                      style={{
+                        flex: 1,
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        background: "#2563eb",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Go
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCommitLocation}
+                      disabled={!draftLocation}
+                      title="Pin this location as the facility position"
+                      style={{
+                        flex: 1.4,
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        background: draftLocation ? "#16a34a" : "#94a3b8",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "5px",
+                        cursor: draftLocation ? "pointer" : "not-allowed",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.3rem",
+                      }}
+                    >
+                      <IconMapPin width={13} height={13} />
+                      <span>Pin</span>
+                    </button>
+                  </div>
+                </div>
+              ) : geofenceMode === "circle" ? (
+                /* CIRCLE / RADIUS EDITING MODE */
+                <div
+                  style={{
+                    background: "#eff6ff",
+                    border: "1.5px solid #93c5fd",
+                    borderRadius: "8px",
+                    padding: "0.8rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.6rem",
+                    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
+                      Adjust Circular Radius
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 800,
+                        color: "#1d4ed8",
+                        background: "#ffffff",
+                        padding: "0.15rem 0.5rem",
+                        borderRadius: "4px",
+                        border: "1px solid #bfdbfe",
+                      }}
+                    >
+                      {circleRadius}m
+                    </span>
+                  </div>
+
+                  {/* Presets Row */}
+                  <div style={{ display: "flex", gap: "0.3rem" }}>
+                    {[100, 250, 500, 750].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setCircleRadius(preset)}
+                        style={{
+                          flex: 1,
+                          padding: "0.28rem 0",
+                          fontSize: "0.72rem",
+                          fontWeight: circleRadius === preset ? 700 : 500,
+                          background: circleRadius === preset ? "#2563eb" : "#ffffff",
+                          color: circleRadius === preset ? "#ffffff" : "#334155",
+                          border:
+                            circleRadius === preset ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {preset}m
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Range Slider */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <input
+                      type="range"
+                      min={50}
+                      max={1000}
+                      step={25}
+                      value={circleRadius}
+                      onChange={(e) => setCircleRadius(parseInt(e.target.value, 10))}
+                      style={{
+                        flex: 1,
+                        accentColor: "#2563eb",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.1rem" }}>
+                    <button
+                      type="button"
+                      onClick={handleCancelGeofenceEdit}
+                      style={{
+                        flex: 1,
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 600,
+                        background: "#ffffff",
+                        color: "#475569",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSealGeofence}
+                      style={{
+                        flex: 1.4,
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        background: "#16a34a",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.3rem",
+                      }}
+                    >
+                      <IconCheck width={13} height={13} />
+                      <span>Save Radius</span>
+                    </button>
+                  </div>
+                </div>
+              ) : geofenceMode === "polygon" ? (
+                /* POLYGON DRAWING MODE */
+                <div
+                  style={{
+                    background: "#eff6ff",
+                    border: "1.5px solid #93c5fd",
+                    borderRadius: "8px",
+                    padding: "0.8rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.6rem",
+                    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
+                      Draw Perimeter
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        color: polygonVertices.length >= 3 ? "#15803d" : "#d97706",
+                        background: "#ffffff",
+                        padding: "0.12rem 0.45rem",
+                        borderRadius: "4px",
+                        border: "1px solid #bfdbfe",
+                      }}
+                    >
+                      {polygonVertices.length} {polygonVertices.length === 1 ? "point" : "points"}{" "}
+                      {polygonVertices.length >= 3 ? "✓" : "(min 3)"}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "0.71rem",
+                      color: "#475569",
+                      background: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "5px",
+                      padding: "0.4rem 0.55rem",
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    Click anywhere on the map around the facility to place perimeter boundary
+                    points.
+                  </div>
+
+                  {polygonVertices.length > 0 && (
+                    <div style={{ display: "flex", gap: "0.35rem" }}>
+                      <button
+                        type="button"
+                        onClick={() => setPolygonVertices((prev) => prev.slice(0, -1))}
+                        style={{
+                          flex: 1,
+                          padding: "0.28rem 0.5rem",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          background: "#ffffff",
+                          color: "#334155",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Undo Point
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPolygonVertices([])}
+                        style={{
+                          flex: 1,
+                          padding: "0.28rem 0.5rem",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          background: "#ffffff",
+                          color: "#dc2626",
+                          border: "1px solid #fca5a5",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.1rem" }}>
+                    <button
+                      type="button"
+                      onClick={handleCancelGeofenceEdit}
+                      style={{
+                        flex: 1,
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 600,
+                        background: "#ffffff",
+                        color: "#475569",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSealGeofence}
+                      disabled={polygonVertices.length < 3}
+                      style={{
+                        flex: 1.4,
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        background: polygonVertices.length < 3 ? "#94a3b8" : "#16a34a",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "5px",
+                        cursor: polygonVertices.length < 3 ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.3rem",
+                      }}
+                    >
+                      <IconCheck width={13} height={13} />
+                      <span>Save Perimeter</span>
+                    </button>
+                  </div>
+                </div>
+              ) : /* VIEW MODE: Clean Action Bar */
+              isAuthority ? (
+                <div style={{ display: "flex", gap: "0.45rem" }}>
+                  <button
+                    type="button"
+                    onClick={handleStartAdjustRadius}
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.35rem",
+                      padding: "0.45rem 0.65rem",
+                      fontSize: "0.74rem",
+                      fontWeight: 600,
+                      background: "#ffffff",
+                      color: "var(--color-navy-brand)",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "#94a3b8";
+                      e.currentTarget.style.background = "#f8fafc";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "#cbd5e1";
+                      e.currentTarget.style.background = "#ffffff";
+                    }}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      width={13}
+                      height={13}
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <circle cx="12" cy="12" r="2" fill="currentColor" />
+                    </svg>
+                    <span>Adjust Radius</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartDrawPolygon}
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.35rem",
+                      padding: "0.45rem 0.65rem",
+                      fontSize: "0.74rem",
+                      fontWeight: 600,
+                      background: "#ffffff",
+                      color: "var(--color-navy-brand)",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "#94a3b8";
+                      e.currentTarget.style.background = "#f8fafc";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "#cbd5e1";
+                      e.currentTarget.style.background = "#ffffff";
+                    }}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      width={13}
+                      height={13}
+                    >
+                      <polygon points="12 2 22 8.5 18 21 6 21 2 8.5" />
+                    </svg>
+                    <span>Draw Polygon</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartSetLocation}
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.35rem",
+                      padding: "0.45rem 0.65rem",
+                      fontSize: "0.74rem",
+                      fontWeight: 600,
+                      background: "#ffffff",
+                      color: "var(--color-navy-brand)",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "#94a3b8";
+                      e.currentTarget.style.background = "#f8fafc";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "#cbd5e1";
+                      e.currentTarget.style.background = "#ffffff";
+                    }}
+                  >
+                    <IconMapPin width={13} height={13} />
+                    <span>Set Location</span>
+                  </button>
+                </div>
+              ) : null}
+
+              {/* Divider */}
+              <div style={{ height: "1px", background: "var(--color-border-subtle)" }} />
+
+              {/* Administrative & Institutional Oversight */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.75rem",
+                }}
+              >
+                {/* Managing Agency */}
+                <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
+                  <IconBuilding
+                    width={15}
+                    height={15}
+                    style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
+                  />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
+                    >
+                      Managing Agency
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                        color: "var(--text-main)",
+                        marginTop: "0.1rem",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {getOrganisationName(selectedFacility.organisationId, selectedFacility.name)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Supervising Authority */}
+                <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
+                  <IconShieldCheck
+                    width={15}
+                    height={15}
+                    style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
+                  />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
+                    >
+                      Supervising Authority
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                        color: "var(--text-main)",
+                        marginTop: "0.1rem",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {getAuthorityName(selectedFacility.authorityId)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sanctioned Welfare Programmes */}
+                <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
+                  <IconClipboard
+                    width={15}
+                    height={15}
+                    style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
+                  />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
+                    >
+                      Sanctioned Programmes
+                    </div>
+                    {selectedFacility.programmeIds && selectedFacility.programmeIds.length > 0 ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.25rem",
+                          marginTop: "0.2rem",
+                        }}
+                      >
+                        {selectedFacility.programmeIds.map((pid) => (
+                          <div
+                            key={pid}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: "0.45rem",
+                              fontSize: "0.78rem",
+                              fontWeight: 600,
+                              color: "var(--text-main)",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: "5px",
+                                height: "5px",
+                                borderRadius: "50%",
+                                background: "var(--text-muted)",
+                                flexShrink: 0,
+                                marginTop: "5px",
+                              }}
+                            />
+                            <span>{getProgrammeName(pid)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          fontSize: "0.76rem",
+                          color: "var(--text-muted)",
+                          marginTop: "0.1rem",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        No active programme linked
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sanction / Registration Date */}
+                {(selectedFacility.approvedAt || selectedFacility.createdAt) && (
+                  <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
+                    <IconClock
+                      width={15}
+                      height={15}
+                      style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
+                      >
+                        {selectedFacility.approvedAt
+                          ? "Sanction Approved Date"
+                          : "Registration Date"}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          color: "var(--text-main)",
+                          marginTop: "0.1rem",
+                        }}
+                      >
+                        {formatDate(selectedFacility.approvedAt || selectedFacility.createdAt)}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Actions */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "auto", paddingTop: "0.5rem" }}>
-                <button
-                  type="button"
-                  onClick={() => flyToFacility(selectedFacility.lat, selectedFacility.lng)}
-                  style={{
-                    padding: "0.4rem",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    background: "var(--bg-subtle)",
-                    border: "1px solid var(--color-border-strong)",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "0.3rem",
-                  }}
-                >
-                  <IconMapPin width={13} height={13} />
-                  <span>Center on Map</span>
-                </button>
-
+              {/* Bottom Primary Action Button */}
+              <div style={{ marginTop: "auto", paddingTop: "0.5rem" }}>
                 <Link
                   href={`/projects/${selectedFacility.id}`}
                   style={{
@@ -1312,20 +2293,225 @@ export default function RealLeafletMap({
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "0.35rem",
-                    padding: "0.5rem 0.85rem",
-                    background: "linear-gradient(to right, var(--action-green), var(--action-green-dark))",
+                    padding: "0.55rem 1rem",
+                    background: "linear-gradient(to right, #15803d, #166534)",
                     color: "#ffffff",
                     borderRadius: "6px",
-                    fontWeight: 700,
-                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    fontSize: "0.8rem",
                     textDecoration: "none",
-                    boxShadow: "0 2px 6px rgba(22, 163, 74, 0.25)",
+                    boxShadow: "0 1px 4px rgba(22, 163, 74, 0.25)",
                   }}
                 >
-                  <span>Open Facility</span>
+                  <span>Open Facility Dossier</span>
                   <IconChevronRight width={14} height={14} />
                 </Link>
               </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Projects List View Header */}
+            <div
+              style={{
+                padding: "0.85rem 1rem",
+                background: "#f8fafc",
+                borderBottom: "1px solid var(--color-border-subtle)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.5rem",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <IconMapPin width={16} height={16} style={{ color: "var(--color-navy-brand)" }} />
+                <span
+                  style={{ fontSize: "0.88rem", fontWeight: 800, color: "var(--color-navy-brand)" }}
+                >
+                  Projects & Locations
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    background: "rgba(12, 42, 82, 0.1)",
+                    color: "var(--color-navy-brand)",
+                    padding: "0.15rem 0.5rem",
+                    borderRadius: "999px",
+                  }}
+                >
+                  {visibleFacilities.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleClosePanel}
+                style={{
+                  border: "1.5px solid #94a3b8",
+                  background: "#ffffff",
+                  borderRadius: "6px",
+                  padding: "0.28rem 0.6rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  cursor: "pointer",
+                  color: "#0f172a",
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f8fafc";
+                  e.currentTarget.style.borderColor = "#64748b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#ffffff";
+                  e.currentTarget.style.borderColor = "#94a3b8";
+                }}
+                aria-label="Close panel"
+                title="Close panel"
+              >
+                <IconX width={16} height={16} style={{ strokeWidth: 2.5 }} />
+                <span>Close</span>
+              </button>
+            </div>
+
+            {/* Scrollable Project Cards List */}
+            <div
+              style={{
+                padding: "0.75rem",
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.55rem",
+                flex: 1,
+              }}
+            >
+              {visibleFacilities.length === 0 ? (
+                <div
+                  style={{
+                    padding: "2rem 1rem",
+                    textAlign: "center",
+                    color: "var(--text-muted)",
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  <p style={{ margin: "0", fontWeight: 600 }}>No registered projects available.</p>
+                </div>
+              ) : (
+                visibleFacilities.map((f) => {
+                  const distName = getDistrictName(f.districtId, f.code);
+                  return (
+                    <div
+                      key={f.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleSelectFacility(f)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelectFacility(f);
+                        }
+                      }}
+                      style={{
+                        padding: "0.7rem 0.8rem",
+                        borderRadius: "8px",
+                        border: "1px solid var(--color-border-subtle)",
+                        background: "#ffffff",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.35rem",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+                        outline: "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#2563eb";
+                        e.currentTarget.style.boxShadow = "0 3px 8px rgba(37, 99, 235, 0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-border-subtle)";
+                        e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
+                      }}
+                    >
+                      {/* Top Row: Status Badge & District */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <StatusBadge status={f.status} />
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            color: "var(--text-muted)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {distName}
+                        </span>
+                      </div>
+
+                      {/* Project Name (strictly without project code) */}
+                      <div
+                        style={{
+                          fontSize: "0.85rem",
+                          fontWeight: 700,
+                          color: "var(--color-navy-brand)",
+                          lineHeight: 1.35,
+                        }}
+                        title={f.name}
+                      >
+                        {f.name}
+                      </div>
+
+                      {/* Bottom Row: Category, Capacity, and Location View hint */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          fontSize: "0.68rem",
+                          color: "var(--text-muted)",
+                          borderTop: "1px solid rgba(0,0,0,0.04)",
+                          paddingTop: "0.35rem",
+                          marginTop: "0.1rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{f.categoryLabel}</span>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.2rem",
+                            color: "#2563eb",
+                            fontWeight: 600,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span>View</span>
+                          <IconChevronRight width={12} height={12} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </>
         )}

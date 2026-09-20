@@ -65,6 +65,8 @@ export const createProjectSchema = z
   })
   .strict();
 
+export const updateProjectSchema = createProjectSchema;
+
 export const transitionProjectSchema = z
   .object({
     to: z.enum(PROJECT_STATUSES),

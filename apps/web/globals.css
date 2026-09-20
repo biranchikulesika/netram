@@ -686,12 +686,14 @@ td {
 
 /* Status Values (Clean Government Presentation - No Unnecessary Decor) */
 .status {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: normal;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
   text-transform: none;
   background: transparent;
   border: none;
@@ -2821,8 +2823,8 @@ a:hover {
 }
 
 .facility-header-side .status {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 /* Compact lifecycle transition control in the facility header */
@@ -2990,7 +2992,7 @@ a:hover {
 }
 
 .facility-content .status {
-  font-size: 0.79rem;
+  font-size: 0.7rem;
 }
 
 /* Section header summary chips */
@@ -3333,6 +3335,35 @@ a:hover {
   line-height: 1.4 !important;
 }
 
+/* Google Maps-style Location Pin Markers */
+.leaflet-facility-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-facility-marker .netram-pin-wrap {
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom center;
+  pointer-events: auto;
+}
+
+.leaflet-facility-marker:hover .netram-pin-wrap {
+  transform: scale(1.15);
+}
+
+/* Map Directional Navigation & Zoom Controls */
+.netram-pan-btn:hover,
+.netram-nav-btn:hover {
+  background: #f1f5f9 !important;
+  color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.netram-pan-btn:active,
+.netram-nav-btn:active {
+  transform: scale(0.92) !important;
+}
+
 /* Persistent GIS Map Location Labels */
 .leaflet-tooltip.netram-leaflet-tooltip {
   background: rgba(255, 255, 255, 0.95) !important;
@@ -3347,7 +3378,7 @@ a:hover {
   white-space: nowrap !important;
   pointer-events: auto !important;
   cursor: pointer !important;
-  transition: all 0.15s ease !important;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease !important;
   z-index: 500 !important;
 }
 
@@ -3384,7 +3415,7 @@ a:hover {
   font-size: 11px;
   font-weight: 600;
   color: #0f172a;
-  max-width: 150px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3394,4 +3425,11 @@ a:hover {
 body.has-portal-sidebar:has(.map-view-wrapper) main {
   padding-bottom: 0.5rem;
 }
+
+/* While drawing geofence polygons, bypass marker and label click interception */
+.drawing-polygon .leaflet-facility-marker .netram-pin-wrap,
+.drawing-polygon .leaflet-tooltip.netram-leaflet-tooltip {
+  pointer-events: none !important;
+}
+
 

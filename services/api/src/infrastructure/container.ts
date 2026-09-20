@@ -1,6 +1,7 @@
 import {
   getDb,
   ProjectRepository,
+  ProjectPhotoRepository,
   InspectionRepository,
   FindingRepository,
   CorrectiveActionRepository,
@@ -30,6 +31,7 @@ import { SupabaseAuthProvider } from "../modules/auth/infrastructure/providers/s
 import { AuthorizationService } from "../modules/authorization/application/authorization-service.js";
 import { AnalyticsService } from "../modules/analytics/application/analytics-service.js";
 import { ProjectService } from "../modules/projects/application/project-service.js";
+import { ProjectPhotoService } from "../modules/projects/application/project-photo-service.js";
 import { InspectionService } from "../modules/inspections/application/inspection-service.js";
 import { InspectionSyncService } from "../modules/inspections/application/inspection-sync-service.js";
 import { FindingService } from "../modules/findings/application/finding-service.js";
@@ -61,6 +63,7 @@ export interface Container {
   devAuthProvider: DevAuthProvider | null;
   authorizationService: AuthorizationService;
   projectService: ProjectService;
+  projectPhotoService: ProjectPhotoService;
   inspectionService: InspectionService;
   inspectionSyncService: InspectionSyncService;
   findingService: FindingService;
@@ -92,6 +95,7 @@ export function buildContainer(config: AppConfig): Container {
   const auditRepo = new AuditRepository(db);
   const outboxRepo = new OutboxRepository(db);
   const projectRepo = new ProjectRepository(db);
+  const projectPhotoRepo = new ProjectPhotoRepository(db);
   const inspectionRepo = new InspectionRepository(db);
   const findingRepo = new FindingRepository(db);
   const correctiveActionRepo = new CorrectiveActionRepository(db);
@@ -114,6 +118,12 @@ export function buildContainer(config: AppConfig): Container {
 
   const authorizationService = new AuthorizationService();
   const projectService = new ProjectService(authorizationService, projectRepo);
+  const projectPhotoService = new ProjectPhotoService(
+    authorizationService,
+    projectService,
+    projectPhotoRepo,
+    objectStorage,
+  );
   const inspectionService = new InspectionService(
     authorizationService,
     projectRepo,
@@ -233,6 +243,7 @@ export function buildContainer(config: AppConfig): Container {
     devAuthProvider,
     authorizationService,
     projectService,
+    projectPhotoService,
     inspectionService,
     inspectionSyncService,
     findingService,

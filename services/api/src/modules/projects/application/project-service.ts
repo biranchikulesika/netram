@@ -28,6 +28,8 @@ const READ = "project:read" as const;
 const TRANSITION = "project:transition" as const;
 const APPROVE = "project:approve" as const;
 
+const EDITABLE_STATUSES = new Set<Project["status"]>(["Draft", "Pending Verification"]);
+
 export class ProjectService {
   constructor(
     private readonly authz: AuthorizationService,
@@ -87,6 +89,44 @@ export class ProjectService {
       auditMetadata: { name: input.name, code },
       eventType: "project.created",
       eventPayload: { name: input.name, code },
+    });
+  }
+
+  async updateProject(
+    ctx: RequestUserContext,
+    projectId: string,
+    input: CreateProjectInput,
+  ): Promise<Project> {
+    this.authz.requirePermission(ctx, CREATE);
+    const project = await this.repository.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found.");
+    if (!this.authz.canAccessDistrict(ctx, project.districtId)) {
+      throw AppError.notFound("Project not found.");
+    }
+    if (!EDITABLE_STATUSES.has(project.status)) {
+      throw AppError.conflict(
+        `Project cannot be edited from its current status (${project.status}).`,
+      );
+    }
+    if (input.districtId && !this.authz.canAccessDistrict(ctx, input.districtId)) {
+      throw AppError.forbidden("Project is outside your jurisdiction.");
+    }
+
+    return this.repository.updateWithAuditAndEvent({
+      projectId,
+      name: input.name,
+      type: input.type ?? project.type,
+      description: input.description ?? project.description,
+      organisationId: input.organisationId ?? project.organisationId,
+      districtId: input.districtId ?? project.districtId,
+      programmeIds: input.programmeIds ?? project.programmeIds,
+      actorUserId: ctx.userId,
+      requestId: ctx.requestId ?? null,
+      ipAddress: ctx.ipAddress ?? null,
+      auditAction: "project.updated",
+      auditMetadata: { name: input.name, code: project.code },
+      eventType: "project.updated",
+      eventPayload: { name: input.name, code: project.code },
     });
   }
 

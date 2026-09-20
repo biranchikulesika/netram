@@ -41,6 +41,7 @@ import type {
   OutboxRecord,
   Project,
   ProjectGeofence,
+  ProjectPhoto,
   SealGeofenceCommand,
   ProjectListQuery,
   ProjectStatus,
@@ -169,6 +170,10 @@ export class NetramApiClient extends HttpClient {
     return this.get(`/api/v1/projects/${id}`);
   }
 
+  async listProjectPhotos(id: string): Promise<ProjectPhoto[]> {
+    return this.get(`/api/v1/projects/${id}/photos`);
+  }
+
   async createProject(input: {
     name: string;
     type?: Project["type"];
@@ -178,6 +183,20 @@ export class NetramApiClient extends HttpClient {
     programmeIds?: string[];
   }): Promise<Project> {
     return this.post("/api/v1/projects", input);
+  }
+
+  async updateProject(
+    id: string,
+    input: {
+      name: string;
+      type?: Project["type"];
+      description?: string | null;
+      organisationId?: string | null;
+      districtId?: string | null;
+      programmeIds?: string[];
+    },
+  ): Promise<Project> {
+    return this.patch(`/api/v1/projects/${id}`, input);
   }
 
   async transitionProject(id: string, to: ProjectStatus, note?: string): Promise<Project> {

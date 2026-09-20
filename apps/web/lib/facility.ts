@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type {
   Project,
+  ProjectPhoto,
   Inspection,
   Complaint,
   CorrectiveAction,
@@ -64,6 +65,15 @@ export const getFacility = cache(async (id: string): Promise<Project | null> => 
     return await client.getProject(id);
   } catch {
     return null;
+  }
+});
+
+export const getFacilityPhotos = cache(async (id: string): Promise<ProjectPhoto[]> => {
+  const client = await getClient();
+  try {
+    return await client.listProjectPhotos(id);
+  } catch {
+    return [];
   }
 });
 

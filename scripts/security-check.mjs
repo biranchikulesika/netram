@@ -24,6 +24,7 @@ function walk(dir, out = []) {
           "coverage",
           ".pnpm",
           ".temp",
+          ".venv",
         ].includes(entry.name)
       )
         continue;

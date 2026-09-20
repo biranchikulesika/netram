@@ -1,5 +1,6 @@
 export * from "./common.js";
 export * from "./project.js";
+export * from "./project-photo.js";
 export * from "./inspection.js";
 export * from "./finding.js";
 export * from "./corrective-action.js";

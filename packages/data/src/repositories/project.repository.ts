@@ -72,6 +72,23 @@ export interface CreateProjectWrite {
   eventPayload: Record<string, unknown>;
 }
 
+export interface UpdateProjectWrite {
+  projectId: string;
+  name: string;
+  type: ProjectType;
+  description: string | null;
+  organisationId: string | null;
+  districtId: string | null;
+  programmeIds: string[];
+  actorUserId: string | null;
+  requestId: string | null;
+  ipAddress: string | null;
+  auditAction: AuditAction;
+  auditMetadata: Record<string, unknown>;
+  eventType: DomainEventType;
+  eventPayload: Record<string, unknown>;
+}
+
 export interface TransitionProjectWrite {
   projectId: string;
   to: ProjectStatus;
@@ -191,6 +208,48 @@ export class ProjectRepository {
       return project;
     });
     return created;
+  }
+
+  /** Updates project fields and writes audit + outbox rows in the SAME transaction. */
+  async updateWithAuditAndEvent(write: UpdateProjectWrite): Promise<Project> {
+    const updated: Project = await this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(projectsTable)
+        .set({
+          name: write.name,
+          type: write.type,
+          description: write.description,
+          organisationId: write.organisationId,
+          districtId: write.districtId,
+          programmeIds: write.programmeIds,
+          updatedAt: new Date(),
+        })
+        .where(eq(projectsTable.id, write.projectId))
+        .returning();
+      const project = toProject(rows[0] as unknown as ProjectRow);
+
+      await tx.insert(auditEvents).values({
+        action: write.auditAction,
+        actorUserId: write.actorUserId,
+        resourceType: "project",
+        resourceId: project.id,
+        requestId: write.requestId,
+        ipAddress: write.ipAddress,
+        metadata: { ...write.auditMetadata, code: project.code },
+      });
+
+      await tx.insert(outboxEvents).values({
+        type: write.eventType,
+        correlationId: project.id,
+        actorUserId: write.actorUserId,
+        resourceType: "project",
+        resourceId: project.id,
+        payload: { ...write.eventPayload, projectId: project.id },
+      });
+
+      return project;
+    });
+    return updated;
   }
 
   /**

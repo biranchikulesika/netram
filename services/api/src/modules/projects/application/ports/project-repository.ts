@@ -61,6 +61,23 @@ export interface SealGeofencePortCommand {
   eventPayload: Record<string, unknown>;
 }
 
+export interface UpdateProjectCommand {
+  projectId: string;
+  name: string;
+  type: Project["type"];
+  description: string | null;
+  organisationId: string | null;
+  districtId: string | null;
+  programmeIds: string[];
+  actorUserId: string | null;
+  requestId: string | null;
+  ipAddress: string | null;
+  auditAction: AuditAction;
+  auditMetadata: Record<string, unknown>;
+  eventType: DomainEventType;
+  eventPayload: Record<string, unknown>;
+}
+
 export interface ProjectListFilter {
   status?: ProjectStatus;
   organisationId?: string;
@@ -74,6 +91,7 @@ export interface ProjectRepositoryPort {
   findByCode?(code: string): Promise<Project | null>;
   list(filter: ProjectListFilter): Promise<Page<Project>>;
   createWithAuditAndEvent(cmd: CreateProjectCommand): Promise<Project>;
+  updateWithAuditAndEvent(cmd: UpdateProjectCommand): Promise<Project>;
   transitionProjectWithAuditAndEvent(cmd: TransitionProjectCommand): Promise<Project>;
   findGeofenceByProjectId(projectId: string): Promise<ProjectGeofence | null>;
   listGeofences(projectIds?: string[]): Promise<ProjectGeofence[]>;

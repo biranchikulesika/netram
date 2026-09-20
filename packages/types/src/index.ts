@@ -2,6 +2,7 @@ export * from "./common.js";
 export * from "./auth.js";
 export * from "./authorization.js";
 export * from "./project.js";
+export * from "./project-photo.js";
 export * from "./geography.js";
 export * from "./inspection.js";
 export * from "./finding.js";
