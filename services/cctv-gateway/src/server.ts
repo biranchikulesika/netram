@@ -124,12 +124,20 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   // Snapshot capture for advisory AI pipeline / inspection verification (§7, §36)
   app.get("/cameras/:id/snapshot", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const snapshot = await provider.acquireSnapshot(id);
-
-    void reply.header("Content-Type", snapshot.contentType);
-    void reply.header("Content-Length", snapshot.data.length);
-    void reply.header("Cache-Control", "no-cache");
-    return reply.send(snapshot.data);
+    try {
+      const snapshot = await provider.acquireSnapshot(id);
+      void reply.header("Content-Type", snapshot.contentType);
+      void reply.header("Content-Length", snapshot.data.length);
+      void reply.header("Cache-Control", "no-cache");
+      return reply.send(snapshot.data);
+    } catch (err) {
+      return reply.code(404).send({
+        error: {
+          code: "CAMERA_NOT_FOUND",
+          message: err instanceof Error ? err.message : `Camera not found: ${id}`,
+        },
+      });
+    }
   });
 
   return app;

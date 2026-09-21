@@ -150,53 +150,6 @@ export function NotificationsView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Header & Mark All as Read */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "1rem",
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <h2 style={{ margin: 0 }}>Notifications Center</h2>
-            {unreadCount > 0 ? (
-              <span className="badge badge-critical" style={{ fontSize: "0.8rem", padding: "0.2rem 0.6rem" }}>
-                {unreadCount} Unread
-              </span>
-            ) : (
-              <span className="badge badge-routine" style={{ fontSize: "0.8rem", padding: "0.2rem 0.6rem" }}>
-                All Caught Up
-              </span>
-            )}
-          </div>
-          <p className="muted" style={{ margin: "0.35rem 0 0 0" }}>
-            Real-time administrative alerts, statutory inspection assignments, and system compliance notices
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: "0.75rem" }}>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleMarkAllRead}
-            disabled={unreadCount === 0 || isMarkingAll}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              opacity: unreadCount === 0 ? 0.6 : 1,
-              cursor: unreadCount === 0 ? "not-allowed" : "pointer",
-            }}
-          >
-            <IconCheck style={{ width: 15, height: 15 }} />
-            <span>{isMarkingAll ? "Marking all..." : "Mark All as Read"}</span>
-          </button>
-        </div>
-      </div>
 
       {/* Feedback Banner */}
       {feedback && (
@@ -245,7 +198,16 @@ export function NotificationsView({
         }}
       >
         {/* Status Filter Tabs */}
-        <div style={{ display: "flex", gap: "0.4rem" }}>
+        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+          {unreadCount > 0 ? (
+            <span className="badge badge-critical" style={{ fontSize: "0.8rem", padding: "0.2rem 0.6rem" }}>
+              {unreadCount} Unread
+            </span>
+          ) : (
+            <span className="badge badge-routine" style={{ fontSize: "0.8rem", padding: "0.2rem 0.6rem" }}>
+              All Caught Up
+            </span>
+          )}
           <button
             type="button"
             className={statusFilter === "all" ? "btn-primary" : "btn-secondary"}
@@ -309,6 +271,23 @@ export function NotificationsView({
             }}
             aria-label="Search notifications"
           />
+
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleMarkAllRead}
+            disabled={unreadCount === 0 || isMarkingAll}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              opacity: unreadCount === 0 ? 0.6 : 1,
+              cursor: unreadCount === 0 ? "not-allowed" : "pointer",
+            }}
+          >
+            <IconCheck style={{ width: 15, height: 15 }} />
+            <span>{isMarkingAll ? "Marking all..." : "Mark All as Read"}</span>
+          </button>
         </div>
       </div>
 
@@ -317,7 +296,6 @@ export function NotificationsView({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ width: "28px", paddingLeft: "1.25rem" }}></th>
               <th>Category</th>
               <th>Notification</th>
               <th>Status</th>
@@ -328,7 +306,7 @@ export function NotificationsView({
           <tbody>
             {filteredNotifications.length === 0 ? (
               <tr>
-                <td colSpan={6} className="muted" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+                <td colSpan={5} className="muted" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
                   <IconBell style={{ width: 32, height: 32, margin: "0 auto 0.75rem auto", opacity: 0.35 }} />
                   <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>No notifications found</div>
                   <div style={{ fontSize: "0.825rem", marginTop: "0.25rem" }}>
@@ -350,41 +328,14 @@ export function NotificationsView({
                 const isBeingMarked = markingId === n.id;
 
                 return (
-                  <tr
-                    key={n.id}
-                    style={{
-                      background: isUnread ? "rgba(59, 130, 246, 0.04)" : undefined,
-                      fontWeight: isUnread ? 500 : 400,
-                    }}
-                  >
-                    {/* Unread indicator dot */}
-                    <td style={{ paddingLeft: "1.25rem", textAlign: "center" }}>
-                      {isUnread ? (
-                        <span
-                          title="Unread"
-                          style={{
-                            display: "inline-block",
-                            width: "9px",
-                            height: "9px",
-                            borderRadius: "50%",
-                            background: "#2563eb",
-                            boxShadow: "0 0 0 2px rgba(37, 99, 235, 0.25)",
-                          }}
-                        />
-                      ) : (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            width: "7px",
-                            height: "7px",
-                            borderRadius: "50%",
-                            background: "var(--color-border, #cbd5e1)",
-                          }}
-                        />
-                      )}
-                    </td>
-
-                    {/* Type badge */}
+              <tr
+                key={n.id}
+                style={{
+                  background: isUnread ? "rgba(59, 130, 246, 0.04)" : undefined,
+                  fontWeight: isUnread ? 500 : 400,
+                }}
+              >
+                {/* Type badge */}
                     <td>
                       <span
                         className={`badge ${typeInfo.badgeClass}`}

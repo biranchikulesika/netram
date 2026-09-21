@@ -86,8 +86,22 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
     setServerError(null);
 
     try {
+      let baseUrl = apiUrl;
+      if (
+        typeof window !== "undefined" &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+      ) {
+        try {
+          const parsed = new URL(apiUrl);
+          baseUrl = `${window.location.protocol}//${window.location.hostname}:${parsed.port || "3001"}`;
+        } catch {
+          // fallback to apiUrl
+        }
+      }
+
       const client = new NetramApiClient({
-        baseUrl: apiUrl,
+        baseUrl,
         fetchImpl: (...args) => fetch(...args),
       });
 
@@ -178,7 +192,7 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
         </div>
       )}
 
-      <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form className={styles.form} onSubmit={handleSubmit} method="POST" noValidate>
         {/* Email or Username Field */}
         <div className={styles.fieldGroup}>
           <label htmlFor="email" className={styles.label}>

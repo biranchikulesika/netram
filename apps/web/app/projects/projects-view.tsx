@@ -2,21 +2,26 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useSyncExternalStore } from "react";
 import type { Project } from "@netram/types";
 import { StatusBadge } from "./[id]/status-badge";
-import { CreateProjectForm } from "./create-project-form";
 import {
-  IconBuilding,
   IconSearch,
-  IconPlus,
   IconGrid,
   IconList,
   IconMapPin,
+  IconTag,
+  IconBuilding,
+  IconGavel,
   IconChevronRight,
+  IconCheck,
+  IconX,
+  IconClock,
   IconShieldCheck,
 } from "../components/icons";
-import { getDistrictName, getOrganisationName } from "../../lib/presentation";
+import { getDistrictName } from "../../lib/presentation";
+import { ProjectsMapView } from "./projects-map-view";
+import { ProjectOverviewCard, formatRegisteredDate } from "./project-overview-card";
 
 interface ProjectsViewProps {
   initialProjects: Project[];
@@ -24,6 +29,10 @@ interface ProjectsViewProps {
   serverPage?: number;
   serverPageSize?: number;
   initialStatus?: string;
+  initialView?: "table" | "cards" | "map";
+  initialSearch?: string;
+  /** Registrations awaiting an approve/reject decision (only passed to approvers). */
+  verificationQueue?: Project[];
   apiUrl: string;
 }
 
@@ -187,21 +196,50 @@ function PaginationBar({
   );
 }
 
+/** Reactive media-query hook (SSR-safe via useSyncExternalStore). */
+function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    [query],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
+}
+
+/** Distribute items into `count` columns round-robin: 1→c1, 2→c2, … preserving left-to-right reading order. */
+function distributeIntoColumns<T>(items: T[], count: number): T[][] {
+  const cols: T[][] = Array.from({ length: Math.max(1, count) }, () => []);
+  items.forEach((item, i) => {
+    const col = cols[i % cols.length];
+    if (col) col.push(item);
+  });
+  return cols;
+}
+
 export function ProjectsView({
   initialProjects,
   totalProjects,
   serverPage = 1,
   serverPageSize = 20,
   initialStatus = "ALL",
-  apiUrl,
+  initialView = "table",
+  initialSearch = "",
+  verificationQueue,
+  apiUrl: _apiUrl,
 }: ProjectsViewProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [showRegisterForm, setShowRegisterForm] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [viewMode, setViewMode] = useState<"table" | "cards" | "map">(initialView);
   const [jumpPage, setJumpPage] = useState("");
 
   useEffect(() => {
@@ -212,27 +250,59 @@ export function ProjectsView({
   const from = totalProjects === 0 ? 0 : (serverPage - 1) * serverPageSize + 1;
   const to = Math.min(totalProjects, serverPage * serverPageSize);
 
-  const navigate = (page: number, size: number = serverPageSize, status: string = statusFilter) => {
+  /** Every navigation serializes the full UI state (page, size, status, view, search) into the URL. */
+  const navigate = (
+    overrides: {
+      page?: number;
+      pageSize?: number;
+      status?: string;
+      view?: "table" | "cards" | "map";
+      q?: string;
+    } = {},
+  ) => {
     const params = new URLSearchParams();
+    const page = overrides.page ?? serverPage;
+    const size = overrides.pageSize ?? serverPageSize;
+    const status = overrides.status ?? statusFilter;
+    const view = overrides.view ?? viewMode;
+    const q = overrides.q ?? searchQuery;
+
     if (page > 1) params.set("page", String(page));
     if (size !== 20) params.set("pageSize", String(size));
     if (status && status !== "ALL") params.set("status", status);
+    if (view !== "table") params.set("view", view);
+    if (q.trim()) params.set("q", q.trim());
+
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   };
 
+  /** Client-only controls (search text, view toggle) update the URL without a server round-trip. */
+  const patchUrl = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
   const handleStatusChange = (newStatus: string) => {
     setStatusFilter(newStatus);
-    navigate(1, serverPageSize, newStatus);
+    navigate({ page: 1, status: newStatus });
   };
 
   const handlePageSizeChange = (newSize: number) => {
-    navigate(1, newSize, statusFilter);
+    navigate({ page: 1, pageSize: newSize });
   };
 
   const handlePageClick = (page: number) => {
     if (page === serverPage || page < 1 || page > totalPages) return;
-    navigate(page, serverPageSize, statusFilter);
+    navigate({ page });
   };
 
   const handleJumpSubmit = (e: React.FormEvent) => {
@@ -240,10 +310,20 @@ export function ProjectsView({
     const target = parseInt(jumpPage.trim(), 10);
     if (!isNaN(target) && target >= 1 && target <= totalPages) {
       if (target !== serverPage) {
-        navigate(target, serverPageSize, statusFilter);
+        navigate({ page: target });
       }
       setJumpPage("");
     }
+  };
+
+  const handleViewModeChange = (mode: "table" | "cards" | "map") => {
+    setViewMode(mode);
+    patchUrl({ view: mode === "table" ? null : mode });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    patchUrl({ q: value.trim() || null });
   };
 
   // Filtered List for client-side search query
@@ -261,47 +341,33 @@ export function ProjectsView({
     });
   }, [initialProjects, searchQuery]);
 
+  // Column count for the masonry cards grid (keeps left-to-right fill order)
+  const isXl = useMediaQuery("(min-width: 1401px)");
+  const isLg = useMediaQuery("(min-width: 1101px) and (max-width: 1400px)");
+  const isMd = useMediaQuery("(min-width: 641px) and (max-width: 1100px)");
+  const columnCount = isXl ? 4 : isLg ? 3 : isMd ? 2 : 1;
+  const cardColumns = useMemo(
+    () => distributeIntoColumns(filteredProjects, columnCount),
+    [filteredProjects, columnCount],
+  );
+
   return (
     <div>
-      {/* Clean Compact Header */}
-      <div className="section-title-row" style={{ marginBottom: "1.25rem" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
-            Projects Registry
-          </h2>
-          <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
-            Sanctioned facilities and live monitoring status
-          </p>
-        </div>
+      {/* Verification queue — authority officials decide pending registrations here */}
+      {verificationQueue && verificationQueue.length > 0 && (
+        <VerificationQueueSection projects={verificationQueue} />
+      )}
 
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button
-            type="button"
-            onClick={() => setShowRegisterForm((prev) => !prev)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.35rem",
-              fontSize: "0.8rem",
-              padding: "0.45rem 0.85rem",
-            }}
-          >
-            <IconPlus style={{ width: 14, height: 14 }} />
-            <span>{showRegisterForm ? "Cancel" : "Register Project"}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Interactive Toolbar: Search, Filters & View Toggle */}
-      <div className="registry-toolbar">
+      {/* Toolbar: Search, Filters & View Toggle */}
+      <div className="registry-toolbar" style={{ marginBottom: viewMode === "map" ? "0.6rem" : "1.25rem" }}>
         <div className="search-filter-group">
           <div className="search-input-wrap">
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
             <input
               type="search"
-              placeholder="Search facilities by Code (e.g. PRJ-DEL-001) or Name..."
+              placeholder="Search projects..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="search-input-with-icon"
               aria-label="Filter projects registry"
             />
@@ -365,7 +431,7 @@ export function ProjectsView({
             <button
               type="button"
               className={`view-btn ${viewMode === "table" ? "active" : ""}`}
-              onClick={() => setViewMode("table")}
+              onClick={() => handleViewModeChange("table")}
               title="Table View"
             >
               <IconList style={{ width: 14, height: 14 }} />
@@ -374,47 +440,57 @@ export function ProjectsView({
             <button
               type="button"
               className={`view-btn ${viewMode === "cards" ? "active" : ""}`}
-              onClick={() => setViewMode("cards")}
+              onClick={() => handleViewModeChange("cards")}
               title="Cards View"
             >
               <IconGrid style={{ width: 14, height: 14 }} />
               <span>Cards</span>
             </button>
+            <button
+              type="button"
+              className={`view-btn ${viewMode === "map" ? "active" : ""}`}
+              onClick={() => handleViewModeChange("map")}
+              title="Geographic Map View"
+            >
+              <IconMapPin style={{ width: 14, height: 14 }} />
+              <span>Map View</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Collapsible Register Form */}
-      {showRegisterForm && (
-        <CreateProjectForm
-          apiUrl={apiUrl}
-          onCancel={() => setShowRegisterForm(false)}
-          onCreated={() => setShowRegisterForm(false)}
-        />
-      )}
-
       {/* View Mode A: Official Institutional Table View */}
       {viewMode === "table" && (
-        <div className="table-card">
-          <table>
+        <div className="table-card table-card-projects">
+          <table className="projects-table">
             <thead>
               <tr>
-                <th style={{ width: "160px" }}>Project Identifier</th>
-                <th>Facility / Project Name</th>
-                <th style={{ width: "150px" }}>Classification</th>
-                <th style={{ width: "160px" }}>Jurisdiction</th>
-                <th style={{ width: "160px" }}>Status</th>
+                <th style={{ width: "12%" }}>
+                  <span className="th-icon" title="Project identifier"><IconTag width={12} height={12} /></span>
+                  Code
+                </th>
+                <th style={{ width: "32%" }}>Facility / Project</th>
+                <th style={{ width: "13%" }}>
+                  <span className="th-icon" title="Classification"><IconBuilding width={12} height={12} /></span>
+                  Type
+                </th>
+                <th style={{ width: "14%" }}>
+                  <span className="th-icon" title="Jurisdiction district"><IconGavel width={12} height={12} /></span>
+                  Jurisdiction
+                </th>
+                <th style={{ width: "12%" }}>Registered</th>
+                <th style={{ width: "10%" }}>Status</th>
+                <th style={{ width: "3%" }} aria-hidden="true"></th>
               </tr>
             </thead>
             <tbody>
               {filteredProjects.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem" }}>
-                      No matching records found
-                    </div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
-                      Try adjusting the search query or status filter criteria.
+                  <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
+                    <IconSearch width={22} height={22} style={{ opacity: 0.5, margin: "0 auto 0.5rem", display: "block" }} />
+                    <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>No projects found</div>
+                    <div style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
+                      Adjust the status filter or search query to see more of the registry.
                     </div>
                   </td>
                 </tr>
@@ -428,46 +504,47 @@ export function ProjectsView({
                         : "General Project";
 
                   return (
-                    <tr key={p.id}>
+                    <tr
+                      key={p.id}
+                      className="table-row"
+                      onClick={() => router.push(`/projects/${p.id}`)}
+                      title={`Open dossier for ${p.name}`}
+                    >
                       <td>
-                        <Link href={`/projects/${p.id}`} className="code-badge">
+                        <Link
+                          href={`/projects/${p.id}`}
+                          className="table-code-link"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Project identifier: ${p.code}`}
+                        >
                           {p.code}
                         </Link>
                       </td>
                       <td>
                         <Link
                           href={`/projects/${p.id}`}
-                          style={{
-                            fontWeight: 600,
-                            color: "var(--color-navy-brand)",
-                            fontSize: "0.9rem",
-                            textDecoration: "none",
-                          }}
+                          className="table-name-link"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {p.name}
                         </Link>
                       </td>
                       <td>
-                        <span style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                          {typeLabel}
+                        <span className="table-type">{typeLabel}</span>
+                      </td>
+                      <td>
+                        <span className="table-jurisdiction">
+                          {getDistrictName(p.districtId, p.code)}
                         </span>
                       </td>
                       <td>
-                        <span
-                          style={{
-                            fontSize: "0.78rem",
-                            color: "var(--text-primary)",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.3rem",
-                          }}
-                        >
-                          <IconMapPin style={{ width: 12, height: 12, color: "var(--text-subtle)", flexShrink: 0 }} />
-                          <span>{getDistrictName(p.districtId, p.code)}</span>
-                        </span>
+                        <span className="table-date">{formatRegisteredDate(p.createdAt)}</span>
                       </td>
                       <td>
                         <StatusBadge status={p.status} />
+                      </td>
+                      <td className="table-chevron-cell" aria-hidden="true">
+                        <IconChevronRight width={14} height={14} className="table-chevron" />
                       </td>
                     </tr>
                   );
@@ -505,106 +582,168 @@ export function ProjectsView({
               </div>
             </div>
           ) : (
-            <div className="facility-grid">
-              {filteredProjects.map((p) => {
-                const typeLabel =
-                  p.type === "institution"
-                    ? "Institution / NGO Facility"
-                    : p.type === "authority_project"
-                      ? "Authority Project"
-                      : "General Project";
-
-                return (
-                  <div key={p.id} className="facility-card">
-                    <div className="facility-card-header">
-                      <Link href={`/projects/${p.id}`} className="code-badge">
-                        {p.code}
-                      </Link>
-                      <StatusBadge status={p.status} />
-                    </div>
-
-                    <h3 className="facility-card-title">
-                      <Link href={`/projects/${p.id}`} style={{ color: "inherit", textDecoration: "none" }}>
-                        {p.name}
-                      </Link>
-                    </h3>
-
-                    <p className="facility-card-desc">
-                      {p.description ?? "Registered facility providing sanctioned services under central DoSJE schemes."}
-                    </p>
-
-                    <div className="facility-card-meta">
-                      <span className="meta-chip">
-                        <IconBuilding style={{ width: 12, height: 12 }} />
-                        <span>{typeLabel}</span>
-                      </span>
-
-                      <span className="meta-chip">
-                        <IconMapPin style={{ width: 12, height: 12 }} />
-                        <span>{getDistrictName(p.districtId, p.code)}</span>
-                      </span>
-
-                      <span className="meta-chip">
-                        <IconShieldCheck style={{ width: 12, height: 12 }} />
-                        <span>{p.programmeIds.length} Schemes Linked</span>
-                      </span>
-                    </div>
-
-                    <div className="facility-card-footer">
-                      <span style={{ fontSize: "0.74rem", color: "var(--text-subtle)", fontWeight: 500 }}>
-                        {getOrganisationName(p.organisationId, p.name)}
-                      </span>
-
-                      <Link
-                        href={`/projects/${p.id}`}
-                        className="btn-secondary"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.25rem",
-                          fontSize: "0.78rem",
-                          padding: "0.3rem 0.7rem",
-                          borderRadius: "5px",
-                          textDecoration: "none",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span>Inspect Dossier</span>
-                        <IconChevronRight style={{ width: 13, height: 13 }} />
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="facility-cards-grid">
+              {cardColumns.map((column, colIdx) => (
+                <div className="facility-cards-column" key={colIdx}>
+                  {column.map((p) => (
+                    <ProjectOverviewCard key={p.id} project={p} href={`/projects/${p.id}`} />
+                  ))}
+                </div>
+              ))}
             </div>
           )}
 
           {filteredProjects.length > 0 && (
-            <div
-              style={{
-                marginTop: "1.25rem",
-                borderRadius: "8px",
-                overflow: "hidden",
-                border: "1px solid var(--color-border-subtle)",
-              }}
-            >
-              <PaginationBar
-                from={from}
-                to={to}
-                total={totalProjects}
-                currentPage={serverPage}
-                totalPages={totalPages}
-                pageSize={serverPageSize}
-                jumpPage={jumpPage}
-                onJumpChange={setJumpPage}
-                onJumpSubmit={handleJumpSubmit}
-                onPageClick={handlePageClick}
-                onPageSizeChange={handlePageSizeChange}
-              />
-            </div>
+            <PaginationBar
+              from={from}
+              to={to}
+              total={totalProjects}
+              currentPage={serverPage}
+              totalPages={totalPages}
+              pageSize={serverPageSize}
+              jumpPage={jumpPage}
+              onJumpChange={setJumpPage}
+              onJumpSubmit={handleJumpSubmit}
+              onPageClick={handlePageClick}
+              onPageSizeChange={handlePageSizeChange}
+            />
           )}
         </div>
       )}
+
+      {/* View Mode C: GIS Geographic Map View */}
+      {viewMode === "map" && (
+        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+          <ProjectsMapView projects={filteredProjects} />
+        </div>
+      )}
     </div>
+  );
+}
+
+/* ---------------- Verification queue ---------------- */
+
+interface QueueRowState {
+  busy: boolean;
+  error: string | null;
+  done: "Approved" | "Rejected" | null;
+}
+
+/**
+ * Registrations awaiting an authority verification decision. Visible only to
+ * users holding project:approve (server enforces the same rule); actions go
+ * through the standard transition endpoint which re-checks permission and
+ * jurisdiction server-side.
+ */
+function VerificationQueueSection({ projects }: { projects: Project[] }) {
+  const router = useRouter();
+  const [rowState, setRowState] = useState<Record<string, QueueRowState>>({});
+
+  const visible = projects.filter(
+    (p) => rowState[p.id]?.done !== "Approved" && rowState[p.id]?.done !== "Rejected",
+  );
+  if (visible.length === 0) {
+    // All decisions made — nothing to show.
+    return null;
+  }
+
+  async function decide(projectId: string, to: "Approved" | "Draft", kind: "Approved" | "Rejected") {
+    setRowState((s) => ({ ...s, [projectId]: { busy: true, error: null, done: null } }));
+    try {
+      const res = await fetch(`/api/projects/${projectId}/transition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to }),
+      });
+      const payload = (await res.json().catch(() => null)) as {
+        error?: { code?: string; message?: string };
+      } | null;
+      if (!res.ok || payload?.error) {
+        setRowState((s) => ({
+          ...s,
+          [projectId]: { busy: false, error: payload?.error?.message ?? `Request failed (${res.status})`, done: null },
+        }));
+        return;
+      }
+      setRowState((s) => ({ ...s, [projectId]: { busy: false, error: null, done: kind } }));
+      router.refresh();
+    } catch (err) {
+      setRowState((s) => ({
+        ...s,
+        [projectId]: { busy: false, error: err instanceof Error ? err.message : String(err), done: null },
+      }));
+    }
+  }
+
+  return (
+    <section className="verification-queue" aria-label="Registrations awaiting verification">
+      <div className="vq-head">
+        <span className="vq-head-icon">
+          <IconShieldCheck width={15} height={15} />
+        </span>
+        <div className="vq-head-titles">
+          <h2>Awaiting verification</h2>
+          <p>
+            {visible.length} registration{visible.length === 1 ? "" : "s"} submitted for your decision.
+          </p>
+        </div>
+      </div>
+
+      <div className="vq-list">
+        {visible.map((p) => {
+          const st = rowState[p.id] ?? { busy: false, error: null, done: null };
+          return (
+            <div className={`vq-row ${st.done ? "vq-row-done" : ""}`} key={p.id}>
+              <div className="vq-main">
+                <Link href={`/projects/${p.id}`} className="vq-name" title={p.name}>
+                  {p.name}
+                </Link>
+                <div className="vq-meta">
+                  <span className="vq-code">{p.code}</span>
+                  <span className="vq-meta-sep">·</span>
+                  <span>{getDistrictName(p.districtId, p.code)}</span>
+                  <span className="vq-meta-sep">·</span>
+                  <span>Regd. {formatRegisteredDate(p.createdAt)}</span>
+                </div>
+              </div>
+
+              {st.error && <div className="vq-error" role="alert">{st.error}</div>}
+
+              <div className="vq-actions">
+                <button
+                  type="button"
+                  className="vq-btn vq-btn-approve"
+                  disabled={st.busy}
+                  onClick={() => decide(p.id, "Approved", "Approved")}
+                  title="Approve registration"
+                >
+                  <IconCheck width={13} height={13} />
+                  {st.busy ? "…" : "Approve"}
+                </button>
+                <button
+                  type="button"
+                  className="vq-btn vq-btn-reject"
+                  disabled={st.busy}
+                  onClick={() => decide(p.id, "Draft", "Rejected")}
+                  title="Send back to draft for correction"
+                >
+                  <IconX width={13} height={13} />
+                  Reject
+                </button>
+                <Link href={`/projects/${p.id}`} className="vq-review-link" title="Review full dossier before deciding">
+                  Review
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+        {visible.length === 0 && (
+          <div className="vq-empty">
+            <IconClock width={14} height={14} />
+            All caught up — no registrations awaiting verification.
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

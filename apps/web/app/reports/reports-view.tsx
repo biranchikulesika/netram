@@ -75,51 +75,6 @@ export function ReportsView({
 
   return (
     <div>
-      {/* Title Row */}
-      <div
-        className="section-title-row"
-        style={{
-          marginBottom: "1.25rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "0.75rem",
-        }}
-      >
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
-            Inspection Reports
-          </h2>
-          <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
-            Derived statutory inspection dossiers, findings compilation, and official seals (§34)
-          </p>
-        </div>
-
-        {canGenerate && (
-          <button
-            type="button"
-            onClick={() => setGenerateModalOpen(true)}
-            style={{
-              background: "var(--color-navy-brand, #1e3a8a)",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "6px",
-              padding: "0.5rem 1rem",
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <span>+ Compile Report</span>
-          </button>
-        )}
-      </div>
-
       {/* Toolbar */}
       <div className="registry-toolbar">
         <div className="search-filter-group">
@@ -181,6 +136,29 @@ export function ReportsView({
             </button>
           </div>
         </div>
+
+        {canGenerate && (
+          <button
+            type="button"
+            onClick={() => setGenerateModalOpen(true)}
+            style={{
+              background: "var(--color-navy-brand, #1e3a8a)",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "6px",
+              padding: "0.5rem 1rem",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
+            }}
+          >
+            <span>+ Compile Report</span>
+          </button>
+        )}
       </div>
 
       {/* Reports Table Card */}

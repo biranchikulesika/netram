@@ -86,9 +86,9 @@ not a speculative roadmap.
 
 | # | Task | Status | Depends on |
 |---|------|--------|-----------|
-| INFRA-1 | Docker Compose for all services (dev parity: web, api, realtime, cctv, ai, workers) | READY | — |
-| INFRA-2 | Runtime verifiers in CI (smoke suite on demo env) | READY | — |
-| INFRA-3 | Environment matrix doc (dev/CI/demo/prod isolation) | READY | — |
+| INFRA-1 | Docker Compose for all services (dev parity: web, api, realtime, cctv, ai, workers) | DONE | — |
+| INFRA-2 | Runtime verifiers in CI (smoke suite on demo env) | DONE | — |
+| INFRA-3 | Environment matrix doc (dev/CI/demo/prod isolation) | DONE | — |
 | INFRA-4 | E2E coverage for web critical flows | UNKNOWN / REQUIRES OWNER DECISION | audit deferred E2E; revisit with owner |
 
 ## Dependency order

@@ -61,7 +61,6 @@ export function CameraCard({ camera }: CameraCardProps) {
           </div>
         </div>
         <div className="status-indicator">
-          <span className={`status-dot ${camera.status === "active" ? "online" : "offline"}`} />
           <span>{camera.status === "active" ? "ONLINE" : "OFFLINE"}</span>
         </div>
       </div>

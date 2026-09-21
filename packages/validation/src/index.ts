@@ -1,5 +1,6 @@
 export * from "./common.js";
 export * from "./project.js";
+export * from "./project-photo.js";
 export * from "./inspection.js";
 export * from "./finding.js";
 export * from "./corrective-action.js";
@@ -19,3 +20,4 @@ export * from "./cctv.js";
 export * from "./vc.js";
 export * from "./attendance.js";
 export * from "./analytics.js";
+export * from "./registry.js";

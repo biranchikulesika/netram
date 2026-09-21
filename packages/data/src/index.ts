@@ -1,6 +1,7 @@
 export * from "./db/schema.js";
 export * from "./db/client.js";
 export * from "./repositories/project.repository.js";
+export * from "./repositories/project-photo.repository.js";
 export * from "./repositories/inspection.repository.js";
 export * from "./repositories/finding.repository.js";
 export * from "./repositories/corrective-action.repository.js";
@@ -21,3 +22,4 @@ export * from "./repositories/cctv.repository.js";
 export * from "./repositories/vc-session.repository.js";
 export * from "./repositories/attendance.repository.js";
 export * from "./repositories/analytics.repository.js";
+export * from "./repositories/registry.repository.js";

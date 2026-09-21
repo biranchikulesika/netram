@@ -29,6 +29,31 @@ export const PROJECT_TYPES = ["institution", "authority_project", "other"] as co
 
 export type ProjectType = (typeof PROJECT_TYPES)[number];
 
+export type GeofenceType = "circle" | "polygon";
+
+export interface ProjectGeofence {
+  id: UUID;
+  projectId: UUID;
+  type: GeofenceType;
+  radiusMeters: number;
+  centerLat: number | null;
+  centerLng: number | null;
+  polygonVertices: [number, number][]; // [lat, lng] pairs
+  sealedById: UUID | null;
+  sealedAt: ISODateTime;
+  auditTx: string | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
+export interface SealGeofenceCommand {
+  type: GeofenceType;
+  radiusMeters?: number;
+  centerLat?: number;
+  centerLng?: number;
+  polygonVertices?: [number, number][];
+}
+
 export interface Project {
   id: UUID;
   code: string;
@@ -42,6 +67,7 @@ export interface Project {
   approvedById: UUID | null;
   approvedAt: ISODateTime | null;
   programmeIds: UUID[];
+  geofence?: ProjectGeofence | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
@@ -64,3 +90,4 @@ export interface ProjectTransitionResult {
   project: Project;
   event: string;
 }
+

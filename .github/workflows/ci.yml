@@ -23,8 +23,20 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgres://netram:netram@localhost:5432/netram
+      REDIS_URL: redis://localhost:6379
+      NETRAM_API_PORT: 3001
+      NETRAM_API_URL: http://localhost:3001
       NETRAM_DEV_AUTH_SECRET: ci-only-secret-00000000000000000000000000000000
       NEXT_PUBLIC_API_URL: http://localhost:3101
     steps:
@@ -74,3 +86,9 @@ jobs:
 
       - name: OpenAPI export is reproducible
         run: pnpm api:export-openapi && git diff --exit-code -- services/api/openapi
+
+      - name: Runtime verification smoke test
+        run: |
+          pnpm --filter @netram/api start &
+          sleep 5
+          pnpm verify:runtime:mobile
