@@ -7,6 +7,8 @@ export const AUDIT_ACTIONS = [
   "project.updated",
   "project.transitioned",
   "project.approved",
+  "project.geofence_sealed",
+  "project.photo_uploaded",
   "user.updated",
   "role.changed",
   "role.assignment_changed",

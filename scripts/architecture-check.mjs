@@ -37,10 +37,8 @@ function walk(dir, out = []) {
 
 const allFiles = walk(ROOT);
 const tsFiles = allFiles.filter((f) => /\.(ts|tsx)$/.test(f));
-const rel = (f) => f.slice(ROOT.length + 1);
-const under = (f, seg) =>
-  rel(f).startsWith(`${seg}${f.slice(ROOT.length).includes("/") ? "" : ""}`) &&
-  rel(f).startsWith(seg + "/");
+const rel = (f) => f.slice(ROOT.length + 1).replaceAll("\\", "/");
+const under = (f, seg) => rel(f).startsWith(seg + "/");
 
 // Rule 1: database client/driver access only inside packages/data.
 for (const f of tsFiles) {

@@ -10,7 +10,13 @@ export const dynamic = "force-dynamic";
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; pageSize?: string; status?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    pageSize?: string;
+    status?: string;
+    view?: string;
+    q?: string;
+  }>;
 }) {
   const session = await getSessionUser();
   if (!session) redirect("/login");
@@ -22,6 +28,11 @@ export default async function ProjectsPage({
     params.status && params.status !== "ALL"
       ? (params.status as ProjectStatus)
       : undefined;
+  const validView =
+    params.view === "cards" || params.view === "map"
+      ? params.view
+      : ("table" as "table" | "cards" | "map");
+  const searchQuery = params.q?.trim() ?? "";
 
   const client = await getClient();
   const page = await client
@@ -31,6 +42,18 @@ export default async function ProjectsPage({
       status: validStatus,
     })
     .catch(() => ({ items: [], total: 0, page: 1, pageSize }));
+
+  // Verification queue: facility registrations awaiting an approve/reject
+  // decision. Only fetched for users holding project:approve — for everyone
+  // else the section simply does not render.
+  const canApprove = session.permissions.includes("project:approve");
+  const verificationQueue = canApprove
+    ? await client
+        .listVerificationQueue()
+        .then((r) => r.items)
+        .catch(() => [])
+    : [];
+
   const apiUrl = loadClientEnv().NEXT_PUBLIC_API_URL;
 
   return (
@@ -48,6 +71,9 @@ export default async function ProjectsPage({
         serverPage={page.page}
         serverPageSize={page.pageSize}
         initialStatus={params.status ?? "ALL"}
+        initialView={validView}
+        initialSearch={searchQuery}
+        verificationQueue={verificationQueue}
         apiUrl={apiUrl}
       />
     </main>

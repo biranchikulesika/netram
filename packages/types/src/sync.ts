@@ -5,9 +5,11 @@ import type { UUID, ISODateTime } from "./common.js";
  * Must be operation-based (§5, §31), not simple key-value state overwrites.
  */
 export const OFFLINE_OPERATION_TYPES = [
+  "draft_finding",
   "start_inspection",
   "record_observation",
   "capture_evidence",
+  "draft_finding",
   "submit_inspection",
 ] as const;
 

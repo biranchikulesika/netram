@@ -33,7 +33,7 @@ export function VcPanel({
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch(`/api/vc/sessions?inspectionId=${inspectionId}`);
+      const res = await globalThis.fetch(`/api/vc/sessions?inspectionId=${inspectionId}`);
       if (res.ok) {
         const data = (await res.json()) as { items: VcSessionWithParticipants[] };
         setSessions(data.items);
@@ -48,7 +48,7 @@ export function VcPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/vc/sessions", {
+      const res = await globalThis.fetch("/api/vc/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,7 +78,7 @@ export function VcPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vc/sessions/${sessionId}/start`, { method: "POST" });
+      const res = await globalThis.fetch(`/api/vc/sessions/${sessionId}/start`, { method: "POST" });
       if (!res.ok) {
         const errJson = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
         throw new Error(errJson.error?.message ?? `Failed to start session (${res.status})`);
@@ -96,7 +96,7 @@ export function VcPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vc/sessions/${sessionId}/end`, { method: "POST" });
+      const res = await globalThis.fetch(`/api/vc/sessions/${sessionId}/end`, { method: "POST" });
       if (!res.ok) {
         const errJson = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
         throw new Error(errJson.error?.message ?? `Failed to end session (${res.status})`);
@@ -116,7 +116,7 @@ export function VcPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vc/sessions/${sessionId}/join`, {
+      const res = await globalThis.fetch(`/api/vc/sessions/${sessionId}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: requestedRole }),
@@ -149,7 +149,7 @@ export function VcPanel({
 
   const handleLeaveRoom = async () => {
     if (activeJoin) {
-      void fetch(`/api/vc/sessions/${activeJoin.sessionId}/leave`, { method: "POST" });
+      void globalThis.fetch(`/api/vc/sessions/${activeJoin.sessionId}/leave`, { method: "POST" });
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
