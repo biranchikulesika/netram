@@ -3,6 +3,7 @@
  * Supports offline queuing, inspection caching, and media upload tracking.
  */
 
+
 export interface ISqliteDatabase {
   execAsync(sql: string): Promise<void>;
   runAsync(
@@ -178,6 +179,19 @@ CREATE TABLE IF NOT EXISTS cached_observations (
   is_local INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS cached_finding_drafts (
+  id TEXT PRIMARY KEY,
+  inspection_id TEXT NOT NULL,
+  observation_id TEXT,
+  severity TEXT NOT NULL,
+  description TEXT NOT NULL,
+  remediation TEXT,
+  sync_state TEXT NOT NULL,
+  operation_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS cached_evidence (
   id TEXT PRIMARY KEY,
   inspection_id TEXT NOT NULL,
@@ -215,7 +229,7 @@ interface ExpoSQLiteLike {
 }
 
 class ExpoSqliteAdapter implements ISqliteDatabase {
-  constructor(private readonly db: ExpoSQLiteLike) {}
+  constructor(private readonly db: ExpoSQLiteLike) { }
 
   async execAsync(sql: string): Promise<void> {
     await this.db.execAsync(sql);
@@ -246,29 +260,20 @@ let currentDb: ISqliteDatabase | null = null;
 export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
   if (currentDb) return currentDb;
 
-  const isWeb =
-    typeof window !== "undefined" &&
-    typeof (window as unknown as { document?: unknown }).document !== "undefined";
-
-  if (isWeb) {
-    const inMem = new InMemorySqliteDatabase();
-    await inMem.execAsync(DDL_SCHEMA);
-    currentDb = inMem;
-    return inMem;
-  }
-
-  try {
-    // Attempt dynamic import of expo-sqlite
-    const SQLite = await import("expo-sqlite");
-    if (typeof SQLite.openDatabaseAsync === "function") {
-      const nativeDb = await SQLite.openDatabaseAsync("netram_inspector.db");
-      await nativeDb.execAsync(DDL_SCHEMA);
-      const adapter = new ExpoSqliteAdapter(nativeDb);
-      currentDb = adapter;
-      return adapter;
+  if (typeof window === "undefined") {
+    try {
+      // Attempt dynamic import of expo-sqlite
+      const SQLite = await import("expo-sqlite");
+      if (typeof SQLite.openDatabaseAsync === "function") {
+        const nativeDb = await SQLite.openDatabaseAsync("netram_inspector.db");
+        await nativeDb.execAsync(DDL_SCHEMA);
+        const adapter = new ExpoSqliteAdapter(nativeDb);
+        currentDb = adapter;
+        return adapter;
+      }
+    } catch {
+      // Fall back to in-memory database in non-Expo or test environments
     }
-  } catch {
-    // Fall back to in-memory database in non-Expo or test environments
   }
 
   const inMem = new InMemorySqliteDatabase();

@@ -12,18 +12,33 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { OfflineInspectionQueue } from "../../src/offline/queue";
-import { captureEvidenceOffline } from "../../src/offline/evidence";
+import { OfflineInspectionQueue } from "../../src/offline/queue.js";
+import { captureEvidenceOffline as captureEvidenceOfflineFn } from "../../src/offline/evidence.js"; // alias to avoid duplicate name
+
+/**
+ * Capture evidence bytes, compute SHA‑256 hash, and enqueue an offline operation.
+ * Returns the generated evidenceId and contentHash for UI feedback.
+ */
+
+
 import type {
   CachedInspectionRecord,
   CachedObservationRecord,
   CachedEvidenceRecord,
+  CachedFindingDraftRecord,
   OfflineOperationRecord,
-} from "../../src/offline/queue";
-import type { EvidenceType } from "@netram/types";
-import { colors, typography } from "../../src/theme/colors";
+} from "../../src/offline/queue.js";
+import type { EvidenceType, FindingSeverity } from "@netram/types";
 
 const queue = new OfflineInspectionQueue();
+
+function generateObsId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
 function getStatusStyle(status: string) {
   switch (status) {
@@ -47,6 +62,7 @@ export default function InspectionDetailScreen() {
   const [operations, setOperations] = useState<OfflineOperationRecord[]>([]);
   const [cachedObservations, setCachedObservations] = useState<CachedObservationRecord[]>([]);
   const [cachedEvidence, setCachedEvidence] = useState<CachedEvidenceRecord[]>([]);
+  const [findingDrafts, setFindingDrafts] = useState<CachedFindingDraftRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Observation form
@@ -58,21 +74,28 @@ export default function InspectionDetailScreen() {
   const [evidenceType, setEvidenceType] = useState<EvidenceType>("photo");
   const [evidenceName, setEvidenceName] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+  const [showFindingModal, setShowFindingModal] = useState(false);
+  const [editingFinding, setEditingFinding] = useState<CachedFindingDraftRecord | null>(null);
+  const [findingSeverity, setFindingSeverity] = useState<FindingSeverity>("medium");
+  const [findingDescription, setFindingDescription] = useState("");
+  const [findingRemediation, setFindingRemediation] = useState("");
 
   const loadData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      const [cached, ops, obs, ev] = await Promise.all([
+      const [cached, ops, obs, ev, drafts] = await Promise.all([
         queue.getCachedInspection(id),
         queue.getAllOperations(id),
         queue.getCachedObservations(id),
         queue.getCachedEvidence(id),
+        queue.getCachedFindingDrafts(id),
       ]);
       setInspection(cached);
       setOperations(ops);
       setCachedObservations(obs);
       setCachedEvidence(ev);
+      setFindingDrafts(drafts);
     } finally {
       setLoading(false);
     }
@@ -96,11 +119,37 @@ export default function InspectionDetailScreen() {
     }
   };
 
+  const openFindingDraft = (draft?: CachedFindingDraftRecord) => {
+    setEditingFinding(draft ?? null);
+    setFindingSeverity((draft?.severity as FindingSeverity | undefined) ?? "medium");
+    setFindingDescription(draft?.description ?? "");
+    setFindingRemediation(draft?.remediation ?? "");
+    setShowFindingModal(true);
+  };
+
+  const handleSaveFindingDraft = async () => {
+    if (!id || !findingDescription.trim()) return;
+    setActionBusy(true);
+    try {
+      await queue.saveFindingDraft(id, {
+        findingId: editingFinding?.id,
+        operationId: editingFinding?.operation_id,
+        severity: findingSeverity,
+        description: findingDescription.trim(),
+        remediation: findingRemediation.trim() || null,
+      });
+      setShowFindingModal(false);
+      await loadData();
+      Alert.alert("Finding Draft Saved", "This is an inspector draft and will be submitted for authority review during sync.");
+    } catch (err) { Alert.alert("Error", String(err)); } finally { setActionBusy(false); }
+  };
+
   const handleRecordObservation = async () => {
     if (!id || !obsText.trim()) return;
     setActionBusy(true);
     try {
-      await queue.enqueueOperation(id, "record_observation", { text: obsText.trim() });
+      const observationId = generateObsId();
+      await queue.enqueueOperation(id, "record_observation", { text: obsText.trim(), observationId });
       setObsText("");
       setShowObsModal(false);
       await loadData();
@@ -121,7 +170,7 @@ export default function InspectionDetailScreen() {
       const mockPhotoBytes = new TextEncoder().encode(
         `Mock JPEG binary for ${fileName} - ${Date.now()}`,
       );
-      const res = await captureEvidenceOffline(queue, {
+      const res = await captureEvidenceOfflineFn(queue, {
         inspectionId: id,
         evidenceType,
         fileName,
@@ -227,6 +276,10 @@ export default function InspectionDetailScreen() {
                   <Text style={styles.actionBtnText}>+ Observation</Text>
                 </Pressable>
 
+                <Pressable style={[styles.actionBtn, styles.btnFinding]} onPress={() => openFindingDraft()} disabled={actionBusy}>
+                  <Text style={styles.actionBtnText}>+ Finding Draft</Text>
+                </Pressable>
+
                 <Pressable
                   style={[styles.actionBtn, styles.btnEv]}
                   onPress={() => setShowEvidenceModal(true)}
@@ -264,6 +317,20 @@ export default function InspectionDetailScreen() {
                   {obs.is_local === 1 && <Text style={styles.localTag}>Offline Stored</Text>}
                 </View>
               </View>
+            ))}
+          </View>
+        )}
+
+        {findingDrafts.length > 0 && (
+          <View style={styles.queueCard}>
+            <View style={styles.queueHeader}><Text style={styles.sectionTitle}>Finding Drafts</Text><Text style={styles.badgeCount}>{findingDrafts.length} saved</Text></View>
+            <Text style={styles.sectionSubtitle}>Drafts are submitted as new findings for authority review; they are not decisions.</Text>
+            {findingDrafts.map((draft) => (
+              <Pressable key={draft.id} style={styles.opItem} onPress={() => draft.sync_state !== "submitted_for_review" && openFindingDraft(draft)}>
+                <View style={styles.opHeader}><Text style={styles.opType}>{draft.severity.toUpperCase()} · {draft.sync_state.replaceAll("_", " ")}</Text><Text style={styles.editHint}>{draft.sync_state === "submitted_for_review" ? "Awaiting review" : "Edit & resync"}</Text></View>
+                <Text style={styles.obsText}>{draft.description}</Text>
+                {draft.remediation ? <Text style={styles.opTime}>Suggested remediation: {draft.remediation}</Text> : null}
+              </Pressable>
             ))}
           </View>
         )}
@@ -388,6 +455,17 @@ export default function InspectionDetailScreen() {
         </View>
       </Modal>
 
+      <Modal visible={showFindingModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}><View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>{editingFinding ? "Edit Finding Draft" : "New Finding Draft"}</Text>
+          <Text style={styles.modalSubtitle}>Saved offline first; authority review remains server-controlled.</Text>
+          <View style={styles.typeSelector}>{(["critical", "high", "medium", "low"] as FindingSeverity[]).map((severity) => <Pressable key={severity} style={[styles.typePill, findingSeverity === severity && styles.typePillActive]} onPress={() => setFindingSeverity(severity)}><Text style={[styles.typePillText, findingSeverity === severity && styles.typePillTextActive]}>{severity.toUpperCase()}</Text></Pressable>)}</View>
+          <TextInput style={styles.textInput} placeholder="Describe the condition observed..." placeholderTextColor="#64748b" value={findingDescription} onChangeText={setFindingDescription} multiline numberOfLines={4} />
+          <TextInput style={styles.textInputSmall} placeholder="Suggested remediation (optional)" placeholderTextColor="#64748b" value={findingRemediation} onChangeText={setFindingRemediation} />
+          <View style={styles.modalActions}><Pressable style={[styles.modalBtn, styles.btnCancel]} onPress={() => setShowFindingModal(false)}><Text style={styles.modalBtnText}>Cancel</Text></Pressable><Pressable style={[styles.modalBtn, styles.btnConfirm]} onPress={handleSaveFindingDraft} disabled={!findingDescription.trim() || actionBusy}><Text style={styles.modalBtnText}>Save Draft</Text></Pressable></View>
+        </View></View>
+      </Modal>
+
       {/* Modal: Capture Evidence */}
       <Modal visible={showEvidenceModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -444,186 +522,154 @@ export default function InspectionDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.bgCanvas },
+  safeArea: { flex: 1, backgroundColor: "#0f172a" },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.bgCanvas,
+    backgroundColor: "#0f172a",
   },
   scrollContent: { padding: 16, gap: 16 },
   backButton: { marginBottom: 4 },
-  backButtonText: { color: colors.accentBlue, fontSize: 14, fontWeight: "600" },
+  backButtonText: { color: "#38bdf8", fontSize: 14, fontWeight: "600" },
   headerCard: {
-    backgroundColor: colors.bgSurface,
+    backgroundColor: "#1e293b",
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: colors.navyBrand,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: "#334155",
     gap: 6,
   },
   headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  typeBadge: { color: colors.textMuted, fontSize: 12, fontWeight: "700", fontFamily: typography.mono },
-  statusPill: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
+  typeBadge: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
+  statusPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
   statusText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
-  status_assigned: { backgroundColor: "#f3f6fb", borderColor: "#cbd5e1" },
-  status_in_progress: { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" },
-  status_submitted: { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" },
-  status_closed: { backgroundColor: "#f1f5f9", borderColor: "#cbd5e1" },
-  projectName: { fontSize: 18, fontWeight: "800", color: colors.textPrimary },
-  projectCode: { fontSize: 13, color: colors.textMuted, fontFamily: typography.mono },
+  status_assigned: { backgroundColor: "#334155" },
+  status_in_progress: { backgroundColor: "#14532d" },
+  status_submitted: { backgroundColor: "#581c87" },
+  status_closed: { backgroundColor: "#022c22" },
+  projectName: { fontSize: 18, fontWeight: "bold", color: "#f8fafc" },
+  projectCode: { fontSize: 13, color: "#64748b", fontFamily: "monospace" },
   actionsCard: {
-    backgroundColor: colors.bgSurface,
+    backgroundColor: "#1e293b",
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: colors.navyBrand,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: "#334155",
     gap: 12,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
-  sectionSubtitle: { fontSize: 12, color: colors.textMuted },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#f8fafc" },
+  sectionSubtitle: { fontSize: 12, color: "#94a3b8" },
   buttonGrid: { gap: 10 },
   actionBtn: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: "center",
-    shadowColor: colors.navyBrand,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  actionBtnText: { color: colors.textInverse, fontWeight: "700", fontSize: 14 },
-  btnStart: { backgroundColor: colors.actionGreen },
-  btnObs: { backgroundColor: colors.accentBlue },
-  btnEv: { backgroundColor: colors.navyBrand },
-  btnSubmit: { backgroundColor: colors.goldDark },
+  actionBtnText: { color: "#ffffff", fontWeight: "700", fontSize: 14 },
+  btnStart: { backgroundColor: "#16a34a" },
+  btnObs: { backgroundColor: "#0284c7" },
+  btnEv: { backgroundColor: "#7c3aed" },
+  btnFinding: { backgroundColor: "#0f766e" },
+  btnSubmit: { backgroundColor: "#d97706" },
   queueCard: {
-    backgroundColor: colors.bgSurface,
+    backgroundColor: "#1e293b",
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: colors.navyBrand,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: "#334155",
     gap: 12,
   },
   queueHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   badgeCount: {
-    backgroundColor: colors.bgSubtle,
-    color: colors.textPrimary,
+    backgroundColor: "#334155",
+    color: "#94a3b8",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
     fontSize: 12,
-    fontFamily: typography.mono,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
   emptyOps: { padding: 16, alignItems: "center" },
-  emptyOpsText: { color: colors.textMuted, fontSize: 13 },
+  emptyOpsText: { color: "#64748b", fontSize: 13 },
   opItem: {
-    backgroundColor: colors.bgSubtle,
+    backgroundColor: "#0f172a",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: "#334155",
     gap: 4,
   },
   opHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  opType: { color: colors.textPrimary, fontWeight: "700", fontSize: 13 },
+  opType: { color: "#f1f5f9", fontWeight: "700", fontSize: 13 },
   opStatusPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  opStatusAccepted: { backgroundColor: colors.actionGreen },
-  opStatusPending: { backgroundColor: colors.goldDark },
-  opStatusConflict: { backgroundColor: colors.tagRust },
-  opStatusRejected: { backgroundColor: colors.error },
-  opStatusText: { color: colors.textInverse, fontSize: 10, fontWeight: "700" },
-  opId: { color: colors.textSubtle, fontSize: 11, fontFamily: typography.mono },
-  opTime: { color: colors.textMuted, fontSize: 11 },
+  opStatusAccepted: { backgroundColor: "#14532d" },
+  opStatusPending: { backgroundColor: "#713f12" },
+  opStatusConflict: { backgroundColor: "#78350f" },
+  opStatusRejected: { backgroundColor: "#7f1d1d" },
+  opStatusText: { color: "#ffffff", fontSize: 10, fontWeight: "700" },
+  opId: { color: "#64748b", fontSize: 11, fontFamily: "monospace" },
+  opTime: { color: "#94a3b8", fontSize: 11 },
   opErrorBox: {
-    backgroundColor: colors.errorBg,
-    borderColor: colors.errorBorder,
-    borderWidth: 1,
+    backgroundColor: "#450a0a",
     padding: 6,
     borderRadius: 4,
     marginTop: 4,
   },
-  opErrorText: { color: colors.error, fontSize: 11 },
+  opErrorText: { color: "#fca5a5", fontSize: 11 },
+  editHint: { color: "#7dd3fc", fontSize: 12, fontWeight: "600" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: colors.backdrop + "99",
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
   modalContent: {
-    backgroundColor: colors.bgSurface,
-    borderRadius: 12,
+    backgroundColor: "#1e293b",
+    borderRadius: 8,
     padding: 20,
     width: "100%",
     maxWidth: 400,
     gap: 12,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: colors.navyBrand,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 4,
   },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: colors.textPrimary },
-  modalSubtitle: { fontSize: 12, color: colors.textMuted },
+  modalTitle: { fontSize: 17, fontWeight: "bold", color: "#f8fafc" },
+  modalSubtitle: { fontSize: 12, color: "#94a3b8" },
   typeSelector: { flexDirection: "row", gap: 8 },
   typePill: {
     flex: 1,
     paddingVertical: 6,
     alignItems: "center",
     borderRadius: 6,
-    backgroundColor: colors.bgSubtle,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    backgroundColor: "#334155",
   },
-  typePillActive: { backgroundColor: colors.navyBrand, borderColor: colors.accentBlue },
-  typePillText: { color: colors.textMuted, fontSize: 11, fontWeight: "700", fontFamily: typography.mono },
-  typePillTextActive: { color: colors.textInverse },
+  typePillActive: { backgroundColor: "#3b82f6" },
+  typePillText: { color: "#94a3b8", fontSize: 11, fontWeight: "700" },
+  typePillTextActive: { color: "#ffffff" },
   textInput: {
-    backgroundColor: colors.bgSurface,
-    borderColor: colors.borderStrong,
+    backgroundColor: "#0f172a",
+    borderColor: "#334155",
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 6,
     padding: 10,
-    color: colors.textPrimary,
+    color: "#f8fafc",
     textAlignVertical: "top",
     minHeight: 80,
   },
   textInputSmall: {
-    backgroundColor: colors.bgSurface,
-    borderColor: colors.borderStrong,
+    backgroundColor: "#0f172a",
+    borderColor: "#334155",
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 6,
     padding: 10,
-    color: colors.textPrimary,
+    color: "#f8fafc",
   },
   modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 4 },
   modalBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 6 },
-  btnCancel: { backgroundColor: colors.bgSubtle, borderWidth: 1, borderColor: colors.borderStrong },
-  btnConfirm: { backgroundColor: colors.actionGreen },
-  modalBtnText: { color: colors.textInverse, fontWeight: "600", fontSize: 13 },
-  obsText: { color: colors.textPrimary, fontSize: 13, lineHeight: 18 },
+  btnCancel: { backgroundColor: "#334155" },
+  btnConfirm: { backgroundColor: "#2563eb" },
+  modalBtnText: { color: "#ffffff", fontWeight: "600", fontSize: 13 },
+  obsText: { color: "#f8fafc", fontSize: 13, lineHeight: 18 },
   obsFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -631,14 +677,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   localTag: {
-    color: colors.textInverse,
+    color: "#38bdf8",
     fontSize: 10,
     fontWeight: "700",
-    backgroundColor: colors.accentBlue,
+    backgroundColor: "#0369a1",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  hashText: { color: colors.textMuted, fontSize: 11, fontFamily: typography.mono },
-  integrityTag: { color: colors.actionGreen, fontSize: 11, fontWeight: "600" },
+  hashText: { color: "#94a3b8", fontSize: 11, fontFamily: "monospace" },
+  integrityTag: { color: "#10b981", fontSize: 11, fontWeight: "600" },
 });

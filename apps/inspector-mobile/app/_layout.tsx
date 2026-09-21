@@ -1,90 +1,237 @@
-import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
-import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { getStoredSession } from "../src/auth/session";
-import { getOfflineDatabase } from "../src/offline/db";
-import { SplashScreenView } from "../src/components/SplashScreenView";
-import { colors } from "../src/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
+import { Tabs } from "expo-router";
+import { Platform } from "react-native";
+import { NetramApiClient } from "@netram/api-client";
 
-export default function RootLayout() {
-  const rootNavigationState = useRootNavigationState();
-  const segments = useSegments();
-  const router = useRouter();
-  const [isBootstrapping, setIsBootstrapping] = useState(true);
+import SplashScreen from "./SplashScreen";
+import LoginScreen from "./LoginScreen";
 
-  useEffect(() => {
-    let isMounted = true;
+interface AuthContextValue {
+  token: string | null;
+  client: NetramApiClient | null;
+  user: { email: string } | null;
+  login: (email: string) => Promise<void>;
+}
 
-    async function bootstrap() {
-      const startTime = Date.now();
-      try {
-        // 1. Initialize local SQLite schema & database
-        await getOfflineDatabase();
-      } catch (err) {
-        console.warn("Offline database pre-initialization notice:", err);
-      }
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-      // Guarantee minimum splash time for smooth animation (2000ms / 2 seconds)
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, 2000 - elapsed);
-      if (remaining > 0) {
-        await new Promise((resolve) => setTimeout(resolve, remaining));
-      }
+export const AuthProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<{ email: string } | null>(null);
 
-      if (isMounted) {
-        setIsBootstrapping(false);
-      }
-    }
+  const apiBase =
+    Platform.OS === "web"
+      ? "http://localhost:3001"
+      : (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000");
 
-    void bootstrap();
+  const client = token
+    ? new NetramApiClient({
+      baseUrl: apiBase,
+      getToken: () => token,
+    })
+    : null;
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const login = async (email: string) => {
+    const api = new NetramApiClient({
+      baseUrl: apiBase,
+    });
 
-  useEffect(() => {
-    if (isBootstrapping || !rootNavigationState?.key) return;
+    const result = await api.devLogin(email);
 
-    const session = getStoredSession();
-    const isAuthPage = segments[0] === "login" || segments[0] === "signup";
-
-    if (!session && !isAuthPage) {
-      router.replace("/login");
-    } else if (session && isAuthPage) {
-      router.replace("/");
-    }
-  }, [isBootstrapping, segments, router, rootNavigationState?.key]);
+    setToken(result.token);
+    setUser(result.user);
+  };
 
   return (
-    <View style={styles.rootContainer}>
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.navyDark },
-          headerTintColor: "#ffffff",
-          headerTitleStyle: { fontWeight: "bold" },
-        }}
-      >
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="signup" options={{ headerShown: false }} />
-        <Stack.Screen name="index" options={{ title: "Netram Inspector" }} />
-        <Stack.Screen name="inspections/[id]" options={{ title: "Field Inspection" }} />
-      </Stack>
-      {isBootstrapping && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
-          <SplashScreenView />
-        </View>
-      )}
-    </View>
+    <AuthContext.Provider
+      value={{
+        token,
+        client,
+        user,
+        login,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+
+  if (!ctx) {
+    throw new Error("AuthContext not provided");
+  }
+
+  return ctx;
+};
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootContent />
+    </AuthProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  rootContainer: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-});
+const RootContent = () => {
+  const { token } = useAuth();
 
+  const [showSplash, setShowSplash] = useState(true);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // -------------------------
+  // SPLASH
+  // -------------------------
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
+  // -------------------------
+  // LOGIN
+  // -------------------------
+
+  if (!token) {
+    return <LoginScreen />;
+  }
+
+  // -------------------------
+  // MAIN APP
+  // -------------------------
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: "#071A2B",
+        },
+
+        headerTintColor: "#F8FAFC",
+
+        headerTitleStyle: {
+          fontWeight: "700",
+        },
+
+        tabBarStyle: {
+          backgroundColor: "#0D263D",
+          borderTopColor: "#23415A",
+        },
+
+        tabBarActiveTintColor: "#2563EB",
+
+        tabBarInactiveTintColor: "#94A3B8",
+
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+        },
+
+        tabBarHideOnKeyboard: true,
+      }}
+    >
+      {/* HOME */}
+
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          headerShown: false,
+          tabBarLabel: "Home",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* INSPECTIONS */}
+
+      <Tabs.Screen
+        name="inspections"
+        options={{
+          title: "Inspections",
+          headerShown: false,
+          tabBarLabel: "Inspections",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="clipboard-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      {/* SYNC */}
+
+      <Tabs.Screen
+        name="sync"
+        options={{
+          title: "Sync Center",
+          headerShown: false,
+          tabBarLabel: "Sync",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sync-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* PROFILE */}
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          headerShown: false,
+          tabBarLabel: "Profile",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* INTERNAL ROUTES */}
+
+      <Tabs.Screen
+        name="check-in"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="LoginScreen"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="SplashScreen"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="auth"
+        options={{
+          href: null,
+        }}
+      />
+    </Tabs>
+  );
+};

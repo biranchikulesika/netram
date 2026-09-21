@@ -1,62 +1,70 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getDefaultConfig } = require("expo/metro-config");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require("path");
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { getDefaultConfig } = require("expo/metro-config");
+
 const projectRoot = __dirname;
-const monorepoRoot = path.resolve(projectRoot, "../..");
+const workspaceRoot = path.resolve(projectRoot, '../..');
 
-const config = getDefaultConfig(projectRoot);
+/** @type {ReturnType<typeof getDefaultConfig>} */
+const defaultConfig = getDefaultConfig(projectRoot);
 
-config.watchFolders = [monorepoRoot];
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, "node_modules"),
-  path.resolve(monorepoRoot, "node_modules"),
+// 1. Watch local project and required workspace folders
+defaultConfig.watchFolders = [
+  projectRoot,
+  path.resolve(workspaceRoot, 'packages'),
+  path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-const originalResolveRequest = config.resolver.resolveRequest;
+// 2. Resolve modules from both local and root node_modules
+defaultConfig.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
 
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-  // Enforce single React 18 instance across monorepo packages
-  if (
-    moduleName === "react" ||
-    moduleName.startsWith("react/") ||
-    moduleName === "react-dom" ||
-    moduleName.startsWith("react-dom/") ||
-    moduleName === "react-native" ||
-    moduleName.startsWith("react-native/") ||
-    moduleName === "react-native-web" ||
-    moduleName.startsWith("react-native-web/") ||
-    moduleName === "react-native-safe-area-context" ||
-    moduleName.startsWith("react-native-safe-area-context/") ||
-    moduleName === "react-native-screens" ||
-    moduleName.startsWith("react-native-screens/")
-  ) {
-    const forcedContext = {
-      ...context,
-      originModulePath: path.resolve(projectRoot, "package.json"),
-    };
-    if (originalResolveRequest) {
-      return originalResolveRequest(forcedContext, moduleName, platform);
-    }
-    return context.resolveRequest(forcedContext, moduleName, platform);
-  }
+// 3. Map @netram/* packages and required web runtimes
+const packages = ['api-client', 'config', 'data', 'types', 'ui', 'validation'];
+const extraNodeModules = {
+  'react-refresh': path.resolve(workspaceRoot, 'node_modules/react-refresh'),
+  '@expo/metro-runtime': path.resolve(workspaceRoot, 'node_modules/@expo/metro-runtime'),
+  'react-native-helmet-async': path.resolve(workspaceRoot, 'node_modules/react-native-helmet-async'),
+  '@react-navigation/native': path.resolve(workspaceRoot, 'node_modules/@react-navigation/native'),
+};
 
+packages.forEach((pkg) => {
+  extraNodeModules[`@netram/${pkg}`] = path.resolve(workspaceRoot, `packages/${pkg}`);
+});
+
+defaultConfig.resolver.extraNodeModules = extraNodeModules;
+
+// 4. Set source extensions
+defaultConfig.resolver.sourceExts = [
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'json',
+  'cjs',
+  'mjs',
+];
+
+// 5. Custom resolver for ESM .js extension imports pointing to .ts/.tsx files
+defaultConfig.resolver.resolveRequest = (context, moduleName, platform) => {
   try {
-    if (originalResolveRequest) {
-      return originalResolveRequest(context, moduleName, platform);
-    }
     return context.resolveRequest(context, moduleName, platform);
-  } catch (err) {
-    if (moduleName.endsWith(".js")) {
+  } catch (error) {
+    if (moduleName.endsWith('.js')) {
       const withoutJs = moduleName.slice(0, -3);
-      if (originalResolveRequest) {
-        return originalResolveRequest(context, withoutJs, platform);
-      }
-      return context.resolveRequest(context, withoutJs, platform);
+      try {
+        return context.resolveRequest(context, withoutJs, platform);
+      } catch { }
     }
-    throw err;
+    throw error;
   }
 };
 
-module.exports = config;
+// 6. Disable hierarchical lookup is turned off to allow PNPM symlink traversing
+defaultConfig.resolver.disableHierarchicalLookup = false;
+
+module.exports = defaultConfig;
