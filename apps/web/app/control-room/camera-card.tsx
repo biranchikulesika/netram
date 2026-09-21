@@ -1,134 +1,170 @@
 "use client";
 
-import { useState } from "react";
-import type { PublicCctvCamera, AuthorizedStream } from "@netram/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import type { PublicCctvCamera } from "@netram/types";
+import { IconPlay, IconPause, IconFullscreen, IconFullscreenExit } from "../components/icons";
+
+const FRAME_REFRESH_MS = 10_000;
+
+// "Vani Vihar - Dormitory Block" -> ["Vani Vihar", "Dormitory Block"]
+// "Main Gate" -> ["Main Gate", ""]
+function splitFacilityPlace(name: string): [string, string] {
+  const idx = name.indexOf(" - ");
+  if (idx === -1) return [name, ""];
+  return [name.slice(0, idx), name.slice(idx + 3)];
+}
 
 export interface CameraCardProps {
   camera: PublicCctvCamera;
+  projectHref?: string;
 }
 
-export function CameraCard({ camera }: CameraCardProps) {
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamData, setStreamData] = useState<AuthorizedStream | null>(null);
+export function CameraCard({ camera, projectHref }: CameraCardProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [snapshotTimestamp, setSnapshotTimestamp] = useState(Date.now());
+  const [hover, setHover] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [frameTs, setFrameTs] = useState(Date.now());
 
-  const handleToggleStream = async () => {
-    if (isStreaming) {
-      setIsStreaming(false);
-      setStreamData(null);
+  const offline = camera.status !== "active";
+
+  // Refresh the snapshot frame so the tile behaves like a live feed
+  useEffect(() => {
+    const id = setInterval(() => setFrameTs(Date.now()), FRAME_REFRESH_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  // Track fullscreen state of the tile viewport
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === viewportRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const handleToggle = async () => {
+    if (playing) {
+      setPlaying(false);
       return;
     }
+    if (offline) return;
 
     setLoading(true);
-    setError(null);
     try {
       const res = await fetch(`/api/cctv/${camera.id}/streams`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ttlSeconds: 300 }),
       });
-
       if (!res.ok) {
-        const errJson = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-        throw new Error(errJson.error?.message ?? `Failed to initiate stream (${res.status})`);
+        throw new Error(`Failed to initiate stream (${res.status})`);
       }
-
-      const data = (await res.json()) as AuthorizedStream;
-      setStreamData(data);
-      setIsStreaming(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect to stream");
+      setPlaying(true);
+    } catch {
+      setPlaying(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefreshSnapshot = () => {
-    setSnapshotTimestamp(Date.now());
-  };
+  const handleToggleFullscreen = useCallback(async () => {
+    const el = viewportRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await el.requestFullscreen();
+      }
+    } catch {
+      // fullscreen denied by browser; ignore
+    }
+  }, []);
+
+  const [facility, place] = splitFacilityPlace(camera.name);
+
+  const showCenterButton = !playing || hover || loading;
+
+  const facilityNode = projectHref ? (
+    <Link
+      href={projectHref}
+      className="cc-osd-facility cc-osd-facility-link"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {facility}
+    </Link>
+  ) : (
+    <span className="cc-osd-facility">{facility}</span>
+  );
 
   return (
-    <div className="camera-card">
-      <div className="camera-header">
-        <div>
-          <h3 className="camera-title">{camera.name}</h3>
-          <div className="camera-meta">
-            <span>{camera.provider.toUpperCase()}</span>
-            <span>•</span>
-            <span>{camera.protocol.toUpperCase()}</span>
-          </div>
-        </div>
-        <div className="status-indicator">
-          <span>{camera.status === "active" ? "ONLINE" : "OFFLINE"}</span>
-        </div>
-      </div>
-
-      <div className="camera-viewport">
+    <div
+      className="camera-card camera-card-compact"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div className="cc-viewport" ref={viewportRef}>
         <img
-          src={`/api/cctv/${camera.id}/snapshot?t=${snapshotTimestamp}`}
+          src={`/api/cctv/${camera.id}/snapshot?t=${frameTs}`}
           alt={camera.name}
+          loading="lazy"
           onError={(e) => {
-            // Fallback placeholder style if snapshot load fails
             (e.target as HTMLElement).style.display = "none";
           }}
         />
+        <div className="cc-vp-osd cc-vp-osd-tl">
+          {facilityNode}
+          {place && <span className="cc-osd-place">{place}</span>}
+        </div>
 
-        <div className="camera-overlay">
-          <div className="camera-osd">{camera.name.toUpperCase()}</div>
-          {isStreaming && (
-            <div className="live-rec-badge">
-              <span className="rec-dot" />
-              <span>LIVE RELAY</span>
-            </div>
+        <div className="cc-center">
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={loading || offline}
+            title={offline ? "Camera offline" : playing ? "Pause" : "Play live stream"}
+            className={`cc-play-btn ${showCenterButton ? "cc-play-btn-visible" : ""} ${playing ? "cc-play-btn-playing" : ""}`}
+          >
+            {loading ? (
+              "Connecting…"
+            ) : offline ? (
+              "Offline"
+            ) : playing ? (
+              <>
+                <IconPause style={{ width: 15, height: 15 }} />
+                Pause
+              </>
+            ) : (
+              <>
+                <IconPlay style={{ width: 15, height: 15 }} />
+                Live
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="cc-cam-id">
+          {camera.id.slice(0, 8)}
+          {projectHref && (
+            <Link href={projectHref} className="cc-project-link" onClick={(e) => e.stopPropagation()}>
+              {facility} ›
+            </Link>
           )}
         </div>
-      </div>
 
-      {isStreaming && streamData && (
-        <div className="camera-stream-box">
-          <div className="stream-relay-info">
-            <span className="relay-status-pill">AUTHORIZED RELAY ACTIVE</span>
-            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
-              Expires: {new Date(streamData.expiresAt).toLocaleTimeString()}
-            </span>
-          </div>
-          <div className="stream-url-display">
-            <strong>Relay Endpoint:</strong> {streamData.streamUrl}
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#450a0a",
-            color: "#fca5a5",
-            fontSize: "0.75rem",
-          }}
-        >
-          ⚠️ {error}
-        </div>
-      )}
-
-      <div className="camera-controls">
         <button
           type="button"
-          onClick={handleToggleStream}
-          disabled={loading}
-          className={`btn-stream ${isStreaming ? "btn-stream-stop" : ""}`}
+          onClick={handleToggleFullscreen}
+          title={fullscreen ? "Exit fullscreen" : "Open fullscreen"}
+          aria-label={fullscreen ? "Exit fullscreen" : "Open fullscreen"}
+          className="cc-fullscreen-btn"
         >
-          {loading ? "Connecting..." : isStreaming ? "⏹ Disconnect Stream" : "▶ Start Live Stream"}
-        </button>
-        <button
-          type="button"
-          onClick={handleRefreshSnapshot}
-          className="btn-snapshot"
-          title="Refresh snapshot frame"
-        >
-          🔄 Snapshot
+          {fullscreen ? (
+            <IconFullscreenExit style={{ width: 14, height: 14 }} />
+          ) : (
+            <IconFullscreen style={{ width: 14, height: 14 }} />
+          )}
         </button>
       </div>
     </div>

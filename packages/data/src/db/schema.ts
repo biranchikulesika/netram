@@ -142,7 +142,6 @@ export const organisations = pgTable("organisations", {
   name: varchar("name", { length: 300 }).notNull(),
   category: varchar("category", { length: 80 }).notNull(),
   authorityId: uuid("authority_id").references(() => authorities.id),
-  districtId: uuid("district_id").references(() => districts.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -617,7 +617,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Vani Vihar SC/ST Hostel",
         category: "SC/ST Hostel",
         authorityId: did("authority:dosje-khordha"),
-        districtId: did("district:khordha"),
       },
       {
         id: did("org:rajdhani"),
@@ -625,7 +624,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Rajdhani Boys' Hostel (ST)",
         category: "ST Hostel",
         authorityId: did("authority:dosje-khordha"),
-        districtId: did("district:khordha"),
       },
       {
         id: did("org:cuttack-girls"),
@@ -633,7 +631,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Cuttack Girls' Hostel",
         category: "SC/ST Girls Hostel",
         authorityId: did("authority:dosje-cuttack"),
-        districtId: did("district:cuttack"),
       },
       {
         id: did("org:puri-model"),
@@ -641,7 +638,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Puri Model Boys' Hostel",
         category: "Model Hostel",
         authorityId: did("authority:dosje"),
-        districtId: did("district:puri"),
       },
       {
         id: did("org:ganjam-school"),
@@ -649,7 +645,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Ganjam Model School Hostel",
         category: "Model School Hostel",
         authorityId: did("authority:dosje"),
-        districtId: did("district:ganjam"),
       },
     ])
     .onConflictDoNothing();
@@ -1012,19 +1007,19 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     ])
     .onConflictDoNothing();
 
-  // ---------- AI anomalies ----------
+  // ---------- AI anomalies: camera-feed conflict detections (§36) ----------
   await db
     .insert(s.aiAnomalies)
     .values([
       {
-        id: did("ai:cuttack-low-attendance"),
+        id: did("ai:cuttack-conflict-dining"),
         inspectionId: did("inspection:cuttack-routine"),
         evidenceId: null,
-        type: "attendance_estimate",
-        severity: "medium",
-        confidence: 0.82,
-        modelVersion: "attendance-estimator-0.1",
-        explanation: "Estimated occupancy below declared hostel capacity during morning roll-call.",
+        type: "conflict",
+        severity: "high",
+        confidence: 0.81,
+        modelVersion: "conflict-detector-0.1",
+        explanation: "Altercation detected on the dining hall camera feed during the evening window.",
         status: "new",
       },
     ])
@@ -1848,7 +1843,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Rourkela Model Girls' Hostel (ST)",
       category: "ST Hostel",
       authorityId: did("authority:dosje"),
-      districtId: did("district:sundargarh"),
     })
     .onConflictDoNothing();
 
@@ -2496,80 +2490,80 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     ])
     .onConflictDoNothing();
 
-  // ---------- AI anomalies: advisory signals tied to facility inspections (§36) ----------
+  // ---------- AI anomalies: camera-feed conflict detections across districts (§36) ----------
   await db
     .insert(s.aiAnomalies)
     .values([
       {
-        id: did("ai:vani-dorm-occupancy"),
+        id: did("ai:vani-gate-conflict"),
         inspectionId: did("inspection:vani-jan-midnight"),
         evidenceId: null,
-        type: "occupancy_violation",
-        severity: "medium",
-        confidence: 0.74,
-        modelVersion: "occupancy-estimator-0.2",
-        explanation: "CCTV-derived dormitory occupancy exceeded declared capacity on three evenings.",
+        type: "conflict",
+        severity: "high",
+        confidence: 0.87,
+        modelVersion: "conflict-detector-0.1",
+        explanation: "Physical altercation detected near the main gate camera during the evening window.",
         status: "new",
       },
       {
-        id: did("ai:vani-ration"),
+        id: did("ai:vani-dining-conflict-resolved"),
         inspectionId: did("inspection:vani-surprise"),
         evidenceId: null,
-        type: "resource_divergence",
-        severity: "low",
-        confidence: 0.61,
-        modelVersion: "resource-divergence-0.1",
-        explanation: "Ration register variance below decision threshold; verified as reconciled.",
+        type: "conflict",
+        severity: "medium",
+        confidence: 0.64,
+        modelVersion: "conflict-detector-0.1",
+        explanation: "Raised voices flagged on the dining hall feed; short-lived, reviewed as a verbal dispute.",
         status: "dismissed",
         reviewedAt: new Date("2026-02-20T09:00:00Z"),
         reviewedBy: did("user:officer-khordha"),
       },
       {
-        id: did("ai:vani-midnight-action"),
+        id: did("ai:vani-gate-conflict-action"),
         inspectionId: did("inspection:vani-jan-midnight"),
         evidenceId: did("evidence:vani-jan-1"),
-        type: "unapproved_activity",
-        severity: "high",
-        confidence: 0.84,
-        modelVersion: "frame-activity-0.1",
-        explanation: "Kitchen activity detected at 00:30 during a quiet period; linked inspection confirmed finding.",
+        type: "conflict",
+        severity: "critical",
+        confidence: 0.92,
+        modelVersion: "conflict-detector-0.1",
+        explanation: "Sustained struggle between two individuals at the gate; linked evidence reviewed and acted upon by authority.",
         status: "acted_upon",
         reviewedAt: new Date("2026-01-16T09:00:00Z"),
         reviewedBy: did("user:officer-khordha"),
       },
       {
-        id: did("ai:ganjam-occupancy"),
+        id: did("ai:ganjam-conflict"),
         inspectionId: did("inspection:ganjam-feb-surprise"),
         evidenceId: null,
-        type: "occupancy_violation",
+        type: "conflict",
         severity: "medium",
-        confidence: 0.74,
-        modelVersion: "occupancy-estimator-0.2",
-        explanation: "Dormitory occupancy estimate above register on inspection day.",
+        confidence: 0.72,
+        modelVersion: "conflict-detector-0.1",
+        explanation: "Scuffle flagged on the assembly ground feed during recess.",
         status: "new",
       },
       {
-        id: did("ai:ganjam-resource"),
+        id: did("ai:ganjam-conflict-review"),
         inspectionId: did("inspection:ganjam-jan-routine"),
         evidenceId: null,
-        type: "resource_divergence",
+        type: "conflict",
         severity: "low",
-        confidence: 0.63,
-        modelVersion: "resource-divergence-0.1",
-        explanation: "Minor ration stock variance detected and manually validated.",
+        confidence: 0.55,
+        modelVersion: "conflict-detector-0.1",
+        explanation: "Brief push flagged on the corridor feed; assessed by district admin as a minor incident.",
         status: "reviewed",
         reviewedAt: new Date("2026-01-15T09:00:00Z"),
         reviewedBy: did("user:dept-admin"),
       },
       {
-        id: did("ai:cuttack-occupancy"),
+        id: did("ai:cuttack-conflict-investigate"),
         inspectionId: did("inspection:cuttack-routine"),
         evidenceId: null,
-        type: "occupancy_violation",
+        type: "conflict",
         severity: "high",
-        confidence: 0.88,
-        modelVersion: "occupancy-estimator-0.2",
-        explanation: "Estimated occupancy diverged sharply from declared roll during morning window.",
+        confidence: 0.85,
+        modelVersion: "conflict-detector-0.1",
+        explanation: "Altercation detected on the dining hall feed; escalated for physical inspection verification.",
         status: "investigated",
         reviewedAt: new Date("2026-03-05T09:00:00Z"),
         reviewedBy: did("user:officer-cuttack"),
@@ -2939,7 +2933,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         actorUserId: did("user:officer-khordha"),
         resourceType: "project",
         resourceId: did("project:vani"),
-        metadata: { code: "PRJ-VANI-001", anomalyType: "resource_divergence" },
+        metadata: { code: "PRJ-VANI-001", anomalyType: "conflict" },
         occurredAt: new Date("2026-02-20T09:00:00Z"),
       },
       {

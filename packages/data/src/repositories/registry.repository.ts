@@ -8,7 +8,6 @@ export interface OrganisationRow {
   name: string;
   category: string;
   authorityId: string | null;
-  districtId: string | null;
   createdAt: Date;
 }
 
@@ -29,7 +28,6 @@ export interface CreateOrganisationCmd {
   name: string;
   category: string;
   authorityId: string | null;
-  districtId: string | null;
   actorUserId: string | null;
   requestId: string | null;
   ipAddress: string | null;
@@ -87,7 +85,6 @@ export class RegistryRepository {
         name: cmd.name,
         category: cmd.category,
         authorityId: cmd.authorityId,
-        districtId: cmd.districtId,
       })
       .returning({
         id: organisations.id,
@@ -95,7 +92,6 @@ export class RegistryRepository {
         name: organisations.name,
         category: organisations.category,
         authorityId: organisations.authorityId,
-        districtId: organisations.districtId,
         createdAt: organisations.createdAt,
       });
     return row!;
@@ -135,7 +131,6 @@ export class RegistryRepository {
         name: organisations.name,
         category: organisations.category,
         authorityId: organisations.authorityId,
-        districtId: organisations.districtId,
         createdAt: organisations.createdAt,
       })
       .from(organisations)

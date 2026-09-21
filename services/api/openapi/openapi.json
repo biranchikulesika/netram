@@ -7542,11 +7542,8 @@
             "schema": {
               "type": "string",
               "enum": [
-                "attendance_estimate",
-                "occupancy_violation",
-                "unapproved_activity",
-                "resource_divergence",
-                "other"
+                "conflict",
+                "attendance_deviation"
               ]
             },
             "in": "query",
@@ -7636,11 +7633,8 @@
                           "type": {
                             "type": "string",
                             "enum": [
-                              "attendance_estimate",
-                              "occupancy_violation",
-                              "unapproved_activity",
-                              "resource_divergence",
-                              "other"
+                              "conflict",
+                              "attendance_deviation"
                             ]
                           },
                           "severity": {
@@ -7858,11 +7852,8 @@
                     "type": {
                       "type": "string",
                       "enum": [
-                        "attendance_estimate",
-                        "occupancy_violation",
-                        "unapproved_activity",
-                        "resource_divergence",
-                        "other"
+                        "conflict",
+                        "attendance_deviation"
                       ]
                     },
                     "severity": {
@@ -8085,11 +8076,8 @@
                     "type": {
                       "type": "string",
                       "enum": [
-                        "attendance_estimate",
-                        "occupancy_violation",
-                        "unapproved_activity",
-                        "resource_divergence",
-                        "other"
+                        "conflict",
+                        "attendance_deviation"
                       ]
                     },
                     "severity": {
@@ -10905,18 +10893,6 @@
                           }
                         ]
                       },
-                      "districtId": {
-                        "anyOf": [
-                          {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      },
                       "createdAt": {
                         "type": "string",
                         "format": "date-time",
@@ -10929,7 +10905,6 @@
                       "name",
                       "category",
                       "authorityId",
-                      "districtId",
                       "createdAt"
                     ],
                     "additionalProperties": false
@@ -10966,18 +10941,6 @@
                     "type": "string",
                     "minLength": 2,
                     "maxLength": 80
-                  },
-                  "districtId": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
                   }
                 },
                 "required": [
@@ -11029,18 +10992,6 @@
                         }
                       ]
                     },
-                    "districtId": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "format": "uuid",
-                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -11053,7 +11004,6 @@
                     "name",
                     "category",
                     "authorityId",
-                    "districtId",
                     "createdAt"
                   ],
                   "additionalProperties": false

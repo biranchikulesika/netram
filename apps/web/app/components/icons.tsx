@@ -45,6 +45,44 @@ export function IconVideo({ width = 16, height = 16, ...props }: IconProps) {
   );
 }
 
+export function IconPlay({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width={width} height={height} aria-hidden="true" {...props}>
+      <path d="M6 3.5v17a1 1 0 0 0 1.53.85l13.3-8.5a1 1 0 0 0 0-1.7L7.53 2.65A1 1 0 0 0 6 3.5Z" />
+    </svg>
+  );
+}
+
+export function IconPause({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width={width} height={height} aria-hidden="true" {...props}>
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </svg>
+  );
+}
+
+export function IconFullscreen({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={width} height={height} aria-hidden="true" {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <line x1="16" y1="16" x2="21.5" y2="21.5" />
+      <line x1="8.2" y1="11" x2="13.8" y2="11" />
+    </svg>
+  );
+}
+
+export function IconFullscreenExit({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={width} height={height} aria-hidden="true" {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <line x1="16" y1="16" x2="21.5" y2="21.5" />
+      <line x1="9" y1="11" x2="13" y2="11" />
+      <line x1="11" y1="9" x2="11" y2="13" />
+    </svg>
+  );
+}
+
 export function IconShieldCheck({ width = 16, height = 16, ...props }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={width} height={height} aria-hidden="true" {...props}>

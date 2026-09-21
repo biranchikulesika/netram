@@ -23,7 +23,7 @@ export async function loadJurisdictions(): Promise<JurisdictionView[]> {
   }
 }
 
-/** States + districts for scheme-scope and agency-district pickers. */
+/** States + districts for the scheme-scope pickers. */
 export async function loadTerritories() {
   const client = await getClient();
   const [states, districts] = await Promise.all([

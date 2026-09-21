@@ -160,10 +160,12 @@ export function AIAnomalyModal({
                 color: "var(--color-navy-brand)",
               }}
             >
-              {anomaly.type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              {anomaly.type === "conflict"
+                ? "Conflict Detected"
+                : anomaly.type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
             </h3>
             <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.82rem" }}>
-              {anomaly.projectName ? `${anomaly.projectName} (${anomaly.projectCode})` : "General Signal"}
+              {anomaly.projectName ? `${anomaly.projectName} (${anomaly.projectCode})` : "Camera feed · no project assigned"}
             </p>
           </div>
 

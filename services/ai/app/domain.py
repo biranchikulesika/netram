@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 class AnomalyScore(BaseModel):
     """Confidence-weighted, reviewable anomaly result."""
 
-    anomaly_type: str = Field(description="e.g. 'ghost_project', 'attendance_drop'")
+    anomaly_type: str = Field(description="e.g. 'conflict' (violence/altercation), 'attendance_deviation' (planned)")
     severity: str = Field(pattern="^(low|medium|high)$")
     score: float = Field(ge=0, le=1, description="model confidence score")
     explanation: str = ""

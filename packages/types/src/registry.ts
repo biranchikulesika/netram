@@ -125,7 +125,6 @@ export interface OrganisationView {
   name: string;
   category: string;
   authorityId: UUID | null;
-  districtId: UUID | null;
   createdAt: ISODateTime;
 }
 
@@ -156,7 +155,6 @@ export interface CreateOrganisationInput {
   code: string;
   name: string;
   category: string;
-  districtId?: UUID | null;
 }
 
 export interface CreateProgrammeInput {
