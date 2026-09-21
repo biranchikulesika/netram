@@ -6,8 +6,8 @@ import type {
   SyncOperationResult,
 } from "@netram/types";
 import type { NetramApiClient } from "@netram/api-client";
-import type { ISqliteDatabase } from "./db.js";
-import { getOfflineDatabase } from "./db.js";
+import type { ISqliteDatabase } from "./db";
+import { getOfflineDatabase } from "./db";
 
 function uuidv4(): string {
   // RFC4122 compliant UUID v4 generator

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { InMemorySqliteDatabase, setTestDatabase } from "./db.js";
-import { OfflineInspectionQueue } from "./queue.js";
-import { captureEvidenceOffline, computeSha256 } from "./evidence.js";
+import { InMemorySqliteDatabase, setTestDatabase } from "./db";
+import { OfflineInspectionQueue } from "./queue";
+import { captureEvidenceOffline, computeSha256 } from "./evidence";
 import type { NetramApiClient } from "@netram/api-client";
 
 describe("OfflineInspectionQueue", () => {

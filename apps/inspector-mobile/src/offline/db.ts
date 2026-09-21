@@ -246,6 +246,17 @@ let currentDb: ISqliteDatabase | null = null;
 export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
   if (currentDb) return currentDb;
 
+  const isWeb =
+    typeof window !== "undefined" &&
+    typeof (window as unknown as { document?: unknown }).document !== "undefined";
+
+  if (isWeb) {
+    const inMem = new InMemorySqliteDatabase();
+    await inMem.execAsync(DDL_SCHEMA);
+    currentDb = inMem;
+    return inMem;
+  }
+
   try {
     // Attempt dynamic import of expo-sqlite
     const SQLite = await import("expo-sqlite");
