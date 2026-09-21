@@ -35,6 +35,7 @@ import { registerAssignmentRoutes } from "./modules/assignments/http/routes.js";
 import { registerNotificationRoutes } from "./modules/notifications/http/routes.js";
 import { registerReportRoutes } from "./modules/reports/http/routes.js";
 import { registerUserAdminRoutes } from "./modules/user-admin/http/routes.js";
+import { registerRegistryRoutes } from "./modules/registry/http/routes.js";
 import { registerRealtimeAuthorizeRoutes } from "./modules/realtime/http/routes.js";
 import { registerCctvRoutes } from "./modules/cctv/http/routes.js";
 import { registerVcRoutes } from "./modules/vc/http/routes.js";
@@ -107,6 +108,7 @@ export async function buildApp(container: Container) {
         { name: "cctv", description: "CCTV stream abstraction and cameras" },
         { name: "vc", description: "Video conferencing and remote review sessions" },
         { name: "attendance", description: "Attendance monitoring and anomaly oversight" },
+        { name: "registry", description: "Registration of agencies, schemes and people" },
       ],
     },
   });
@@ -236,6 +238,7 @@ export async function buildApp(container: Container) {
       await registerNotificationRoutes(api, container);
       await registerReportRoutes(api, container);
       await registerUserAdminRoutes(api, container);
+      await registerRegistryRoutes(api, container);
       await registerRealtimeAuthorizeRoutes(api, container);
       await registerCctvRoutes(api, container);
       await registerVcRoutes(api, container);

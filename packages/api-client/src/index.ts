@@ -40,6 +40,9 @@ import type {
   Observation,
   OutboxRecord,
   Project,
+  ProjectGeofence,
+  ProjectPhoto,
+  SealGeofenceCommand,
   ProjectListQuery,
   ProjectStatus,
   Report,
@@ -63,6 +66,15 @@ import type {
   VcJoinDetails,
   VcSessionWithParticipants,
   VcParticipantRole,
+  OrganisationView,
+  ProgrammeView,
+  RegistryUserView,
+  CreateOrganisationInput,
+  CreateProgrammeInput,
+  RegisterInspectorInput,
+  RegisterOfficialInput,
+  StateView,
+  DistrictView,
 } from "@netram/types";
 import { HttpClient } from "./http.js";
 import type { HttpOptions } from "./http.js";
@@ -163,8 +175,17 @@ export class NetramApiClient extends HttpClient {
     return this.get(`/api/v1/projects${queryString(query)}`);
   }
 
+  /** Registrations awaiting an authority verification decision (project:approve). */
+  async listVerificationQueue(): Promise<ProjectPage> {
+    return this.get("/api/v1/projects/verification-queue");
+  }
+
   async getProject(id: string): Promise<Project> {
     return this.get(`/api/v1/projects/${id}`);
+  }
+
+  async listProjectPhotos(id: string): Promise<ProjectPhoto[]> {
+    return this.get(`/api/v1/projects/${id}/photos`);
   }
 
   async createProject(input: {
@@ -178,8 +199,34 @@ export class NetramApiClient extends HttpClient {
     return this.post("/api/v1/projects", input);
   }
 
+  async updateProject(
+    id: string,
+    input: {
+      name: string;
+      type?: Project["type"];
+      description?: string | null;
+      organisationId?: string | null;
+      districtId?: string | null;
+      programmeIds?: string[];
+    },
+  ): Promise<Project> {
+    return this.patch(`/api/v1/projects/${id}`, input);
+  }
+
   async transitionProject(id: string, to: ProjectStatus, note?: string): Promise<Project> {
     return this.post(`/api/v1/projects/${id}/transitions`, { to, note });
+  }
+
+  async getProjectGeofence(id: string): Promise<ProjectGeofence | null> {
+    return this.get(`/api/v1/projects/${id}/geofence`);
+  }
+
+  async listProjectGeofences(): Promise<ProjectGeofence[]> {
+    return this.get("/api/v1/projects/geofences");
+  }
+
+  async sealProjectGeofence(id: string, input: SealGeofenceCommand): Promise<ProjectGeofence> {
+    return this.post(`/api/v1/projects/${id}/geofence`, input);
   }
 
   // inspections
@@ -502,6 +549,38 @@ export class NetramApiClient extends HttpClient {
 
   async listJurisdictions(): Promise<JurisdictionView[]> {
     return this.get("/api/v1/jurisdictions");
+  }
+
+  async listOrganisations(): Promise<OrganisationView[]> {
+    return this.get("/api/v1/registry/organisations");
+  }
+
+  async createOrganisation(input: CreateOrganisationInput): Promise<OrganisationView> {
+    return this.post("/api/v1/registry/organisations", input);
+  }
+
+  async listProgrammes(): Promise<ProgrammeView[]> {
+    return this.get("/api/v1/registry/programmes");
+  }
+
+  async listStates(): Promise<StateView[]> {
+    return this.get("/api/v1/registry/states");
+  }
+
+  async listRegistryDistricts(): Promise<DistrictView[]> {
+    return this.get("/api/v1/registry/districts");
+  }
+
+  async createProgramme(input: CreateProgrammeInput): Promise<ProgrammeView> {
+    return this.post("/api/v1/registry/programmes", input);
+  }
+
+  async registerInspector(input: RegisterInspectorInput): Promise<RegistryUserView> {
+    return this.post("/api/v1/registry/inspectors", input);
+  }
+
+  async registerOfficial(input: RegisterOfficialInput): Promise<RegistryUserView> {
+    return this.post("/api/v1/registry/officials", input);
   }
 
   async listCameras(query: ListCamerasFilter = {}): Promise<CctvCameraPage> {

@@ -236,18 +236,6 @@ export function AdminView({
 
   return (
     <div>
-      {/* Clean Compact Header */}
-      <div className="section-title-row" style={{ marginBottom: "1.25rem" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
-            User Administration &amp; Access Control
-          </h2>
-          <p className="muted" style={{ marginTop: "0.15rem", fontSize: "0.82rem" }}>
-            Manage operators, scoped role assignments, and access policies (&sect;16, &sect;17)
-          </p>
-        </div>
-      </div>
-
       {/* Global Feedback Alert */}
       {feedback && (
         <div
@@ -463,31 +451,15 @@ export function AdminView({
                         {u.status === "active" ? (
                           <span
                             className="status status-active"
-                            style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                            style={{ display: "inline-flex", alignItems: "center" }}
                           >
-                            <span
-                              style={{
-                                width: "6px",
-                                height: "6px",
-                                borderRadius: "50%",
-                                background: "#15803d",
-                              }}
-                            />
                             Active
                           </span>
                         ) : (
                           <span
                             className="status status-suspended"
-                            style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                            style={{ display: "inline-flex", alignItems: "center" }}
                           >
-                            <span
-                              style={{
-                                width: "6px",
-                                height: "6px",
-                                borderRadius: "50%",
-                                background: "#dc2626",
-                              }}
-                            />
                             Suspended
                           </span>
                         )}

@@ -22,13 +22,6 @@ export function AttendanceOverviewSection({ overviewItems, calculations, anomali
 
   return (
     <section>
-      <div className="section-header">
-        <div>
-          <h2>Attendance Monitoring</h2>
-          <p className="muted">Biometric, reported, and CCTV cross-verification</p>
-        </div>
-      </div>
-
       {/* Attendance summary stats */}
       <div className="control-room-stats">
         <div className="stat-widget">

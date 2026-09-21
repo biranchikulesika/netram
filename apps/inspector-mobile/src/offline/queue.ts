@@ -6,8 +6,8 @@ import type {
   SyncOperationResult,
 } from "@netram/types";
 import type { NetramApiClient } from "@netram/api-client";
-import type { ISqliteDatabase } from "./db.js";
-import { getOfflineDatabase } from "./db.js";
+import type { ISqliteDatabase } from "./db";
+import { getOfflineDatabase } from "./db";
 
 function uuidv4(): string {
   // RFC4122 compliant UUID v4 generator
@@ -71,6 +71,27 @@ export interface CachedEvidenceRecord {
   is_local: number;
 }
 
+export interface CachedFindingDraftRecord {
+  id: string;
+  inspection_id: string;
+  observation_id: string | null;
+  severity: string;
+  description: string;
+  remediation: string | null;
+  sync_state: string;
+  operation_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FailedMediaUploadRecord {
+  id: string;
+  evidence_id: string;
+  file_name: string;
+  error_message: string | null;
+  created_at: string;
+}
+
 export interface SyncSummary {
   synced: number;
   conflicts: number;
@@ -131,6 +152,13 @@ export class OfflineInspectionQueue {
         `INSERT INTO cached_observations (id, inspection_id, text, created_at, is_local)
          VALUES (?, ?, ?, ?, 1)`,
         [observationId, inspectionId, String(payload.text ?? ""), timestamp],
+      );
+    } else if (type === "draft_finding") {
+      const findingId = (payload.findingId as string) ?? uuidv4();
+      await db.runAsync(
+        `INSERT OR REPLACE INTO cached_finding_drafts (id, inspection_id, observation_id, severity, description, remediation, sync_state, operation_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+        [findingId, inspectionId, (payload.observationId as string) ?? null, String(payload.severity ?? "medium"), String(payload.description ?? ""), (payload.remediation as string) ?? null, operationId, timestamp, timestamp],
       );
     } else if (type === "capture_evidence") {
       const evidenceId = (payload.evidenceId as string) ?? uuidv4();
@@ -268,6 +296,40 @@ export class OfflineInspectionQueue {
     );
   }
 
+  async getCachedFindingDrafts(inspectionId: string): Promise<CachedFindingDraftRecord[]> {
+    const db = await this.getDb();
+    return db.getAllAsync<CachedFindingDraftRecord>(
+      `SELECT * FROM cached_finding_drafts WHERE inspection_id = ? ORDER BY updated_at DESC`,
+      [inspectionId],
+    );
+  }
+
+  /** Creates one operation; edits change that pending operation rather than duplicating it. */
+  async saveFindingDraft(
+    inspectionId: string,
+    input: { findingId?: string; operationId?: string; observationId?: string | null; severity: string; description: string; remediation?: string | null },
+  ): Promise<OfflineOperation> {
+    if (!input.findingId || !input.operationId) {
+      const findingId = input.findingId ?? uuidv4();
+      return this.enqueueOperation(inspectionId, "draft_finding", { ...input, findingId });
+    }
+    const db = await this.getDb();
+    const operation = await db.getFirstAsync<OfflineOperationRecord>(`SELECT * FROM offline_operations WHERE operation_id = ?`, [input.operationId]);
+    if (operation?.status !== "pending") {
+      return this.enqueueOperation(inspectionId, "draft_finding", { ...input, findingId: input.findingId });
+    }
+    const timestamp = new Date().toISOString();
+    const payload = { findingId: input.findingId, observationId: input.observationId ?? null, severity: input.severity, description: input.description, remediation: input.remediation ?? null };
+    await db.runAsync(`UPDATE offline_operations SET payload = ?, client_timestamp = ? WHERE operation_id = ?`, [JSON.stringify(payload), timestamp, input.operationId]);
+    await db.runAsync(`UPDATE cached_finding_drafts SET observation_id = ?, severity = ?, description = ?, remediation = ?, updated_at = ? WHERE id = ?`, [payload.observationId, payload.severity, payload.description, payload.remediation, timestamp, input.findingId]);
+    return { operationId: input.operationId, inspectionId, type: "draft_finding", timestamp, payload };
+  }
+
+  async getFailedMediaUploads(): Promise<FailedMediaUploadRecord[]> {
+    const db = await this.getDb();
+    return db.getAllAsync<FailedMediaUploadRecord>(`SELECT id, evidence_id, file_name, error_message, created_at FROM media_upload_queue WHERE upload_status = 'failed' ORDER BY created_at DESC`);
+  }
+
   /**
    * Synchronize pending operations batch against server API and reconcile local SQLite state (§5, §31).
    */
@@ -300,6 +362,9 @@ export class OfflineInspectionQueue {
             `UPDATE cached_inspections SET status = 'submitted', submitted_at = ? WHERE id = ?`,
             [now, res.inspectionId],
           );
+        } else if (res.type === "draft_finding") {
+          const findingId = typeof res.resultData?.findingId === "string" ? res.resultData.findingId : null;
+          if (findingId) await db.runAsync(`UPDATE cached_finding_drafts SET sync_state = 'submitted_for_review', updated_at = ? WHERE id = ?`, [now, findingId]);
         }
       } else if (res.status === "conflict") {
         await db.runAsync(
@@ -308,6 +373,7 @@ export class OfflineInspectionQueue {
            WHERE operation_id = ?`,
           [res.code ?? null, res.message ?? null, now, res.operationId],
         );
+        if (res.type === "draft_finding") await db.runAsync(`UPDATE cached_finding_drafts SET sync_state = 'conflict', updated_at = ? WHERE operation_id = ?`, [now, res.operationId]);
       } else {
         await db.runAsync(
           `UPDATE offline_operations
@@ -315,6 +381,7 @@ export class OfflineInspectionQueue {
            WHERE operation_id = ?`,
           [res.code ?? null, res.message ?? null, now, res.operationId],
         );
+        if (res.type === "draft_finding") await db.runAsync(`UPDATE cached_finding_drafts SET sync_state = 'rejected', updated_at = ? WHERE operation_id = ?`, [now, res.operationId]);
       }
     }
 

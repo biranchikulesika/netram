@@ -1,7 +1,8 @@
 # Development
 
 New to the repo? Start with [TEAM-HANDOFF.md](./TEAM-HANDOFF.md) and
-[WORK-AREAS.md](./WORK-AREAS.md). Shared contract changes follow
+[WORK-AREAS.md](./WORK-AREAS.md). For environment matrix and isolation rules, see
+[environments.md](./environments.md). Shared contract changes follow
 [SHARED-CONTRACTS.md](./SHARED-CONTRACTS.md). The current task backlog lives
 in [TEAM-TASKS.md](./TEAM-TASKS.md).
 

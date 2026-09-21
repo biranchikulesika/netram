@@ -20,6 +20,8 @@ const TYPE_LABELS: Record<string, string> = {
   authority_project: "Authority Infrastructure Project",
 };
 
+const EDITABLE_STATUSES = new Set(["Draft", "Pending Verification"]);
+
 interface FacilityShellProps {
   project: Project;
   permissions: string[];
@@ -70,6 +72,20 @@ export function FacilityShell({ project, permissions }: FacilityShellProps) {
 
         <div className="facility-header-side">
           <StatusBadge status={project.status} />
+          {permissions.includes("project:create") && EDITABLE_STATUSES.has(project.status) && (
+            <Link
+              href={`/projects/${project.id}/edit`}
+              className="btn-secondary"
+              style={{
+                textDecoration: "none",
+                padding: "0.45rem 0.9rem",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+              }}
+            >
+              Edit
+            </Link>
+          )}
           <TransitionButton projectId={project.id} currentStatus={project.status} />
         </div>
       </div>
