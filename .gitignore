@@ -58,6 +58,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+*.egg-info/
 
 # ================= Mobile (Expo / React Native) =================
 apps/inspector-mobile/.expo/
@@ -103,3 +104,4 @@ coverage/
 !docs/development/WORK-AREAS.md
 !docs/development/SHARED-CONTRACTS.md
 !docs/development/TEAM-TASKS.md
+main.py

@@ -39,7 +39,7 @@ function walk(dir, out = []) {
 const FILES = walk(ROOT).filter(
   (f) =>
     !/(\.env\.example$|package-lock\.json$|pnpm-lock\.yaml$|^\.gitignore$|^scripts\/)/.test(
-      f.slice(ROOT.length + 1),
+      f.slice(ROOT.length + 1).replace(/\\/g, "/"),
     ),
 );
 
