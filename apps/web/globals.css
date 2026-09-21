@@ -2238,6 +2238,179 @@ td {
 }
 
 /* ============================================================
+   Registry form pages (dedicated agency/scheme/inspector/official)
+   ============================================================ */
+.reg-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.reg-form-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+}
+
+.reg-form-back:hover {
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+}
+
+.reg-form-kind {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.reg-form-heading {
+  margin-bottom: 1.25rem;
+}
+
+.reg-form-desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.registry-form-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.registry-form-page label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-navy-brand);
+  min-width: 0;
+}
+
+.registry-form-page input,
+.registry-form-page select,
+.registry-form-page textarea {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.86rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.registry-form-page input:focus,
+.registry-form-page select:focus,
+.registry-form-page textarea:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  border-color: #2563eb;
+}
+
+.registry-form-page .reg-submit {
+  align-self: flex-start;
+  min-width: 190px;
+}
+
+/* Success panel after submit */
+.reg-success-panel {
+  background: var(--bg-surface);
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 2.25rem 2rem;
+  text-align: center;
+  max-width: 560px;
+  margin: 2.5rem auto;
+}
+
+.reg-success-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.9rem;
+}
+
+.reg-success-panel h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.reg-success-panel p {
+  margin: 0 0 1.4rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.reg-success-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.reg-success-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.reg-success-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+/* Side-rail context list on form pages */
+.reg-aside-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  line-height: 1.45;
+  margin-bottom: 0.9rem;
+}
+
+.reg-aside-list li {
+  padding-left: 0.9rem;
+  position: relative;
+}
+
+.reg-aside-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+}
+
+/* ============================================================
    Registry hub (registration of agencies, schemes, people)
    ============================================================ */
 .registry-grid {
@@ -2260,12 +2433,6 @@ td {
   border-color: var(--color-border-strong);
   box-shadow: 0 3px 12px rgba(12, 42, 82, 0.08);
   transform: translateY(-1px);
-}
-
-.registry-card-active {
-  border-color: #2563eb;
-  box-shadow: 0 2px 14px rgba(37, 99, 235, 0.12);
-  cursor: default;
 }
 
 .registry-card-head {
@@ -2327,57 +2494,8 @@ td {
   margin-left: auto;
 }
 
-.registry-card-chev {
-  transition: transform 0.18s ease;
-}
-
-.registry-card-chev-open {
-  transform: rotate(90deg);
-}
-
 a.registry-card-link:hover {
   text-decoration: underline;
-}
-
-.registry-form {
-  margin-top: 0.9rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--color-border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  cursor: default;
-}
-
-.registry-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--color-navy-brand);
-  min-width: 0;
-}
-
-.registry-form input,
-.registry-form select,
-.registry-form textarea {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  padding: 0.45rem 0.65rem;
-  font-family: inherit;
-  font-size: 0.82rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.registry-form input:focus,
-.registry-form select:focus,
-.registry-form textarea:focus {
-  outline: 2px solid rgba(37, 99, 235, 0.35);
-  border-color: #2563eb;
 }
 
 .registry-form-row {
@@ -2407,15 +2525,6 @@ a.registry-card-link:hover {
   background: #fffbeb;
   border: 1px solid #fde68a;
   color: #92400e;
-}
-
-.registry-form-privileged {
-  background: #fffdf5;
-  margin-left: -0.4rem;
-  margin-right: -0.4rem;
-  padding-left: 1.3rem;
-  padding-right: 1.3rem;
-  border-radius: 0 0 10px 10px;
 }
 
 .registry-lists {

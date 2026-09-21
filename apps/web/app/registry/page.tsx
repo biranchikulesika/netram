@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSessionUser } from "../../lib/api";
+import { getClient, getSessionUser } from "../../lib/api";
 import { NavHeader } from "../components/nav-header";
 import { RegistryView } from "./registry-view";
 
@@ -10,6 +10,19 @@ export default async function RegistryPage() {
   if (!session) redirect("/login");
 
   const permissions = new Set(session.permissions);
+  const canListRegistryData = permissions.has("project:read");
+
+  // Reference data for the "existing records" lists — fetched server-side so
+  // the hub renders complete on first paint. Failures leave the lists empty.
+  const client = await getClient();
+  const [organisations, programmes, states, districts] = canListRegistryData
+    ? await Promise.all([
+        client.listOrganisations().catch(() => []),
+        client.listProgrammes().catch(() => []),
+        client.listStates().catch(() => []),
+        client.listRegistryDistricts().catch(() => []),
+      ])
+    : [[], [], [], []];
 
   return (
     <main>
@@ -20,13 +33,16 @@ export default async function RegistryPage() {
         activeSection="registry"
       />
       <RegistryView
-        currentEmail={session.user.email}
         canRegisterFacility={permissions.has("project:create")}
         canRegisterOrganisation={permissions.has("organisation:create")}
         canRegisterProgramme={permissions.has("programme:create")}
         canRegisterInspector={permissions.has("inspector:register")}
         canRegisterOfficial={permissions.has("official:register")}
-        canListRegistryData={permissions.has("project:read")}
+        canListRegistryData={canListRegistryData}
+        organisations={organisations}
+        programmes={programmes}
+        states={states}
+        districts={districts}
       />
     </main>
   );
