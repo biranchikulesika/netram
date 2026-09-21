@@ -246,20 +246,53 @@ export function getProjectCode(projectId?: string | null, fallback = "FACILITY")
   return fallback;
 }
 
+const SHORT_MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+/** Formats parts of a Date in Asia/Kolkata using numeric month for composition. */
+function getCalendarParts(
+  d: Date,
+  withTime: boolean,
+): Record<string, string> {
+  const parts = new Intl.DateTimeFormat(
+    "en-IN",
+    withTime
+      ? {
+          day: "numeric",
+          month: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Asia/Kolkata",
+        }
+      : {
+          day: "numeric",
+          month: "numeric",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        },
+  ).formatToParts(d);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    if (p.type !== "literal") map[p.type] = p.value;
+  }
+  return map;
+}
+
 /**
- * Formats date into standard administrative format: "12 September 2026"
+ * Formats date into short administrative format: "12 Sep 2026"
  */
 export function formatDate(dateInput: string | Date | null | undefined): string {
   if (!dateInput) return "—";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
     if (isNaN(d.getTime())) return "—";
-    return new Intl.DateTimeFormat("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      timeZone: "Asia/Kolkata",
-    }).format(d);
+    const p = getCalendarParts(d, false);
+    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+    return `${p.day} ${month} ${p.year}`;
   } catch {
     return "—";
   }
@@ -273,34 +306,30 @@ export function formatShortDate(dateInput: string | Date | null | undefined): st
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
     if (isNaN(d.getTime())) return "—";
-    return new Intl.DateTimeFormat("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      timeZone: "Asia/Kolkata",
-    }).format(d);
+    const p = getCalendarParts(d, false);
+    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+    return `${p.day} ${month} ${p.year}`;
   } catch {
     return "—";
   }
 }
 
+function formatDateTimeParts(d: Date): string {
+  const p = getCalendarParts(d, true);
+  const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+  const period = (p.dayPeriod ?? "").toUpperCase();
+  return `${p.day} ${month}, ${p.year} at ${p.hour}:${p.minute} ${period}`;
+}
+
 /**
- * Formats datetime into standard administrative format: "12 September 2026, 10:58 PM"
+ * Formats datetime into short administrative format: "12 Sep, 2026 at 10:58 PM"
  */
 export function formatDateTime(dateInput: string | Date | null | undefined): string {
   if (!dateInput) return "—";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
     if (isNaN(d.getTime())) return "—";
-    return new Intl.DateTimeFormat("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: "Asia/Kolkata",
-    }).format(d);
+    return formatDateTimeParts(d);
   } catch {
     return "—";
   }

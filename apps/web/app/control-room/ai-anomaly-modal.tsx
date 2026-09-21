@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import type { AIAnomaly, AnomalyStatus } from "@netram/types";
 import { ANOMALY_TRANSITIONS } from "@netram/types";
-import {
-  IconAlertTriangle,
-  IconShieldCheck,
-} from "../components/icons";
 import { formatDateTime } from "../../lib/presentation";
+import { getStatusStyle } from "./ai-alerts-screen";
 
 interface AIAnomalyModalProps {
   anomaly: AIAnomaly | null;
@@ -17,7 +15,7 @@ interface AIAnomalyModalProps {
   onSuccess: (updated: AIAnomaly) => void;
 }
 
-const ACTION_DESCRIPTIONS: Record<
+const ACTION_OPTIONS: Record<
   AnomalyStatus,
   { label: string; description: string; btnColor: string }
 > = {
@@ -33,7 +31,7 @@ const ACTION_DESCRIPTIONS: Record<
   },
   investigated: {
     label: "Escalate for Field Investigation",
-    description: "Signal indicates substantial anomaly requiring on-site verification by an inspection team.",
+    description: "Creates a follow-up inspection on the project and assigns you as lead for on-site verification.",
     btnColor: "#d97706",
   },
   acted_upon: {
@@ -42,12 +40,11 @@ const ACTION_DESCRIPTIONS: Record<
     btnColor: "#16a34a",
   },
   dismissed: {
-    label: "Dismiss (False Alarm / Benign)",
+    label: "Dismiss Alert",
     description: "Signal reviewed and confirmed as benign lighting, angle variation, or false positive.",
     btnColor: "#64748b",
   },
 };
-
 
 export function AIAnomalyModal({
   anomaly,
@@ -65,6 +62,12 @@ export function AIAnomalyModal({
 
   const allowedTransitions = ANOMALY_TRANSITIONS[anomaly.status] || [];
   const isTerminal = allowedTransitions.length === 0;
+  const statusStyle = getStatusStyle(anomaly.status);
+
+  const title =
+    anomaly.type === "conflict"
+      ? "Conflict Detected"
+      : anomaly.type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const handleTransition = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +117,7 @@ export function AIAnomalyModal({
       <div
         className="modal-content"
         style={{
-          maxWidth: "600px",
+          maxWidth: "560px",
           width: "100%",
           maxHeight: "90vh",
           overflowY: "auto",
@@ -139,16 +142,16 @@ export function AIAnomalyModal({
               </span>
               <span
                 style={{
-                  fontSize: "0.72rem",
-                  fontFamily: "var(--font-mono)",
-                  background: "#f1f5f9",
+                  fontSize: "0.65rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
                   padding: "0.15rem 0.4rem",
                   borderRadius: "4px",
-                  color: "#475569",
-                  fontWeight: 600,
+                  background: statusStyle.bg,
+                  color: statusStyle.color,
                 }}
               >
-                STATUS: {anomaly.status.toUpperCase()}
+                {statusStyle.label}
               </span>
             </div>
             <h3
@@ -160,12 +163,32 @@ export function AIAnomalyModal({
                 color: "var(--color-navy-brand)",
               }}
             >
-              {anomaly.type === "conflict"
-                ? "Conflict Detected"
-                : anomaly.type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              {title}
             </h3>
             <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.82rem" }}>
-              {anomaly.projectName ? `${anomaly.projectName} (${anomaly.projectCode})` : "Camera feed · no project assigned"}
+              {anomaly.projectName ? (
+                <>
+                  {anomaly.projectName}
+                  {anomaly.projectCode && (
+                    <>
+                      {" ("}
+                      {anomaly.projectId ? (
+                        <Link
+                          href={`/projects/${anomaly.projectId}`}
+                          style={{ color: "var(--color-navy-brand)", fontWeight: 600 }}
+                        >
+                          {anomaly.projectCode}
+                        </Link>
+                      ) : (
+                        anomaly.projectCode
+                      )}
+                      {")"}
+                    </>
+                  )}
+                </>
+              ) : (
+                "Camera feed (no project assigned)"
+              )}
             </p>
           </div>
 
@@ -187,28 +210,24 @@ export function AIAnomalyModal({
           </button>
         </div>
 
-        {/* Advisory Warning Banner (§36) */}
-        <div
-          style={{
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            borderRadius: "6px",
-            padding: "0.65rem 0.85rem",
-            marginBottom: "1rem",
-            fontSize: "0.78rem",
-            color: "#1e40af",
-            display: "flex",
-            gap: "0.5rem",
-            alignItems: "flex-start",
-          }}
-        >
-          <IconShieldCheck style={{ width: 16, height: 16, flexShrink: 0, marginTop: 1, color: "#2563eb" }} />
-          <span>
-            <strong>AI is Advisory (§36):</strong> AI model outputs never declare fraud as fact. Administrative review decisions and escalation to physical inspection are audited operations.
-          </span>
-        </div>
+        {/* Error Banner */}
+        {error && (
+          <div
+            style={{
+              background: "#fee2e2",
+              border: "1px solid #fca5a5",
+              borderRadius: "6px",
+              padding: "0.65rem 0.85rem",
+              marginBottom: "1rem",
+              color: "#991b1b",
+              fontSize: "0.82rem",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-        {/* Signal Key Facts */}
+        {/* Signal Details */}
         <div
           style={{
             background: "#f8fafc",
@@ -224,92 +243,54 @@ export function AIAnomalyModal({
         >
           <div>
             <span className="muted" style={{ display: "block", fontSize: "0.72rem" }}>
-              Model Confidence
+              Detected
             </span>
-            <strong style={{ fontFamily: "var(--font-mono)", fontSize: "0.92rem", color: "#0f172a" }}>
-              {Math.round(anomaly.confidence * 100)}%
-            </strong>
-          </div>
-          <div>
-            <span className="muted" style={{ display: "block", fontSize: "0.72rem" }}>
-              Detection Model
-            </span>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "#334155" }}>
-              {anomaly.modelVersion || "hybrid-rule-v1"}
-            </span>
-          </div>
-          <div>
-            <span className="muted" style={{ display: "block", fontSize: "0.72rem" }}>
-              Detected Timestamp
-            </span>
-            <span style={{ fontSize: "0.8rem", color: "#334155" }}>
-              {formatDateTime(anomaly.createdAt)}
-            </span>
+            <span style={{ fontSize: "0.8rem" }}>{formatDateTime(anomaly.createdAt)}</span>
           </div>
           <div>
             <span className="muted" style={{ display: "block", fontSize: "0.72rem" }}>
               Last Review
             </span>
-            <span style={{ fontSize: "0.8rem", color: "#334155" }}>
-              {anomaly.reviewedAt ? formatDateTime(anomaly.reviewedAt) : "Pending initial review"}
+            <span style={{ fontSize: "0.8rem" }}>
+              {anomaly.reviewedAt ? formatDateTime(anomaly.reviewedAt) : "Pending review"}
             </span>
           </div>
         </div>
 
-        {/* Explanation text */}
+        {/* Explanation */}
         <div style={{ marginBottom: "1.25rem" }}>
-          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155", marginBottom: "0.3rem" }}>
-            Model Explanation &amp; Rationale
-          </label>
-          <div
+          <label
             style={{
-              padding: "0.65rem 0.85rem",
-              background: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "6px",
-              fontSize: "0.82rem",
-              lineHeight: 1.45,
-              color: "#1e293b",
+              display: "block",
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              color: "#334155",
+              marginBottom: "0.3rem",
             }}
           >
+            Model Explanation:
+          </label>
+          <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.5, color: "#334155" }}>
             {anomaly.explanation || "No extended explanation provided."}
-          </div>
+          </p>
         </div>
 
-        {/* Error alert */}
-        {error && (
-          <div
-            style={{
-              padding: "0.65rem 0.85rem",
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: "6px",
-              color: "#991b1b",
-              fontSize: "0.82rem",
-              marginBottom: "1rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.4rem",
-            }}
-          >
-            <IconAlertTriangle style={{ width: 15, height: 15, flexShrink: 0 }} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Transition Form */}
+        {/* Transition Options */}
         {isTerminal ? (
           <div
             style={{
-              padding: "0.85rem",
-              background: "#f1f5f9",
-              borderRadius: "6px",
+              padding: "1.25rem",
               textAlign: "center",
-              fontSize: "0.82rem",
-              color: "#64748b",
+              background: "#f8fafc",
+              borderRadius: "6px",
+              marginBottom: "1.25rem",
             }}
           >
-            This anomaly alert is in a terminal status (<strong>{anomaly.status}</strong>) and cannot be transitioned further.
+            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+              This alert is in a terminal status (
+              <strong>{anomaly.status.replace("_", " ").toUpperCase()}</strong>). No further
+              transitions are permitted.
+            </p>
           </div>
         ) : !canTransition ? (
           <div
@@ -319,17 +300,19 @@ export function AIAnomalyModal({
               borderRadius: "6px",
               fontSize: "0.82rem",
               color: "#92400e",
+              marginBottom: "1.25rem",
             }}
           >
-            Your account does not hold the <code>ai:anomaly:transition</code> permission required to record an administrative decision on this alert.
+            Your account does not hold the <code>ai:anomaly:transition</code> permission required
+            to record an administrative decision on this alert.
           </div>
         ) : (
           <form onSubmit={handleTransition}>
-            <div style={{ marginBottom: "1rem" }}>
+            <div style={{ marginBottom: "1.25rem" }}>
               <label
                 style={{
                   display: "block",
-                  fontSize: "0.82rem",
+                  fontSize: "0.8rem",
                   fontWeight: 600,
                   color: "#334155",
                   marginBottom: "0.5rem",
@@ -337,48 +320,71 @@ export function AIAnomalyModal({
               >
                 Select Administrative Action:
               </label>
-
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {allowedTransitions.map((targetStatus) => {
-                  const meta = ACTION_DESCRIPTIONS[targetStatus];
+                  const meta = ACTION_OPTIONS[targetStatus];
                   const isSelected = selectedTarget === targetStatus;
+
                   return (
-                    <label
+                    <button
                       key={targetStatus}
+                      type="button"
+                      onClick={() => setSelectedTarget(targetStatus)}
                       style={{
                         display: "flex",
+                        flexDirection: "column",
                         alignItems: "flex-start",
-                        gap: "0.65rem",
-                        padding: "0.65rem 0.85rem",
+                        padding: "0.75rem",
                         borderRadius: "6px",
-                        border: isSelected ? `2px solid ${meta.btnColor}` : "1px solid #cbd5e1",
+                        border: `1.5px solid ${isSelected ? meta.btnColor : "#e2e8f0"}`,
                         background: isSelected ? "#f8fafc" : "#ffffff",
                         cursor: "pointer",
+                        textAlign: "left",
                         transition: "all 0.15s ease",
                       }}
                     >
-                      <input
-                        type="radio"
-                        name="anomaly-target"
-                        value={targetStatus}
-                        checked={isSelected}
-                        onChange={() => setSelectedTarget(targetStatus)}
-                        style={{ marginTop: 3 }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.84rem", color: isSelected ? meta.btnColor : "#0f172a" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          width: "100%",
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="anomaly-target"
+                          checked={isSelected}
+                          onChange={() => setSelectedTarget(targetStatus)}
+                          style={{ accentColor: meta.btnColor, cursor: "pointer" }}
+                        />
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: "0.86rem",
+                            color: isSelected ? meta.btnColor : "#1e293b",
+                          }}
+                        >
                           {meta.label}
-                        </div>
-                        <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: 2 }}>
-                          {meta.description}
-                        </div>
+                        </span>
                       </div>
-                    </label>
+                      <p
+                        className="muted"
+                        style={{
+                          margin: "0.3rem 0 0 1.5rem",
+                          fontSize: "0.78rem",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {meta.description}
+                      </p>
+                    </button>
                   );
                 })}
               </div>
             </div>
 
+            {/* Officer Notes */}
             <div style={{ marginBottom: "1.25rem" }}>
               <label
                 htmlFor="anomaly-note"
@@ -387,36 +393,46 @@ export function AIAnomalyModal({
                   fontSize: "0.8rem",
                   fontWeight: 600,
                   color: "#334155",
-                  marginBottom: "0.3rem",
+                  marginBottom: "0.35rem",
                 }}
               >
-                Officer Notes / Instructions (Recorded in Audit Trail):
+                Officer Notes (Recorded in Audit Trail):
               </label>
               <textarea
                 id="anomaly-note"
                 rows={3}
-                placeholder="Enter rationale for administrative review, instructions for on-site inspectors, or false alarm reasoning..."
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
+                placeholder="Rationale for the review, instructions for inspectors, or false alarm reasoning..."
                 style={{
                   width: "100%",
-                  font: "inherit",
-                  fontSize: "0.82rem",
-                  padding: "0.5rem",
+                  padding: "0.6rem 0.75rem",
                   borderRadius: "6px",
                   border: "1px solid #cbd5e1",
+                  fontSize: "0.85rem",
+                  fontFamily: "inherit",
+                  resize: "vertical",
                   boxSizing: "border-box",
                 }}
               />
             </div>
 
-            <div className="modal-actions" style={{ marginTop: "1rem" }}>
+            {/* Action Footer */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+                borderTop: "1px solid #e2e8f0",
+                paddingTop: "0.85rem",
+              }}
+            >
               <button
                 type="button"
                 onClick={onClose}
                 className="btn-secondary"
                 disabled={isSubmitting}
-                style={{ fontSize: "0.85rem", padding: "0.45rem 1rem" }}
+                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
               >
                 Cancel
               </button>
@@ -425,12 +441,23 @@ export function AIAnomalyModal({
                 className="btn-primary"
                 disabled={!selectedTarget || isSubmitting}
                 style={{
+                  padding: "0.5rem 1.25rem",
                   fontSize: "0.85rem",
-                  padding: "0.45rem 1.25rem",
-                  background: selectedTarget ? ACTION_DESCRIPTIONS[selectedTarget].btnColor : "var(--color-navy-brand)",
+                  background: selectedTarget
+                    ? ACTION_OPTIONS[selectedTarget].btnColor
+                    : "var(--color-navy-brand)",
+                  borderColor: selectedTarget
+                    ? ACTION_OPTIONS[selectedTarget].btnColor
+                    : "var(--color-navy-brand)",
+                  opacity: !selectedTarget || isSubmitting ? 0.6 : 1,
+                  cursor: !selectedTarget || isSubmitting ? "not-allowed" : "pointer",
                 }}
               >
-                {isSubmitting ? "Recording..." : "Confirm Decision"}
+                {isSubmitting
+                  ? "Saving..."
+                  : selectedTarget
+                    ? ACTION_OPTIONS[selectedTarget].label
+                    : "Confirm Action"}
               </button>
             </div>
           </form>

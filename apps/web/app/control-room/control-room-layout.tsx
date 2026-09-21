@@ -34,10 +34,11 @@ export function ControlRoomLayout({
   const [anomalyList, setAnomalyList] = useState<AIAnomaly[]>(anomalies);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AIAnomaly | null>(null);
   const [query, setQuery] = useState("");
+  const [alertView, setAlertView] = useState<"active" | "resolved">("active");
 
   const SECTION_TABS: { key: ControlRoomTab; label: string; icon: React.ReactNode; count: number }[] = [
-    { key: "feeds", label: "Live Feeds", icon: <IconVideo style={{ width: 15, height: 15 }} />, count: cameras.length },
-    { key: "alerts", label: "AI Alerts", icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />, count: anomalyList.length },
+    { key: "feeds", label: "Live Feeds", icon: <IconVideo style={{ width: 15, height: 15 }} />, count: 0 },
+    { key: "alerts", label: "AI Alerts", icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />, count: 0 },
     { key: "status", label: "Status", icon: <IconBarChart style={{ width: 15, height: 15 }} />, count: 0 },
   ];
 
@@ -76,6 +77,36 @@ export function ControlRoomLayout({
             ))}
           </div>
         </div>
+
+        {/* Alert status filter: only visible on the AI Alerts tab, right-aligned on the same row */}
+        {activeTab === "alerts" && (
+          <div className="filter-tabs" role="tablist" aria-label="Alert status filter">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={alertView === "active"}
+              onClick={() => setAlertView("active")}
+              className={`filter-tab-btn ${alertView === "active" ? "active" : ""}`}
+            >
+              <span>Active</span>
+              <span className="filter-count-badge">
+                {anomalyList.filter((a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated").length}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={alertView === "resolved"}
+              onClick={() => setAlertView("resolved")}
+              className={`filter-tab-btn ${alertView === "resolved" ? "active" : ""}`}
+            >
+              <span>Resolved</span>
+              <span className="filter-count-badge">
+                {anomalyList.filter((a) => a.status === "acted_upon" || a.status === "dismissed").length}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {activeTab === "feeds" ? (
@@ -88,7 +119,12 @@ export function ControlRoomLayout({
         <CameraStatusView cameras={cameras} />
       ) : (
         <AIAlertsScreen
-          anomalies={anomalyList}
+          anomalies={
+            alertView === "active"
+              ? anomalyList.filter((a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated")
+              : anomalyList.filter((a) => a.status === "acted_upon" || a.status === "dismissed")
+          }
+          view={alertView}
           onSelect={(a) => setSelectedAnomaly(a)}
         />
       )}

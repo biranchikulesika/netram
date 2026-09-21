@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { PublicCctvCamera } from "@netram/types";
 import { IconSearch, IconCamera } from "../components/icons";
+import { formatDateTime } from "../../lib/presentation";
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
   active: { label: "LIVE", bg: "#dcfce7", color: "#15803d" },
@@ -104,7 +105,7 @@ export function CameraStatusView({ cameras }: CameraStatusViewProps) {
                         {s.label}
                       </span>
                     </td>
-                    <td className="status-secondary">{new Date(cam.updatedAt).toLocaleString()}</td>
+                    <td className="status-secondary">{formatDateTime(cam.updatedAt)}</td>
                     <td className="status-secondary">{isOffline ? formatCameraDuration(cam.updatedAt) : "—"}</td>
                   </tr>
                 );

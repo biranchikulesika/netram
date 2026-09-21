@@ -53,6 +53,7 @@ export interface AIAnomaly {
   reviewedAt: ISODateTime | null;
   createdAt: ISODateTime;
   /** Project/district context joined at read time for jurisdiction scoping. */
+  projectId: UUID | null;
   projectCode: string | null;
   projectName: string | null;
   districtId: UUID | null;

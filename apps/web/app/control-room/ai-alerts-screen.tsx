@@ -33,6 +33,8 @@ export function getStatusStyle(status: AnomalyStatus): { bg: string; color: stri
 interface AIAlertsScreenProps {
   anomalies: AIAnomaly[];
   onSelect: (anomaly: AIAnomaly) => void;
+  /** Which slice is being displayed, for accurate empty-state copy. */
+  view?: "active" | "resolved";
 }
 
 /**
@@ -46,7 +48,7 @@ interface AIAlertsScreenProps {
  * raise an alert when a sustained deviation persists over a long period.
  * Nothing else is a supported detection.
  */
-export function AIAlertsScreen({ anomalies, onSelect }: AIAlertsScreenProps) {
+export function AIAlertsScreen({ anomalies, onSelect, view = "active" }: AIAlertsScreenProps) {
   const sorted = [...anomalies].sort((a, b) => {
     const aOpen = OPEN_STATUSES.includes(a.status) ? 0 : 1;
     const bOpen = OPEN_STATUSES.includes(b.status) ? 0 : 1;
@@ -71,8 +73,12 @@ export function AIAlertsScreen({ anomalies, onSelect }: AIAlertsScreenProps) {
           }}
         >
           <IconVideo style={{ width: 30, height: 30, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
-          <h3>No conflict alerts</h3>
-          <p className="muted">No violence or altercation detected on camera feeds in your jurisdiction.</p>
+          <h3>{view === "resolved" ? "No resolved alerts" : "No conflict alerts"}</h3>
+          <p className="muted">
+            {view === "resolved"
+              ? "Alerts dismissed or acted upon by authority will appear here."
+              : "No violence or altercation detected on camera feeds in your jurisdiction."}
+          </p>
         </div>
       ) : (
         <div style={{ display: "grid", gap: "0.6rem" }}>

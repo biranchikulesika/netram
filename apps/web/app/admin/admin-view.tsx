@@ -7,6 +7,7 @@ import type {
   JurisdictionView,
   RoleAssignmentView,
 } from "@netram/types";
+import { formatDate } from "../../lib/presentation";
 import {
   IconShieldCheck,
   IconSearch,
@@ -111,20 +112,6 @@ export function AdminView({
     });
   }, [safeUsers, statusFilter, roleFilter, searchQuery]);
 
-  function formatDate(isoString: string | null | undefined): string {
-    if (!isoString) return "—";
-    try {
-      const d = new Date(isoString);
-      if (isNaN(d.getTime())) return "—";
-      return d.toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return "—";
-    }
-  }
 
   function getAvatarInitial(nameOrEmail: string | null | undefined): string {
     if (!nameOrEmail) return "U";

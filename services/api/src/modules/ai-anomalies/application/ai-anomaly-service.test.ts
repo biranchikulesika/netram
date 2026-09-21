@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../../infrastructure/errors.js";
 import { AiAnomalyService } from "./ai-anomaly-service.js";
 import { InvalidAiAnomalyTransitionError } from "../domain/ai-anomaly.js";
@@ -38,6 +38,7 @@ function makeAnomaly(overrides: Partial<AIAnomaly> = {}): AIAnomaly {
     reviewedBy: null,
     reviewedAt: null,
     createdAt: new Date().toISOString(),
+    projectId: "proj-1",
     projectCode: "PRJ-001",
     projectName: "Vani Vihar SC/ST Hostel",
     districtId: "dist-khordha",
@@ -46,6 +47,9 @@ function makeAnomaly(overrides: Partial<AIAnomaly> = {}): AIAnomaly {
 }
 
 describe("AiAnomalyService", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
   const fakeAuthz = {
     requirePermission: vi.fn(),
     accessibleDistrictIds: vi.fn().mockReturnValue(new Set(["dist-khordha"])),
@@ -64,7 +68,11 @@ describe("AiAnomalyService", () => {
     ),
   };
 
-  const service = new AiAnomalyService(fakeAuthz, fakeRepo);
+  const fakeProjectFinder = {
+    findById: vi.fn().mockResolvedValue({ projectId: "proj-1", districtId: "dist-khordha" }),
+  };
+
+  const service = new AiAnomalyService(fakeAuthz, fakeRepo, fakeProjectFinder);
 
   it("lists AI anomalies with district jurisdiction scoping", async () => {
     const ctx = mockCtx();
@@ -135,7 +143,7 @@ describe("AiAnomalyService", () => {
     expect(updated.status).toBe("reviewed");
   });
 
-  it("transitions an anomaly from reviewed to investigated", async () => {
+  it("transitions an anomaly from reviewed to investigated and creates a follow-up inspection", async () => {
     const ctx = mockCtx();
     vi.mocked(fakeRepo.findById).mockResolvedValueOnce(makeAnomaly({ status: "reviewed" }));
 
@@ -146,14 +154,47 @@ describe("AiAnomalyService", () => {
       "Escalated to district inspection team for on-site verification.",
     );
 
+    expect(fakeProjectFinder.findById).toHaveBeenCalledWith("insp-1");
     expect(fakeRepo.transitionWithAuditAndEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "investigated",
         auditAction: "ai.anomaly_investigated",
         eventType: "ai.anomaly_investigated",
+        followUpInspection: expect.objectContaining({
+          projectId: "proj-1",
+          leadUserId: "user-officer-1",
+        }),
+        auditMetadata: expect.objectContaining({
+          followUpInspectionId: expect.any(String),
+        }),
+        eventPayload: expect.objectContaining({
+          followUpInspectionId: expect.any(String),
+        }),
       }),
     );
     expect(updated.status).toBe("investigated");
+  });
+
+  it("creates no follow-up inspection for non-escalation transitions", async () => {
+    const ctx = mockCtx();
+    vi.mocked(fakeRepo.findById).mockResolvedValueOnce(makeAnomaly({ status: "new" }));
+
+    await service.transitionAiAnomaly(ctx, "anom-1", "reviewed");
+
+    expect(fakeRepo.transitionWithAuditAndEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ followUpInspection: undefined }),
+    );
+  });
+
+  it("rejects escalation when the source inspection cannot be resolved", async () => {
+    const ctx = mockCtx();
+    vi.mocked(fakeRepo.findById).mockResolvedValueOnce(makeAnomaly({ status: "reviewed" }));
+    vi.mocked(fakeProjectFinder.findById).mockResolvedValueOnce(null);
+
+    await expect(service.transitionAiAnomaly(ctx, "anom-1", "investigated")).rejects.toThrow(
+      AppError,
+    );
+    expect(fakeRepo.transitionWithAuditAndEvent).not.toHaveBeenCalled();
   });
 
   it("transitions an anomaly to dismissed with dismissed audit and event", async () => {

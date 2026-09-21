@@ -161,7 +161,13 @@ export function buildContainer(config: AppConfig): Container {
   );
   const complaintService = new ComplaintService(authorizationService, projectRepo, complaintRepo);
   const auditService = new AuditService(authorizationService, auditRepo);
-  const aiAnomalyService = new AiAnomalyService(authorizationService, aiAnomalyRepo);
+  const aiAnomalyService = new AiAnomalyService(
+    authorizationService,
+    aiAnomalyRepo,
+    // Resolves the anomaly's project for follow-up inspection creation on
+    // escalation to `investigated` (§36 → §32).
+    inspectionRepo,
+  );
   const inspectionAssignmentService = new InspectionAssignmentService(
     authorizationService,
     inspectionService,

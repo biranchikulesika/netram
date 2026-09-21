@@ -374,7 +374,9 @@ function TrackComplaintContent() {
                 {formatDate(result.receivedAt)}
               </div>
               <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "2px" }}>
-                {formatDateTime(result.receivedAt).split(",")[1] ?? ""}
+                {formatDate(result.receivedAt) === "—"
+                  ? ""
+                  : `Recorded ${formatDateTime(result.receivedAt)}`}
               </div>
             </div>
 
@@ -394,7 +396,7 @@ function TrackComplaintContent() {
                 {result.resolvedAt ? formatDate(result.resolvedAt) : "In Progress"}
               </div>
               <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "2px" }}>
-                {result.resolvedAt ? formatDateTime(result.resolvedAt).split(",")[1] ?? "" : "Awaiting closure"}
+                {result.resolvedAt ? formatDateTime(result.resolvedAt) : "Awaiting closure"}
               </div>
             </div>
           </div>
