@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppState, type AppStateStatus, ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { NetramApiClient } from "@netram/api-client";
+import { loadMobileEnv } from "@netram/config/env/mobile";
 import { OfflineInspectionQueue, type FailedMediaUploadRecord, type OfflineOperationRecord } from "../src/offline/queue.js";
 
 const queue = new OfflineInspectionQueue();
 const inspectorEmail = "inspector.two@dev.netram.in";
 
 async function authenticatedClient(): Promise<NetramApiClient> {
-  const client = new NetramApiClient({ baseUrl: process.env.EXPO_PUBLIC_API_URL! });
+  const client = new NetramApiClient({ baseUrl: loadMobileEnv().EXPO_PUBLIC_API_URL });
   const { token } = await client.devLogin(inspectorEmail);
-  return new NetramApiClient({ baseUrl: process.env.EXPO_PUBLIC_API_URL!, getToken: () => token });
+  return new NetramApiClient({ baseUrl: loadMobileEnv().EXPO_PUBLIC_API_URL, getToken: () => token });
 }
 
 export default function SyncStatusScreen() {

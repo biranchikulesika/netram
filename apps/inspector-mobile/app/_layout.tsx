@@ -9,6 +9,7 @@ import {
 import { Tabs } from "expo-router";
 import { Platform } from "react-native";
 import { NetramApiClient } from "@netram/api-client";
+import { loadMobileEnv } from "@netram/config/env/mobile";
 
 import SplashScreen from "./SplashScreen";
 import LoginScreen from "./LoginScreen";
@@ -33,7 +34,7 @@ export const AuthProvider = ({
   const apiBase =
     Platform.OS === "web"
       ? "http://localhost:3001"
-      : (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000");
+      : loadMobileEnv().EXPO_PUBLIC_API_URL;
 
   const client = token
     ? new NetramApiClient({
@@ -220,14 +221,21 @@ const RootContent = () => {
       />
 
       <Tabs.Screen
-        name="SplashScreen"
+        name="login"
         options={{
           href: null,
         }}
       />
 
       <Tabs.Screen
-        name="auth"
+        name="signup"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="SplashScreen"
         options={{
           href: null,
         }}
