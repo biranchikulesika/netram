@@ -104,4 +104,5 @@ coverage/
 !docs/development/WORK-AREAS.md
 !docs/development/SHARED-CONTRACTS.md
 !docs/development/TEAM-TASKS.md
+!docs/development/environments.md
 main.py
