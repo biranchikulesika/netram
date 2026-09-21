@@ -102,8 +102,8 @@ jobs:
             curl -sf http://localhost:9000/minio/health/live && break
             sleep 1
           done
-          docker run --rm --network host quay.io/minio/mc:latest \
-            sh -c 'mc alias set local http://localhost:9000 netram netram-secret && mc mb -p local/netram'
+          docker run --rm --network host --entrypoint /bin/sh quay.io/minio/mc:latest \
+            -c 'mc alias set local http://localhost:9000 netram netram-secret && mc mb -p local/netram'
 
       - name: Runtime verification smoke test
         run: |
