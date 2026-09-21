@@ -14,9 +14,18 @@ function walk(dir, out = []) {
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
       if (
-        [".git", "node_modules", ".next", "dist", ".turbo", ".expo", "coverage", ".pnpm"].includes(
-          entry.name,
-        )
+        [
+          ".git",
+          "node_modules",
+          ".next",
+          "dist",
+          ".turbo",
+          ".expo",
+          "coverage",
+          ".pnpm",
+          ".temp",
+          ".venv",
+        ].includes(entry.name)
       )
         continue;
       walk(p, out);
@@ -27,10 +36,12 @@ function walk(dir, out = []) {
   return out;
 }
 
+const rel = (f) => f.slice(ROOT.length + 1).replaceAll("\\", "/");
+
 const FILES = walk(ROOT).filter(
   (f) =>
     !/(\.env\.example$|package-lock\.json$|pnpm-lock\.yaml$|^\.gitignore$|^scripts\/)/.test(
-      f.slice(ROOT.length + 1),
+      rel(f),
     ),
 );
 
@@ -48,7 +59,7 @@ for (const f of FILES) {
   const src = readFileSync(f, "utf8");
   for (const [re, what] of SECRET_PATTERNS) {
     if (re.test(src)) {
-      problems.push(`${f.slice(ROOT.length + 1)}: possible ${what}`);
+      problems.push(`${rel(f)}: possible ${what}`);
     }
   }
 }

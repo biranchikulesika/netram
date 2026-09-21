@@ -10,6 +10,7 @@ import {
   boolean,
   integer,
   real,
+  doublePrecision,
   unique,
 } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
@@ -70,6 +71,8 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   displayName: varchar("display_name", { length: 200 }),
+  /** Optional contact phone captured at registration (inspectors, officials). */
+  phone: varchar("phone", { length: 20 }),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -149,6 +152,12 @@ export const programmes = pgTable("programmes", {
   code: varchar("code", { length: 50 }).unique().notNull(),
   name: varchar("name", { length: 300 }).notNull(),
   description: text("description"),
+  /** Geographic reach: national | state | district. */
+  scopeLevel: varchar("scope_level", { length: 20 }).notNull().default("national"),
+  /** Set when scopeLevel = "state". */
+  stateId: uuid("state_id").references(() => states.id),
+  /** Set when scopeLevel = "district" (implies its state). */
+  districtId: uuid("district_id").references(() => districts.id),
   authorityId: uuid("authority_id").references(() => authorities.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -171,6 +180,40 @@ export const projects = pgTable("projects", {
   programmeIds: json("programme_ids").$type<string[]>().default([]).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const projectGeofences = pgTable("project_geofences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .unique()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 30 }).notNull().default("circle"),
+  radiusMeters: integer("radius_meters").notNull().default(250),
+  centerLat: doublePrecision("center_lat"),
+  centerLng: doublePrecision("center_lng"),
+  polygonVertices: json("polygon_vertices").$type<[number, number][]>().default([]).notNull(),
+  sealedById: uuid("sealed_by_id").references(() => users.id),
+  sealedAt: timestamp("sealed_at", { withTimezone: true }).defaultNow().notNull(),
+  auditTx: varchar("audit_tx", { length: 128 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const projectPhotos = pgTable("project_photos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  uploadedBy: uuid("uploaded_by").references(() => users.id),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
+  caption: varchar("caption", { length: 500 }),
+  fileName: varchar("file_name", { length: 300 }),
+  mimeType: varchar("mime_type", { length: 100 }),
+  sizeBytes: integer("size_bytes"),
+  contentHash: varchar("content_hash", { length: 128 }),
+  storageKey: varchar("storage_key", { length: 300 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- Disclosure ---------- */
@@ -542,9 +585,7 @@ export const attendancePopulations = pgTable("attendance_populations", {
   code: varchar("code", { length: 50 }).notNull(),
   name: varchar("name", { length: 200 }).notNull(),
   populationType: varchar("population_type", { length: 30 }).notNull().default("BENEFICIARY"),
-  expectedStrategy: varchar("expected_strategy", { length: 30 })
-    .notNull()
-    .default("CONFIGURED"),
+  expectedStrategy: varchar("expected_strategy", { length: 30 }).notNull().default("CONFIGURED"),
   expectedCount: integer("expected_count"),
   config: json("config").$type<Record<string, unknown>>().default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -607,25 +648,34 @@ export const attendanceConfigs = pgTable(
       .references(() => projects.id)
       .unique(),
     dayStartTime: varchar("day_start_time", { length: 5 }).notNull().default("05:00"),
-    thresholds: json("thresholds").$type<{
-      crossSourceDiscrepancy: number;
-      historicalDeviation: number;
-      persistenceWindowDays: number;
-      materialityThreshold: number;
-    }>().default({
-      crossSourceDiscrepancy: 0.15,
-      historicalDeviation: 0.25,
-      persistenceWindowDays: 5,
-      materialityThreshold: 0.1,
-    }).notNull(),
-    baseline: json("baseline").$type<{ windowDays: number; minObservations: number }>().default({
-      windowDays: 14,
-      minObservations: 5,
-    }).notNull(),
-    retention: json("retention").$type<{ rawTransactionsDays: number; exportsHours: number }>().default({
-      rawTransactionsDays: 365,
-      exportsHours: 24,
-    }).notNull(),
+    thresholds: json("thresholds")
+      .$type<{
+        crossSourceDiscrepancy: number;
+        historicalDeviation: number;
+        persistenceWindowDays: number;
+        materialityThreshold: number;
+      }>()
+      .default({
+        crossSourceDiscrepancy: 0.15,
+        historicalDeviation: 0.25,
+        persistenceWindowDays: 5,
+        materialityThreshold: 0.1,
+      })
+      .notNull(),
+    baseline: json("baseline")
+      .$type<{ windowDays: number; minObservations: number }>()
+      .default({
+        windowDays: 14,
+        minObservations: 5,
+      })
+      .notNull(),
+    retention: json("retention")
+      .$type<{ rawTransactionsDays: number; exportsHours: number }>()
+      .default({
+        rawTransactionsDays: 365,
+        exportsHours: 24,
+      })
+      .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("attendance_configs_project_idx").on(t.projectId)],
@@ -787,7 +837,10 @@ export const attendanceAnomalies = pgTable(
     confidence: real("confidence").notNull(),
     dataQuality: varchar("data_quality", { length: 20 }).notNull().default("UNKNOWN"),
     detectorVersion: varchar("detector_version", { length: 50 }).notNull(),
-    supportingSignals: json("supporting_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    supportingSignals: json("supporting_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
     state: varchar("state", { length: 20 }).notNull().default("NEW"),
     reviewedBy: uuid("reviewed_by").references(() => users.id),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),

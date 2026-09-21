@@ -62,6 +62,17 @@ export function evaluateOfflineOperation(
       return { outcome: "accepted" };
     }
 
+    case "draft_finding": {
+      if (!ACTIVE_FIELD_STATUSES.includes(inspection.status)) {
+        return { outcome: "conflict", code: "INSPECTION_NOT_IN_FIELD_STAGE", message: `Cannot save a finding draft when inspection is in '${inspection.status}' state.` };
+      }
+      const description = typeof op.payload.description === "string" ? op.payload.description.trim() : "";
+      if (!description || !["critical", "high", "medium", "low"].includes(String(op.payload.severity))) {
+        return { outcome: "rejected", code: "INVALID_FINDING_DRAFT", message: "A finding draft needs a description and valid severity." };
+      }
+      return { outcome: "accepted" };
+    }
+
     case "capture_evidence": {
       if (!ACTIVE_FIELD_STATUSES.includes(inspection.status)) {
         return {

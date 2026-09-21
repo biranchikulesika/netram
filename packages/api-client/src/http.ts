@@ -44,7 +44,8 @@ export class HttpClient {
 
   constructor(opts: HttpOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
-    this.fetch = opts.fetchImpl ?? globalThis.fetch;
+    const rawFetch = opts.fetchImpl ?? globalThis.fetch;
+    this.fetch = (...args: Parameters<typeof fetch>) => rawFetch(...args);
     this.getToken = opts.getToken;
   }
 

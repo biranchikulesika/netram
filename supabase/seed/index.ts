@@ -380,6 +380,26 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       description: "Change roles and permissions",
     },
     {
+      code: "organisation:create",
+      name: "Register organisations",
+      description: "Register operating agencies and societies",
+    },
+    {
+      code: "programme:create",
+      name: "Register programmes",
+      description: "Register welfare schemes and programmes",
+    },
+    {
+      code: "inspector:register",
+      name: "Register inspectors",
+      description: "Invite field inspectors and assign their jurisdictions",
+    },
+    {
+      code: "official:register",
+      name: "Register officials",
+      description: "Invite authority officials and grant roles, authorities and jurisdictions",
+    },
+    {
       code: "cctv:read",
       name: "Read CCTV cameras",
       description: "List and view CCTV cameras and status",
@@ -425,18 +445,24 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Authority Officer",
       permissions: [
         "project:read",
+        "project:create",
         "project:transition",
         "project:approve",
+        "organisation:create",
+        "programme:create",
+        "inspector:register",
         "inspection:read",
         "inspection:create",
         "inspection:assign",
         "inspection:transition",
         "inspection:review",
         "complaint:read",
+        "complaint:create",
         "complaint:resolve",
         "ai:anomaly:read",
         "ai:anomaly:transition",
         "corrective_action:read",
+        "corrective_action:submit",
         "corrective_action:approve",
         "report:read",
         "report:generate",
@@ -629,6 +655,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     .onConflictDoNothing();
 
   // ---------- Programmes ----------
+  // scopeLevel demonstrates the scheme geographic scope model: NSP is
+  // national; the surprise-inspection drive is an Odisha state scheme.
   await db
     .insert(s.programmes)
     .values([
@@ -636,12 +664,15 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         id: did("programme:nsp"),
         code: "PGM-NSP",
         name: "National Scholarship Programme - Special Hostels",
+        scopeLevel: "national",
         authorityId: did("authority:dosje"),
       },
       {
         id: did("programme:surprise-audit"),
         code: "PGM-SURPRISE",
         name: "Annual Surprise Inspection Drive",
+        scopeLevel: "state",
+        stateId: did("state:odisha"),
         authorityId: did("authority:dosje"),
       },
     ])
@@ -950,7 +981,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         findingId: did("finding:vani-1"),
         inspectionId: did("inspection:vani-surprise"),
         organisationId: did("org:vani"),
-        status: "pending",
+        status: "escalated",
         deadline: new Date("2026-03-11T23:59:00Z"),
       },
       {
@@ -958,7 +989,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         findingId: did("finding:vani-2"),
         inspectionId: did("inspection:vani-surprise"),
         organisationId: did("org:vani"),
-        status: "pending",
+        status: "overdue",
         deadline: new Date("2026-03-01T23:59:00Z"),
       },
     ])
@@ -1741,8 +1772,1779 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     )
     .onConflictDoNothing();
 
+  // ==========================================================================
+  // Seed enrichment: realistic operational history across projects (§13).
+  // Deterministic, interconnected data that exercises every facility aspect.
+  // ==========================================================================
+
+  const enrichedUsers = [
+    {
+      id: did("user:institution-ganjam"),
+      email: "institution.ganjam@dev.netram.in",
+      displayName: "Ganjam School Hostel Admin",
+      status: "active",
+    },
+    {
+      id: did("user:inspector-4"),
+      email: "inspector.four@dev.netram.in",
+      displayName: "Inspector Sudhanshu",
+      status: "active",
+    },
+  ] as const;
+  for (const u of enrichedUsers) {
+    await db
+      .insert(s.users)
+      .values({ ...u })
+      .onConflictDoNothing();
+    await db
+      .insert(s.identities)
+      .values({
+        id: did(`identity:${u.email}`),
+        userId: u.id,
+        provider: "dev",
+        providerSubject: u.id,
+        email: u.email,
+      })
+      .onConflictDoNothing();
+  }
+
+  await db
+    .insert(s.jurisdictions)
+    .values({
+      id: did("jurisdiction:sundargarh"),
+      code: "J-SNDR",
+      name: "Sundargarh District",
+      districtId: did("district:sundargarh"),
+      scopeLevel: "jurisdiction",
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.roleAssignments)
+    .values([
+      {
+        id: did("ra:institution-ganjam"),
+        userId: did("user:institution-ganjam"),
+        roleCode: "institution_admin",
+        authorityId: did("authority:dosje"),
+        jurisdictionId: did("jurisdiction:ganjam"),
+        scope: "jurisdiction",
+      },
+      {
+        id: did("ra:inspector-4"),
+        userId: did("user:inspector-4"),
+        roleCode: "inspector",
+        jurisdictionId: did("jurisdiction:sundargarh"),
+        scope: "jurisdiction",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.organisations)
+    .values({
+      id: did("org:rourkela"),
+      code: "ORG-ROURKELA",
+      name: "Rourkela Model Girls' Hostel (ST)",
+      category: "ST Hostel",
+      authorityId: did("authority:dosje"),
+      districtId: did("district:sundargarh"),
+    })
+    .onConflictDoNothing();
+
+  const enrichedProjects = [
+    {
+      id: did("project:rourkela"),
+      code: "PRJ-ROURKELA-006",
+      name: "Rourkela Model Girls' Hostel (ST)",
+      type: "institution",
+      description: "Model ST girls' hostel in Rourkela, Sundargarh. 90 residents.",
+      organisationId: did("org:rourkela"),
+      authorityId: did("authority:dosje"),
+      districtId: did("district:sundargarh"),
+      status: "Active",
+      approvedById: did("user:dept-admin"),
+      approvedAt: new Date("2026-01-05T09:30:00Z"),
+      programmeIds: [did("programme:nsp"), did("programme:surprise-audit")],
+    },
+  ] as const;
+  for (const p of enrichedProjects) {
+    await db
+      .insert(s.projects)
+      .values({
+        ...p,
+        programmeIds: [...p.programmeIds],
+      })
+      .onConflictDoNothing();
+  }
+
+  // ---------- Inspection teams for enriched projects ----------
+  await db
+    .insert(s.inspectionTeams)
+    .values([
+      { id: did("team:ganjam-1"), name: "Ganjam Model School Inspection Team" },
+      { id: did("team:rourkela-1"), name: "Rourkela Hostel Inspection Team" },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.teamMembers)
+    .values([
+      {
+        teamId: did("team:ganjam-1"),
+        inspectorUserId: did("user:inspector-3"),
+        role: "lead",
+      },
+      {
+        teamId: did("team:rourkela-1"),
+        inspectorUserId: did("user:inspector-4"),
+        role: "lead",
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Inspections: historical + in-flight across projects ----------
+  await db
+    .insert(s.inspections)
+    .values([
+      {
+        id: did("inspection:vani-nov-routine"),
+        projectId: did("project:vani"),
+        templateId: did("template:hostel"),
+        type: "routine",
+        trigger: "automatic",
+        status: "closed",
+        disclosurePolicyId: did("policy:officer"),
+        scheduledStart: new Date("2025-11-10T06:00:00Z"),
+        scheduledEnd: new Date("2025-11-10T10:00:00Z"),
+        startedAt: new Date("2025-11-10T06:05:00Z"),
+        submittedAt: new Date("2025-11-10T09:50:00Z"),
+      },
+      {
+        id: did("inspection:vani-jan-midnight"),
+        projectId: did("project:vani"),
+        templateId: did("template:hostel"),
+        type: "surprise",
+        trigger: "officer",
+        status: "closed",
+        disclosurePolicyId: did("policy:hidden"),
+        scheduledStart: new Date("2026-01-15T00:00:00Z"),
+        scheduledEnd: new Date("2026-01-15T03:00:00Z"),
+        startedAt: new Date("2026-01-15T00:10:00Z"),
+        submittedAt: new Date("2026-01-15T02:40:00Z"),
+      },
+      {
+        id: did("inspection:vani-followup-mar"),
+        projectId: did("project:vani"),
+        templateId: did("template:hostel"),
+        type: "follow_up",
+        trigger: "officer",
+        status: "verification",
+        disclosurePolicyId: did("policy:officer"),
+        scheduledStart: new Date("2026-03-02T06:00:00Z"),
+        scheduledEnd: new Date("2026-03-02T09:00:00Z"),
+        startedAt: new Date("2026-03-02T06:15:00Z"),
+        submittedAt: new Date("2026-03-02T08:45:00Z"),
+      },
+      {
+        id: did("inspection:ganjam-jan-routine"),
+        projectId: did("project:ganjam-school"),
+        templateId: did("template:hostel"),
+        type: "routine",
+        trigger: "risk_engine",
+        status: "closed",
+        disclosurePolicyId: did("policy:officer"),
+        scheduledStart: new Date("2026-01-12T06:00:00Z"),
+        scheduledEnd: new Date("2026-01-12T10:00:00Z"),
+        startedAt: new Date("2026-01-12T06:10:00Z"),
+        submittedAt: new Date("2026-01-12T09:40:00Z"),
+      },
+      {
+        id: did("inspection:ganjam-feb-surprise"),
+        projectId: did("project:ganjam-school"),
+        templateId: did("template:hostel"),
+        type: "surprise",
+        trigger: "officer",
+        status: "corrective_actions",
+        disclosurePolicyId: did("policy:hidden"),
+        scheduledStart: new Date("2026-02-18T06:00:00Z"),
+        scheduledEnd: new Date("2026-02-18T11:00:00Z"),
+        startedAt: new Date("2026-02-18T06:20:00Z"),
+        submittedAt: new Date("2026-02-18T10:20:00Z"),
+      },
+      {
+        id: did("inspection:ganjam-apr-followup"),
+        projectId: did("project:ganjam-school"),
+        templateId: did("template:hostel"),
+        type: "follow_up",
+        trigger: "officer",
+        status: "assigned",
+        disclosurePolicyId: did("policy:hidden"),
+        scheduledStart: new Date("2026-04-02T06:00:00Z"),
+        scheduledEnd: new Date("2026-04-02T10:00:00Z"),
+        startedAt: null,
+        submittedAt: null,
+      },
+      {
+        id: did("inspection:cuttack-oct-routine"),
+        projectId: did("project:cuttack-girls"),
+        templateId: did("template:hostel"),
+        type: "routine",
+        trigger: "automatic",
+        status: "closed",
+        disclosurePolicyId: did("policy:officer"),
+        scheduledStart: new Date("2025-10-12T05:30:00Z"),
+        scheduledEnd: new Date("2025-10-12T11:30:00Z"),
+        startedAt: new Date("2025-10-12T05:45:00Z"),
+        submittedAt: new Date("2025-10-12T11:00:00Z"),
+      },
+      {
+        id: did("inspection:rourkela-sep-surprise"),
+        projectId: did("project:rourkela"),
+        templateId: did("template:hostel"),
+        type: "surprise",
+        trigger: "officer",
+        status: "in_progress",
+        disclosurePolicyId: did("policy:hidden"),
+        scheduledStart: new Date("2026-09-10T06:00:00Z"),
+        scheduledEnd: new Date("2026-09-10T11:00:00Z"),
+        startedAt: new Date("2026-09-10T06:30:00Z"),
+        submittedAt: null,
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.inspectionAssignments)
+    .values([
+      {
+        id: did("ia:vani-nov-1"),
+        inspectionId: did("inspection:vani-nov-routine"),
+        userId: did("user:inspector-1"),
+        role: "lead",
+        assignedAt: new Date("2025-11-08T10:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:vani-jan-1"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        userId: did("user:inspector-1"),
+        role: "lead",
+        assignedAt: new Date("2026-01-14T14:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:vani-followup-1"),
+        inspectionId: did("inspection:vani-followup-mar"),
+        userId: did("user:inspector-1"),
+        role: "lead",
+        assignedAt: new Date("2026-03-01T09:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:ganjam-jan-1"),
+        inspectionId: did("inspection:ganjam-jan-routine"),
+        userId: did("user:inspector-3"),
+        role: "lead",
+        assignedAt: new Date("2026-01-10T10:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:ganjam-feb-1"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        userId: did("user:inspector-3"),
+        role: "lead",
+        assignedAt: new Date("2026-02-16T14:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:ganjam-followup-1"),
+        inspectionId: did("inspection:ganjam-apr-followup"),
+        userId: did("user:inspector-3"),
+        role: "lead",
+        assignedAt: new Date("2026-03-28T09:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:cuttack-oct-1"),
+        inspectionId: did("inspection:cuttack-oct-routine"),
+        userId: did("user:inspector-2"),
+        role: "lead",
+        assignedAt: new Date("2025-10-10T10:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:rourkela-1"),
+        inspectionId: did("inspection:rourkela-sep-surprise"),
+        userId: did("user:inspector-4"),
+        role: "lead",
+        assignedAt: new Date("2026-09-08T11:00:00Z"),
+        status: "assigned",
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Observations, findings, evidence, corrective actions ----------
+  await db
+    .insert(s.observations)
+    .values([
+      {
+        id: did("observation:vani-nov-1"),
+        inspectionId: did("inspection:vani-nov-routine"),
+        userId: did("user:inspector-1"),
+        text: "First-aid cabinet inventory checked; three blister packs were past their expiry date.",
+      },
+      {
+        id: did("observation:vani-jan-1"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        userId: did("user:inspector-1"),
+        text: "Night patrol of kitchen premises found one tray of cooked food uncovered at 01:20.",
+      },
+      {
+        id: did("observation:vani-followup-1"),
+        inspectionId: did("inspection:vani-followup-mar"),
+        userId: did("user:inspector-1"),
+        text: "Verified RO filter replacement certificate and inspected the fitted filter unit in situ.",
+      },
+      {
+        id: did("observation:ganjam-jan-1"),
+        inspectionId: did("inspection:ganjam-jan-routine"),
+        userId: did("user:inspector-3"),
+        text: "Sanitation register reviewed; toilet cleaning entries were missing for the second week of January.",
+      },
+      {
+        id: did("observation:ganjam-feb-1"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        userId: did("user:inspector-3"),
+        text: "Kitchen storage room: sacks of rice exposed directly on the floor without pallets.",
+      },
+      {
+        id: did("observation:ganjam-feb-2"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        userId: did("user:inspector-3"),
+        text: "Drinking water sample collected; residual chlorine below acceptable range.",
+      },
+      {
+        id: did("observation:ganjam-feb-3"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        userId: did("user:inspector-3"),
+        text: "Roll-call register mismatch: register shows 118 present, physical headcount was 104.",
+      },
+      {
+        id: did("observation:cuttack-oct-1"),
+        inspectionId: did("inspection:cuttack-oct-routine"),
+        userId: did("user:inspector-2"),
+        text: "Dining hall washrooms: two taps non-functional and water logging on the floor.",
+      },
+      {
+        id: did("observation:rourkela-1"),
+        inspectionId: did("inspection:rourkela-sep-surprise"),
+        userId: did("user:inspector-4"),
+        text: "Kitchen pantry door found unlatched during inspection; storage bins uncovered.",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.findings)
+    .values([
+      {
+        id: did("finding:vani-nov-1"),
+        inspectionId: did("inspection:vani-nov-routine"),
+        observationId: did("observation:vani-nov-1"),
+        severity: "low",
+        description: "First-aid cabinet contained expired stock.",
+        remediation: "Replace expired stock and maintain a quarterly checklist.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:vani-jan-1"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        observationId: did("observation:vani-jan-1"),
+        severity: "low",
+        description: "Cooked food left uncovered in the kitchen during the night.",
+        remediation: "Enforce close-of-day food storage protocol.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:vani-followup-1"),
+        inspectionId: did("inspection:vani-followup-mar"),
+        observationId: did("observation:vani-followup-1"),
+        severity: "low",
+        description: "RO filter replacement verified; residual log-keeping gaps found.",
+        remediation: "Maintain a monthly RO service log.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:ganjam-jan-1"),
+        inspectionId: did("inspection:ganjam-jan-routine"),
+        observationId: did("observation:ganjam-jan-1"),
+        severity: "low",
+        description: "Sanitation register entries incomplete for a one-week period.",
+        remediation: "Complete daily sanitation logs and submit a summary.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:ganjam-feb-1"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        observationId: did("observation:ganjam-feb-1"),
+        severity: "high",
+        description: "Food grain sacks stored directly on the floor; rodent access risk.",
+        remediation: "Palletize storage, seal all bins, and submit a pest-control report.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:ganjam-feb-2"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        observationId: did("observation:ganjam-feb-2"),
+        severity: "medium",
+        description: "Residual chlorine in drinking water below acceptable range.",
+        remediation: "Service the chlorination unit and submit a lab report.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:ganjam-feb-3"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        observationId: did("observation:ganjam-feb-3"),
+        severity: "medium",
+        description: "Roll-call register overstates resident headcount versus physical count.",
+        remediation: "Reconcile the register with biometric headcount and document variance.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:cuttack-oct-1"),
+        inspectionId: did("inspection:cuttack-oct-routine"),
+        observationId: did("observation:cuttack-oct-1"),
+        severity: "medium",
+        description: "Dining hall washrooms reported water logging and non-functional taps.",
+        remediation: "Repair fixtures and install anti-skid flooring.",
+        status: "action_required",
+      },
+      {
+        id: did("finding:rourkela-1"),
+        inspectionId: did("inspection:rourkela-sep-surprise"),
+        observationId: did("observation:rourkela-1"),
+        severity: "medium",
+        description: "Pantry door unlatched and storage bins uncovered during inspection.",
+        remediation: "Complete a pest-control sweep and enforce close-of-day storage protocol.",
+        status: "action_required",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.evidence)
+    .values([
+      {
+        id: did("evidence:vani-jan-1"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        findingId: did("finding:vani-jan-1"),
+        capturedAt: new Date("2026-01-15T01:25:00Z"),
+        latitude: 20.2961,
+        longitude: 85.8245,
+        evidenceType: "photo",
+        fileName: "kitchen-nightshelf.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 1523401,
+        contentHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        deviceId: "DEV-IPHONE-01",
+        uploadState: "uploaded",
+        integrityState: "verified",
+      },
+      {
+        id: did("evidence:vani-followup-1"),
+        inspectionId: did("inspection:vani-followup-mar"),
+        findingId: did("finding:vani-followup-1"),
+        capturedAt: new Date("2026-03-02T07:05:00Z"),
+        latitude: 20.2961,
+        longitude: 85.8245,
+        evidenceType: "photo",
+        fileName: "ro-filter-installed.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 2011934,
+        contentHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        deviceId: "DEV-IPHONE-01",
+        uploadState: "uploaded",
+        integrityState: "verified",
+      },
+      {
+        id: did("evidence:ganjam-feb-1"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        findingId: did("finding:ganjam-feb-1"),
+        capturedAt: new Date("2026-02-18T07:40:00Z"),
+        latitude: 19.2665,
+        longitude: 84.8354,
+        evidenceType: "photo",
+        fileName: "ganjam-storage.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 3118820,
+        contentHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        deviceId: "DEV-ANDROID-02",
+        uploadState: "uploaded",
+        integrityState: "verified",
+      },
+      {
+        id: did("evidence:cuttack-oct-1"),
+        inspectionId: did("inspection:cuttack-oct-routine"),
+        findingId: did("finding:cuttack-oct-1"),
+        capturedAt: new Date("2025-10-12T08:15:00Z"),
+        latitude: 20.4625,
+        longitude: 85.8797,
+        evidenceType: "photo",
+        fileName: "cuttack-washroom.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 1842650,
+        contentHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        deviceId: "DEV-ANDROID-02",
+        uploadState: "uploaded",
+        integrityState: "verified",
+      },
+      {
+        id: did("evidence:rourkela-1"),
+        inspectionId: did("inspection:rourkela-sep-surprise"),
+        findingId: did("finding:rourkela-1"),
+        capturedAt: new Date("2026-09-10T07:10:00Z"),
+        latitude: 22.0664,
+        longitude: 84.8366,
+        evidenceType: "photo",
+        fileName: "rourkela-pantry.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 1330021,
+        contentHash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        deviceId: "DEV-IPHONE-03",
+        uploadState: "uploaded",
+        integrityState: "verified",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.correctiveActions)
+    .values([
+      {
+        id: did("ca:vani-nov-1"),
+        findingId: did("finding:vani-nov-1"),
+        inspectionId: did("inspection:vani-nov-routine"),
+        organisationId: did("org:vani"),
+        status: "accepted",
+        deadline: new Date("2025-11-25T23:59:00Z"),
+        submittedAt: new Date("2025-11-18T10:00:00Z"),
+      },
+      {
+        id: did("ca:vani-jan-1"),
+        findingId: did("finding:vani-jan-1"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        organisationId: did("org:vani"),
+        status: "accepted",
+        deadline: new Date("2026-01-30T23:59:00Z"),
+        submittedAt: new Date("2026-01-24T10:00:00Z"),
+      },
+      {
+        id: did("ca:vani-followup-1"),
+        findingId: did("finding:vani-followup-1"),
+        inspectionId: did("inspection:vani-followup-mar"),
+        organisationId: did("org:vani"),
+        status: "under_review",
+        deadline: new Date("2026-03-20T23:59:00Z"),
+        submittedAt: new Date("2026-03-18T10:00:00Z"),
+      },
+      {
+        id: did("ca:ganjam-jan-1"),
+        findingId: did("finding:ganjam-jan-1"),
+        inspectionId: did("inspection:ganjam-jan-routine"),
+        organisationId: did("org:ganjam-school"),
+        status: "accepted",
+        deadline: new Date("2026-01-30T23:59:00Z"),
+        submittedAt: new Date("2026-01-26T10:00:00Z"),
+      },
+      {
+        id: did("ca:ganjam-feb-1"),
+        findingId: did("finding:ganjam-feb-1"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        organisationId: did("org:ganjam-school"),
+        status: "overdue",
+        deadline: new Date("2026-03-10T23:59:00Z"),
+        submittedAt: null,
+      },
+      {
+        id: did("ca:ganjam-feb-2"),
+        findingId: did("finding:ganjam-feb-2"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        organisationId: did("org:ganjam-school"),
+        status: "under_review",
+        deadline: new Date("2026-03-15T23:59:00Z"),
+        submittedAt: new Date("2026-03-12T10:00:00Z"),
+      },
+      {
+        id: did("ca:ganjam-feb-3"),
+        findingId: did("finding:ganjam-feb-3"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        organisationId: did("org:ganjam-school"),
+        status: "pending",
+        deadline: new Date("2026-03-18T23:59:00Z"),
+        submittedAt: null,
+      },
+      {
+        id: did("ca:cuttack-oct-1"),
+        findingId: did("finding:cuttack-oct-1"),
+        inspectionId: did("inspection:cuttack-oct-routine"),
+        organisationId: did("org:cuttack-girls"),
+        status: "accepted",
+        deadline: new Date("2025-11-05T23:59:00Z"),
+        submittedAt: new Date("2025-10-28T10:00:00Z"),
+      },
+      {
+        id: did("ca:rourkela-1"),
+        findingId: did("finding:rourkela-1"),
+        inspectionId: did("inspection:rourkela-sep-surprise"),
+        organisationId: did("org:rourkela"),
+        status: "pending",
+        deadline: new Date("2026-09-25T23:59:00Z"),
+        submittedAt: null,
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Complaints: a mix of open, resolved, and screened-out (§35) ----------
+  await db
+    .insert(s.complaints)
+    .values([
+      {
+        id: did("complaint:vani-noise"),
+        projectId: did("project:vani"),
+        complainantName: "Guardian (redacted)",
+        contactInfo: "****@dev.netram.in",
+        trackingCode: "CMP-2026-0002",
+        description: "Repeated complaint about late-night noise from the common room.",
+        status: "closed",
+        receivedAt: new Date("2025-12-20T09:00:00Z"),
+        resolutionText: "Verified on two night visits — no consistent pattern; closed after review.",
+        resolvedAt: new Date("2026-01-10T10:00:00Z"),
+      },
+      {
+        id: did("complaint:vani-mattress"),
+        projectId: did("project:vani"),
+        complainantName: "Guardian (redacted)",
+        contactInfo: "****@dev.netram.in",
+        trackingCode: "CMP-2026-0003",
+        description: "Worn mattresses reported in the dormitory wing.",
+        status: "resolved",
+        receivedAt: new Date("2026-01-18T09:00:00Z"),
+        resolutionText: "Replaced 12 worn mattresses under annual maintenance.",
+        resolvedAt: new Date("2026-02-05T10:00:00Z"),
+      },
+      {
+        id: did("complaint:ganjam-electrical"),
+        projectId: did("project:ganjam-school"),
+        complainantName: "Parent (redacted)",
+        contactInfo: "****@dev.netram.in",
+        trackingCode: "CMP-2026-0004",
+        description: "Exposed wiring and damaged power sockets in the dormitory wing.",
+        status: "resolved",
+        receivedAt: new Date("2026-02-10T09:00:00Z"),
+        resolutionText: "Damaged sockets replaced; electrical audit completed.",
+        resolvedAt: new Date("2026-02-20T10:00:00Z"),
+      },
+      {
+        id: did("complaint:cuttack-headcount"),
+        projectId: did("project:cuttack-girls"),
+        complainantName: "Guardian (redacted)",
+        contactInfo: "****@dev.netram.in",
+        trackingCode: "CMP-2026-0005",
+        description: "Concern that reported resident headcount exceeds actual roll-call attendance.",
+        status: "escalated",
+        receivedAt: new Date("2026-03-03T09:00:00Z"),
+        resolutionText: null,
+        resolvedAt: null,
+      },
+      {
+        id: did("complaint:rajdhani-water"),
+        projectId: did("project:rajdhani"),
+        complainantName: "Resident (redacted)",
+        contactInfo: "****@dev.netram.in",
+        trackingCode: "CMP-2026-0006",
+        description: "Intermittent potable water supply in hostel blocks A and B.",
+        status: "received",
+        receivedAt: new Date("2026-09-05T09:00:00Z"),
+        resolutionText: null,
+        resolvedAt: null,
+      },
+      {
+        id: did("complaint:ganjam-nutrition"),
+        projectId: did("project:ganjam-school"),
+        complainantName: "Parent (redacted)",
+        contactInfo: "****@dev.netram.in",
+        trackingCode: "CMP-2026-0007",
+        description: "Midday meal portion sizes reportedly reduced in recent weeks.",
+        status: "received",
+        receivedAt: new Date("2026-09-08T09:00:00Z"),
+        resolutionText: null,
+        resolvedAt: null,
+      },
+      {
+        id: did("complaint:rourkela-power"),
+        projectId: did("project:rourkela"),
+        complainantName: "Resident (redacted)",
+        contactInfo: "****@dev.netram.in",
+        trackingCode: "CMP-2026-0008",
+        description: "Evening power fluctuations reported by residents in the hostel.",
+        status: "under_review",
+        receivedAt: new Date("2026-09-12T09:00:00Z"),
+        resolutionText: null,
+        resolvedAt: null,
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- AI anomalies: advisory signals tied to facility inspections (§36) ----------
+  await db
+    .insert(s.aiAnomalies)
+    .values([
+      {
+        id: did("ai:vani-dorm-occupancy"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        evidenceId: null,
+        type: "occupancy_violation",
+        severity: "medium",
+        confidence: 0.74,
+        modelVersion: "occupancy-estimator-0.2",
+        explanation: "CCTV-derived dormitory occupancy exceeded declared capacity on three evenings.",
+        status: "new",
+      },
+      {
+        id: did("ai:vani-ration"),
+        inspectionId: did("inspection:vani-surprise"),
+        evidenceId: null,
+        type: "resource_divergence",
+        severity: "low",
+        confidence: 0.61,
+        modelVersion: "resource-divergence-0.1",
+        explanation: "Ration register variance below decision threshold; verified as reconciled.",
+        status: "dismissed",
+        reviewedAt: new Date("2026-02-20T09:00:00Z"),
+        reviewedBy: did("user:officer-khordha"),
+      },
+      {
+        id: did("ai:vani-midnight-action"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        evidenceId: did("evidence:vani-jan-1"),
+        type: "unapproved_activity",
+        severity: "high",
+        confidence: 0.84,
+        modelVersion: "frame-activity-0.1",
+        explanation: "Kitchen activity detected at 00:30 during a quiet period; linked inspection confirmed finding.",
+        status: "acted_upon",
+        reviewedAt: new Date("2026-01-16T09:00:00Z"),
+        reviewedBy: did("user:officer-khordha"),
+      },
+      {
+        id: did("ai:ganjam-occupancy"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        evidenceId: null,
+        type: "occupancy_violation",
+        severity: "medium",
+        confidence: 0.74,
+        modelVersion: "occupancy-estimator-0.2",
+        explanation: "Dormitory occupancy estimate above register on inspection day.",
+        status: "new",
+      },
+      {
+        id: did("ai:ganjam-resource"),
+        inspectionId: did("inspection:ganjam-jan-routine"),
+        evidenceId: null,
+        type: "resource_divergence",
+        severity: "low",
+        confidence: 0.63,
+        modelVersion: "resource-divergence-0.1",
+        explanation: "Minor ration stock variance detected and manually validated.",
+        status: "reviewed",
+        reviewedAt: new Date("2026-01-15T09:00:00Z"),
+        reviewedBy: did("user:dept-admin"),
+      },
+      {
+        id: did("ai:cuttack-occupancy"),
+        inspectionId: did("inspection:cuttack-routine"),
+        evidenceId: null,
+        type: "occupancy_violation",
+        severity: "high",
+        confidence: 0.88,
+        modelVersion: "occupancy-estimator-0.2",
+        explanation: "Estimated occupancy diverged sharply from declared roll during morning window.",
+        status: "investigated",
+        reviewedAt: new Date("2026-03-05T09:00:00Z"),
+        reviewedBy: did("user:officer-cuttack"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- CCTV cameras and streams across districts (§42) ----------
+  await db
+    .insert(s.cctvCameras)
+    .values([
+      {
+        id: did("cctv:vani-dormitory"),
+        name: "Vani Vihar - Dormitory Block",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.local/vani/dormitory",
+        districtId: did("district:khordha"),
+        status: "active",
+      },
+      {
+        id: did("cctv:vani-kitchen"),
+        name: "Vani Vihar - Kitchen Entry",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.local/vani/kitchen",
+        districtId: did("district:khordha"),
+        status: "inactive",
+      },
+      {
+        id: did("cctv:cuttack-gate"),
+        name: "Cuttack Girls' Hostel - Main Gate",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.local/cuttack/gate",
+        districtId: did("district:cuttack"),
+        status: "active",
+      },
+      {
+        id: did("cctv:ganjam-gate"),
+        name: "Ganjam Model School - Main Gate",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.local/ganjam/gate",
+        districtId: did("district:ganjam"),
+        status: "active",
+      },
+      {
+        id: did("cctv:ganjam-kitchen"),
+        name: "Ganjam Model School - Kitchen",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.local/ganjam/kitchen",
+        districtId: did("district:ganjam"),
+        status: "inactive",
+      },
+      {
+        id: did("cctv:rajdhani-gate"),
+        name: "Rajdhani Boys' Hostel - Main Gate",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.local/rajdhani/gate",
+        districtId: did("district:khordha"),
+        status: "active",
+      },
+      {
+        id: did("cctv:rourkela-gate"),
+        name: "Rourkela Model Girls' Hostel - Main Gate",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://sim.local/rourkela/gate",
+        districtId: did("district:sundargarh"),
+        status: "active",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.cctvStreams)
+    .values([
+      {
+        id: did("stream:vani-kitchen-1"),
+        cameraId: did("cctv:vani-kitchen"),
+        status: "active",
+        startedAt: new Date("2026-02-11T06:00:00Z"),
+      },
+      {
+        id: did("stream:ganjam-gate-1"),
+        cameraId: did("cctv:ganjam-gate"),
+        status: "active",
+        startedAt: new Date("2026-02-18T06:00:00Z"),
+      },
+      {
+        id: did("stream:rourkela-gate-1"),
+        cameraId: did("cctv:rourkela-gate"),
+        status: "active",
+        startedAt: new Date("2026-09-10T06:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- VC review sessions (§43) ----------
+  await db
+    .insert(s.vcSessions)
+    .values([
+      {
+        id: did("vc:ganjam-tripartite"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        projectId: did("project:ganjam-school"),
+        title: "Ganjam School Hostel Tripartite Review",
+        status: "scheduled",
+        hostUserId: did("user:dept-admin"),
+        roomName: "netram-review-ganjam-surprise",
+        provider: "webrtc",
+        scheduledAt: new Date("2026-03-22T10:00:00Z"),
+        metadata: { agenda: "Review remediation timeline for food storage and water findings" },
+      },
+      {
+        id: did("vc:rourkela-review"),
+        inspectionId: did("inspection:rourkela-sep-surprise"),
+        projectId: did("project:rourkela"),
+        title: "Rourkela Hostel Review Session",
+        status: "scheduled",
+        hostUserId: did("user:dept-admin"),
+        roomName: "netram-review-rourkela-surprise",
+        provider: "webrtc",
+        scheduledAt: new Date("2026-09-18T10:00:00Z"),
+        metadata: { agenda: "Discuss initial surprise inspection findings" },
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.vcParticipants)
+    .values([
+      {
+        id: did("vcp:cuttack-host"),
+        sessionId: did("vc:cuttack-review"),
+        userId: did("user:officer-cuttack"),
+        role: "host",
+      },
+      {
+        id: did("vcp:cuttack-inspector"),
+        sessionId: did("vc:cuttack-review"),
+        userId: did("user:inspector-2"),
+        role: "inspector",
+      },
+      {
+        id: did("vcp:ganjam-host"),
+        sessionId: did("vc:ganjam-tripartite"),
+        userId: did("user:dept-admin"),
+        role: "host",
+      },
+      {
+        id: did("vcp:ganjam-inspector"),
+        sessionId: did("vc:ganjam-tripartite"),
+        userId: did("user:inspector-3"),
+        role: "inspector",
+      },
+      {
+        id: did("vcp:ganjam-org"),
+        sessionId: did("vc:ganjam-tripartite"),
+        userId: did("user:institution-ganjam"),
+        role: "organisation_rep",
+      },
+      {
+        id: did("vcp:rourkela-host"),
+        sessionId: did("vc:rourkela-review"),
+        userId: did("user:dept-admin"),
+        role: "host",
+      },
+      {
+        id: did("vcp:rourkela-inspector"),
+        sessionId: did("vc:rourkela-review"),
+        userId: did("user:inspector-4"),
+        role: "inspector",
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Notifications ----------
+  await db
+    .insert(s.notifications)
+    .values([
+      {
+        id: did("notif:inv1-followup"),
+        userId: did("user:inspector-1"),
+        type: "inspection.assigned",
+        title: "Follow-up inspection assigned",
+        body: "Vani Vihar follow-up inspection was assigned to you.",
+        status: "sent",
+        sentAt: new Date("2026-03-01T09:00:00Z"),
+      },
+      {
+        id: did("notif:inv3-ganjam"),
+        userId: did("user:inspector-3"),
+        type: "inspection.assigned",
+        title: "Surprise inspection assigned",
+        body: "Ganjam Model School surprise inspection was assigned to you.",
+        status: "sent",
+        sentAt: new Date("2026-02-16T14:00:00Z"),
+      },
+      {
+        id: did("notif:inv4-rourkela"),
+        userId: did("user:inspector-4"),
+        type: "inspection.assigned",
+        title: "Surprise inspection assigned",
+        body: "Rourkela Model Girls' Hostel surprise inspection was assigned to you.",
+        status: "sent",
+        sentAt: new Date("2026-09-08T11:00:00Z"),
+      },
+      {
+        id: did("notif:admin-ganjam-overdue"),
+        userId: did("user:dept-admin"),
+        type: "corrective_action.overdue",
+        title: "Corrective action overdue",
+        body: "A corrective action at Ganjam Model School Hostel is overdue.",
+        status: "sent",
+        sentAt: new Date("2026-03-11T00:05:00Z"),
+      },
+      {
+        id: did("notif:org-ganjam-complaint"),
+        userId: did("user:institution-ganjam"),
+        type: "complaint.received",
+        title: "Complaint received",
+        body: "A complaint was registered against your facility.",
+        status: "sent",
+        sentAt: new Date("2026-09-08T10:00:00Z"),
+      },
+      {
+        id: did("notif:admin-rourkela-anomaly"),
+        userId: did("user:dept-admin"),
+        type: "ai.anomaly_detected",
+        title: "AI anomaly detected",
+        body: "A new AI signal requires review at Rourkela Model Girls' Hostel.",
+        status: "sent",
+        sentAt: new Date("2026-09-10T12:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Reports: finalized, ready, and requested (§34) ----------
+  await db
+    .insert(s.reports)
+    .values([
+      {
+        id: did("report:vani-nov"),
+        inspectionId: did("inspection:vani-nov-routine"),
+        format: "json",
+        status: "finalized",
+        requestedBy: did("user:officer-khordha"),
+        requestedAt: new Date("2025-11-12T09:00:00Z"),
+        artifact: { reportType: "inspection", sectionCount: 5, source: "report-worker-0.1" },
+        storageRef: "reports/vani-nov-routine.json",
+        generatedBy: did("user:dept-admin"),
+        generatedAt: new Date("2025-11-12T09:10:00Z"),
+        finalizedBy: did("user:officer-khordha"),
+        finalizedAt: new Date("2025-11-12T09:30:00Z"),
+      },
+      {
+        id: did("report:vani-jan"),
+        inspectionId: did("inspection:vani-jan-midnight"),
+        format: "json",
+        status: "ready",
+        requestedBy: did("user:officer-khordha"),
+        requestedAt: new Date("2026-01-16T09:00:00Z"),
+        artifact: { reportType: "inspection", sectionCount: 4, source: "report-worker-0.1" },
+        storageRef: "reports/vani-jan-midnight.json",
+        generatedBy: did("user:dept-admin"),
+        generatedAt: new Date("2026-01-16T09:10:00Z"),
+        finalizedBy: null,
+        finalizedAt: null,
+      },
+      {
+        id: did("report:vani-surprise"),
+        inspectionId: did("inspection:vani-surprise"),
+        format: "json",
+        status: "requested",
+        requestedBy: did("user:officer-khordha"),
+        requestedAt: new Date("2026-02-12T09:00:00Z"),
+        artifact: null,
+        storageRef: null,
+        generatedBy: null,
+        generatedAt: null,
+        finalizedBy: null,
+        finalizedAt: null,
+      },
+      {
+        id: did("report:ganjam-jan"),
+        inspectionId: did("inspection:ganjam-jan-routine"),
+        format: "json",
+        status: "finalized",
+        requestedBy: did("user:dept-admin"),
+        requestedAt: new Date("2026-01-14T09:00:00Z"),
+        artifact: { reportType: "inspection", sectionCount: 5, source: "report-worker-0.1" },
+        storageRef: "reports/ganjam-jan-routine.json",
+        generatedBy: did("user:dept-admin"),
+        generatedAt: new Date("2026-01-14T09:10:00Z"),
+        finalizedBy: did("user:dept-admin"),
+        finalizedAt: new Date("2026-01-14T09:30:00Z"),
+      },
+      {
+        id: did("report:ganjam-surprise"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        format: "json",
+        status: "requested",
+        requestedBy: did("user:dept-admin"),
+        requestedAt: new Date("2026-02-20T09:00:00Z"),
+        artifact: null,
+        storageRef: null,
+        generatedBy: null,
+        generatedAt: null,
+        finalizedBy: null,
+        finalizedAt: null,
+      },
+      {
+        id: did("report:cuttack-oct"),
+        inspectionId: did("inspection:cuttack-oct-routine"),
+        format: "json",
+        status: "finalized",
+        requestedBy: did("user:officer-cuttack"),
+        requestedAt: new Date("2025-10-15T09:00:00Z"),
+        artifact: { reportType: "inspection", sectionCount: 4, source: "report-worker-0.1" },
+        storageRef: "reports/cuttack-oct-routine.json",
+        generatedBy: did("user:dept-admin"),
+        generatedAt: new Date("2025-10-15T09:10:00Z"),
+        finalizedBy: did("user:officer-cuttack"),
+        finalizedAt: new Date("2025-10-15T09:30:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Audit trail: project-scoped (facility activity) + entity-scoped (§22) ----------
+  await db
+    .insert(s.auditEvents)
+    .values([
+      {
+        id: did("audit:vani-nov-inspection"),
+        action: "inspection.created",
+        actorUserId: did("user:officer-khordha"),
+        resourceType: "project",
+        resourceId: did("project:vani"),
+        metadata: { code: "PRJ-VANI-001", inspectionType: "routine" },
+        occurredAt: new Date("2025-11-08T10:00:00Z"),
+      },
+      {
+        id: did("audit:vani-jan-closed"),
+        action: "inspection.closed",
+        actorUserId: did("user:officer-khordha"),
+        resourceType: "project",
+        resourceId: did("project:vani"),
+        metadata: { code: "PRJ-VANI-001", findings: 1 },
+        occurredAt: new Date("2026-01-16T10:00:00Z"),
+      },
+      {
+        id: did("audit:vani-complaint-resolved"),
+        action: "complaint.resolved",
+        actorUserId: did("user:officer-khordha"),
+        resourceType: "project",
+        resourceId: did("project:vani"),
+        metadata: { code: "PRJ-VANI-001", trackingCode: "CMP-2026-0003" },
+        occurredAt: new Date("2026-02-05T10:00:00Z"),
+      },
+      {
+        id: did("audit:vani-anomaly-reviewed"),
+        action: "ai.anomaly_reviewed",
+        actorUserId: did("user:officer-khordha"),
+        resourceType: "project",
+        resourceId: did("project:vani"),
+        metadata: { code: "PRJ-VANI-001", anomalyType: "resource_divergence" },
+        occurredAt: new Date("2026-02-20T09:00:00Z"),
+      },
+      {
+        id: did("audit:vani-ca-escalated"),
+        action: "corrective_action.escalated",
+        actorUserId: did("user:officer-khordha"),
+        resourceType: "project",
+        resourceId: did("project:vani"),
+        metadata: { code: "PRJ-VANI-001", finding: "Kitchen hygiene" },
+        occurredAt: new Date("2026-03-12T09:00:00Z"),
+      },
+      {
+        id: did("audit:ganjam-created"),
+        action: "project.created",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:ganjam-school"),
+        metadata: { code: "PRJ-GANJ-005" },
+        occurredAt: new Date("2025-11-22T09:00:00Z"),
+      },
+      {
+        id: did("audit:ganjam-approved"),
+        action: "project.approved",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:ganjam-school"),
+        metadata: { code: "PRJ-GANJ-005" },
+        occurredAt: new Date("2025-12-01T09:00:00Z"),
+      },
+      {
+        id: did("audit:ganjam-insp-submitted"),
+        action: "inspection.submitted",
+        actorUserId: did("user:inspector-3"),
+        resourceType: "project",
+        resourceId: did("project:ganjam-school"),
+        metadata: { code: "PRJ-GANJ-005", findings: 3 },
+        occurredAt: new Date("2026-02-18T10:20:00Z"),
+      },
+      {
+        id: did("audit:ganjam-ca-overdue"),
+        action: "corrective_action.overdue",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:ganjam-school"),
+        metadata: { code: "PRJ-GANJ-005", finding: "Food grain storage" },
+        occurredAt: new Date("2026-03-11T00:05:00Z"),
+      },
+      {
+        id: did("audit:ganjam-complaint"),
+        action: "complaint.received",
+        actorUserId: did("user:control-room"),
+        resourceType: "project",
+        resourceId: did("project:ganjam-school"),
+        metadata: { code: "PRJ-GANJ-005", trackingCode: "CMP-2026-0007" },
+        occurredAt: new Date("2026-09-08T09:00:00Z"),
+      },
+      {
+        id: did("audit:cuttack-suspended"),
+        action: "project.suspended",
+        actorUserId: did("user:officer-cuttack"),
+        resourceType: "project",
+        resourceId: did("project:cuttack-girls"),
+        metadata: { code: "PRJ-CUTG-003", reason: "Compliance review during headcount reconciliation" },
+        occurredAt: new Date("2026-02-25T09:00:00Z"),
+      },
+      {
+        id: did("audit:cuttack-insp-started"),
+        action: "inspection.started",
+        actorUserId: did("user:inspector-2"),
+        resourceType: "project",
+        resourceId: did("project:cuttack-girls"),
+        metadata: { code: "PRJ-CUTG-003", trigger: "risk_engine" },
+        occurredAt: new Date("2026-03-01T05:45:00Z"),
+      },
+      {
+        id: did("audit:rajdhani-created"),
+        action: "project.created",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:rajdhani"),
+        metadata: { code: "PRJ-RAJDHANI-002" },
+        occurredAt: new Date("2025-12-15T09:00:00Z"),
+      },
+      {
+        id: did("audit:rajdhani-submitted"),
+        action: "project.submitted_for_verification",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:rajdhani"),
+        metadata: { code: "PRJ-RAJDHANI-002" },
+        occurredAt: new Date("2026-01-04T09:00:00Z"),
+      },
+      {
+        id: did("audit:rourkela-created"),
+        action: "project.created",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:rourkela"),
+        metadata: { code: "PRJ-ROURKELA-006" },
+        occurredAt: new Date("2025-12-22T09:00:00Z"),
+      },
+      {
+        id: did("audit:rourkela-approved"),
+        action: "project.approved",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:rourkela"),
+        metadata: { code: "PRJ-ROURKELA-006" },
+        occurredAt: new Date("2026-01-05T09:30:00Z"),
+      },
+      {
+        id: did("audit:rourkela-insp-started"),
+        action: "inspection.started",
+        actorUserId: did("user:inspector-4"),
+        resourceType: "project",
+        resourceId: did("project:rourkela"),
+        metadata: { code: "PRJ-ROURKELA-006", surprise: true },
+        occurredAt: new Date("2026-09-10T06:30:00Z"),
+      },
+      {
+        id: did("audit:puri-created"),
+        action: "project.created",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:puri-model"),
+        metadata: { code: "PRJ-PURI-004", status: "Draft" },
+        occurredAt: new Date("2026-08-01T09:00:00Z"),
+      },
+      {
+        id: did("audit:vani-followup-submitted"),
+        action: "inspection.submitted",
+        actorUserId: did("user:inspector-1"),
+        resourceType: "inspection",
+        resourceId: did("inspection:vani-followup-mar"),
+        metadata: { verificationStage: true },
+        occurredAt: new Date("2026-03-02T08:45:00Z"),
+      },
+      {
+        id: did("audit:ganjam-feb-findings"),
+        action: "inspection.findings_recorded",
+        actorUserId: did("user:inspector-3"),
+        resourceType: "inspection",
+        resourceId: did("inspection:ganjam-feb-surprise"),
+        metadata: { findings: 3 },
+        occurredAt: new Date("2026-02-20T09:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Attendance: recent Vani calculations (realistic daily values) ----------
+  await db
+    .insert(s.attendanceSourceObservations)
+    .values([
+      {
+        id: did("attobs:vani-biometric-2026-09-12"),
+        projectId: did("project:vani"),
+        source: "BIOMETRIC",
+        windowId: did("attwindow:vani-morning"),
+        operationalDate: "2026-09-12",
+        observedAt: new Date("2026-09-12T09:00:00Z"),
+        observedCount: 154,
+        expectedCount: 160,
+        confidence: 0.97,
+        coverage: "COMPLETE",
+        health: "ONLINE",
+        note: "Biometric roll call for morning window.",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendanceCalculations)
+    .values([
+      {
+        id: did("attcalc:vani-2026-09-11"),
+        projectId: did("project:vani"),
+        windowId: did("attwindow:vani-morning"),
+        operationalDate: "2026-09-11",
+        expected: 160,
+        present: 151,
+        absent: 9,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: 149, INSTITUTION_REPORTED: 151, CCTV: 0, MANUAL: 2 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date("2026-09-11T08:00:00Z"),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date("2026-09-11T09:00:00Z"),
+      },
+      {
+        id: did("attcalc:vani-2026-09-12"),
+        projectId: did("project:vani"),
+        windowId: did("attwindow:vani-morning"),
+        operationalDate: "2026-09-12",
+        expected: 160,
+        present: 154,
+        absent: 6,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: 154, INSTITUTION_REPORTED: 154, CCTV: 0, MANUAL: 0 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date("2026-09-12T08:00:00Z"),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date("2026-09-12T09:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Attendance: full Ganjam setup (rolled-out monitoring) ----------
+  await db
+    .insert(s.attendanceConfigs)
+    .values([
+      {
+        id: did("attconfig:ganjam"),
+        projectId: did("project:ganjam-school"),
+        dayStartTime: "05:00",
+        thresholds: { crossSourceDiscrepancy: 0.15, historicalDeviation: 0.25, persistenceWindowDays: 5, materialityThreshold: 0.1 },
+        baseline: { windowDays: 14, minObservations: 5 },
+        retention: { rawTransactionsDays: 365, exportsHours: 24 },
+      },
+      {
+        id: did("attconfig:rourkela"),
+        projectId: did("project:rourkela"),
+        dayStartTime: "05:00",
+        thresholds: { crossSourceDiscrepancy: 0.15, historicalDeviation: 0.25, persistenceWindowDays: 5, materialityThreshold: 0.1 },
+        baseline: { windowDays: 14, minObservations: 5 },
+        retention: { rawTransactionsDays: 365, exportsHours: 24 },
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendancePopulations)
+    .values([
+      {
+        id: did("attpop:ganjam-beneficiaries"),
+        projectId: did("project:ganjam-school"),
+        code: "BEN-003",
+        name: "Ganjam School Beneficiaries",
+        populationType: "BENEFICIARY",
+        expectedStrategy: "ROSTER",
+        expectedCount: null,
+        config: {},
+      },
+      {
+        id: did("attpop:ganjam-staff"),
+        projectId: did("project:ganjam-school"),
+        code: "STF-003",
+        name: "Ganjam School Staff",
+        populationType: "STAFF",
+        expectedStrategy: "CONFIGURED",
+        expectedCount: 15,
+        config: {},
+      },
+      {
+        id: did("attpop:rourkela-beneficiaries"),
+        projectId: did("project:rourkela"),
+        code: "BEN-004",
+        name: "Rourkela Beneficiaries",
+        populationType: "BENEFICIARY",
+        expectedStrategy: "ROSTER",
+        expectedCount: null,
+        config: {},
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendanceWindows)
+    .values([
+      {
+        id: did("attwindow:ganjam-morning"),
+        projectId: did("project:ganjam-school"),
+        code: "MORNING",
+        name: "Morning Roll Call",
+        startTime: "06:00",
+        endTime: "09:00",
+        populationId: did("attpop:ganjam-beneficiaries"),
+        minCoverage: 0.5,
+        config: { source: "biometric" },
+      },
+      {
+        id: did("attwindow:rourkela-morning"),
+        projectId: did("project:rourkela"),
+        code: "MORNING",
+        name: "Morning Roll Call",
+        startTime: "06:00",
+        endTime: "09:00",
+        populationId: did("attpop:rourkela-beneficiaries"),
+        minCoverage: 0.5,
+        config: { source: "biometric" },
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendanceDevices)
+    .values([
+      {
+        id: did("attdev:ganjam-main"),
+        projectId: did("project:ganjam-school"),
+        name: "Ganjam Model School Main Gate Biometric",
+        provider: "simulated",
+        deviceExternalId: "GANJ-MAIN-01",
+        status: "ONLINE",
+        lastSeenAt: new Date("2026-09-12T07:45:00Z"),
+        lastEventAt: new Date("2026-09-12T07:00:00Z"),
+        syncCursor: "2026-09-12",
+        config: { scenario: "normal" },
+        createdAt: new Date("2025-12-15T00:00:00Z"),
+      },
+      {
+        id: did("attdev:ganjam-backup"),
+        projectId: did("project:ganjam-school"),
+        name: "Ganjam Backup Device",
+        provider: "simulated",
+        deviceExternalId: "GANJ-BACKUP-01",
+        status: "OFFLINE",
+        lastSeenAt: new Date("2026-09-05T18:00:00Z"),
+        lastEventAt: new Date("2026-09-05T18:00:00Z"),
+        syncCursor: "2026-09-05",
+        config: { scenario: "offline_buffered" },
+        createdAt: new Date("2025-12-15T00:00:00Z"),
+      },
+      {
+        id: did("attdev:rourkela-main"),
+        projectId: did("project:rourkela"),
+        name: "Rourkela Hostel Main Gate Biometric",
+        provider: "simulated",
+        deviceExternalId: "RRK-MAIN-01",
+        status: "ONLINE",
+        lastSeenAt: new Date("2026-09-12T07:30:00Z"),
+        lastEventAt: new Date("2026-09-12T07:30:00Z"),
+        syncCursor: "2026-09-12",
+        config: { scenario: "normal" },
+        createdAt: new Date("2026-01-06T00:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  for (let n = 1; n <= 110; n++) {
+    await db
+      .insert(s.attendancePopulationMembers)
+      .values({
+        id: did(`attmember:ganjam-${n}`),
+        populationId: did("attpop:ganjam-beneficiaries"),
+        personExternalId: `ganjam-person-${String(n).padStart(3, "0")}`,
+        netramUserId: null,
+        joinedAt: new Date("2025-12-15T00:00:00Z"),
+      })
+      .onConflictDoNothing();
+  }
+
+  for (let n = 1; n <= 110; n++) {
+    await db
+      .insert(s.attendanceIdentityMappings)
+      .values({
+        id: did(`attmap:ganjam-main-${n}`),
+        projectId: did("project:ganjam-school"),
+        deviceId: did("attdev:ganjam-main"),
+        externalUserId: `ganjam-person-${String(n).padStart(3, "0")}`,
+        personExternalId: `ganjam-person-${String(n).padStart(3, "0")}`,
+        netramUserId: null,
+        createdAt: new Date("2025-12-15T00:00:00Z"),
+      })
+      .onConflictDoNothing();
+  }
+
+  for (let n = 1; n <= 90; n++) {
+    await db
+      .insert(s.attendancePopulationMembers)
+      .values({
+        id: did(`attmember:rourkela-${n}`),
+        populationId: did("attpop:rourkela-beneficiaries"),
+        personExternalId: `rourkela-person-${String(n).padStart(3, "0")}`,
+        netramUserId: null,
+        joinedAt: new Date("2026-01-06T00:00:00Z"),
+      })
+      .onConflictDoNothing();
+  }
+
+  for (let n = 1; n <= 90; n++) {
+    await db
+      .insert(s.attendanceIdentityMappings)
+      .values({
+        id: did(`attmap:rourkela-main-${n}`),
+        projectId: did("project:rourkela"),
+        deviceId: did("attdev:rourkela-main"),
+        externalUserId: `rourkela-person-${String(n).padStart(3, "0")}`,
+        personExternalId: `rourkela-person-${String(n).padStart(3, "0")}`,
+        netramUserId: null,
+        createdAt: new Date("2026-01-06T00:00:00Z"),
+      })
+      .onConflictDoNothing();
+  }
+
+  await db
+    .insert(s.attendanceSourceObservations)
+    .values([
+      {
+        id: did("attobs:ganjam-biometric-2026-09-12"),
+        projectId: did("project:ganjam-school"),
+        source: "BIOMETRIC",
+        windowId: did("attwindow:ganjam-morning"),
+        operationalDate: "2026-09-12",
+        observedAt: new Date("2026-09-12T09:00:00Z"),
+        observedCount: 104,
+        expectedCount: 110,
+        confidence: 0.97,
+        coverage: "COMPLETE",
+        health: "ONLINE",
+        note: "Biometric roll call for morning window.",
+      },
+      {
+        id: did("attobs:rourkela-biometric-2026-09-12"),
+        projectId: did("project:rourkela"),
+        source: "BIOMETRIC",
+        windowId: did("attwindow:rourkela-morning"),
+        operationalDate: "2026-09-12",
+        observedAt: new Date("2026-09-12T09:00:00Z"),
+        observedCount: 84,
+        expectedCount: 90,
+        confidence: 0.96,
+        coverage: "COMPLETE",
+        health: "ONLINE",
+        note: "Biometric roll call for morning window.",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendanceCalculations)
+    .values([
+      {
+        id: did("attcalc:ganjam-2026-09-12"),
+        projectId: did("project:ganjam-school"),
+        windowId: did("attwindow:ganjam-morning"),
+        operationalDate: "2026-09-12",
+        expected: 110,
+        present: 104,
+        absent: 6,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: 104, INSTITUTION_REPORTED: 104, CCTV: 0, MANUAL: 0 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date("2026-09-12T08:00:00Z"),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date("2026-09-12T09:00:00Z"),
+      },
+      {
+        id: did("attcalc:rourkela-2026-09-12"),
+        projectId: did("project:rourkela"),
+        windowId: did("attwindow:rourkela-morning"),
+        operationalDate: "2026-09-12",
+        expected: 90,
+        present: 84,
+        absent: 6,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: 84, INSTITUTION_REPORTED: 84, CCTV: 0, MANUAL: 0 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date("2026-09-12T08:00:00Z"),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date("2026-09-12T09:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendanceDataQuality)
+    .values([
+      {
+        id: did("attdq:ganjam-biometric-2026-09-12"),
+        projectId: did("project:ganjam-school"),
+        source: "BIOMETRIC",
+        periodStart: new Date("2026-09-12T06:00:00Z"),
+        periodEnd: new Date("2026-09-12T09:00:00Z"),
+        coverage: "COMPLETE",
+        freshness: new Date("2026-09-12T08:00:00Z"),
+        duplicateRate: 0,
+        invalidCount: 0,
+        unmatchedCount: 0,
+        health: "ONLINE",
+        assessedAt: new Date("2026-09-12T09:00:00Z"),
+      },
+      {
+        id: did("attdq:rourkela-biometric-2026-09-12"),
+        projectId: did("project:rourkela"),
+        source: "BIOMETRIC",
+        periodStart: new Date("2026-09-12T06:00:00Z"),
+        periodEnd: new Date("2026-09-12T09:00:00Z"),
+        coverage: "COMPLETE",
+        freshness: new Date("2026-09-12T08:00:00Z"),
+        duplicateRate: 0,
+        invalidCount: 0,
+        unmatchedCount: 0,
+        health: "ONLINE",
+        assessedAt: new Date("2026-09-12T09:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // Ganjam anomaly: register vs biometric discrepancy (ties to Feb inspection finding).
+  await db
+    .insert(s.attendanceAnomalyGroups)
+    .values([
+      {
+        id: did("attgroup:ganjam-discrepancy"),
+        projectId: did("project:ganjam-school"),
+        populationId: did("attpop:ganjam-beneficiaries"),
+        anomalyType: "CROSS_SOURCE_DISCREPANCY",
+        state: "NEW",
+        openedAt: new Date("2026-02-18T10:30:00Z"),
+        closedAt: null,
+      },
+      {
+        id: did("attgroup:ganjam-low-dismissed"),
+        projectId: did("project:ganjam-school"),
+        populationId: did("attpop:ganjam-beneficiaries"),
+        anomalyType: "PERSISTENT_LOW_ATTENDANCE",
+        state: "NEW",
+        openedAt: new Date("2026-01-12T10:00:00Z"),
+        closedAt: new Date("2026-01-15T09:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendanceAnomalies)
+    .values([
+      {
+        id: did("atanom:ganjam-discrepancy-2026-02-18"),
+        projectId: did("project:ganjam-school"),
+        populationId: did("attpop:ganjam-beneficiaries"),
+        windowId: did("attwindow:ganjam-morning"),
+        operationalDate: "2026-02-18",
+        observationStart: new Date("2026-02-18T06:00:00Z"),
+        observationEnd: new Date("2026-02-18T09:00:00Z"),
+        anomalyType: "CROSS_SOURCE_DISCREPANCY",
+        score: 0.12,
+        severity: "LOW",
+        confidence: 0.66,
+        dataQuality: "GOOD",
+        detectorVersion: "attendance-hybrid-0.1",
+        supportingSignals: { difference: 14, relative: 0.13, biometric: 104, reported: 118, expected: 110 },
+        state: "NEW",
+        reviewedBy: null,
+        reviewedAt: null,
+        reviewNotes: null,
+        groupId: did("attgroup:ganjam-discrepancy"),
+        linkedInspectionId: did("inspection:ganjam-feb-surprise"),
+        linkedComplaintId: null,
+        sourceData: { present: 104, expected: 110, biometric: 104, reported: 118, detectorVersion: "attendance-hybrid-0.1" },
+        createdAt: new Date("2026-02-18T10:30:00Z"),
+        projectCode: "PRJ-GANJ-005",
+        projectName: "Ganjam Model School Hostel",
+        districtId: did("district:ganjam"),
+      },
+      {
+        id: did("atanom:ganjam-low-2026-01-12"),
+        projectId: did("project:ganjam-school"),
+        populationId: did("attpop:ganjam-beneficiaries"),
+        windowId: did("attwindow:ganjam-morning"),
+        operationalDate: "2026-01-12",
+        observationStart: new Date("2026-01-12T06:00:00Z"),
+        observationEnd: new Date("2026-01-12T09:00:00Z"),
+        anomalyType: "PERSISTENT_LOW_ATTENDANCE",
+        score: 0.5,
+        severity: "MEDIUM",
+        confidence: 0.72,
+        dataQuality: "GOOD",
+        detectorVersion: "attendance-hybrid-0.1",
+        supportingSignals: { streakDays: 3, lowRatio: 0.52, expected: 110, present: 0 },
+        state: "FALSE_POSITIVE",
+        reviewedBy: did("user:dept-admin"),
+        reviewedAt: new Date("2026-01-15T09:00:00Z"),
+        reviewNotes: "Verified manually — low biometric count was caused by a device offline window, not absenteeism.",
+        groupId: did("attgroup:ganjam-low-dismissed"),
+        linkedInspectionId: null,
+        linkedComplaintId: null,
+        sourceData: { present: 0, expected: 110, detectorVersion: "attendance-hybrid-0.1" },
+        createdAt: new Date("2026-01-12T10:00:00Z"),
+        projectCode: "PRJ-GANJ-005",
+        projectName: "Ganjam Model School Hostel",
+        districtId: did("district:ganjam"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.attendanceReviewActions)
+    .values([
+      {
+        id: did("attrev:ganjam-dismissed"),
+        anomalyId: did("atanom:ganjam-low-2026-01-12"),
+        actorUserId: did("user:dept-admin"),
+        action: "dismiss",
+        note: "Verified manually — low biometric count was caused by a device offline window, not absenteeism.",
+        createdAt: new Date("2026-01-15T09:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
   console.log(
-    `Seed complete: ${projects.length} projects, ${users.length} users across ${districtRows.length} districts.`,
+    `Seed complete: ${projects.length + enrichedProjects.length} projects, ${users.length + enrichedUsers.length} users across ${districtRows.length} districts.`,
   );
 }
 

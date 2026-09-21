@@ -8,6 +8,7 @@ import type {
   Complaint,
   ComplaintListQuery,
   ComplaintStatus,
+  PublicComplaintTracking,
   AuditAction,
   DomainEventType,
 } from "@netram/types";
@@ -137,6 +138,20 @@ export class ComplaintService {
         trackingCode: complaint.trackingCode,
       },
     });
+  }
+
+  async trackComplaint(trackingCode: string): Promise<PublicComplaintTracking> {
+    const complaint = await this.repository.findByTrackingCode(trackingCode);
+    if (!complaint) throw AppError.notFound("No complaint found for this tracking code.");
+    return {
+      trackingCode: complaint.trackingCode,
+      projectCode: complaint.projectCode,
+      projectName: complaint.projectName,
+      status: complaint.status,
+      receivedAt: complaint.receivedAt,
+      resolvedAt: complaint.resolvedAt,
+      resolutionText: complaint.resolutionText,
+    };
   }
 
   private auditAndEventFor(to: ComplaintStatus): [AuditAction, DomainEventType] {

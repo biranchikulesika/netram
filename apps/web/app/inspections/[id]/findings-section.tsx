@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { Finding } from "@netram/types";
+import { formatDate } from "../../../lib/presentation";
 
 export interface FindingsSectionProps {
   items: Finding[];
@@ -19,6 +21,9 @@ export function FindingsSection({ items }: FindingsSectionProps) {
       ) : (
         <div className="findings-list">
           {items.map((f) => {
+            const hasAction = f.status === "action_required";
+            const canOrder = f.status === "confirmed";
+
             return (
               <article key={f.id} className={`finding-item severity-${f.severity}`}>
                 <div className="finding-header">
@@ -28,7 +33,7 @@ export function FindingsSection({ items }: FindingsSectionProps) {
                     </span>
                     <span className={`badge-status ${f.status}`}>{f.status.replace("_", " ")}</span>
                   </div>
-                  <span className="finding-time">{new Date(f.createdAt).toLocaleDateString()}</span>
+                  <span className="finding-time">{formatDate(f.createdAt)}</span>
                 </div>
 
                 <p className="finding-desc">{f.description}</p>
@@ -37,6 +42,32 @@ export function FindingsSection({ items }: FindingsSectionProps) {
                   <div className="remediation-box">
                     <span className="remediation-label">Required Remediation:</span>
                     <p className="remediation-text">{f.remediation}</p>
+                  </div>
+                )}
+
+                {(hasAction || canOrder) && (
+                  <div
+                    style={{
+                      marginTop: "0.85rem",
+                      paddingTop: "0.65rem",
+                      borderTop: "1px dashed #e2e8f0",
+                      display: "flex",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <Link
+                      href="/corrective-actions"
+                      className="btn-secondary"
+                      style={{
+                        fontSize: "0.75rem",
+                        padding: "0.25rem 0.6rem",
+                        textDecoration: "none",
+                        color: "var(--color-navy-brand)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {hasAction ? "View Remediation Order →" : "Order Corrective Action →"}
+                    </Link>
                   </div>
                 )}
               </article>

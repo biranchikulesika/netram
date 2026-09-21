@@ -1,5 +1,6 @@
 /** @jsxRuntime automatic */
 import type { AttendanceOverviewItem, AttendanceAnomaly, AttendanceCalculation } from "@netram/types";
+import { getProjectName, getProjectCode } from "../../lib/presentation";
 
 interface AttendanceOverviewProps {
   overviewItems: AttendanceOverviewItem[];
@@ -21,15 +22,6 @@ export function AttendanceOverviewSection({ overviewItems, calculations, anomali
 
   return (
     <section>
-      <div className="section-header">
-        <div>
-          <h2>Attendance Monitoring</h2>
-          <p className="muted">
-            Aggregate-first attendance across authorized projects — biometric, reported, and CCTV sources
-          </p>
-        </div>
-      </div>
-
       {/* Attendance summary stats */}
       <div className="control-room-stats">
         <div className="stat-widget">
@@ -167,15 +159,16 @@ export function AttendanceOverviewSection({ overviewItems, calculations, anomali
                   }}
                 >
                   <td style={tdStyle}>
-                    <strong>{calc.projectId.slice(0, 8)}…</strong>
+                    <strong>{getProjectName(calc.projectId)}</strong>
                     <div
                       style={{
-                        fontSize: "0.7rem",
+                        fontSize: "0.72rem",
                         color: "#64748b",
                         marginTop: "2px",
+                        fontFamily: "var(--font-mono)",
                       }}
                     >
-                      Project {calc.projectId.slice(0, 8)}
+                      {getProjectCode(calc.projectId)}
                     </div>
                   </td>
                   <td style={tdStyle}>{calc.operationalDate}</td>
@@ -298,22 +291,6 @@ export function AttendanceOverviewSection({ overviewItems, calculations, anomali
           </table>
         </div>
       )}
-
-      <div
-        style={{
-          fontSize: "0.7rem",
-          color: "#94a3b8",
-          marginTop: "1rem",
-          lineHeight: 1.5,
-        }}
-      >
-        Attendance anomalies are official/internal-only. Institution-facing views must not expose
-        anomaly scores or severity. Individual drill-down requires{" "}
-        <code style={{ background: "#f1f5f9", padding: "1px 4px", borderRadius: "3px" }}>
-          attendance:individual:read
-        </code>{" "}
-        permission and is audited per access.
-      </div>
     </section>
   );
 }

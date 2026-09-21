@@ -1,6 +1,7 @@
 import {
   getDb,
   ProjectRepository,
+  ProjectPhotoRepository,
   InspectionRepository,
   FindingRepository,
   CorrectiveActionRepository,
@@ -15,11 +16,13 @@ import {
   OutboxRepository,
   UserRepository,
   UserAdminRepository,
+  RegistryRepository,
   AuthorizationRepository,
   InspectionSyncRepository,
   CctvRepository,
   VcSessionRepository,
   AttendanceRepository,
+  AnalyticsRepository,
 } from "@netram/data";
 import type { AppConfig } from "../config.js";
 import { AppError } from "./errors.js";
@@ -27,7 +30,9 @@ import { AuthService } from "../modules/auth/application/auth-service.js";
 import { DevAuthProvider } from "../modules/auth/infrastructure/providers/dev-auth-provider.js";
 import { SupabaseAuthProvider } from "../modules/auth/infrastructure/providers/supabase-auth-provider.js";
 import { AuthorizationService } from "../modules/authorization/application/authorization-service.js";
+import { AnalyticsService } from "../modules/analytics/application/analytics-service.js";
 import { ProjectService } from "../modules/projects/application/project-service.js";
+import { ProjectPhotoService } from "../modules/projects/application/project-photo-service.js";
 import { InspectionService } from "../modules/inspections/application/inspection-service.js";
 import { InspectionSyncService } from "../modules/inspections/application/inspection-sync-service.js";
 import { FindingService } from "../modules/findings/application/finding-service.js";
@@ -41,6 +46,7 @@ import { InspectionAssignmentService } from "../modules/assignments/application/
 import { NotificationService } from "../modules/notifications/application/notification-service.js";
 import { ReportService } from "../modules/reports/application/report-service.js";
 import { UserAdminService } from "../modules/user-admin/application/user-admin-service.js";
+import { RegistryService } from "../modules/registry/application/registry-service.js";
 import { CctvService } from "../modules/cctv/application/cctv-service.js";
 import { VcService } from "../modules/vc/application/vc-service.js";
 import { WebRtcMeshProvider } from "../modules/vc/infrastructure/providers/webrtc-mesh-provider.js";
@@ -59,6 +65,7 @@ export interface Container {
   devAuthProvider: DevAuthProvider | null;
   authorizationService: AuthorizationService;
   projectService: ProjectService;
+  projectPhotoService: ProjectPhotoService;
   inspectionService: InspectionService;
   inspectionSyncService: InspectionSyncService;
   findingService: FindingService;
@@ -72,6 +79,7 @@ export interface Container {
   notificationService: NotificationService;
   reportService: ReportService;
   userAdminService: UserAdminService;
+  registryService: RegistryService;
   cctvService: CctvService;
   cctvRepo: CctvRepository;
   vcService: VcService;
@@ -79,6 +87,7 @@ export interface Container {
   auditRepo: AuditRepository;
   outboxRepo: OutboxRepository;
   attendanceService: AttendanceService;
+  analyticsService: AnalyticsService;
 }
 
 export function buildContainer(config: AppConfig): Container {
@@ -89,6 +98,7 @@ export function buildContainer(config: AppConfig): Container {
   const auditRepo = new AuditRepository(db);
   const outboxRepo = new OutboxRepository(db);
   const projectRepo = new ProjectRepository(db);
+  const projectPhotoRepo = new ProjectPhotoRepository(db);
   const inspectionRepo = new InspectionRepository(db);
   const findingRepo = new FindingRepository(db);
   const correctiveActionRepo = new CorrectiveActionRepository(db);
@@ -111,6 +121,12 @@ export function buildContainer(config: AppConfig): Container {
 
   const authorizationService = new AuthorizationService();
   const projectService = new ProjectService(authorizationService, projectRepo);
+  const projectPhotoService = new ProjectPhotoService(
+    authorizationService,
+    projectService,
+    projectPhotoRepo,
+    objectStorage,
+  );
   const inspectionService = new InspectionService(
     authorizationService,
     projectRepo,
@@ -123,6 +139,7 @@ export function buildContainer(config: AppConfig): Container {
     syncRepo,
     observationRepo,
     evidenceRepo,
+    findingRepo,
   );
   const findingService = new FindingService(authorizationService, inspectionService, findingRepo);
   const correctiveActionService = new CorrectiveActionService(
@@ -168,6 +185,8 @@ export function buildContainer(config: AppConfig): Container {
   );
   const userAdminRepo = new UserAdminRepository(db);
   const userAdminService = new UserAdminService(authorizationService, userAdminRepo);
+  const registryRepo = new RegistryRepository(db);
+  const registryService = new RegistryService(authorizationService, registryRepo);
   const cctvRepo = new CctvRepository(db);
   const cctvService = new CctvService(
     authorizationService,
@@ -193,6 +212,9 @@ export function buildContainer(config: AppConfig): Container {
     storage: objectStorage,
     exportJobs: attendanceExportJobs,
   });
+
+  const analyticsRepo = new AnalyticsRepository(db);
+  const analyticsService = new AnalyticsService(authorizationService, analyticsRepo);
 
   let provider: AuthProvider;
   let devAuthProvider: DevAuthProvider | null = null;
@@ -227,6 +249,7 @@ export function buildContainer(config: AppConfig): Container {
     devAuthProvider,
     authorizationService,
     projectService,
+    projectPhotoService,
     inspectionService,
     inspectionSyncService,
     findingService,
@@ -240,6 +263,7 @@ export function buildContainer(config: AppConfig): Container {
     notificationService,
     reportService,
     userAdminService,
+    registryService,
     cctvService,
     cctvRepo,
     vcService,
@@ -247,5 +271,6 @@ export function buildContainer(config: AppConfig): Container {
     auditRepo,
     outboxRepo,
     attendanceService,
+    analyticsService,
   };
 }

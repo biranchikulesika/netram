@@ -150,6 +150,28 @@ export class ComplaintRepository {
     } as unknown as ComplaintRow);
   }
 
+  async findByTrackingCode(trackingCode: string): Promise<Complaint | null> {
+    const rows = await this.db
+      .select({
+        complaint: complaintsTable,
+        projectCode: projectsTable.code,
+        projectName: projectsTable.name,
+        districtId: projectsTable.districtId,
+      })
+      .from(complaintsTable)
+      .innerJoin(projectsTable, eq(complaintsTable.projectId, projectsTable.id))
+      .where(eq(complaintsTable.trackingCode, trackingCode))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return toComplaint({
+      ...row.complaint,
+      projectCode: row.projectCode,
+      projectName: row.projectName,
+      districtId: row.districtId,
+    } as unknown as ComplaintRow);
+  }
+
   async createWithAuditAndEvent(cmd: CreateComplaintWrite): Promise<Complaint> {
     const created: Complaint = await this.db.transaction(async (tx) => {
       const rows = await tx

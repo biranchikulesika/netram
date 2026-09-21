@@ -19,6 +19,7 @@ export const reportSchema = z.object({
   error: z.string().max(4000).nullable(),
   finalizedBy: z.string().uuid().nullable(),
   finalizedAt: z.string().datetime().nullable(),
+  artifact: z.record(z.string(), z.unknown()).nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
