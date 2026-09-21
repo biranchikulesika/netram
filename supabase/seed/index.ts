@@ -380,6 +380,26 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       description: "Change roles and permissions",
     },
     {
+      code: "organisation:create",
+      name: "Register organisations",
+      description: "Register operating agencies and societies",
+    },
+    {
+      code: "programme:create",
+      name: "Register programmes",
+      description: "Register welfare schemes and programmes",
+    },
+    {
+      code: "inspector:register",
+      name: "Register inspectors",
+      description: "Invite field inspectors and assign their jurisdictions",
+    },
+    {
+      code: "official:register",
+      name: "Register officials",
+      description: "Invite authority officials and grant roles, authorities and jurisdictions",
+    },
+    {
       code: "cctv:read",
       name: "Read CCTV cameras",
       description: "List and view CCTV cameras and status",
@@ -428,6 +448,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         "project:create",
         "project:transition",
         "project:approve",
+        "organisation:create",
+        "programme:create",
+        "inspector:register",
         "inspection:read",
         "inspection:create",
         "inspection:assign",
@@ -632,6 +655,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     .onConflictDoNothing();
 
   // ---------- Programmes ----------
+  // scopeLevel demonstrates the scheme geographic scope model: NSP is
+  // national; the surprise-inspection drive is an Odisha state scheme.
   await db
     .insert(s.programmes)
     .values([
@@ -639,12 +664,15 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         id: did("programme:nsp"),
         code: "PGM-NSP",
         name: "National Scholarship Programme - Special Hostels",
+        scopeLevel: "national",
         authorityId: did("authority:dosje"),
       },
       {
         id: did("programme:surprise-audit"),
         code: "PGM-SURPRISE",
         name: "Annual Surprise Inspection Drive",
+        scopeLevel: "state",
+        stateId: did("state:odisha"),
         authorityId: did("authority:dosje"),
       },
     ])

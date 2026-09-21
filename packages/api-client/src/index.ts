@@ -66,6 +66,15 @@ import type {
   VcJoinDetails,
   VcSessionWithParticipants,
   VcParticipantRole,
+  OrganisationView,
+  ProgrammeView,
+  RegistryUserView,
+  CreateOrganisationInput,
+  CreateProgrammeInput,
+  RegisterInspectorInput,
+  RegisterOfficialInput,
+  StateView,
+  DistrictView,
 } from "@netram/types";
 import { HttpClient } from "./http.js";
 import type { HttpOptions } from "./http.js";
@@ -164,6 +173,11 @@ export class NetramApiClient extends HttpClient {
   // projects
   async listProjects(query: ProjectListQuery = {}): Promise<ProjectPage> {
     return this.get(`/api/v1/projects${queryString(query)}`);
+  }
+
+  /** Registrations awaiting an authority verification decision (project:approve). */
+  async listVerificationQueue(): Promise<ProjectPage> {
+    return this.get("/api/v1/projects/verification-queue");
   }
 
   async getProject(id: string): Promise<Project> {
@@ -535,6 +549,38 @@ export class NetramApiClient extends HttpClient {
 
   async listJurisdictions(): Promise<JurisdictionView[]> {
     return this.get("/api/v1/jurisdictions");
+  }
+
+  async listOrganisations(): Promise<OrganisationView[]> {
+    return this.get("/api/v1/registry/organisations");
+  }
+
+  async createOrganisation(input: CreateOrganisationInput): Promise<OrganisationView> {
+    return this.post("/api/v1/registry/organisations", input);
+  }
+
+  async listProgrammes(): Promise<ProgrammeView[]> {
+    return this.get("/api/v1/registry/programmes");
+  }
+
+  async listStates(): Promise<StateView[]> {
+    return this.get("/api/v1/registry/states");
+  }
+
+  async listRegistryDistricts(): Promise<DistrictView[]> {
+    return this.get("/api/v1/registry/districts");
+  }
+
+  async createProgramme(input: CreateProgrammeInput): Promise<ProgrammeView> {
+    return this.post("/api/v1/registry/programmes", input);
+  }
+
+  async registerInspector(input: RegisterInspectorInput): Promise<RegistryUserView> {
+    return this.post("/api/v1/registry/inspectors", input);
+  }
+
+  async registerOfficial(input: RegisterOfficialInput): Promise<RegistryUserView> {
+    return this.post("/api/v1/registry/officials", input);
   }
 
   async listCameras(query: ListCamerasFilter = {}): Promise<CctvCameraPage> {

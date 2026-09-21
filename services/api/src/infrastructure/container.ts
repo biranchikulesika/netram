@@ -16,6 +16,7 @@ import {
   OutboxRepository,
   UserRepository,
   UserAdminRepository,
+  RegistryRepository,
   AuthorizationRepository,
   InspectionSyncRepository,
   CctvRepository,
@@ -45,6 +46,7 @@ import { InspectionAssignmentService } from "../modules/assignments/application/
 import { NotificationService } from "../modules/notifications/application/notification-service.js";
 import { ReportService } from "../modules/reports/application/report-service.js";
 import { UserAdminService } from "../modules/user-admin/application/user-admin-service.js";
+import { RegistryService } from "../modules/registry/application/registry-service.js";
 import { CctvService } from "../modules/cctv/application/cctv-service.js";
 import { VcService } from "../modules/vc/application/vc-service.js";
 import { WebRtcMeshProvider } from "../modules/vc/infrastructure/providers/webrtc-mesh-provider.js";
@@ -77,6 +79,7 @@ export interface Container {
   notificationService: NotificationService;
   reportService: ReportService;
   userAdminService: UserAdminService;
+  registryService: RegistryService;
   cctvService: CctvService;
   cctvRepo: CctvRepository;
   vcService: VcService;
@@ -181,6 +184,8 @@ export function buildContainer(config: AppConfig): Container {
   );
   const userAdminRepo = new UserAdminRepository(db);
   const userAdminService = new UserAdminService(authorizationService, userAdminRepo);
+  const registryRepo = new RegistryRepository(db);
+  const registryService = new RegistryService(authorizationService, registryRepo);
   const cctvRepo = new CctvRepository(db);
   const cctvService = new CctvService(
     authorizationService,
@@ -257,6 +262,7 @@ export function buildContainer(config: AppConfig): Container {
     notificationService,
     reportService,
     userAdminService,
+    registryService,
     cctvService,
     cctvRepo,
     vcService,

@@ -64,6 +64,21 @@ export async function registerProjectRoutes(
     },
   );
 
+  // Registrations awaiting an authority verification decision. Registered
+  // BEFORE "/projects/:id" so Fastify does not treat "verification-queue"
+  // as an :id.
+  app.get(
+    "/projects/verification-queue",
+    {
+      schema: {
+        tags: ["projects"],
+        security: [{ bearerAuth: [] }],
+        response: { 200: toJsonSchema("ProjectPage", projectPageSchema) },
+      },
+    },
+    async (request) => projectService.listVerificationQueue(request.netram!),
+  );
+
   app.get(
     "/projects/geofences",
     {

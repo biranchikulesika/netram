@@ -23,17 +23,6 @@ export function StatusBadge({
       className={`status status-${normalized} ${className || ""}`}
       title={`Status: ${status}`}
     >
-      <span
-        style={{
-          width: 5,
-          height: 5,
-          borderRadius: "50%",
-          background: "currentColor",
-          display: "inline-block",
-          flexShrink: 0,
-        }}
-        aria-hidden="true"
-      />
       <span>{formatStatus(status)}</span>
     </span>
   );

@@ -1,10 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Project, ProjectPhoto, ProjectType } from "@netram/types";
-import { IconChevronLeft, IconCheck, IconAlertTriangle } from "../../components/icons";
+import {
+  IconChevronLeft,
+  IconCheck,
+  IconAlertTriangle,
+  IconTag,
+  IconMapPin,
+  IconBuilding,
+  IconClipboard,
+  IconCamera,
+  IconX,
+  IconShieldCheck,
+} from "../../components/icons";
+import { StatusBadge } from "../[id]/status-badge";
+import { useRotatingPlaceholder } from "../../../lib/use-rotating-placeholder";
 
 interface DistrictOption {
   id: string;
@@ -69,7 +81,7 @@ const ORGANISATIONS: OrgOption[] = [
 const PROGRAMMES: ProgrammeOption[] = [
   {
     id: "3c704771-9317-50bb-9479-7c4c9ff4f46c",
-    name: "National Scholarship Programme - Special Hostels",
+    name: "National Scholarship Programme — Special Hostels",
     code: "PGM-NSP",
   },
   {
@@ -91,17 +103,26 @@ const FACILITY_CATEGORIES = [
   "General Sanctioned Welfare Facility",
 ];
 
-const STEPS = [
-  { label: "Facility Details", helper: "Identify the welfare facility and its sanction." },
-  { label: "Location", helper: "Where is this facility located in Odisha?" },
-  { label: "Agency & Contact", helper: "Who operates the facility and who is in charge?" },
-  { label: "Programme & Capacity", helper: "Link programmes, capacity, and operational notes." },
-  { label: "Project Photos", helper: "Attach a visual record of the facility." },
-] as const;
+/**
+ * Hint ↔ example pairs per field — short and scannable. The placeholder
+ * alternates so the field first says what it wants, then shows an example.
+ */
+const PLACEHOLDER_HINTS = {
+  name: ["Name as per sanction order"],
+  sanctionRef: ["Sanction order reference no."],
+  pinCode: ["6-digit PIN code"],
+  phone: ["Mobile or landline number"],
+  email: ["Official email address"],
+  block: ["Block or tehsil"],
+  address: ["Street address"],
+  inCharge: ["Facility in-charge name"],
+  capacity: ["Sanctioned seats"],
+} as const;
 
 interface PhotoEntry {
   key: string;
   file: File | null;
+  previewUrl?: string;
   capturedAt: string;
   caption: string;
   uploaded?: boolean;
@@ -129,8 +150,8 @@ interface ParsedDescription {
 
 /**
  * Reverses compileFullDescription so an existing project's packed `description`
- * can prefill the edit form. Heuristic: a saved project that was never produced
- * by this wizard, or multi-part free text inside a section, may round-trip
+ * can prefill the form. Heuristic: a saved project that was never produced
+ * by this flow, or multi-part free text inside a section, may round-trip
  * imprecisely (the stored description itself is never rewritten by parsing).
  */
 function parseProjectDescription(description: string | null): ParsedDescription {
@@ -224,7 +245,7 @@ export function ProjectRegistrationView({
   const [pinCode, setPinCode] = useState(parsed.pinCode);
 
   const [organisationId, setOrganisationId] = useState(
-    isEdit ? initialProject.organisationId ?? ORGANISATIONS[0]!.id : ORGANISATIONS[0]!.id,
+    isEdit ? initialProject.organisationId ?? "" : "",
   );
   const [inChargeName, setInChargeName] = useState(parsed.inChargeName);
   const [inChargePhone, setInChargePhone] = useState(parsed.inChargePhone);
@@ -233,51 +254,80 @@ export function ProjectRegistrationView({
   const [selectedProgrammes, setSelectedProgrammes] = useState<string[]>(
     isEdit && initialProject.programmeIds.length > 0
       ? initialProject.programmeIds
-      : [PROGRAMMES[0]!.id],
+      : [],
   );
-  const [capacity, setCapacity] = useState(parsed.capacity || "100");
-  const [operationalNotes, setOperationalNotes] = useState(parsed.operationalNotes);
+  const [capacity, setCapacity] = useState(parsed.capacity);
+  // Operational Notes field was removed from the form; existing scope text is
+  // still preserved (parsed + re-compiled) so edit mode never drops data.
 
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
 
   const [projectId, setProjectId] = useState<string | null>(isEdit ? initialProject.id : null);
-
-  const [step, setStep] = useState(0);
+  const [savedCode, setSavedCode] = useState<string | null>(isEdit ? initialProject.code : null);
+  const [savedStatus, setSavedStatus] = useState<string | null>(
+    isEdit ? initialProject.status : null,
+  );
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const uploadedKeys = useRef<Set<string>>(new Set());
+
+  const namePh = useRotatingPlaceholder(PLACEHOLDER_HINTS.name);
+  const sanctionRefPh = useRotatingPlaceholder(PLACEHOLDER_HINTS.sanctionRef);
+  const pinCodePh = useRotatingPlaceholder(PLACEHOLDER_HINTS.pinCode);
+  const blockPh = useRotatingPlaceholder(PLACEHOLDER_HINTS.block);
+  const addressPh = useRotatingPlaceholder(PLACEHOLDER_HINTS.address);
+  const inChargePh = useRotatingPlaceholder(PLACEHOLDER_HINTS.inCharge);
+  const phonePh = useRotatingPlaceholder(PLACEHOLDER_HINTS.phone);
+  const emailPh = useRotatingPlaceholder(PLACEHOLDER_HINTS.email);
+  const capacityPh = useRotatingPlaceholder(PLACEHOLDER_HINTS.capacity);
+
+  // Revoke any object URLs when the component unmounts
+  useEffect(() => {
+    const urls = objectUrlsRef.current;
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
 
   function updatePhoto(key: string, patch: Partial<PhotoEntry>) {
     setPhotos((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)));
   }
 
-  function addPhoto() {
-    setPhotos((prev) => [
-      ...prev,
-      { key: crypto.randomUUID(), file: null, capturedAt: nowInputValue(), caption: "" },
-    ]);
+  function attachFiles(fileList: FileList | null) {
+    if (!fileList) return;
+    const next: PhotoEntry[] = [];
+    for (const file of Array.from(fileList)) {
+      const url = URL.createObjectURL(file);
+      objectUrlsRef.current.add(url);
+      next.push({
+        key: crypto.randomUUID(),
+        file,
+        previewUrl: url,
+        capturedAt: nowInputValue(),
+        caption: file.name.replace(/\.[^.]+$/, ""),
+      });
+    }
+    setPhotos((prev) => [...prev, ...next]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function removePhoto(key: string) {
-    setPhotos((prev) => prev.filter((p) => p.key !== key));
+    setPhotos((prev) => {
+      const entry = prev.find((p) => p.key === key);
+      if (entry?.previewUrl) {
+        URL.revokeObjectURL(entry.previewUrl);
+        objectUrlsRef.current.delete(entry.previewUrl);
+      }
+      return prev.filter((p) => p.key !== key);
+    });
   }
 
   function toggleProgramme(id: string) {
     setSelectedProgrammes((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
     );
-  }
-
-  function goNext() {
-    setError(null);
-    setStep((prev) => Math.min(prev + 1, STEPS.length - 1));
-  }
-
-  function goBack() {
-    setError(null);
-    setStep((prev) => Math.max(prev - 1, 0));
   }
 
   function compileFullDescription(): string {
@@ -296,14 +346,14 @@ export function ProjectRegistrationView({
         .join(", ");
       parts.push(`Location: ${locBits}`);
     }
-    if (operationalNotes.trim()) parts.push(`Scope: ${operationalNotes.trim()}`);
+    if (parsed.operationalNotes.trim()) parts.push(`Scope: ${parsed.operationalNotes.trim()}`);
     return parts.join(" | ").slice(0, 2000);
   }
 
   async function uploadPhotos(targetProjectId: string): Promise<number> {
     let uploaded = 0;
     for (const entry of photos) {
-      if (!entry.file || entry.uploaded || uploadedKeys.current.has(entry.key)) continue;
+      if (!entry.file || entry.uploaded || objectUrlsRef.current.has(entry.key)) continue;
       const formData = new FormData();
       formData.append("file", entry.file, entry.file.name);
       if (entry.capturedAt) {
@@ -322,7 +372,6 @@ export function ProjectRegistrationView({
         );
       }
       updatePhoto(entry.key, { uploaded: true });
-      uploadedKeys.current.add(entry.key);
       uploaded++;
     }
     return uploaded;
@@ -354,12 +403,12 @@ export function ProjectRegistrationView({
     return data as Project;
   }
 
-  async function saveDraft(e: React.MouseEvent) {
-    e.preventDefault();
+  async function saveDraft() {
     if (!canCreate) {
       setError("Unauthorized: You lack permission to register projects.");
       return;
     }
+    if (!validateIdentity()) return;
 
     setBusy(true);
     setError(null);
@@ -368,6 +417,8 @@ export function ProjectRegistrationView({
     try {
       const project = await persist();
       setProjectId(project.id);
+      setSavedCode(project.code);
+      setSavedStatus(project.status);
       const photoCount = await uploadPhotos(project.id);
       const photoNote =
         photoCount > 0 ? ` with ${photoCount} photo${photoCount > 1 ? "s" : ""}` : "";
@@ -379,12 +430,23 @@ export function ProjectRegistrationView({
     }
   }
 
+  function validateIdentity(): boolean {
+    if (name.trim().length < 3) {
+      setNameError("Enter the official facility name (at least 3 characters).");
+      document.getElementById("facility-name")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    }
+    setNameError(null);
+    return true;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canCreate) {
       setError("Unauthorized: You lack permission to register projects.");
       return;
     }
+    if (!validateIdentity()) return;
 
     setBusy(true);
     setError(null);
@@ -393,6 +455,8 @@ export function ProjectRegistrationView({
     try {
       const project = await persist();
       setProjectId(project.id);
+      setSavedCode(project.code);
+      setSavedStatus(project.status);
 
       const photoCount = await uploadPhotos(project.id);
 
@@ -412,6 +476,7 @@ export function ProjectRegistrationView({
             );
           }
           submitted = true;
+          setSavedStatus("Pending Verification");
         } catch (submitErr) {
           submitWarn = submitErr instanceof Error ? submitErr.message : String(submitErr);
         }
@@ -437,260 +502,147 @@ export function ProjectRegistrationView({
     }
   }
 
-  const isLastStep = step === STEPS.length - 1;
+  // ---- Live completion tracking (drives the summary rail) ----
+  const sectionDone = {
+    identity: name.trim().length >= 3 && sanctionRef.trim() !== "" && sanctionDate !== "",
+    location: address.trim() !== "" && pinCode.trim() !== "",
+    agency: organisationId !== "" && inChargeName.trim() !== "" && (inChargePhone.trim() !== "" || inChargeEmail.trim() !== ""),
+    programme: selectedProgrammes.length > 0 && capacity.trim() !== "",
+    evidence: photos.length > 0 || initialPhotos.length > 0,
+  };
+  const optional = { identity: false, location: false, agency: false, programme: false, evidence: true } as const;
+  const completedCount = Object.values(sectionDone).filter(Boolean).length;
+  const completenessPct = Math.round((completedCount / 5) * 100);
+
+  const summaryItems: { key: keyof typeof sectionDone; label: string }[] = [
+    { key: "identity", label: "Facility & Sanction" },
+    { key: "location", label: "Location" },
+    { key: "agency", label: "Agency & Contact" },
+    { key: "programme", label: "Programme & Capacity" },
+    { key: "evidence", label: "Photo Evidence" },
+  ];
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto" }}>
-      {/* Breadcrumb */}
-      <div className="breadcrumb" style={{ marginBottom: "1rem" }}>
-        <Link
-          href="/projects"
-          style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
-        >
-          <IconChevronLeft width={14} height={14} /> Projects
-        </Link>
-      </div>
-
+    <div className="reg-page">
       {/* Header */}
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "1.5rem",
-            fontWeight: 700,
-            color: "var(--color-navy-brand)",
-          }}
-        >
-          {isEdit ? "Edit Project" : "Register Project"}
-        </h1>
-        <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}>
-          {isEdit
-            ? `Update the facility record across ${STEPS.length} steps, then register your changes.`
-            : `Register a welfare facility in ${STEPS.length} steps.`}
-        </p>
+      <div className="reg-header">
+        <h1 className="reg-title">{isEdit ? "Edit Project" : "Register Project"}</h1>
+        {isEdit && savedStatus ? <StatusBadge status={savedStatus as Project["status"]} /> : null}
       </div>
 
-      {/* Progress Indicator */}
-      <div style={{ display: "flex", marginBottom: "1.75rem" }}>
-        {STEPS.map((s, i) => {
-          const done = i < step;
-          const active = i === step;
-          return (
-            <div
-              key={s.label}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "0.35rem",
-              }}
-            >
-              <div style={{ width: "100%", display: "flex", alignItems: "center" }}>
-                {i > 0 && (
-                  <div
-                    style={{
-                      flex: 1,
-                      height: 2,
-                      background: done || active ? "#16a34a" : "#e2e8f0",
-                      transition: "background 0.2s ease",
-                    }}
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={() => i < step && setStep(i)}
-                  disabled={i > step}
-                  aria-current={active || undefined}
-                  aria-label={`Step ${i + 1}: ${s.label}`}
-                  title={i <= step ? s.label : s.helper}
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: "50%",
-                    flexShrink: 0,
-                    border: active ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                    background: done ? "#16a34a" : active ? "#eff6ff" : "#ffffff",
-                    color: done ? "#ffffff" : active ? "#1d4ed8" : "#94a3b8",
-                    fontWeight: 700,
-                    fontSize: "0.8rem",
-                    cursor: i <= step ? "pointer" : "default",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  {done ? <IconCheck width={14} height={14} /> : i + 1}
-                </button>
-                {i < STEPS.length - 1 && (
-                  <div
-                    style={{
-                      flex: 1,
-                      height: 2,
-                      background: done ? "#16a34a" : "#e2e8f0",
-                      transition: "background 0.2s ease",
-                    }}
-                  />
-                )}
-              </div>
-              <span
-                style={{
-                  fontSize: "0.68rem",
-                  fontWeight: active ? 700 : 600,
-                  color: active
-                    ? "var(--color-navy-brand)"
-                    : done
-                      ? "#15803d"
-                      : "var(--text-muted)",
-                  textAlign: "center",
-                  lineHeight: 1.2,
-                }}
-              >
-                {s.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {!canCreate && (
+        <div className="error-banner" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+          <IconShieldCheck width={16} height={16} />
+          <span>Your role does not include project registration rights — the form is read-only.</span>
+        </div>
+      )}
 
       {/* Error & Success Banners */}
       {error && (
-        <div
-          className="error-banner"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1.25rem",
-            borderRadius: "6px",
-          }}
-        >
+        <div className="error-banner" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
           <IconAlertTriangle width={16} height={16} />
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div
-          style={{
-            background: "#f0fdf4",
-            border: "1px solid #bbf7d0",
-            color: "#166534",
-            padding: "0.75rem 1rem",
-            borderRadius: "6px",
-            marginBottom: "1.25rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            fontSize: "0.85rem",
-            fontWeight: 600,
-          }}
-        >
-          <IconCheck width={16} height={16} style={{ color: "#16a34a" }} />
+        <div className="reg-success" role="status">
+          <IconCheck width={16} height={16} style={{ color: "#16a34a", flexShrink: 0 }} />
           <span>{success}</span>
         </div>
       )}
 
-      {/* Form */}
-      <form onSubmit={handleSubmit}>
-        {step === 0 && (
-          <div className="form-card">
-            <div className="form-card-header">
-              <h3>Facility Details</h3>
-              <span className="form-helper">Step 1 of {STEPS.length}</span>
+      <form onSubmit={handleSubmit} className="reg-layout">
+        {/* ---------------- Main column ---------------- */}
+        <div className="reg-main">
+          {/* 1 — Facility & Sanction */}
+          <section className="reg-section" id="section-identity">
+            <div className="reg-section-head">
+              <span className="reg-step-chip" aria-hidden="true">
+                <IconTag width={13} height={13} />
+              </span>
+              <div>
+                <h2>Facility &amp; Sanction</h2>
+              </div>
+              {sectionDone.identity && (
+                <span className="reg-section-done" title="Section complete">
+                  <IconCheck width={13} height={13} />
+                </span>
+              )}
             </div>
 
-            <div className="form-card-grid">
-              <div className="form-field" style={{ gridColumn: "1 / -1" }}>
+            <div className="reg-fields">
+              <div className="reg-field reg-field-wide">
                 <label className="form-label" htmlFor="facility-name">
-                  Project Name
+                  Project Name <span className="req">*</span>
                 </label>
                 <input
                   id="facility-name"
                   type="text"
-                  placeholder="e.g. Sambalpur SC/ST Model Residential Hostel"
+                  placeholder={namePh.text}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError(null);
+                  }}
+                  {...namePh.handlers}
                   maxLength={200}
                   autoComplete="organization"
                   disabled={busy}
+                  aria-invalid={nameError ? true : undefined}
+                  className={nameError ? "reg-input-error" : undefined}
                 />
-                <div className="form-helper">Official name as per the sanction order.</div>
+                {nameError && <div className="reg-error-text">{nameError}</div>}
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="classification-type">
-                  Type
-                </label>
+              <div className="reg-field">
+                <label className="form-label" htmlFor="classification-type">Type</label>
                 <select
                   id="classification-type"
                   value={type}
                   onChange={(e) => setType(e.target.value as ProjectType)}
                   disabled={busy || isInstitutionAdmin}
-                  style={{
-                    background: isInstitutionAdmin ? "var(--bg-subtle)" : "var(--bg-surface)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--color-border-strong)",
-                    padding: "0.5rem 0.85rem",
-                    borderRadius: "6px",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: isInstitutionAdmin ? "not-allowed" : "default",
-                  }}
+                  style={{ cursor: isInstitutionAdmin ? "not-allowed" : "default" }}
                 >
                   <option value="institution">Institution / NGO Facility</option>
                   <option value="authority_project">Authority Project (Govt. Run)</option>
                   <option value="other">Other</option>
                 </select>
+                {isInstitutionAdmin && (
+                  <div className="form-helper">Fixed to your organisation&apos;s registration type.</div>
+                )}
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="facility-category">
-                  Category
-                </label>
+              <div className="reg-field">
+                <label className="form-label" htmlFor="facility-category">Category</label>
                 <select
                   id="facility-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   disabled={busy}
-                  style={{
-                    background: "var(--bg-surface)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--color-border-strong)",
-                    padding: "0.5rem 0.85rem",
-                    borderRadius: "6px",
-                    fontSize: "0.85rem",
-                  }}
                 >
                   {FACILITY_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="sanction-ref">
-                  Sanction Reference
-                </label>
-                <input
+              <div className="reg-field">
+                <label className="form-label" htmlFor="sanction-ref">Sanction Reference</label>
+                                <input
                   id="sanction-ref"
                   type="text"
-                  placeholder="e.g. DOSJE/OD/2026/F-1049"
+                  placeholder={sanctionRefPh.text}
                   value={sanctionRef}
                   onChange={(e) => setSanctionRef(e.target.value)}
+                  {...sanctionRefPh.handlers}
                   maxLength={100}
                   disabled={busy}
                 />
-                <div className="form-helper">Reference no. of the sanction order.</div>
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="sanction-date">
-                  Sanction Date
-                </label>
+              <div className="reg-field">
+                <label className="form-label" htmlFor="sanction-date">Sanction Date</label>
                 <input
                   id="sanction-date"
                   type="date"
@@ -698,51 +650,39 @@ export function ProjectRegistrationView({
                   onChange={(e) => setSanctionDate(e.target.value)}
                   disabled={busy}
                 />
-                <div className="form-helper">Date the facility was sanctioned.</div>
               </div>
             </div>
-          </div>
-        )}
+          </section>
 
-        {step === 1 && (
-          <div className="form-card">
-            <div className="form-card-header">
-              <h3>Location</h3>
-              <span className="form-helper">Step 2 of {STEPS.length}</span>
+          {/* 2 — Location */}
+          <section className="reg-section" id="section-location">
+            <div className="reg-section-head">
+              <span className="reg-step-chip" aria-hidden="true">
+                <IconMapPin width={13} height={13} />
+              </span>
+              <div>
+                <h2>Location</h2>
+              </div>
+              {sectionDone.location && (
+                <span className="reg-section-done" title="Section complete">
+                  <IconCheck width={13} height={13} />
+                </span>
+              )}
             </div>
 
-            <div className="form-card-grid">
-              <div className="form-field">
-                <label className="form-label" htmlFor="state-fixed">
-                  State
-                </label>
-                <input
-                  id="state-fixed"
-                  type="text"
-                  value="Odisha"
-                  disabled
-                  style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
-                />
+            <div className="reg-fields">
+              <div className="reg-field">
+                <label className="form-label" htmlFor="state-fixed">State</label>
+                <input id="state-fixed" type="text" value="Odisha" disabled />
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="district-select">
-                  District
-                </label>
+              <div className="reg-field">
+                <label className="form-label" htmlFor="district-select">District</label>
                 <select
                   id="district-select"
                   value={districtId}
                   onChange={(e) => setDistrictId(e.target.value)}
                   disabled={busy}
-                  style={{
-                    background: "var(--bg-surface)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--color-border-strong)",
-                    padding: "0.5rem 0.85rem",
-                    borderRadius: "6px",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                  }}
                 >
                   {DISTRICTS.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -752,84 +692,78 @@ export function ProjectRegistrationView({
                 </select>
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="block-input">
-                  Block / Tehsil
-                </label>
-                <input
+              <div className="reg-field">
+                <label className="form-label" htmlFor="block-input">Block / Tehsil</label>
+                                <input
                   id="block-input"
                   type="text"
-                  placeholder="e.g. Bhubaneswar Urban"
+                  placeholder={blockPh.text}
                   value={block}
                   onChange={(e) => setBlock(e.target.value)}
+                  {...blockPh.handlers}
                   maxLength={100}
                   disabled={busy}
                 />
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="pincode-input">
-                  PIN Code
-                </label>
-                <input
+              <div className="reg-field">
+                <label className="form-label" htmlFor="pincode-input">PIN Code</label>
+                                <input
                   id="pincode-input"
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]{6}"
-                  placeholder="e.g. 751007"
+                  placeholder={pinCodePh.text}
                   value={pinCode}
                   onChange={(e) => setPinCode(e.target.value)}
+                  {...pinCodePh.handlers}
                   maxLength={6}
                   disabled={busy}
                 />
-                <div className="form-helper">6-digit postal code of the locality.</div>
               </div>
 
-              <div className="form-field" style={{ gridColumn: "1 / -1" }}>
-                <label className="form-label" htmlFor="address-input">
-                  Street Address
-                </label>
-                <input
+              <div className="reg-field reg-field-wide">
+                <label className="form-label" htmlFor="address-input">Street Address</label>
+                                <input
                   id="address-input"
                   type="text"
-                  placeholder="e.g. Plot 42, Vani Vihar Campus, Saheed Nagar"
+                  placeholder={addressPh.text}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  {...addressPh.handlers}
                   maxLength={250}
                   disabled={busy}
                 />
               </div>
             </div>
-          </div>
-        )}
+          </section>
 
-        {step === 2 && (
-          <div className="form-card">
-            <div className="form-card-header">
-              <h3>Operating Agency & Contact</h3>
-              <span className="form-helper">Step 3 of {STEPS.length}</span>
+          {/* 3 — Agency & Contact */}
+          <section className="reg-section" id="section-agency">
+            <div className="reg-section-head">
+              <span className="reg-step-chip" aria-hidden="true">
+                <IconBuilding width={13} height={13} />
+              </span>
+              <div>
+                <h2>Agency &amp; Contact</h2>
+              </div>
+              {sectionDone.agency && (
+                <span className="reg-section-done" title="Section complete">
+                  <IconCheck width={13} height={13} />
+                </span>
+              )}
             </div>
 
-            <div className="form-card-grid">
-              <div className="form-field" style={{ gridColumn: "1 / -1" }}>
-                <label className="form-label" htmlFor="org-select">
-                  Agency / Society
-                </label>
+            <div className="reg-fields">
+              <div className="reg-field reg-field-wide">
+                <label className="form-label" htmlFor="org-select">Agency / Society</label>
                 <select
                   id="org-select"
                   value={organisationId}
                   onChange={(e) => setOrganisationId(e.target.value)}
                   disabled={busy}
-                  style={{
-                    background: "var(--bg-surface)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--color-border-strong)",
-                    padding: "0.5rem 0.85rem",
-                    borderRadius: "6px",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                  }}
                 >
+                  <option value="">Select the operating agency…</option>
                   {type === "authority_project" && (
                     <option value="">(Direct Departmental Directorate)</option>
                   )}
@@ -841,441 +775,302 @@ export function ProjectRegistrationView({
                 </select>
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="incharge-name">
-                  In-Charge / Superintendent
-                </label>
-                <input
+              <div className="reg-field">
+                <label className="form-label" htmlFor="incharge-name">In-Charge / Superintendent</label>
+                                <input
                   id="incharge-name"
                   type="text"
-                  placeholder="e.g. Dr. S. K. Mahapatra"
+                  placeholder={inChargePh.text}
                   value={inChargeName}
                   onChange={(e) => setInChargeName(e.target.value)}
+                  {...inChargePh.handlers}
                   maxLength={100}
                   autoComplete="off"
                   disabled={busy}
                 />
               </div>
 
-              <div className="form-field">
-                <label className="form-label" htmlFor="incharge-phone">
-                  Phone
-                </label>
-                <input
+              <div className="reg-field">
+                <label className="form-label" htmlFor="incharge-phone">Phone</label>
+                                <input
                   id="incharge-phone"
                   type="tel"
                   inputMode="tel"
-                  placeholder="e.g. 9876543210"
+                  placeholder={phonePh.text}
                   value={inChargePhone}
                   onChange={(e) => setInChargePhone(e.target.value)}
+                  {...phonePh.handlers}
                   maxLength={20}
                   autoComplete="tel"
                   disabled={busy}
                 />
-                <div className="form-helper">Mobile or landline with STD code.</div>
               </div>
 
-              <div className="form-field" style={{ gridColumn: "1 / -1" }}>
-                <label className="form-label" htmlFor="incharge-email">
-                  Email
-                </label>
-                <input
+              <div className="reg-field reg-field-wide">
+                <label className="form-label" htmlFor="incharge-email">Email</label>
+                                <input
                   id="incharge-email"
                   type="email"
-                  placeholder="e.g. superintendent@vani-vihar.org"
+                  placeholder={emailPh.text}
                   value={inChargeEmail}
                   onChange={(e) => setInChargeEmail(e.target.value)}
+                  {...emailPh.handlers}
                   maxLength={120}
                   autoComplete="email"
                   disabled={busy}
                 />
               </div>
             </div>
-          </div>
-        )}
+          </section>
 
-        {step === 3 && (
-          <div className="form-card">
-            <div className="form-card-header">
-              <h3>Programme &amp; Capacity</h3>
-              <span className="form-helper">Step 4 of {STEPS.length}</span>
+          {/* 4 — Programme & Capacity */}
+          <section className="reg-section" id="section-programme">
+            <div className="reg-section-head">
+              <span className="reg-step-chip" aria-hidden="true">
+                <IconClipboard width={13} height={13} />
+              </span>
+              <div>
+                <h2>Programme &amp; Capacity</h2>
+              </div>
+              {sectionDone.programme && (
+                <span className="reg-section-done" title="Section complete">
+                  <IconCheck width={13} height={13} />
+                </span>
+              )}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label className="form-label" style={{ marginBottom: "0.4rem", display: "block" }}>
-                  Programmes
-                </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <div className="reg-fields">
+              <div className="reg-field reg-field-wide">
+                <span className="form-label">Schemes</span>
+                <div className="reg-scheme-list" role="group" aria-label="Linked schemes">
                   {PROGRAMMES.map((prog) => {
                     const isChecked = selectedProgrammes.includes(prog.id);
                     return (
-                      <label
-                        key={prog.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.6rem",
-                          padding: "0.6rem 0.8rem",
-                          borderRadius: "6px",
-                          border: `1px solid ${isChecked ? "var(--color-navy-light)" : "var(--color-border-subtle)"}`,
-                          background: isChecked ? "#f0f7ff" : "var(--bg-surface)",
-                          cursor: "pointer",
-                        }}
-                      >
+                      <label key={prog.id} className="reg-scheme-row">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => toggleProgramme(prog.id)}
                           disabled={busy}
-                          style={{ width: 16, height: 16, accentColor: "var(--color-navy-brand)" }}
                         />
-                        <div>
-                          <div
-                            style={{
-                              fontSize: "0.85rem",
-                              fontWeight: 600,
-                              color: "var(--color-navy-brand)",
-                            }}
-                          >
-                            {prog.name}
-                          </div>
-                          <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                            {prog.code}
-                          </div>
-                        </div>
+                        <span className="reg-scheme-check" aria-hidden="true">
+                          {isChecked && <IconCheck width={11} height={11} />}
+                        </span>
+                        <span className="reg-scheme-body">
+                          <span className="reg-scheme-name">{prog.name}</span>
+                          <span className="reg-scheme-code">{prog.code}</span>
+                        </span>
+                        <span
+                          className={`reg-scheme-state ${isChecked ? "on" : ""}`}
+                          aria-hidden="true"
+                        >
+                          {isChecked ? "Linked" : "Not linked"}
+                        </span>
                       </label>
                     );
                   })}
                 </div>
-                <div className="form-helper" style={{ marginTop: "0.4rem" }}>
-                  Select the programmes this facility participates in.
-                </div>
               </div>
 
-              <div className="form-card-grid" style={{ marginBottom: 0 }}>
-                <div className="form-field">
-                  <label className="form-label" htmlFor="capacity-input">
-                    Sanctioned Capacity
-                  </label>
+              <div className="reg-field reg-field-wide">
+                <span className="form-label" id="capacity-label">Sanctioned Capacity</span>
+                <div className="reg-capacity-box">
                   <input
                     id="capacity-input"
                     type="number"
                     inputMode="numeric"
-                    placeholder="e.g. 100"
+                    aria-labelledby="capacity-label"
+                    placeholder={capacityPh.text}
                     value={capacity}
                     onChange={(e) => setCapacity(e.target.value)}
+                    {...capacityPh.handlers}
                     min={1}
                     max={5000}
                     disabled={busy}
                   />
-                  <div className="form-helper">Number of sanctioned beneficiary seats.</div>
+                  <span className="reg-capacity-unit">seats</span>
                 </div>
-
-                <div className="form-field" style={{ gridColumn: "1 / -1" }}>
-                  <label className="form-label" htmlFor="operational-notes">
-                    Notes
-                  </label>
-                  <textarea
-                    id="operational-notes"
-                    placeholder="Operational notes, infrastructure details, intake scope..."
-                    value={operationalNotes}
-                    onChange={(e) => setOperationalNotes(e.target.value)}
-                    rows={3}
-                    maxLength={1200}
-                    disabled={busy}
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem 0.8rem",
-                      borderRadius: "6px",
-                      border: "1px solid var(--color-border-strong)",
-                      fontFamily: "inherit",
-                      fontSize: "0.85rem",
-                      color: "var(--text-primary)",
-                      background: "var(--bg-surface)",
-                      resize: "vertical",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
+                <div className="form-helper">Number of beneficiary seats this facility is sanctioned for.</div>
               </div>
             </div>
-          </div>
-        )}
+          </section>
 
-        {step === 4 && (
-          <div className="form-card">
-            <div className="form-card-header">
-              <h3>Project Photos</h3>
-              <span className="form-helper">Step 5 of {STEPS.length}</span>
-            </div>
-
-            <div className="form-helper" style={{ marginBottom: "1rem" }}>
-              Attach a visual record of the facility (e.g. main gate, rooms, kitchen). Each photo
-              stores who uploaded it, when it was captured, and a short note.
+          {/* 5 — Photo Evidence */}
+          <section className="reg-section" id="section-photos">
+            <div className="reg-section-head">
+              <span className="reg-step-chip" aria-hidden="true">
+                <IconCamera width={13} height={13} />
+              </span>
+              <div>
+                <h2>Photo Evidence</h2>
+              </div>
+              <span className="reg-check-optional">optional</span>
             </div>
 
             {initialPhotos.length > 0 && (
-              <div style={{ marginBottom: "1.25rem" }}>
-                <span
-                  className="form-label"
-                  style={{ display: "block", marginBottom: "0.4rem" }}
-                >
-                  Photos on file
-                </span>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-                    gap: "0.75rem",
-                  }}
-                >
-                  {initialPhotos.map((p) => (
-                    <div
-                      key={p.id}
-                      style={{
-                        border: "1px solid var(--color-border-subtle)",
-                        borderRadius: "6px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <img
-                        src={`/api/projects/photos/${p.id}/content`}
-                        alt={p.caption ?? "Project photo"}
-                        style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }}
-                      />
-                      <div style={{ padding: "0.4rem 0.5rem" }}>
-                        <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                          {p.caption ?? "Photo"}
-                        </div>
-                        <div style={{ fontSize: "0.66rem", color: "var(--text-muted)" }}>
-                          Captured{" "}
-                          {new Date(p.capturedAt).toLocaleString(undefined, {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
-                        </div>
-                      </div>
+              <div className="reg-photo-grid" style={{ marginBottom: "1rem" }}>
+                {initialPhotos.map((p) => (
+                  <div key={p.id} className="reg-photo-tile">
+                    <img
+                      src={`/api/projects/photos/${p.id}/content`}
+                      alt={p.caption ?? "Project photo"}
+                    />
+                    <div className="reg-photo-meta">
+                      <div className="reg-photo-caption">{p.caption ?? "Photo"}</div>
+                      <div className="reg-photo-sub">On file</div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {photos.length === 0 && initialPhotos.length === 0 && (
-                <div
-                  style={{
-                    padding: "1.25rem",
-                    border: "1px dashed var(--color-border-strong)",
-                    borderRadius: "6px",
-                    textAlign: "center",
-                    color: "var(--text-muted)",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  No photos added yet.
-                </div>
-              )}
+            <label className="reg-dropzone">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => attachFiles(e.target.files)}
+                disabled={busy}
+              />
+              <IconCamera width={18} height={18} />
+              <span className="reg-dropzone-title">Add photos</span>
+              <span className="reg-dropzone-sub">Select images — capture time and note per photo</span>
+            </label>
 
-              {photos.map((entry, idx) => (
-                <div
-                  key={entry.key}
-                  style={{
-                    border: "1px solid var(--color-border-subtle)",
-                    borderRadius: "6px",
-                    padding: "0.9rem",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.75rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
-                      style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)" }}
-                    >
-                      Photo {initialPhotos.length + idx + 1}{" "}
-                      {entry.uploaded ? (
-                        <span style={{ color: "#15803d", fontWeight: 600 }}>— Uploaded</span>
-                      ) : (
-                        entry.file && (
-                          <span style={{ fontWeight: 500 }}>
-                            — {entry.file.name} ({(entry.file.size / 1024).toFixed(0)} KB)
-                          </span>
-                        )
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(entry.key)}
-                      disabled={busy || entry.uploaded}
-                      className="btn-secondary"
-                      style={{ padding: "0.3rem 0.7rem", fontSize: "0.75rem" }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className="form-field">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) =>
-                        updatePhoto(entry.key, {
-                          file: e.target.files?.[0] ?? null,
-                          uploaded: false,
-                        })
-                      }
-                      disabled={busy || entry.uploaded}
-                      style={{ padding: "0.35rem 0", fontSize: "0.82rem" }}
-                    />
-                  </div>
-
-                  <div className="form-card-grid" style={{ marginBottom: 0 }}>
-                    <div className="form-field">
-                      <label className="form-label" htmlFor={`photo-time-${entry.key}`}>
-                        Date &amp; Time
-                      </label>
+            {photos.length > 0 && (
+              <div className="reg-photo-grid" style={{ marginTop: "0.9rem" }}>
+                {photos.map((entry) => (
+                  <div key={entry.key} className={`reg-photo-tile ${entry.uploaded ? "reg-photo-uploaded" : ""}`}>
+                    {entry.previewUrl ? (
+                      <img src={entry.previewUrl} alt={entry.caption || "New photo"} />
+                    ) : (
+                      <div className="reg-photo-placeholder">
+                        <IconCamera width={20} height={20} />
+                      </div>
+                    )}
+                    <div className="reg-photo-meta">
                       <input
-                        id={`photo-time-${entry.key}`}
-                        type="datetime-local"
-                        value={entry.capturedAt}
-                        onChange={(e) => updatePhoto(entry.key, { capturedAt: e.target.value })}
-                        disabled={busy || entry.uploaded}
-                      />
-                      <div className="form-helper">When the photo was taken.</div>
-                    </div>
-
-                    <div className="form-field">
-                      <label className="form-label" htmlFor={`photo-caption-${entry.key}`}>
-                        Short Detail
-                      </label>
-                      <input
-                        id={`photo-caption-${entry.key}`}
                         type="text"
-                        placeholder="e.g. Main gate, Computer room, Kitchen"
+                        placeholder="Short detail — e.g. Main gate"
                         value={entry.caption}
                         onChange={(e) => updatePhoto(entry.key, { caption: e.target.value })}
                         maxLength={500}
                         disabled={busy || entry.uploaded}
+                        aria-label="Photo caption"
                       />
-                      <div className="form-helper">Brief note describing the photo.</div>
+                      <input
+                        type="datetime-local"
+                        value={entry.capturedAt}
+                        onChange={(e) => updatePhoto(entry.key, { capturedAt: e.target.value })}
+                        disabled={busy || entry.uploaded}
+                        aria-label="Capture date and time"
+                      />
+                      <div className="reg-photo-row">
+                        <span className="reg-photo-sub">
+                          {entry.uploaded
+                            ? "Uploaded"
+                            : entry.file
+                              ? `${(entry.file.size / 1024).toFixed(0)} KB`
+                              : "No file"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(entry.key)}
+                          disabled={busy || entry.uploaded}
+                          className="reg-photo-remove"
+                          aria-label={`Remove photo ${entry.caption || ""}`}
+                          title={entry.uploaded ? "Already uploaded" : "Remove"}
+                        >
+                          <IconX width={12} height={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-
-              <div>
-                <button
-                  type="button"
-                  onClick={addPhoto}
-                  disabled={busy}
-                  className="btn-secondary"
-                  style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", fontWeight: 600 }}
-                >
-                  + Add Photo
-                </button>
+                ))}
               </div>
+            )}
+          </section>
+        </div>
+
+        {/* ---------------- Summary rail ---------------- */}
+        <aside className="reg-aside">
+          <div className="reg-summary">
+            <div className="reg-summary-head">
+              <span className="reg-summary-title">Registration</span>
+              {savedCode && <span className="reg-summary-code">{savedCode}</span>}
             </div>
-          </div>
-        )}
 
-        {/* Actions */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "1rem 0",
-            borderTop: "1px solid var(--color-border-subtle)",
-            marginBottom: "3rem",
-          }}
-        >
-          <button
-            type="button"
-            onClick={discard}
-            disabled={busy}
-            className="btn-secondary"
-            style={{
-              padding: "0.5rem 1rem",
-              fontSize: "0.85rem",
-            }}
-          >
-            Discard
-          </button>
+            <div className="reg-meter" role="progressbar" aria-valuenow={completenessPct} aria-valuemin={0} aria-valuemax={100} aria-label="Registration completeness">
+              <div className="reg-meter-fill" style={{ width: `${completenessPct}%` }} />
+            </div>
+            <div className="reg-meter-caption">
+              {completenessPct === 100
+                ? "All sections complete — ready to submit."
+                : `${completedCount} of 5 sections complete`}
+            </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={saveDraft}
-              disabled={busy || !canCreate}
-              className="btn-secondary"
-              style={{
-                padding: "0.5rem 1.1rem",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                opacity: busy || !canCreate ? 0.65 : 1,
-              }}
-            >
-              {busy ? "Saving…" : "Save as Draft"}
-            </button>
+            <ul className="reg-checklist">
+              {summaryItems.map((item) => (
+                <li key={item.key} className={sectionDone[item.key] ? "done" : ""}>
+                  <span className="reg-check-dot" aria-hidden="true">
+                    {sectionDone[item.key] ? <IconCheck width={10} height={10} /> : null}
+                  </span>
+                  <span className="reg-check-label">{item.label}</span>
+                  {optional[item.key] && <span className="reg-check-optional">optional</span>}
+                  <a
+                    href={`#section-${item.key === "identity" ? "identity" : item.key}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById(`section-${item.key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="reg-check-jump"
+                    title="Jump to section"
+                  >
+                    <IconChevronLeft width={11} height={11} style={{ transform: "rotate(180deg)" }} />
+                  </a>
+                </li>
+              ))}
+            </ul>
 
-            {step > 0 && (
-              <button
-                type="button"
-                onClick={goBack}
-                disabled={busy}
-                className="btn-secondary"
-                style={{ padding: "0.5rem 1.1rem", fontSize: "0.85rem", fontWeight: 600 }}
-              >
-                Back
-              </button>
+            {!isEdit && (
+              <div className="reg-lifecycle">
+                <div className="reg-lifecycle-title">What happens next</div>
+                <p className="reg-lifecycle-note">
+                  An authority official verifies this registration before the facility becomes active.
+                </p>
+              </div>
             )}
 
-            {!isLastStep ? (
+            {/* Actions — stacked at the end of the summary rail, primary last */}
+            <div className="reg-actions">
               <button
                 type="button"
-                onClick={goNext}
+                onClick={discard}
                 disabled={busy}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                  padding: "0.55rem 1.25rem",
-                  fontSize: "0.88rem",
-                  fontWeight: 700,
-                  opacity: busy ? 0.65 : 1,
-                }}
+                className="btn-secondary"
               >
-                <span>Continue</span>
-                <span aria-hidden="true">→</span>
+                Discard
               </button>
-            ) : (
+              <button
+                type="button"
+                onClick={saveDraft}
+                disabled={busy || !canCreate}
+                className="btn-secondary"
+              >
+                {busy ? "Saving…" : "Save as Draft"}
+              </button>
               <button
                 type="submit"
                 disabled={busy || !canCreate}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                  padding: "0.55rem 1.25rem",
-                  fontSize: "0.88rem",
-                  fontWeight: 700,
-                  opacity: busy || !canCreate ? 0.65 : 1,
-                }}
+                className="reg-submit"
               >
                 <IconCheck width={15} height={15} />
-                <span>{busy ? "Registering…" : "Register"}</span>
+                <span>{busy ? "Registering…" : isEdit ? "Save & Submit" : "Submit Registration"}</span>
               </button>
-            )}
+            </div>
           </div>
-        </div>
+        </aside>
       </form>
     </div>
   );

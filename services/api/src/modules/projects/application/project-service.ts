@@ -49,6 +49,25 @@ export class ProjectService {
     });
   }
 
+  /**
+   * Verification queue: facility registrations awaiting an authority decision
+   * (status "Pending Verification", within the caller's jurisdiction reach).
+   * Approving still goes through the standard transition endpoint, which
+   * re-checks project:approve + jurisdiction server-side.
+   */
+  async listVerificationQueue(ctx: RequestUserContext): Promise<Page<Project>> {
+    this.authz.requirePermission(ctx, APPROVE);
+
+    const scope = this.authz.accessibleDistrictIds(ctx);
+    return this.repository.list({
+      page: 1,
+      pageSize: 100,
+      status: "Pending Verification",
+      organisationId: undefined,
+      jurisdictionIds: scope ? [...scope] : undefined,
+    });
+  }
+
   async getProject(ctx: RequestUserContext, id: string): Promise<Project> {
     this.authz.requirePermission(ctx, READ);
     const project = await this.repository.findById(id);

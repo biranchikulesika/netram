@@ -26,6 +26,7 @@ export interface NavHeaderProps {
   unreadNotificationsCount?: number;
   activeSection:
     | "projects"
+    | "registry"
     | "inspections"
     | "control-room"
     | "attendance"
@@ -48,6 +49,13 @@ interface NavItem {
 
 const NAV_PERMISSIONS: Partial<Record<NavHeaderProps["activeSection"], string[]>> = {
   projects: ["project:read"],
+  registry: [
+    "project:create",
+    "organisation:create",
+    "programme:create",
+    "inspector:register",
+    "official:register",
+  ],
   inspections: ["inspection:read"],
   "control-room": ["cctv:read", "ai:anomaly:read"],
   attendance: ["attendance:monitor:read"],
@@ -62,6 +70,7 @@ const NAV_PERMISSIONS: Partial<Record<NavHeaderProps["activeSection"], string[]>
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/projects", label: "Projects", section: "projects", icon: IconBuilding },
+  { href: "/registry", label: "Registrations", section: "registry", icon: IconClipboard },
   { href: "/inspections", label: "Inspections", section: "inspections", icon: IconClipboard },
   { href: "/control-room", label: "Control Room", section: "control-room", icon: IconVideo },
   { href: "/attendance", label: "Attendance", section: "attendance", icon: IconUser },
@@ -76,6 +85,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const SECTION_LABELS: Record<NavHeaderProps["activeSection"], string> = {
   projects: "Projects",
+  registry: "Registrations",
   inspections: "Inspections",
   "control-room": "Control Room",
   attendance: "Attendance",

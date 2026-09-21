@@ -31,13 +31,6 @@ export default async function ControlRoomPage() {
         activeSection="control-room"
       />
 
-      <div className="section-header" style={{ marginBottom: "1.25rem" }}>
-        <div>
-          <h2>Control Room</h2>
-          <p className="muted">Live surveillance feeds, camera endpoints, and advisory anomaly oversight</p>
-        </div>
-      </div>
-
       <ControlRoomLayout
         cameras={camerasPage.items}
         anomalies={anomaliesPage.items}

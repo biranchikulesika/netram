@@ -12,18 +12,10 @@ import {
   IconChevronRight,
   IconChevronLeft,
   IconCheck,
-  IconBuilding,
-  IconClipboard,
-  IconClock,
   IconX,
 } from "../components/icons";
-import {
-  getDistrictName,
-  getOrganisationName,
-  getAuthorityName,
-  getProgrammeName,
-  formatDate,
-} from "../../lib/presentation";
+import { getDistrictName, getAuthorityName } from "../../lib/presentation";
+import { ProjectOverviewCard } from "./project-overview-card";
 
 interface RealLeafletMapProps {
   projects: Project[];
@@ -70,16 +62,6 @@ function parseWelfareCategory(desc: string | null): string {
   if (!desc) return "General Welfare Facility";
   const match = desc.match(/Category:\s*([^|]+)/i);
   return match && match[1] ? match[1].trim() : "General Welfare Facility";
-}
-
-function getCleanDescription(desc: string | null): string | null {
-  if (!desc) return null;
-  const cleaned = desc
-    .replace(/GPS Coordinates:\s*[0-9.-]+\s*,\s*[0-9.-]+/gi, "")
-    .replace(/Category:\s*[^|]+/gi, "")
-    .replace(/\|/g, "")
-    .trim();
-  return cleaned.length > 0 ? cleaned : null;
 }
 
 function getStatusColor(status: ProjectStatus): string {
@@ -316,16 +298,24 @@ export default function RealLeafletMap({
     }
   }, [facilities]);
 
-  // Focus on a facility with Google Maps-style offset so it centers in the right-hand visible map area
+  // Focus on a facility with Google Maps-style offset so it centers in the right-hand visible map area.
+  // Flies to the map's maximum zoom (capped to keep tiles sharp in both street/satellite modes) with a
+  // duration that scales with the journey length for a consistently smooth flight.
   const focusFacility = useCallback((lat: number, lng: number, withOffset = true) => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    const targetZoom = Math.max(map.getZoom(), 14);
+    const maxZoom = map.getMaxZoom() || 18;
+    const targetZoom = Math.max(map.getZoom(), maxZoom);
+
     const containerWidth =
       mapContainerRef.current?.clientWidth ??
       (typeof window !== "undefined" ? window.innerWidth : 1000);
     const isDesktop = containerWidth >= 768;
+
+    // Longer zoom journeys get proportionally longer (gently capped) flights
+    const zoomDelta = Math.abs(targetZoom - map.getZoom());
+    const duration = Math.min(2.2, 0.55 + zoomDelta * 0.11);
 
     if (withOffset && isDesktop) {
       const panelWidth = 380;
@@ -334,9 +324,9 @@ export default function RealLeafletMap({
       // Center the marker in the open right portion of the container
       const offsetPoint = L.point(targetPoint.x - panelWidth / 2, targetPoint.y);
       const newCenter = map.unproject(offsetPoint, targetZoom);
-      map.flyTo(newCenter, targetZoom, { duration: 1.0 });
+      map.flyTo(newCenter, targetZoom, { duration, easeLinearity: 0.18 });
     } else {
-      map.flyTo([lat, lng], targetZoom, { duration: 1.0 });
+      map.flyTo([lat, lng], targetZoom, { duration, easeLinearity: 0.18 });
     }
   }, []);
 
@@ -967,10 +957,11 @@ export default function RealLeafletMap({
       {/* 1. Complete Leaflet Map DOM Canvas */}
       <div ref={mapContainerRef} style={{ width: "100%", height: "100%", zIndex: 1 }} />
 
-      {/* 2. Google Maps-style Floating Re-open Button (Top-Left) */}
+      {/* 2. Floating Re-open Button (Top-Left) — panel shrinks into / grows out of it */}
       {!showDrawer && (
         <button
           type="button"
+          className="map-reopen-btn"
           onClick={() => {
             setShowDrawer(true);
             if (selectedFacility) {
@@ -997,16 +988,10 @@ export default function RealLeafletMap({
             gap: "0.45rem",
             transition: "all 0.15s ease",
           }}
-          title={selectedFacility ? "Open project details" : "Show projects list"}
+          title={selectedFacility ? "View project details" : "View projects"}
         >
           <IconMapPin width={14} height={14} style={{ color: "#2563eb" }} />
-          <span>
-            {selectedFacility
-              ? selectedFacility.name.length > 24
-                ? `${selectedFacility.name.substring(0, 22)}…`
-                : selectedFacility.name
-              : `Projects (${visibleFacilities.length})`}
-          </span>
+          <span>View Projects</span>
         </button>
       )}
 
@@ -1343,40 +1328,13 @@ export default function RealLeafletMap({
           transition: "left 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#16a34a",
-              display: "inline-block",
-            }}
-          />
+        <div style={{ display: "flex", alignItems: "center" }}>
           <span>Active</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#d97706",
-              display: "inline-block",
-            }}
-          />
+        <div style={{ display: "flex", alignItems: "center" }}>
           <span>Pending</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#64748b",
-              display: "inline-block",
-            }}
-          />
+        <div style={{ display: "flex", alignItems: "center" }}>
           <span>Draft</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
@@ -1439,8 +1397,15 @@ export default function RealLeafletMap({
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          transform: showDrawer ? "translateX(0)" : "translateX(calc(-100% - 1.5rem))",
-          transition: "transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
+          transformOrigin: "135px 38px",
+          transform: showDrawer ? "scale(1)" : "scale(0.04)",
+          opacity: showDrawer ? 1 : 0,
+          visibility: showDrawer ? ("visible" as const) : ("hidden" as const),
+          pointerEvents: showDrawer ? ("auto" as const) : ("none" as const),
+          willChange: "transform, opacity",
+          transition: showDrawer
+            ? "transform 0.34s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s ease, visibility 0s"
+            : "transform 0.28s cubic-bezier(0.4, 0, 0.68, 0.18), opacity 0.2s ease, visibility 0s linear 0.28s",
         }}
       >
         {selectedFacility ? (
@@ -1448,80 +1413,56 @@ export default function RealLeafletMap({
             {/* Top Navigation Bar / Facility Details Header */}
             <div
               style={{
-                padding: "0.85rem 1rem",
+                padding: "0.45rem 0.5rem 0.45rem 0.65rem",
                 background: "#f8fafc",
                 borderBottom: "1px solid var(--color-border-subtle)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: "0.5rem",
+                gap: "0.4rem",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", minWidth: 0 }}>
                 <button
                   type="button"
                   onClick={handleBackToAllProjects}
                   title="Back to all projects"
                   style={{
-                    border: "1px solid #cbd5e1",
-                    background: "#ffffff",
+                    border: "none",
+                    background: "transparent",
                     borderRadius: "6px",
-                    padding: "0.28rem 0.6rem",
+                    padding: "0.25rem 0.45rem 0.25rem 0.3rem",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.3rem",
+                    gap: "0.2rem",
                     cursor: "pointer",
-                    color: "var(--color-navy-brand)",
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
+                    color: "var(--text-muted)",
+                    fontSize: "0.72rem",
+                    fontWeight: 600,
                     flexShrink: 0,
                     transition: "all 0.15s ease",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#f8fafc";
-                    e.currentTarget.style.borderColor = "#94a3b8";
+                    e.currentTarget.style.background = "#e2e8f0";
+                    e.currentTarget.style.color = "var(--color-navy-brand)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#ffffff";
-                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "var(--text-muted)";
                   }}
                 >
-                  <IconChevronLeft width={14} height={14} />
-                  <span>All Projects</span>
+                  <IconChevronLeft width={13} height={13} />
+                  <span>Back</span>
                 </button>
               </div>
               <button
                 type="button"
                 onClick={handleClosePanel}
-                style={{
-                  border: "1.5px solid #94a3b8",
-                  background: "#ffffff",
-                  borderRadius: "6px",
-                  padding: "0.28rem 0.6rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  cursor: "pointer",
-                  color: "#0f172a",
-                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.borderColor = "#64748b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#ffffff";
-                  e.currentTarget.style.borderColor = "#94a3b8";
-                }}
+                className="map-panel-close"
                 aria-label="Close panel"
-                title="Close panel"
+                title="Close panel (Esc)"
               >
-                <IconX width={16} height={16} style={{ strokeWidth: 2.5 }} />
-                <span>Close</span>
+                <IconX width={14} height={14} style={{ strokeWidth: 2.5 }} />
               </button>
             </div>
 
@@ -1536,63 +1477,8 @@ export default function RealLeafletMap({
                 flex: 1,
               }}
             >
-              {/* Facility Header & Identity */}
-              {(() => {
-                const cleanDesc = getCleanDescription(selectedFacility.description);
-                return (
-                  <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.45rem",
-                        flexWrap: "wrap",
-                        marginBottom: "0.35rem",
-                      }}
-                    >
-                      <StatusBadge status={selectedFacility.status} />
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.25rem",
-                          fontSize: "0.74rem",
-                          color: "var(--text-muted)",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <IconMapPin width={12} height={12} style={{ color: "var(--text-muted)" }} />
-                        <span>
-                          {getDistrictName(selectedFacility.districtId, selectedFacility.code)}
-                        </span>
-                      </div>
-                    </div>
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: "1.12rem",
-                        fontWeight: 800,
-                        color: "var(--color-navy-brand)",
-                        lineHeight: 1.3,
-                      }}
-                    >
-                      {selectedFacility.name}
-                    </h3>
-                    {cleanDesc && (
-                      <p
-                        style={{
-                          margin: "0.4rem 0 0 0",
-                          fontSize: "0.78rem",
-                          lineHeight: 1.45,
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {cleanDesc}
-                      </p>
-                    )}
-                  </div>
-                );
-              })()}
+              {/* Project Overview (shared with the cards view) */}
+              <ProjectOverviewCard project={selectedFacility} />
 
               {/* Geofence Perimeter Controls & Action Row */}
               {geofenceMode === "location" ? (
@@ -2135,153 +2021,38 @@ export default function RealLeafletMap({
                   gap: "0.75rem",
                 }}
               >
-                {/* Managing Agency */}
-                <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
-                  <IconBuilding
-                    width={15}
-                    height={15}
-                    style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
-                  />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div
-                      style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
-                    >
-                      Managing Agency
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        color: "var(--text-main)",
-                        marginTop: "0.1rem",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {getOrganisationName(selectedFacility.organisationId, selectedFacility.name)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Supervising Authority */}
-                <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
+                {/* Supervising Authority (icon-labelled) */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.55rem",
+                    alignItems: "center",
+                    minWidth: 0,
+                  }}
+                  title="Supervising Authority"
+                >
                   <IconShieldCheck
-                    width={15}
-                    height={15}
-                    style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
+                    width={14}
+                    height={14}
+                    style={{ color: "var(--text-subtle)", flexShrink: 0 }}
                   />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div
-                      style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
-                    >
-                      Supervising Authority
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        color: "var(--text-main)",
-                        marginTop: "0.1rem",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {getAuthorityName(selectedFacility.authorityId)}
-                    </div>
-                  </div>
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      color: "var(--text-main)",
+                      minWidth: 0,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {getAuthorityName(selectedFacility.authorityId)}
+                  </span>
                 </div>
 
-                {/* Sanctioned Welfare Programmes */}
-                <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
-                  <IconClipboard
-                    width={15}
-                    height={15}
-                    style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
-                  />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div
-                      style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
-                    >
-                      Sanctioned Programmes
-                    </div>
-                    {selectedFacility.programmeIds && selectedFacility.programmeIds.length > 0 ? (
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.25rem",
-                          marginTop: "0.2rem",
-                        }}
-                      >
-                        {selectedFacility.programmeIds.map((pid) => (
-                          <div
-                            key={pid}
-                            style={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: "0.45rem",
-                              fontSize: "0.78rem",
-                              fontWeight: 600,
-                              color: "var(--text-main)",
-                              lineHeight: 1.35,
-                            }}
-                          >
-                            <span
-                              style={{
-                                width: "5px",
-                                height: "5px",
-                                borderRadius: "50%",
-                                background: "var(--text-muted)",
-                                flexShrink: 0,
-                                marginTop: "5px",
-                              }}
-                            />
-                            <span>{getProgrammeName(pid)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          fontSize: "0.76rem",
-                          color: "var(--text-muted)",
-                          marginTop: "0.1rem",
-                          fontStyle: "italic",
-                        }}
-                      >
-                        No active programme linked
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Sanction / Registration Date */}
-                {(selectedFacility.approvedAt || selectedFacility.createdAt) && (
-                  <div style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
-                    <IconClock
-                      width={15}
-                      height={15}
-                      style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: "2px" }}
-                    />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}
-                      >
-                        {selectedFacility.approvedAt
-                          ? "Sanction Approved Date"
-                          : "Registration Date"}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "0.78rem",
-                          fontWeight: 600,
-                          color: "var(--text-main)",
-                          marginTop: "0.1rem",
-                        }}
-                      >
-                        {formatDate(selectedFacility.approvedAt || selectedFacility.createdAt)}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Bottom Primary Action Button */}
@@ -2311,70 +2082,43 @@ export default function RealLeafletMap({
           </>
         ) : (
           <>
-            {/* Projects List View Header */}
+            {/* Projects List Header — compact */}
             <div
               style={{
-                padding: "0.85rem 1rem",
+                padding: "0.45rem 0.5rem 0.45rem 0.65rem",
                 background: "#f8fafc",
                 borderBottom: "1px solid var(--color-border-subtle)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: "0.5rem",
+                gap: "0.4rem",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <IconMapPin width={16} height={16} style={{ color: "var(--color-navy-brand)" }} />
-                <span
-                  style={{ fontSize: "0.88rem", fontWeight: 800, color: "var(--color-navy-brand)" }}
-                >
-                  Projects & Locations
-                </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
+                <IconMapPin width={13} height={13} style={{ color: "#2563eb", flexShrink: 0 }} />
                 <span
                   style={{
-                    fontSize: "0.7rem",
+                    fontSize: "0.72rem",
                     fontWeight: 700,
-                    background: "rgba(12, 42, 82, 0.1)",
-                    color: "var(--color-navy-brand)",
-                    padding: "0.15rem 0.5rem",
-                    borderRadius: "999px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--text-muted)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
-                  {visibleFacilities.length}
+                  Projects
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleClosePanel}
-                style={{
-                  border: "1.5px solid #94a3b8",
-                  background: "#ffffff",
-                  borderRadius: "6px",
-                  padding: "0.28rem 0.6rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  cursor: "pointer",
-                  color: "#0f172a",
-                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.borderColor = "#64748b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#ffffff";
-                  e.currentTarget.style.borderColor = "#94a3b8";
-                }}
+                className="map-panel-close"
                 aria-label="Close panel"
-                title="Close panel"
+                title="Close panel (Esc)"
               >
-                <IconX width={16} height={16} style={{ strokeWidth: 2.5 }} />
-                <span>Close</span>
+                <IconX width={13} height={13} style={{ strokeWidth: 2.5 }} />
               </button>
             </div>
 
@@ -2416,17 +2160,18 @@ export default function RealLeafletMap({
                         }
                       }}
                       style={{
-                        padding: "0.7rem 0.8rem",
+                        padding: "0.5rem 0.6rem",
                         borderRadius: "8px",
                         border: "1px solid var(--color-border-subtle)",
                         background: "#ffffff",
                         cursor: "pointer",
                         display: "flex",
                         flexDirection: "column",
-                        gap: "0.35rem",
+                        gap: "0.15rem",
                         transition: "all 0.15s ease",
                         boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
                         outline: "none",
+                        minWidth: 0,
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = "#2563eb";
@@ -2437,76 +2182,81 @@ export default function RealLeafletMap({
                         e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
                       }}
                     >
-                      {/* Top Row: Status Badge & District */}
+                      {/* Row 1: name + status */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
-                          gap: "0.5rem",
+                          gap: "0.4rem",
+                          minWidth: 0,
                         }}
                       >
-                        <StatusBadge status={f.status} />
-                        <span
+                        <div
                           style={{
-                            fontSize: "0.72rem",
-                            color: "var(--text-muted)",
-                            fontWeight: 600,
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            color: "var(--color-navy-brand)",
+                            lineHeight: 1.3,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            minWidth: 0,
                           }}
+                          title={f.name}
                         >
-                          {distName}
-                        </span>
+                          {f.name}
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          <StatusBadge status={f.status} />
+                        </div>
                       </div>
 
-                      {/* Project Name (strictly without project code) */}
-                      <div
-                        style={{
-                          fontSize: "0.85rem",
-                          fontWeight: 700,
-                          color: "var(--color-navy-brand)",
-                          lineHeight: 1.35,
-                        }}
-                        title={f.name}
-                      >
-                        {f.name}
-                      </div>
-
-                      {/* Bottom Row: Category, Capacity, and Location View hint */}
+                      {/* Row 2: code · district … chevron, one muted line */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "space-between",
+                          gap: "0.45rem",
                           fontSize: "0.68rem",
                           color: "var(--text-muted)",
-                          borderTop: "1px solid rgba(0,0,0,0.04)",
-                          paddingTop: "0.35rem",
-                          marginTop: "0.1rem",
+                          minWidth: 0,
                         }}
                       >
-                        <div
+                        <span
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.35rem",
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <span style={{ fontWeight: 600 }}>{f.categoryLabel}</span>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.2rem",
-                            color: "#2563eb",
+                            fontFamily: "var(--font-mono)",
                             fontWeight: 600,
+                            letterSpacing: "0.04em",
                             flexShrink: 0,
                           }}
+                          title={`Project Identifier: ${f.code}`}
                         >
-                          <span>View</span>
-                          <IconChevronRight width={12} height={12} />
-                        </div>
+                          {f.code}
+                        </span>
+                        <span style={{ flexShrink: 0, opacity: 0.6 }}>·</span>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.2rem",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            minWidth: 0,
+                          }}
+                          title={distName}
+                        >
+                          <IconMapPin width={11} height={11} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
+                          {distName}
+                        </span>
+                        <span style={{ flex: 1 }} />
+                        <span
+                          title="Open facility dossier"
+                          style={{ color: "#2563eb", display: "inline-flex", flexShrink: 0 }}
+                        >
+                          <IconChevronRight width={13} height={13} />
+                        </span>
                       </div>
                     </div>
                   );

@@ -71,6 +71,8 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   displayName: varchar("display_name", { length: 200 }),
+  /** Optional contact phone captured at registration (inspectors, officials). */
+  phone: varchar("phone", { length: 20 }),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -150,6 +152,12 @@ export const programmes = pgTable("programmes", {
   code: varchar("code", { length: 50 }).unique().notNull(),
   name: varchar("name", { length: 300 }).notNull(),
   description: text("description"),
+  /** Geographic reach: national | state | district. */
+  scopeLevel: varchar("scope_level", { length: 20 }).notNull().default("national"),
+  /** Set when scopeLevel = "state". */
+  stateId: uuid("state_id").references(() => states.id),
+  /** Set when scopeLevel = "district" (implies its state). */
+  districtId: uuid("district_id").references(() => districts.id),
   authorityId: uuid("authority_id").references(() => authorities.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
