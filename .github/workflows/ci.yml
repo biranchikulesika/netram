@@ -38,6 +38,11 @@ jobs:
       NETRAM_API_PORT: 3001
       NETRAM_API_URL: http://localhost:3001
       NETRAM_DEV_AUTH_SECRET: ci-only-secret-00000000000000000000000000000000
+      NETRAM_OBJECT_STORAGE_ENDPOINT: http://localhost:9000
+      NETRAM_OBJECT_STORAGE_ACCESS_KEY: netram
+      NETRAM_OBJECT_STORAGE_SECRET_KEY: netram-secret
+      NETRAM_OBJECT_STORAGE_BUCKET: netram
+      NETRAM_OBJECT_STORAGE_USE_SSL: "false"
       NEXT_PUBLIC_API_URL: http://localhost:3101
     steps:
       - uses: actions/checkout@v4
@@ -86,6 +91,19 @@ jobs:
 
       - name: OpenAPI export is reproducible
         run: pnpm api:export-openapi && git diff --exit-code -- services/api/openapi
+
+      - name: Start MinIO object storage
+        run: |
+          docker run -d --name netram-minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=netram \
+            -e MINIO_ROOT_PASSWORD=netram-secret \
+            quay.io/minio/minio:latest server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && break
+            sleep 1
+          done
+          docker run --rm --network host quay.io/minio/mc:latest \
+            sh -c 'mc alias set local http://localhost:9000 netram netram-secret && mc mb -p local/netram'
 
       - name: Runtime verification smoke test
         run: |
