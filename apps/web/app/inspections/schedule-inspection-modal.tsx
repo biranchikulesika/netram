@@ -24,6 +24,7 @@ const TYPE_DESCRIPTIONS: Record<InspectionType, string> = {
   surprise: "Unannounced compliance inspection with immediate disclosure restrictions (§34).",
   special: "Targeted probe or inter-agency inquiry arising from specific intelligence.",
   follow_up: "Follow-up verification of previously ordered corrective remediations.",
+  social_audit: "DoSJE social audit by a Social Justice Cell per the official audit calendar.",
 };
 
 export function ScheduleInspectionModal({

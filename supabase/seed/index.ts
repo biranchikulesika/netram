@@ -68,10 +68,62 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "SNDR",
       name: "Sundargarh",
     },
+    // Districts below appear in the official DoSJE social audit calendar
+    // (docs/DoSJE.md §34): Jajapur (PM-AJAY village audits), Baleshwar and
+    // Bhadrak (IRCA / senior citizen home audits).
+    {
+      id: did("district:jajapur"),
+      stateId: did("state:odisha"),
+      code: "JAJ",
+      name: "Jajapur",
+    },
+    {
+      id: did("district:baleshwar"),
+      stateId: did("state:odisha"),
+      code: "BAL",
+      name: "Baleshwar",
+    },
+    {
+      id: did("district:bhadrak"),
+      stateId: did("state:odisha"),
+      code: "BHD",
+      name: "Bhadrak",
+    },
   ];
   for (const d of districtRows) {
     await db.insert(s.districts).values(d).onConflictDoNothing();
   }
+
+  // Sub-district geography for village-type audit targets (docs/DoSJE.md §25).
+  // Block name follows public census records; GP/village rows are demo data
+  // (the public MIS carries district only).
+  await db
+    .insert(s.blocks)
+    .values({
+      id: did("block:jajapur-dharmasala"),
+      districtId: did("district:jajapur"),
+      code: "BLK-JAJ-DHA",
+      name: "Dharmasala",
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(s.gramPanchayats)
+    .values({
+      id: did("gp:jajapur-dharmasala-1"),
+      blockId: did("block:jajapur-dharmasala"),
+      code: "GP-JAJ-DHA-1",
+      name: "Dharmasala GP (demo)",
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(s.villages)
+    .values({
+      id: did("village:jajapur-adarsh-1"),
+      gramPanchayatId: did("gp:jajapur-dharmasala-1"),
+      code: "VIL-JAJ-001",
+      name: "Adarsh Gram Village (demo)",
+    })
+    .onConflictDoNothing();
 
   // ---------- Authorities ----------
   await db
@@ -604,6 +656,15 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         jurisdictionId: did("jurisdiction:ganjam"),
         scope: "jurisdiction",
       },
+      {
+        // Social audit resource persons operate state-wide (docs/DoSJE.md §10);
+        // inspector-1 doubles as the SAU resource person for Odisha-wide audits.
+        id: did("ra:inspector-1-state"),
+        userId: did("user:inspector-1"),
+        roleCode: "inspector",
+        jurisdictionId: did("jurisdiction:odisha"),
+        scope: "jurisdiction",
+      },
     ])
     .onConflictDoNothing();
 
@@ -646,30 +707,203 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         category: "Model School Hostel",
         authorityId: did("authority:dosje"),
       },
+      // Real implementing organisations from the official DoSJE social audit
+      // calendar, Odisha rows (docs/DoSJE.md §34). Names recorded verbatim.
+      {
+        id: did("org:nilachal"),
+        code: "ORG-NILACHAL",
+        name: "Nilachal Seva Pratisthan",
+        category: "NGO / VO",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("org:bankeswari"),
+        code: "ORG-BANKESWARI",
+        name: "Bankeswari Jubak Sangha",
+        category: "NGO / VO",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("org:cards"),
+        code: "ORG-CARDS",
+        name: "Council for All Round Development of Society",
+        category: "NGO / VO",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("org:ava"),
+        code: "ORG-AVA",
+        name: "Association for Voluntary Action",
+        category: "NGO / VO",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("org:prayas"),
+        code: "ORG-PRAYAS",
+        name: "Prayas Voluntary Organisation",
+        category: "NGO / VO",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("org:peacebird"),
+        code: "ORG-PEACEBIRD",
+        name: "PEACE BIRD OF CAPABILITY",
+        category: "NGO / VO",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("org:nikhila-utkal"),
+        code: "ORG-NUHASS",
+        name: "Nikhila Utkal Harijan Adivasi Seva Sangha",
+        category: "NGO / VO",
+        authorityId: did("authority:dosje"),
+      },
+      // State Social Audit Unit (docs/DoSJE.md §10): OSSAAT.
+      {
+        id: did("org:ossaat"),
+        code: "ORG-OSSAAT",
+        name: "Odisha Society for Social Audit Accountability and Transparency (OSSAAT)",
+        category: "Social Audit Unit",
+        authorityId: null,
+        stateId: did("state:odisha"),
+      },
     ])
     .onConflictDoNothing();
 
   // ---------- Programmes ----------
-  // scopeLevel demonstrates the scheme geographic scope model: NSP is
-  // national; the surprise-inspection drive is an Odisha state scheme.
+  // Real DoSJE schemes (docs/DoSJE.md §21). scopeLevel demonstrates the
+  // scheme geographic scope model: all central schemes are national; the
+  // I-MESA PMU surprise-inspection drive is seeded as an Odisha state run.
   await db
     .insert(s.programmes)
     .values([
       {
-        id: did("programme:nsp"),
-        code: "PGM-NSP",
-        name: "National Scholarship Programme - Special Hostels",
+        id: did("programme:avyay"),
+        code: "PGM-AVYAY",
+        name: "Atal Vayo Abhyuday Yojana (AVYAY)",
+        description:
+          "Umbrella scheme for senior citizens; the IPSrC component funds senior citizen homes.",
+        scopeLevel: "national",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("programme:napddr"),
+        code: "PGM-NAPDDR",
+        name: "National Action Plan for Drug Demand Reduction (NAPDDR)",
+        description:
+          "GIA to Integrated Rehabilitation Centres for Addicts (IRCA) and preventive education.",
+        scopeLevel: "national",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("programme:pmajay"),
+        code: "PGM-PMAJAY",
+        name: "Pradhan Mantri Anusuchit Jaati Abhyuday Yojana (PM-AJAY)",
+        description:
+          "Merged SC-development scheme: Adarsh Gram (villages), BJRC hostels, GIA to NGOs.",
+        scopeLevel: "national",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("programme:shreshta"),
+        code: "PGM-SHRESHTA",
+        name: "SHRESHTA (Residential Education for SC Students in Targeted Areas)",
+        description: "Mode 1: best private CBSE residential schools; Mode 2: NGO/VO schools.",
+        scopeLevel: "national",
+        authorityId: did("authority:dosje"),
+      },
+      {
+        id: did("programme:pm-yasasvi"),
+        code: "PGM-YASASVI",
+        name: "PM Young Achievers Scholarship Award Scheme for Vibrant India (PM-YASASVI)",
+        description: "OBC/EBC/DNT scholarships and OBC hostel construction.",
         scopeLevel: "national",
         authorityId: did("authority:dosje"),
       },
       {
         id: did("programme:surprise-audit"),
-        code: "PGM-SURPRISE",
-        name: "Annual Surprise Inspection Drive",
+        code: "PGM-IMESA-OR",
+        name: "I-MESA PMU Surprise Inspections (Odisha)",
+        description:
+          "Odisha run of the I-MESA Project Monitoring Unit surprise inspection programme.",
         scopeLevel: "state",
         stateId: did("state:odisha"),
         authorityId: did("authority:dosje"),
       },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Scheme components (docs/DoSJE.md §21) ----------
+  await db
+    .insert(s.schemeComponents)
+    .values([
+      {
+        id: did("component:ipsrc"),
+        programmeId: did("programme:avyay"),
+        code: "SC-IPSRC",
+        name: "Integrated Programme for Senior Citizens (IPSrC)",
+        description: "GIA to NGOs/VOs running senior citizen homes.",
+        targetKind: "institution",
+      },
+      {
+        id: did("component:irca"),
+        programmeId: did("programme:napddr"),
+        code: "SC-IRCA",
+        name: "Integrated Rehabilitation Centre for Addicts (IRCA)",
+        description: "GIA to NGOs running de-addiction and rehabilitation centres.",
+        targetKind: "institution",
+      },
+      {
+        id: did("component:pmajay-adarsh"),
+        programmeId: did("programme:pmajay"),
+        code: "SC-ADARSH-GRAM",
+        name: "Adarsh Gram",
+        description:
+          "Integrated development of SC-majority villages; the village is the audited unit.",
+        targetKind: "village",
+      },
+      {
+        id: did("component:pmajay-bjrc"),
+        programmeId: did("programme:pmajay"),
+        code: "SC-BJRC",
+        name: "Babu Jagjivan Ram Chhatrawas Yojana (BJRC)",
+        description: "Hostels for SC boys and girls.",
+        targetKind: "institution",
+      },
+      {
+        id: did("component:shreshta-m1"),
+        programmeId: did("programme:shreshta"),
+        code: "SC-SHRESHTA-M1",
+        name: "SHRESHTA Mode 1 (CBSE residential schools)",
+        targetKind: "institution",
+      },
+      {
+        id: did("component:shreshta-m2"),
+        programmeId: did("programme:shreshta"),
+        code: "SC-SHRESHTA-M2",
+        name: "SHRESHTA Mode 2 (NGO/VO schools)",
+        targetKind: "institution",
+      },
+      {
+        id: did("component:yasasvi-obc-hostel"),
+        programmeId: did("programme:pm-yasasvi"),
+        code: "SC-OBC-HOSTEL",
+        name: "OBC Hostel Construction",
+        targetKind: "institution",
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Finding categories (docs/DoSJE.md §15) ----------
+  await db
+    .insert(s.findingCategories)
+    .values([
+      { id: did("fcat:financial"), code: "FIN", name: "Financial irregularity" },
+      { id: did("fcat:infra"), code: "INFRA", name: "Infrastructure & works quality" },
+      { id: did("fcat:rolls"), code: "ROLLS", name: "Beneficiary rolls & eligibility" },
+      { id: did("fcat:food"), code: "FOOD", name: "Food & nutrition" },
+      { id: did("fcat:water"), code: "WATSAN", name: "Water & sanitation" },
+      { id: did("fcat:staffing"), code: "STAFF", name: "Staffing & attendance" },
     ])
     .onConflictDoNothing();
 
@@ -701,6 +935,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "PRJ-VANI-001",
       name: "Vani Vihar SC/ST Hostel",
       type: "institution",
+      schemeComponentId: did("component:pmajay-bjrc"),
       description: "SC/ST hostel near Vani Vihar, Bhubaneswar. 120 residents.",
       organisationId: did("org:vani"),
       authorityId: did("authority:dosje-khordha"),
@@ -708,13 +943,14 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2026-01-10T09:30:00Z"),
-      programmeIds: [did("programme:nsp"), did("programme:surprise-audit")],
+      programmeIds: [did("programme:pmajay"), did("programme:surprise-audit")],
     },
     {
       id: did("project:rajdhani"),
       code: "PRJ-RAJDHANI-002",
       name: "Rajdhani Boys' Hostel (ST)",
       type: "institution",
+      schemeComponentId: did("component:pmajay-bjrc"),
       description: "ST boys' hostel, Khordha. Under verification.",
       organisationId: did("org:rajdhani"),
       authorityId: did("authority:dosje-khordha"),
@@ -722,13 +958,14 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Pending Verification",
       approvedById: null,
       approvedAt: null,
-      programmeIds: [did("programme:nsp")],
+      programmeIds: [did("programme:pmajay")],
     },
     {
       id: did("project:cuttack-girls"),
       code: "PRJ-CUTG-003",
       name: "Cuttack Girls' Hostel",
       type: "institution",
+      schemeComponentId: did("component:pmajay-bjrc"),
       description: "Girls' hostel in Cuttack. Suspended during compliance review.",
       organisationId: did("org:cuttack-girls"),
       authorityId: did("authority:dosje-cuttack"),
@@ -757,6 +994,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "PRJ-GANJ-005",
       name: "Ganjam Model School Hostel",
       type: "institution",
+      schemeComponentId: did("component:pmajay-bjrc"),
       description: "Model school hostel in Ganjam.",
       organisationId: did("org:ganjam-school"),
       authorityId: did("authority:dosje"),
@@ -764,7 +1002,58 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2025-12-01T09:00:00Z"),
-      programmeIds: [did("programme:nsp"), did("programme:surprise-audit")],
+      programmeIds: [did("programme:pmajay"), did("programme:surprise-audit")],
+    },
+    // Real audit targets from the official DoSJE social audit calendar,
+    // Odisha rows (docs/DoSJE.md §34).
+    {
+      id: did("project:purisch-1"),
+      code: "PRJ-PURISCH-007",
+      name: "Nilachal Seva Pratisthan - Astaraag (Senior Citizen Home)",
+      type: "institution",
+      schemeComponentId: did("component:ipsrc"),
+      description:
+        "Senior citizen home under AVYAY/IPSrC, Puri district. Named in the official DoSJE social audit calendar (Odisha rows).",
+      organisationId: did("org:nilachal"),
+      authorityId: did("authority:dosje"),
+      districtId: did("district:puri"),
+      status: "Active",
+      approvedById: did("user:dept-admin"),
+      approvedAt: new Date("2025-10-01T09:00:00Z"),
+      programmeIds: [did("programme:avyay"), did("programme:surprise-audit")],
+    },
+    {
+      id: did("project:puri-irca"),
+      code: "PRJ-PURIIRCA-008",
+      name: "IRCA - Nilachal Seva Pratisthan (Puri)",
+      type: "institution",
+      schemeComponentId: did("component:irca"),
+      description:
+        "Integrated Rehabilitation Centre for Addicts under NAPDDR, Puri district. Named in the official DoSJE social audit calendar (Odisha rows).",
+      organisationId: did("org:nilachal"),
+      authorityId: did("authority:dosje"),
+      districtId: did("district:puri"),
+      status: "Active",
+      approvedById: did("user:dept-admin"),
+      approvedAt: new Date("2025-10-01T09:00:00Z"),
+      programmeIds: [did("programme:napddr")],
+    },
+    {
+      id: did("project:jajapur-adarsh"),
+      code: "PRJ-JAJAGRAM-009",
+      name: "Adarsh Gram Village (PM-AJAY), Dharmasala",
+      type: "village",
+      schemeComponentId: did("component:pmajay-adarsh"),
+      description:
+        "SC-majority village under the PM-AJAY Adarsh Gram component, Jajapur. The village itself is the audited unit; no implementing institute (official calendar shows institute N/A for Jajapur village audits).",
+      organisationId: null,
+      authorityId: did("authority:dosje"),
+      districtId: did("district:jajapur"),
+      villageId: did("village:jajapur-adarsh-1"),
+      status: "Active",
+      approvedById: did("user:dept-admin"),
+      approvedAt: new Date("2025-11-15T09:00:00Z"),
+      programmeIds: [did("programme:pmajay")],
     },
   ] as const;
 
@@ -826,6 +1115,54 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
               key: "sanitation",
               label: "Water & Sanitation",
               items: ["drinking_water", "toilets"],
+            },
+          ],
+        },
+      },
+      {
+        id: did("template:srch"),
+        name: "Senior Citizen Home Minimum Standards (AVYAY/IPSrC)",
+        version: "1.0",
+        schema: {
+          sections: [
+            {
+              key: "boarding",
+              label: "Boarding & Nutrition",
+              items: ["ration_register", "kitchen_hygiene", "diet_chart"],
+            },
+            {
+              key: "health",
+              label: "Health Care",
+              items: ["medical_checkups", "medicine_stock", "tieup_hospital"],
+            },
+            {
+              key: "living",
+              label: "Living Conditions",
+              items: ["bedding", "recreation", "caregiver_presence"],
+            },
+          ],
+        },
+      },
+      {
+        id: did("template:sa-village"),
+        name: "Social Audit Format - PM Adarsh Village",
+        version: "1.0",
+        schema: {
+          sections: [
+            {
+              key: "vdp",
+              label: "Village Development Plan",
+              items: ["vdp_prepared", "gram_sabha_approval", "fund_utilisation"],
+            },
+            {
+              key: "works",
+              label: "Works & Assets",
+              items: ["roads", "electrification", "water_supply"],
+            },
+            {
+              key: "services",
+              label: "Village Services",
+              items: ["anganwadi", "school", "csc_connectivity"],
             },
           ],
         },
@@ -903,6 +1240,148 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     ])
     .onConflictDoNothing();
 
+  // ---------- Social audit inspections: pilot Odisha run ----------
+  // The `social_audit` inspection type (docs/DoSJE.md §11) demonstrates the
+  // SAU workflow alongside the PMU surprise-inspection types. NOTE: the DoSJE
+  // Annual Report 2025-26 (§3.38) records that Odisha did not conduct DoSJE
+  // social audits in FY 2024-25; these rows are a forward-looking pilot run
+  // on real calendar targets, not a record of completed official audits.
+  await db
+    .insert(s.inspections)
+    .values([
+      {
+        id: did("inspection:purisch-sa"),
+        projectId: did("project:purisch-1"),
+        templateId: did("template:srch"),
+        type: "social_audit",
+        trigger: "automatic",
+        status: "closed",
+        disclosurePolicyId: did("policy:officer"),
+        scheduledStart: new Date("2026-01-20T09:00:00Z"),
+        scheduledEnd: new Date("2026-01-21T17:00:00Z"),
+        startedAt: new Date("2026-01-20T09:20:00Z"),
+        submittedAt: new Date("2026-01-21T16:30:00Z"),
+      },
+      {
+        id: did("inspection:jajapur-sa"),
+        projectId: did("project:jajapur-adarsh"),
+        templateId: did("template:sa-village"),
+        type: "social_audit",
+        trigger: "automatic",
+        status: "findings",
+        disclosurePolicyId: did("policy:officer"),
+        scheduledStart: new Date("2026-02-10T09:00:00Z"),
+        scheduledEnd: new Date("2026-02-11T17:00:00Z"),
+        startedAt: new Date("2026-02-10T09:10:00Z"),
+        submittedAt: new Date("2026-02-11T15:45:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.inspectionAssignments)
+    .values([
+      {
+        id: did("ia:purisch-sa-1"),
+        inspectionId: did("inspection:purisch-sa"),
+        userId: did("user:inspector-1"),
+        role: "lead",
+        assignedAt: new Date("2026-01-12T10:00:00Z"),
+        status: "assigned",
+      },
+      {
+        id: did("ia:jajapur-sa-1"),
+        inspectionId: did("inspection:jajapur-sa"),
+        userId: did("user:inspector-1"),
+        role: "lead",
+        assignedAt: new Date("2026-02-02T10:00:00Z"),
+        status: "assigned",
+      },
+    ])
+    .onConflictDoNothing();
+
+  // Findings raised by the social audit team (categories per docs/DoSJE.md §15).
+  await db
+    .insert(s.observations)
+    .values([
+      {
+        id: did("observation:purisch-sa-1"),
+        inspectionId: did("inspection:purisch-sa"),
+        userId: did("user:inspector-1"),
+        text: "Ration purchase register shows procurement above sanctioned beneficiary strength for Nov and Dec.",
+      },
+      {
+        id: did("observation:jajapur-sa-1"),
+        inspectionId: did("inspection:jajapur-sa"),
+        userId: did("user:inspector-1"),
+        text: "VDP approved by Gram Sabha; internal road completed; new street-light poles not energised.",
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.findings)
+    .values([
+      {
+        id: did("finding:purisch-sa-1"),
+        inspectionId: did("inspection:purisch-sa"),
+        observationId: did("observation:purisch-sa-1"),
+        severity: "high",
+        description:
+          "Ration procurement exceeds sanctioned beneficiary strength for two consecutive months.",
+        remediation:
+          "Reconcile beneficiary register with procurement records; refund or regularise the excess.",
+        status: "confirmed",
+        categoryId: did("fcat:financial"),
+        amountInr: 42000,
+        responsibleOrganisationId: did("org:nilachal"),
+      },
+      {
+        id: did("finding:jajapur-sa-1"),
+        inspectionId: did("inspection:jajapur-sa"),
+        observationId: did("observation:jajapur-sa-1"),
+        severity: "medium",
+        description: "Street lights installed under VDP works remain non-functional (not energised).",
+        remediation: "Energise the installed poles via the electricity distribution licensee.",
+        status: "confirmed",
+        categoryId: did("fcat:infra"),
+        responsibleOrganisationId: null,
+      },
+    ])
+    .onConflictDoNothing();
+
+  await db
+    .insert(s.correctiveActions)
+    .values([
+      {
+        id: did("ca:purisch-sa-1"),
+        findingId: did("finding:purisch-sa-1"),
+        inspectionId: did("inspection:purisch-sa"),
+        organisationId: did("org:nilachal"),
+        status: "under_review",
+        deadline: new Date("2026-02-20T23:59:00Z"),
+        submittedAt: new Date("2026-02-12T10:00:00Z"),
+        actionSummary:
+          "Procurement records reconciled with the beneficiary register; excess stock of Rs 42,000 regularised against enhanced admissions.",
+        atrCode: "ATR-2026-0031",
+      },
+      {
+        id: did("ca:jajapur-sa-1"),
+        findingId: did("finding:jajapur-sa-1"),
+        inspectionId: did("inspection:jajapur-sa"),
+        // Village-type target: no implementing organisation; the district
+        // administration answers the ATR (docs/DoSJE.md §25).
+        organisationId: null,
+        status: "submitted",
+        deadline: new Date("2026-03-15T23:59:00Z"),
+        submittedAt: new Date("2026-03-02T10:00:00Z"),
+        actionSummary:
+          "Village development plan review completed; energisation requested from the distribution licensee.",
+        atrCode: "ATR-2026-0045",
+      },
+    ])
+    .onConflictDoNothing();
+
   // ---------- Observations, findings, evidence, corrective actions ----------
   await db
     .insert(s.observations)
@@ -933,6 +1412,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         description: "Kitchen hygiene non-compliance: open food storage and unwashed utensils.",
         remediation: "Clean kitchen, enforce storage protocol, submit photo evidence.",
         status: "action_required",
+        categoryId: did("fcat:food"),
+        responsibleOrganisationId: did("org:vani"),
       },
       {
         id: did("finding:vani-2"),
@@ -942,6 +1423,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         description: "RO filter replacement overdue by 45 days.",
         remediation: "Replace RO filter and attach technician report.",
         status: "action_required",
+        categoryId: did("fcat:water"),
+        responsibleOrganisationId: did("org:vani"),
       },
     ])
     .onConflictDoNothing();
@@ -1036,6 +1519,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/vani/gate",
         districtId: did("district:khordha"),
+        projectId: did("project:vani"),
         status: "active",
       },
       {
@@ -1045,6 +1529,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/cuttack/dining",
         districtId: did("district:cuttack"),
+        projectId: did("project:cuttack-girls"),
         status: "active",
       },
     ])
@@ -1852,6 +2337,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "PRJ-ROURKELA-006",
       name: "Rourkela Model Girls' Hostel (ST)",
       type: "institution",
+      schemeComponentId: did("component:pmajay-bjrc"),
       description: "Model ST girls' hostel in Rourkela, Sundargarh. 90 residents.",
       organisationId: did("org:rourkela"),
       authorityId: did("authority:dosje"),
@@ -1859,7 +2345,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2026-01-05T09:30:00Z"),
-      programmeIds: [did("programme:nsp"), did("programme:surprise-audit")],
+      programmeIds: [did("programme:pmajay"), did("programme:surprise-audit")],
     },
   ] as const;
   for (const p of enrichedProjects) {
@@ -2186,6 +2672,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         description: "Food grain sacks stored directly on the floor; rodent access risk.",
         remediation: "Palletize storage, seal all bins, and submit a pest-control report.",
         status: "action_required",
+        categoryId: did("fcat:food"),
+        responsibleOrganisationId: did("org:ganjam-school"),
       },
       {
         id: did("finding:ganjam-feb-2"),
@@ -2195,6 +2683,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         description: "Residual chlorine in drinking water below acceptable range.",
         remediation: "Service the chlorination unit and submit a lab report.",
         status: "action_required",
+        categoryId: did("fcat:water"),
+        responsibleOrganisationId: did("org:ganjam-school"),
       },
       {
         id: did("finding:ganjam-feb-3"),
@@ -2204,6 +2694,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         description: "Roll-call register overstates resident headcount versus physical count.",
         remediation: "Reconcile the register with biometric headcount and document variance.",
         status: "action_required",
+        categoryId: did("fcat:rolls"),
+        amountInr: 56000,
+        responsibleOrganisationId: did("org:ganjam-school"),
       },
       {
         id: did("finding:cuttack-oct-1"),
@@ -2323,6 +2816,11 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         status: "accepted",
         deadline: new Date("2025-11-25T23:59:00Z"),
         submittedAt: new Date("2025-11-18T10:00:00Z"),
+        actionSummary: "Expired first-aid stock replaced; quarterly checklist circulated to wardens.",
+        atrCode: "ATR-2025-0112",
+        verifiedAt: new Date("2025-11-22T10:00:00Z"),
+        verifiedByUserId: did("user:officer-khordha"),
+        reviewRemarks: "Verified against replaced stock photographs and the new checklist.",
       },
       {
         id: did("ca:vani-jan-1"),
@@ -2350,6 +2848,10 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         status: "accepted",
         deadline: new Date("2026-01-30T23:59:00Z"),
         submittedAt: new Date("2026-01-26T10:00:00Z"),
+        actionSummary: "Sanitation log backfilled and daily supervisor sign-off introduced.",
+        atrCode: "ATR-2026-0007",
+        verifiedAt: new Date("2026-01-29T10:00:00Z"),
+        verifiedByUserId: did("user:dept-admin"),
       },
       {
         id: did("ca:ganjam-feb-1"),
@@ -2582,6 +3084,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/vani/dormitory",
         districtId: did("district:khordha"),
+        projectId: did("project:vani"),
         status: "active",
       },
       {
@@ -2591,6 +3094,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/vani/kitchen",
         districtId: did("district:khordha"),
+        projectId: did("project:vani"),
         status: "inactive",
       },
       {
@@ -2600,6 +3104,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/cuttack/gate",
         districtId: did("district:cuttack"),
+        projectId: did("project:cuttack-girls"),
         status: "active",
       },
       {
@@ -2609,6 +3114,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/ganjam/gate",
         districtId: did("district:ganjam"),
+        projectId: did("project:ganjam-school"),
         status: "active",
       },
       {
@@ -2618,6 +3124,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/ganjam/kitchen",
         districtId: did("district:ganjam"),
+        projectId: did("project:ganjam-school"),
         status: "inactive",
       },
       {
@@ -2627,6 +3134,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/rajdhani/gate",
         districtId: did("district:khordha"),
+        projectId: did("project:rajdhani"),
         status: "active",
       },
       {
@@ -2636,6 +3144,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         protocol: "rtsp",
         endpoint: "rtsp://sim.local/rourkela/gate",
         districtId: did("district:sundargarh"),
+        projectId: did("project:rourkela"),
         status: "active",
       },
     ])
@@ -3079,6 +3588,24 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         resourceId: did("inspection:ganjam-feb-surprise"),
         metadata: { findings: 3 },
         occurredAt: new Date("2026-02-20T09:00:00Z"),
+      },
+      {
+        id: did("audit:jajapur-sa-closed"),
+        action: "inspection.closed",
+        actorUserId: did("user:dept-admin"),
+        resourceType: "project",
+        resourceId: did("project:jajapur-adarsh"),
+        metadata: { code: "PRJ-JAJAGRAM-009", inspectionType: "social_audit", findings: 1 },
+        occurredAt: new Date("2026-02-12T10:00:00Z"),
+      },
+      {
+        id: did("audit:purisch-atr-submitted"),
+        action: "corrective_action.submitted",
+        actorUserId: did("user:institution"),
+        resourceType: "project",
+        resourceId: did("project:purisch-1"),
+        metadata: { code: "PRJ-PURISCH-007", atrCode: "ATR-2026-0031" },
+        occurredAt: new Date("2026-02-12T10:00:00Z"),
       },
     ])
     .onConflictDoNothing();

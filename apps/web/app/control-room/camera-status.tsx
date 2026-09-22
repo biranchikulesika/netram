@@ -1,15 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { PublicCctvCamera } from "@netram/types";
-import { IconSearch, IconCamera } from "../components/icons";
+import { IconCamera, IconMapPin } from "../components/icons";
 import { formatDateTime } from "../../lib/presentation";
-
-const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
-  active: { label: "LIVE", bg: "#dcfce7", color: "#15803d" },
-  inactive: { label: "OFFLINE", bg: "#fee2e2", color: "#b91c1c" },
-  maintenance: { label: "MAINTENANCE", bg: "#fef3c7", color: "#b45309" },
-};
 
 export function formatCameraDuration(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -24,63 +18,104 @@ export function formatCameraDuration(iso: string | null | undefined): string {
   return `${days}d ${hours % 24}h`;
 }
 
-interface CameraStatusViewProps {
-  cameras: PublicCctvCamera[];
+// "Vani Vihar - Dormitory Block" -> ["Vani Vihar", "Dormitory Block"]
+function splitFacilityPlace(name: string): [string, string] {
+  const idx = name.indexOf(" - ");
+  if (idx === -1) return [name, ""];
+  return [name.slice(0, idx), name.slice(idx + 3)];
 }
 
-export function CameraStatusView({ cameras }: CameraStatusViewProps) {
-  const [query, setQuery] = useState("");
+type StatusFilter = "all" | "online" | "offline";
 
-  const counts = useMemo(() => {
-    const live = cameras.filter((c) => c.status === "active").length;
-    const offline = cameras.filter((c) => c.status === "inactive").length;
-    const maintenance = cameras.filter((c) => c.status === "maintenance").length;
-    return { live, offline, maintenance, total: cameras.length };
-  }, [cameras]);
+interface CameraStatusViewProps {
+  cameras: PublicCctvCamera[];
+  /** districtId -> district name, resolved server-side. */
+  districtNames?: Record<string, string>;
+  /** All / Online / Offline filter chosen via the header filter tabs. */
+  filter?: StatusFilter;
+  /** Live-filter query from the shared control-room search bar. */
+  query?: string;
+}
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return cameras;
-    return cameras.filter((c) => c.name.toLowerCase().includes(q));
-  }, [cameras, query]);
+export function CameraStatusView({
+  cameras,
+  districtNames = {},
+  filter = "all",
+  query = "",
+}: CameraStatusViewProps) {
+  const q = query.trim().toLowerCase();
+
+  /** Rows with derived display fields, filtered by the shared search. */
+  const rows = useMemo(() => {
+    const withMeta = cameras.map((cam) => {
+      const [facility, place] = splitFacilityPlace(cam.name);
+      return {
+        cam,
+        facility,
+        place,
+        district: cam.districtId ? (districtNames[cam.districtId] ?? "Unknown district") : "—",
+      };
+    });
+    if (!q) return withMeta;
+    return withMeta.filter(
+      (r) =>
+        r.cam.name.toLowerCase().includes(q) ||
+        r.facility.toLowerCase().includes(q) ||
+        r.district.toLowerCase().includes(q),
+    );
+  }, [cameras, districtNames, q]);
+
+  /** All / Online / Offline filter (mirrors the Alerts Active/Resolved tabs). */
+  const filteredRows = useMemo(() => {
+    if (filter === "online") return rows.filter((r) => r.cam.status === "active");
+    if (filter === "offline") return rows.filter((r) => r.cam.status !== "active");
+    return rows;
+  }, [rows, filter]);
+
+  /** Facility groups sorted so facilities with problems appear first. */
+  const facilityGroups = useMemo(() => {
+    const map = new Map<string, typeof filteredRows>();
+    for (const r of filteredRows) {
+      const key = `${r.facility}|${r.district}`;
+      const list = map.get(key);
+      if (list) list.push(r);
+      else map.set(key, [r]);
+    }
+    return [...map.entries()]
+      .map(([key, cams]) => ({
+        key,
+        facility: cams[0]!.facility,
+        district: cams[0]!.district,
+        cams,
+        offlineCount: cams.filter((c) => c.cam.status !== "active").length,
+      }))
+      .sort(
+        (a, b) =>
+          b.offlineCount - a.offlineCount ||
+          b.cams.length - a.cams.length ||
+          a.facility.localeCompare(b.facility),
+      );
+  }, [filteredRows]);
 
   return (
     <section>
-      <div className="status-grid">
-        <div className="stat-widget status-widget status-widget-live">
-          <div className="stat-value">{counts.live}</div>
-          <div className="stat-label">Live</div>
-        </div>
-        <div className="stat-widget status-widget status-widget-offline">
-          <div className="stat-value">{counts.offline}</div>
-          <div className="stat-label">Offline</div>
-        </div>
-        <div className="stat-widget status-widget status-widget-maint">
-          <div className="stat-value">{counts.maintenance}</div>
-          <div className="stat-label">Maintenance</div>
-        </div>
-        <div className="stat-widget status-widget status-widget-total">
-          <div className="stat-value">{counts.total}</div>
-          <div className="stat-label">Total Cameras</div>
-        </div>
-      </div>
-
-      <div className="cc-search status-search">
-        <IconSearch style={{ width: 14, height: 14 }} />
-        <input
-          type="search"
-          placeholder="Search cameras…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search cameras by name"
-        />
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="empty-state" style={{ padding: "3rem", textAlign: "center", background: "#ffffff", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+      {cameras.length === 0 ? (
+        <div
+          className="empty-state"
+          style={{ padding: "3rem", textAlign: "center", background: "#ffffff", borderRadius: "8px", border: "1px solid #e2e8f0" }}
+        >
           <IconCamera style={{ width: 36, height: 36, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
-          <h3>{query ? "No matching cameras" : "No Cameras Available"}</h3>
+          <h3>No Cameras Available</h3>
           <p className="muted">No CCTV cameras are configured for your authorized jurisdiction.</p>
+        </div>
+      ) : rows.length === 0 ? (
+        <div
+          className="empty-state"
+          style={{ padding: "3rem", textAlign: "center", background: "#ffffff", borderRadius: "8px", border: "1px solid #e2e8f0" }}
+        >
+          <IconCamera style={{ width: 36, height: 36, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
+          <h3>No matching cameras</h3>
+          <p className="muted">Nothing matches &quot;{query}&quot; in camera name, facility or district.</p>
         </div>
       ) : (
         <div className="status-table-wrap">
@@ -94,22 +129,48 @@ export function CameraStatusView({ cameras }: CameraStatusViewProps) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((cam) => {
-                const s = STATUS_STYLES[cam.status] ?? { label: cam.status.toUpperCase(), bg: "#f1f5f9", color: "#475569" };
-                const isOffline = cam.status === "inactive" || cam.status === "maintenance";
-                return (
-                  <tr key={cam.id}>
-                    <td className="status-cam-name">{cam.name}</td>
-                    <td>
-                      <span className="cc-status-pill" style={{ background: s.bg, color: s.color }}>
-                        {s.label}
-                      </span>
-                    </td>
-                    <td className="status-secondary">{formatDateTime(cam.updatedAt)}</td>
-                    <td className="status-secondary">{isOffline ? formatCameraDuration(cam.updatedAt) : "—"}</td>
-                  </tr>
-                );
-              })}
+              {facilityGroups.flatMap((group) => [
+                <tr key={group.key} className="status-group-row">
+                  <td colSpan={4}>
+                    <span className="status-group-title">
+                      <IconMapPin style={{ width: 12, height: 12 }} />
+                      {group.facility}
+                    </span>
+                    <span className="status-group-meta">
+                      {group.district} · {group.cams.length} camera{group.cams.length === 1 ? "" : "s"}
+                      {group.offlineCount > 0 && (
+                        <span className="status-group-problem"> · {group.offlineCount} down</span>
+                      )}
+                    </span>
+                  </td>
+                </tr>,
+                ...group.cams.map((r) => {
+                  const isDown = r.cam.status !== "active";
+                  return (
+                    <tr key={r.cam.id}>
+                      <td className="status-cam-name">{r.place || r.cam.name}</td>
+                      <td
+                        className="status-secondary"
+                        style={{
+                          color:
+                            r.cam.status === "active"
+                              ? "#15803d"
+                              : r.cam.status === "inactive"
+                                ? "#b91c1c"
+                                : "#b45309",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {r.cam.status === "active" ? "Live" : r.cam.status === "inactive" ? "Offline" : "Maintenance"}
+                      </td>
+                      <td className="status-secondary">{formatDateTime(r.cam.updatedAt)}</td>
+                      <td className="status-secondary">
+                        {isDown ? formatCameraDuration(r.cam.updatedAt) : "—"}
+                      </td>
+                    </tr>
+                  );
+                }),
+              ])}
             </tbody>
           </table>
         </div>

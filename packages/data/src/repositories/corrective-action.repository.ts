@@ -19,6 +19,11 @@ export interface CorrectiveActionRow {
   status: CorrectiveActionStatus;
   deadline: Date | null;
   submittedAt: Date | null;
+  actionSummary: string | null;
+  atrCode: string | null;
+  verifiedAt: Date | null;
+  verifiedByUserId: string | null;
+  reviewRemarks: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +41,11 @@ export function toCorrectiveAction(row: CorrectiveActionRow): CorrectiveAction {
     status: row.status,
     deadline: row.deadline ? row.deadline.toISOString() : null,
     submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
+    actionSummary: row.actionSummary,
+    atrCode: row.atrCode,
+    verifiedAt: row.verifiedAt ? row.verifiedAt.toISOString() : null,
+    verifiedByUserId: row.verifiedByUserId,
+    reviewRemarks: row.reviewRemarks,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -53,6 +63,9 @@ export interface TransitionCorrectiveActionWrite extends FindingWriteContext {
   correctiveActionId: string;
   to: CorrectiveActionStatus;
   note: string | null;
+  /** ATR content supplied on the submit step (docs/DoSJE.md §16). */
+  actionSummary?: string | null;
+  atrCode?: string | null;
 }
 
 export interface CorrectiveActionListFilter {
@@ -206,7 +219,24 @@ export class CorrectiveActionRepository {
             : null;
       const rows = await tx
         .update(correctiveActionsTable)
-        .set({ status: cmd.to, submittedAt, updatedAt: new Date() })
+        .set({
+          status: cmd.to,
+          submittedAt,
+          // ATR content arrives with the institution's submission step.
+          actionSummary: cmd.actionSummary ?? current.actionSummary,
+          atrCode: cmd.atrCode ?? current.atrCode,
+          // Verification stamp arrives with the authority accept decision.
+          verifiedAt:
+            cmd.to === "accepted"
+              ? new Date()
+              : current.verifiedAt
+                ? new Date(current.verifiedAt)
+                : null,
+          verifiedByUserId:
+            cmd.to === "accepted" ? cmd.actorUserId : current.verifiedByUserId,
+          reviewRemarks: cmd.note ?? current.reviewRemarks,
+          updatedAt: new Date(),
+        })
         .where(eq(correctiveActionsTable.id, cmd.correctiveActionId))
         .returning();
       const row = rows[0]!;

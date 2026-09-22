@@ -25,7 +25,18 @@ export const PROJECT_TRANSITIONS: Record<ProjectStatus, readonly ProjectStatus[]
   Archived: [],
 };
 
-export const PROJECT_TYPES = ["institution", "authority_project", "other"] as const;
+/**
+ * Monitored implementation target kinds (DoSJE domain, docs/DoSJE.md §23).
+ * The official social audit calendar audits both institution-type targets
+ * (senior citizen homes, IRCAs, hostels, schools) and village-type targets
+ * (PM-AJAY Adarsh Gram, where no implementing institute exists).
+ */
+export const PROJECT_TYPES = [
+  "institution",
+  "village",
+  "authority_project",
+  "other",
+] as const;
 
 export type ProjectType = (typeof PROJECT_TYPES)[number];
 
@@ -63,6 +74,10 @@ export interface Project {
   organisationId: UUID | null;
   authorityId: UUID | null;
   districtId: UUID | null;
+  /** Village-level location for village-type targets (PM-AJAY Adarsh Gram). */
+  villageId: UUID | null;
+  /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
+  schemeComponentId: UUID | null;
   status: ProjectStatus;
   approvedById: UUID | null;
   approvedAt: ISODateTime | null;

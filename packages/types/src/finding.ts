@@ -20,6 +20,13 @@ export const FINDING_TRANSITIONS: Record<FindingStatus, readonly FindingStatus[]
   action_required: [],
 };
 
+export interface FindingCategory {
+  id: UUID;
+  code: string;
+  name: string;
+  description: string | null;
+}
+
 export interface Finding {
   id: UUID;
   inspectionId: UUID;
@@ -28,6 +35,18 @@ export interface Finding {
   description: string;
   remediation: string | null;
   status: FindingStatus;
+  /**
+   * Issue category (DoSJE social audit MIS tracks issues by category;
+   * docs/DoSJE.md §15). Optional so existing inspections keep working.
+   */
+  categoryId: UUID | null;
+  /** Disputed/misappropriated amount in INR, when the issue is financial. */
+  amountInr: number | null;
+  /**
+   * Organisation expected to answer the issue (the future ATR submitter).
+   * Defaults from the target's organisation when omitted at creation.
+   */
+  responsibleOrganisationId: UUID | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }

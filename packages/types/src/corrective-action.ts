@@ -36,10 +36,24 @@ export interface CorrectiveAction {
   id: UUID;
   findingId: UUID;
   inspectionId: UUID;
+  /** Organisation responsible for submitting the action/ATR. */
   organisationId: UUID | null;
   status: CorrectiveActionStatus;
   deadline: ISODateTime | null;
   submittedAt: ISODateTime | null;
+  /**
+   * Action Taken Report content (docs/DoSJE.md §16): what the responsible
+   * organisation actually did, not merely that something was submitted.
+   */
+  actionSummary: string | null;
+  /** Human-friendly ATR reference, e.g. ATR-2026-0007. */
+  atrCode: string | null;
+  /** When the authority verified the submitted action. */
+  verifiedAt: ISODateTime | null;
+  /** Authority user who verified the submitted action. */
+  verifiedByUserId: UUID | null;
+  /** Reviewer remarks recorded at accept/reject time. */
+  reviewRemarks: string | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }

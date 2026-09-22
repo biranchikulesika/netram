@@ -141,7 +141,12 @@ export function buildContainer(config: AppConfig): Container {
     evidenceRepo,
     findingRepo,
   );
-  const findingService = new FindingService(authorizationService, inspectionService, findingRepo);
+  const findingService = new FindingService(
+    authorizationService,
+    inspectionService,
+    projectRepo,
+    findingRepo,
+  );
   const correctiveActionService = new CorrectiveActionService(
     authorizationService,
     inspectionService,

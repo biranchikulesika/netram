@@ -17,6 +17,9 @@ export interface FindingRow {
   description: string;
   remediation: string | null;
   status: FindingStatus;
+  categoryId: string | null;
+  amountInr: number | null;
+  responsibleOrganisationId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +33,9 @@ export function toFinding(row: FindingRow): Finding {
     description: row.description,
     remediation: row.remediation,
     status: row.status,
+    categoryId: row.categoryId,
+    amountInr: row.amountInr,
+    responsibleOrganisationId: row.responsibleOrganisationId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -52,6 +58,9 @@ export interface CreateFindingWrite extends FindingWriteContext {
   severity: FindingSeverity;
   description: string;
   remediation: string | null;
+  categoryId: string | null;
+  amountInr: number | null;
+  responsibleOrganisationId: string | null;
 }
 
 export interface TransitionFindingWrite extends FindingWriteContext {
@@ -97,6 +106,9 @@ export class FindingRepository {
           description: cmd.description,
           remediation: cmd.remediation,
           status: "new",
+          categoryId: cmd.categoryId,
+          amountInr: cmd.amountInr,
+          responsibleOrganisationId: cmd.responsibleOrganisationId,
         })
         .returning();
       const row = rows[0]!;
@@ -112,6 +124,8 @@ export class FindingRepository {
           ...cmd.auditMetadata,
           inspectionId: cmd.inspectionId,
           severity: cmd.severity,
+          categoryId: cmd.categoryId,
+          amountInr: cmd.amountInr,
         },
       });
 

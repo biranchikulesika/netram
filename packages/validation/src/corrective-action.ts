@@ -10,6 +10,11 @@ export const correctiveActionSchema = z.object({
   status: z.enum(CORRECTIVE_ACTION_STATUSES),
   deadline: z.string().datetime().nullable(),
   submittedAt: z.string().datetime().nullable(),
+  actionSummary: z.string().nullable(),
+  atrCode: z.string().nullable(),
+  verifiedAt: z.string().datetime().nullable(),
+  verifiedByUserId: z.string().uuid().nullable(),
+  reviewRemarks: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -33,6 +38,9 @@ export const transitionCorrectiveActionSchema = z
   .object({
     to: z.enum(CORRECTIVE_ACTION_STATUSES),
     note: z.string().max(500).optional(),
+    /** ATR content supplied with the institution's submit step (docs/DoSJE.md §16). */
+    actionSummary: z.string().min(1).max(4000).optional(),
+    atrCode: z.string().max(50).optional(),
   })
   .strict();
 

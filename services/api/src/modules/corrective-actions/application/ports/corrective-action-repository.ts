@@ -28,6 +28,9 @@ export interface TransitionCorrectiveActionCommand extends CorrectiveActionWrite
   correctiveActionId: UUID;
   to: CorrectiveActionStatus;
   note: string | null;
+  /** ATR content supplied on the submit step (docs/DoSJE.md §16). */
+  actionSummary?: string | null;
+  atrCode?: string | null;
 }
 
 export interface CorrectiveActionWithDistrict extends CorrectiveAction {

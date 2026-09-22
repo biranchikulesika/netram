@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { UUID } from "@netram/types";
 import { AppError } from "../../../infrastructure/errors.js";
 import type { AuthorizationService } from "../../authorization/application/authorization-service.js";
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
@@ -17,12 +18,30 @@ export interface CreateFindingInput {
   description: string;
   remediation?: string | null;
   observationId?: string | null;
+  /** Issue category (docs/DoSJE.md §15). */
+  categoryId?: string | null;
+  /** Disputed/misappropriated amount in INR for financial issues. */
+  amountInr?: number | null;
+  /** Organisation expected to answer the issue; defaults to the target's operator. */
+  responsibleOrganisationId?: string | null;
 }
 
 export class FindingService {
   constructor(
     private readonly authz: AuthorizationService,
     private readonly inspectionService: Pick<InspectionService, "getInspection">,
+    /**
+     * Read-only access to the monitored target so a finding's responsible
+     * organisation can default from the target's operator when omitted
+     * (docs/DoSJE.md §14: the organisation expected to answer the issue).
+     * Structural type, mirroring InspectionService's project-repo port; no
+     * dependency on the projects module implementation.
+     */
+    private readonly projectRepo: {
+      findById(id: string): Promise<{
+        organisationId: UUID | null;
+      } | null>;
+    },
     private readonly repository: FindingRepositoryPort,
   ) {}
 
@@ -48,6 +67,17 @@ export class FindingService {
     }
 
     const id = randomUUID();
+
+    // ATR responsibility defaults to the operator of the audited target
+    // (docs/DoSJE.md §14-16). Village-type targets have no operator, so the
+    // responsible organisation stays null and the district administration
+    // answers the ATR (docs/DoSJE.md §25).
+    let responsibleOrganisationId = input.responsibleOrganisationId ?? null;
+    if (responsibleOrganisationId === null) {
+      const project = await this.projectRepo.findById(inspection.projectId);
+      responsibleOrganisationId = project?.organisationId ?? null;
+    }
+
     return this.repository.createWithAuditAndEvent({
       id,
       inspectionId,
@@ -55,11 +85,19 @@ export class FindingService {
       severity: input.severity,
       description: input.description,
       remediation: input.remediation ?? null,
+      categoryId: input.categoryId ?? null,
+      amountInr: input.amountInr ?? null,
+      responsibleOrganisationId,
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
       auditAction: "finding.created",
-      auditMetadata: { inspectionId, severity: input.severity },
+      auditMetadata: {
+        inspectionId,
+        severity: input.severity,
+        categoryId: input.categoryId ?? null,
+        amountInr: input.amountInr ?? null,
+      },
       eventType: "finding.created",
       eventPayload: { inspectionId, severity: input.severity },
     });

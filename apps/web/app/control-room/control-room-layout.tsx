@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import type { PublicCctvCamera, AIAnomaly } from "@netram/types";
 import { CameraWall } from "./camera-wall";
 import { CameraStatusView } from "./camera-status";
-import { AIAlertsScreen } from "./ai-alerts-screen";
+import { AlertsScreen } from "./alerts-screen";
 import { AIAnomalyModal } from "./ai-anomaly-modal";
 import {
   IconVideo,
@@ -19,9 +19,18 @@ export interface ControlRoomLayoutProps {
   anomaliesTotal: number;
   canTransition?: boolean;
   cameraProjectLinks?: Record<string, string>;
+  /** districtId -> district name, for camera context in Status/Feeds. */
+  districtNames?: Record<string, string>;
 }
 
 type ControlRoomTab = "feeds" | "alerts" | "status";
+type StatusFilter = "all" | "online" | "offline";
+
+const SEARCH_PLACEHOLDER: Record<ControlRoomTab, string> = {
+  feeds: "Search cameras by facility, place or name…",
+  alerts: "Search alerts by description, project or code…",
+  status: "Search cameras by facility, place, name or district…",
+};
 
 export function ControlRoomLayout({
   cameras = [],
@@ -29,39 +38,43 @@ export function ControlRoomLayout({
   anomaliesTotal: _anomaliesTotal = 0,
   canTransition = false,
   cameraProjectLinks = {},
+  districtNames = {},
 }: ControlRoomLayoutProps) {
   const [activeTab, setActiveTab] = useState<ControlRoomTab>("feeds");
   const [anomalyList, setAnomalyList] = useState<AIAnomaly[]>(anomalies);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AIAnomaly | null>(null);
   const [query, setQuery] = useState("");
   const [alertView, setAlertView] = useState<"active" | "resolved">("active");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const SECTION_TABS: { key: ControlRoomTab; label: string; icon: React.ReactNode; count: number }[] = [
     { key: "feeds", label: "Live Feeds", icon: <IconVideo style={{ width: 15, height: 15 }} />, count: 0 },
-    { key: "alerts", label: "AI Alerts", icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />, count: 0 },
+    { key: "alerts", label: "Alerts", icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />, count: 0 },
     { key: "status", label: "Status", icon: <IconBarChart style={{ width: 15, height: 15 }} />, count: 0 },
   ];
 
   return (
     <div className="control-room-page">
-      {/* Search + section filter: Live Feeds / AI Alerts / Status */}
+      {/* Search + section filter: Live Feeds / Alerts / Status.
+          The search bar always searches within the active tab. */}
       <div className="control-room-header">
         <div className="search-filter-group">
           <div className="search-input-wrap">
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
             <input
               type="search"
-              placeholder="Search cameras…"
+              placeholder={SEARCH_PLACEHOLDER[activeTab]}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="search-input-with-icon"
-              aria-label="Filter cameras"
+              aria-label={`Filter ${activeTab === "feeds" ? "cameras" : activeTab === "alerts" ? "alerts" : "camera status"}`}
             />
           </div>
 
           <div className="filter-tabs" role="tablist" aria-label="Control room sections">
             {SECTION_TABS.map((t) => (
               <button
+                key={t.key}
                 type="button"
                 role="tab"
                 aria-selected={activeTab === t.key}
@@ -78,7 +91,7 @@ export function ControlRoomLayout({
           </div>
         </div>
 
-        {/* Alert status filter: only visible on the AI Alerts tab, right-aligned on the same row */}
+        {/* Alert status filter: only visible on the Alerts tab, right-aligned on the same row */}
         {activeTab === "alerts" && (
           <div className="filter-tabs" role="tablist" aria-label="Alert status filter">
             <button
@@ -107,6 +120,46 @@ export function ControlRoomLayout({
             </button>
           </div>
         )}
+
+        {/* Camera status filter: same design as the Alerts Active/Resolved filter */}
+        {activeTab === "status" && (
+          <div className="filter-tabs" role="tablist" aria-label="Camera status filter">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === "all"}
+              onClick={() => setStatusFilter("all")}
+              className={`filter-tab-btn ${statusFilter === "all" ? "active" : ""}`}
+            >
+              <span>All</span>
+              <span className="filter-count-badge">{cameras.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === "online"}
+              onClick={() => setStatusFilter("online")}
+              className={`filter-tab-btn ${statusFilter === "online" ? "active" : ""}`}
+            >
+              <span>Online</span>
+              <span className="filter-count-badge">
+                {cameras.filter((c) => c.status === "active").length}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === "offline"}
+              onClick={() => setStatusFilter("offline")}
+              className={`filter-tab-btn ${statusFilter === "offline" ? "active" : ""}`}
+            >
+              <span>Offline</span>
+              <span className="filter-count-badge">
+                {cameras.filter((c) => c.status !== "active").length}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {activeTab === "feeds" ? (
@@ -116,16 +169,27 @@ export function ControlRoomLayout({
           query={query}
         />
       ) : activeTab === "status" ? (
-        <CameraStatusView cameras={cameras} />
+        <CameraStatusView
+          cameras={cameras}
+          districtNames={districtNames}
+          filter={statusFilter}
+          query={query}
+        />
       ) : (
-        <AIAlertsScreen
+        <AlertsScreen
           anomalies={
-            alertView === "active"
-              ? anomalyList.filter((a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated")
-              : anomalyList.filter((a) => a.status === "acted_upon" || a.status === "dismissed")
+            anomalyList
+              .filter((a) =>
+                alertView === "active"
+                  ? a.status === "new" || a.status === "reviewed" || a.status === "investigated"
+                  : a.status === "acted_upon" || a.status === "dismissed",
+              )
           }
+          cameras={cameras}
+          districtNames={districtNames}
           view={alertView}
-          onSelect={(a) => setSelectedAnomaly(a)}
+          searchQuery={query}
+          onSelectAnomaly={(a) => setSelectedAnomaly(a)}
         />
       )}
 

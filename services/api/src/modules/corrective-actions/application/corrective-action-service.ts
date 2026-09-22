@@ -109,6 +109,7 @@ export class CorrectiveActionService {
     correctiveActionId: string,
     to: CorrectiveActionStatus,
     note?: string,
+    atr?: { actionSummary?: string | null; atrCode?: string | null },
   ): Promise<CorrectiveAction> {
     const action = await this.repository.findById(correctiveActionId);
     if (!action) throw AppError.notFound("Corrective action not found.");
@@ -149,11 +150,18 @@ export class CorrectiveActionService {
       correctiveActionId,
       to: decision.to,
       note: note ?? null,
+      actionSummary: atr?.actionSummary ?? null,
+      atrCode: atr?.atrCode ?? null,
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
       auditAction,
-      auditMetadata: { from: action.status, to, note: note ?? null },
+      auditMetadata: {
+        from: action.status,
+        to,
+        note: note ?? null,
+        atrCode: atr?.atrCode ?? null,
+      },
       eventType,
       eventPayload: {
         from: action.status,

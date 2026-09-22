@@ -12,6 +12,10 @@ export interface CreateProjectInput {
   description?: string | null;
   organisationId?: string | null;
   districtId?: string | null;
+  /** Village-level location for village-type targets (docs/DoSJE.md §25). */
+  villageId?: string | null;
+  /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
+  schemeComponentId?: string | null;
   programmeIds?: string[];
 }
 
@@ -100,6 +104,8 @@ export class ProjectService {
       organisationId: input.organisationId ?? null,
       authorityId: this.authorityIdOrNull(ctx),
       districtId: input.districtId ?? null,
+      villageId: input.villageId ?? null,
+      schemeComponentId: input.schemeComponentId ?? null,
       programmeIds: input.programmeIds ?? [],
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
@@ -138,6 +144,8 @@ export class ProjectService {
       description: input.description ?? project.description,
       organisationId: input.organisationId ?? project.organisationId,
       districtId: input.districtId ?? project.districtId,
+      villageId: input.villageId ?? project.villageId,
+      schemeComponentId: input.schemeComponentId ?? project.schemeComponentId,
       programmeIds: input.programmeIds ?? project.programmeIds,
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,

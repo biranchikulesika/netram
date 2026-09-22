@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { AIAnomaly, AnomalyStatus } from "@netram/types";
 import { ANOMALY_TRANSITIONS } from "@netram/types";
 import { formatDateTime } from "../../lib/presentation";
-import { getStatusStyle } from "./ai-alerts-screen";
+import { getStatusStyle } from "./alerts-screen";
 
 interface AIAnomalyModalProps {
   anomaly: AIAnomaly | null;

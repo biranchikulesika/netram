@@ -4,6 +4,7 @@ import type {
   Finding,
   FindingStatus,
   FindingSeverity,
+  UUID,
 } from "@netram/types";
 
 export interface FindingWriteContext {
@@ -23,6 +24,9 @@ export interface CreateFindingCommand extends FindingWriteContext {
   severity: FindingSeverity;
   description: string;
   remediation: string | null;
+  categoryId: UUID | null;
+  amountInr: number | null;
+  responsibleOrganisationId: UUID | null;
 }
 
 export interface TransitionFindingCommand extends FindingWriteContext {

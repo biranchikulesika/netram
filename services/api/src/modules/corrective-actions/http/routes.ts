@@ -93,12 +93,15 @@ export async function registerCorrectiveActionRoutes(
       const body = request.body as {
         to: CorrectiveActionStatus;
         note?: string;
+        actionSummary?: string;
+        atrCode?: string;
       };
       return correctiveActionService.transitionCorrectiveAction(
         request.netram!,
         id,
         body.to,
         body.note,
+        { actionSummary: body.actionSummary, atrCode: body.atrCode },
       );
     },
   );

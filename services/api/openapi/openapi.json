@@ -321,6 +321,7 @@
                             "type": "string",
                             "enum": [
                               "institution",
+                              "village",
                               "authority_project",
                               "other"
                             ]
@@ -356,6 +357,30 @@
                             ]
                           },
                           "districtId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "villageId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "schemeComponentId": {
                             "anyOf": [
                               {
                                 "type": "string",
@@ -542,6 +567,8 @@
                           "organisationId",
                           "authorityId",
                           "districtId",
+                          "villageId",
+                          "schemeComponentId",
                           "status",
                           "approvedById",
                           "approvedAt",
@@ -601,6 +628,7 @@
                     "type": "string",
                     "enum": [
                       "institution",
+                      "village",
                       "authority_project",
                       "other"
                     ]
@@ -629,6 +657,30 @@
                     ]
                   },
                   "districtId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "villageId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "schemeComponentId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -686,6 +738,7 @@
                       "type": "string",
                       "enum": [
                         "institution",
+                        "village",
                         "authority_project",
                         "other"
                       ]
@@ -721,6 +774,30 @@
                       ]
                     },
                     "districtId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "villageId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "schemeComponentId": {
                       "anyOf": [
                         {
                           "type": "string",
@@ -907,6 +984,8 @@
                     "organisationId",
                     "authorityId",
                     "districtId",
+                    "villageId",
+                    "schemeComponentId",
                     "status",
                     "approvedById",
                     "approvedAt",
@@ -960,6 +1039,7 @@
                             "type": "string",
                             "enum": [
                               "institution",
+                              "village",
                               "authority_project",
                               "other"
                             ]
@@ -995,6 +1075,30 @@
                             ]
                           },
                           "districtId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "villageId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "schemeComponentId": {
                             "anyOf": [
                               {
                                 "type": "string",
@@ -1181,6 +1285,8 @@
                           "organisationId",
                           "authorityId",
                           "districtId",
+                          "villageId",
+                          "schemeComponentId",
                           "status",
                           "approvedById",
                           "approvedAt",
@@ -1394,6 +1500,7 @@
                       "type": "string",
                       "enum": [
                         "institution",
+                        "village",
                         "authority_project",
                         "other"
                       ]
@@ -1429,6 +1536,30 @@
                       ]
                     },
                     "districtId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "villageId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "schemeComponentId": {
                       "anyOf": [
                         {
                           "type": "string",
@@ -1615,6 +1746,8 @@
                     "organisationId",
                     "authorityId",
                     "districtId",
+                    "villageId",
+                    "schemeComponentId",
                     "status",
                     "approvedById",
                     "approvedAt",
@@ -1649,6 +1782,7 @@
                     "type": "string",
                     "enum": [
                       "institution",
+                      "village",
                       "authority_project",
                       "other"
                     ]
@@ -1677,6 +1811,30 @@
                     ]
                   },
                   "districtId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "villageId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "schemeComponentId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -1746,6 +1904,7 @@
                       "type": "string",
                       "enum": [
                         "institution",
+                        "village",
                         "authority_project",
                         "other"
                       ]
@@ -1781,6 +1940,30 @@
                       ]
                     },
                     "districtId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "villageId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "schemeComponentId": {
                       "anyOf": [
                         {
                           "type": "string",
@@ -1967,6 +2150,8 @@
                     "organisationId",
                     "authorityId",
                     "districtId",
+                    "villageId",
+                    "schemeComponentId",
                     "status",
                     "approvedById",
                     "approvedAt",
@@ -2393,6 +2578,7 @@
                       "type": "string",
                       "enum": [
                         "institution",
+                        "village",
                         "authority_project",
                         "other"
                       ]
@@ -2428,6 +2614,30 @@
                       ]
                     },
                     "districtId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "villageId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "schemeComponentId": {
                       "anyOf": [
                         {
                           "type": "string",
@@ -2614,6 +2824,8 @@
                     "organisationId",
                     "authorityId",
                     "districtId",
+                    "villageId",
+                    "schemeComponentId",
                     "status",
                     "approvedById",
                     "approvedAt",
@@ -3024,7 +3236,8 @@
                 "surprise",
                 "routine",
                 "special",
-                "follow_up"
+                "follow_up",
+                "social_audit"
               ]
             },
             "in": "query",
@@ -3106,7 +3319,8 @@
                               "surprise",
                               "routine",
                               "special",
-                              "follow_up"
+                              "follow_up",
+                              "social_audit"
                             ]
                           },
                           "trigger": {
@@ -3291,7 +3505,8 @@
                       "surprise",
                       "routine",
                       "special",
-                      "follow_up"
+                      "follow_up",
+                      "social_audit"
                     ]
                   },
                   "trigger": {
@@ -3430,7 +3645,8 @@
                         "surprise",
                         "routine",
                         "special",
-                        "follow_up"
+                        "follow_up",
+                        "social_audit"
                       ]
                     },
                     "trigger": {
@@ -3645,7 +3861,8 @@
                         "surprise",
                         "routine",
                         "special",
-                        "follow_up"
+                        "follow_up",
+                        "social_audit"
                       ]
                     },
                     "trigger": {
@@ -4036,7 +4253,8 @@
                         "surprise",
                         "routine",
                         "special",
-                        "follow_up"
+                        "follow_up",
+                        "social_audit"
                       ]
                     },
                     "trigger": {
@@ -4339,6 +4557,42 @@
                           "action_required"
                         ]
                       },
+                      "categoryId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "amountInr": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "responsibleOrganisationId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
                       "createdAt": {
                         "type": "string",
                         "format": "date-time",
@@ -4358,6 +4612,9 @@
                       "description",
                       "remediation",
                       "status",
+                      "categoryId",
+                      "amountInr",
+                      "responsibleOrganisationId",
                       "createdAt",
                       "updatedAt"
                     ],
@@ -4399,6 +4656,42 @@
                     "maxLength": 4000
                   },
                   "observationId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "categoryId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "amountInr": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "responsibleOrganisationId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -4494,6 +4787,42 @@
                         "action_required"
                       ]
                     },
+                    "categoryId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "amountInr": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "responsibleOrganisationId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -4513,6 +4842,9 @@
                     "description",
                     "remediation",
                     "status",
+                    "categoryId",
+                    "amountInr",
+                    "responsibleOrganisationId",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -4632,6 +4964,42 @@
                         "action_required"
                       ]
                     },
+                    "categoryId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "amountInr": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "responsibleOrganisationId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -4651,6 +5019,9 @@
                     "description",
                     "remediation",
                     "status",
+                    "categoryId",
+                    "amountInr",
+                    "responsibleOrganisationId",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -4819,6 +5190,48 @@
                               }
                             ]
                           },
+                          "actionSummary": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "atrCode": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "verifiedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verifiedByUserId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "reviewRemarks": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -4838,6 +5251,11 @@
                           "status",
                           "deadline",
                           "submittedAt",
+                          "actionSummary",
+                          "atrCode",
+                          "verifiedAt",
+                          "verifiedByUserId",
+                          "reviewRemarks",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -4998,6 +5416,48 @@
                         }
                       ]
                     },
+                    "actionSummary": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "atrCode": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "verifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "verifiedByUserId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "reviewRemarks": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -5017,6 +5477,11 @@
                     "status",
                     "deadline",
                     "submittedAt",
+                    "actionSummary",
+                    "atrCode",
+                    "verifiedAt",
+                    "verifiedByUserId",
+                    "reviewRemarks",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -5121,6 +5586,48 @@
                         }
                       ]
                     },
+                    "actionSummary": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "atrCode": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "verifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "verifiedByUserId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "reviewRemarks": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -5140,6 +5647,11 @@
                     "status",
                     "deadline",
                     "submittedAt",
+                    "actionSummary",
+                    "atrCode",
+                    "verifiedAt",
+                    "verifiedByUserId",
+                    "reviewRemarks",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -5178,6 +5690,15 @@
                   "note": {
                     "type": "string",
                     "maxLength": 500
+                  },
+                  "actionSummary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "atrCode": {
+                    "type": "string",
+                    "maxLength": 50
                   }
                 },
                 "required": [
@@ -5276,6 +5797,48 @@
                         }
                       ]
                     },
+                    "actionSummary": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "atrCode": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "verifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "verifiedByUserId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "reviewRemarks": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -5295,6 +5858,11 @@
                     "status",
                     "deadline",
                     "submittedAt",
+                    "actionSummary",
+                    "atrCode",
+                    "verifiedAt",
+                    "verifiedByUserId",
+                    "reviewRemarks",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -11825,6 +12393,18 @@
                               }
                             ]
                           },
+                          "projectId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -11850,6 +12430,7 @@
                           "provider",
                           "protocol",
                           "districtId",
+                          "projectId",
                           "status",
                           "createdAt",
                           "updatedAt"
@@ -11943,6 +12524,18 @@
                         }
                       ]
                     },
+                    "projectId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -11968,6 +12561,7 @@
                     "provider",
                     "protocol",
                     "districtId",
+                    "projectId",
                     "status",
                     "createdAt",
                     "updatedAt"

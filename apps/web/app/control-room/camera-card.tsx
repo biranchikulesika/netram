@@ -144,15 +144,6 @@ export function CameraCard({ camera, projectHref }: CameraCardProps) {
           </button>
         </div>
 
-        <div className="cc-cam-id">
-          {camera.id.slice(0, 8)}
-          {projectHref && (
-            <Link href={projectHref} className="cc-project-link" onClick={(e) => e.stopPropagation()}>
-              {facility} ›
-            </Link>
-          )}
-        </div>
-
         <button
           type="button"
           onClick={handleToggleFullscreen}

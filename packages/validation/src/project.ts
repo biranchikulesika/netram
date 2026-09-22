@@ -38,6 +38,8 @@ export const projectSchema = z.object({
   organisationId: z.string().uuid().nullable(),
   authorityId: z.string().uuid().nullable(),
   districtId: z.string().uuid().nullable(),
+  villageId: z.string().uuid().nullable(),
+  schemeComponentId: z.string().uuid().nullable(),
   status: z.enum(PROJECT_STATUSES),
   approvedById: z.string().uuid().nullable(),
   approvedAt: z.string().datetime().nullable(),
@@ -61,6 +63,10 @@ export const createProjectSchema = z
     description: z.string().max(2000).nullable().optional(),
     organisationId: uuidSchema.nullable().optional(),
     districtId: uuidSchema.nullable().optional(),
+    /** Village-level location for village-type targets (docs/DoSJE.md §25). */
+    villageId: uuidSchema.nullable().optional(),
+    /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
+    schemeComponentId: uuidSchema.nullable().optional(),
     programmeIds: z.array(uuidSchema).max(20).optional(),
   })
   .strict();
