@@ -23,3 +23,9 @@ export * from "./repositories/vc-session.repository.js";
 export * from "./repositories/attendance.repository.js";
 export * from "./repositories/analytics.repository.js";
 export * from "./repositories/registry.repository.js";
+export * from "./repositories/fund.repository.js";
+export * from "./repositories/expense.repository.js";
+export * from "./repositories/financial-document.repository.js";
+export * from "./repositories/financial-risk.repository.js";
+export * from "./repositories/inspection-flag.repository.js";
+

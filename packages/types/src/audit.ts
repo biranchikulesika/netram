@@ -72,6 +72,23 @@ export const AUDIT_ACTIONS = [
   "attendance.export_expired",
   "attendance.observation_recorded",
   "admin.action",
+  "fund.allocation_created",
+  "fund.allocation_revised",
+  "fund.release_created",
+  "fund.release_reversed",
+  "expense.created",
+  "expense.submitted",
+  "expense.verified",
+  "expense.rejected",
+  "expense.voided",
+  "financial_document.uploaded",
+  "financial_document.verified",
+  "financial_document.rejected",
+  "financial_risk.rule_triggered",
+  "financial_risk.flag_created",
+  "financial_risk.flag_assigned",
+  "financial_risk.flag_resolved",
+  "financial_risk.flag_dismissed",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

@@ -45,6 +45,22 @@ export const PERMISSIONS = [
   "attendance:correction:approve",
   "attendance:config:write",
   "attendance:ingest",
+  "fund:read",
+  "fund:allocate",
+  "fund:release",
+  "expense:read",
+  "expense:submit",
+  "expense:verify",
+  "expense:void",
+  "financial_document:upload",
+  "financial_document:verify",
+  "financial_risk:read",
+  "financial_risk:configure",
+  "inspection_flag:read",
+  "inspection_flag:assign",
+  "inspection_flag:review",
+  "inspection_flag:resolve",
+  "inspection_flag:dismiss",
 ] as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[number];

@@ -41,6 +41,8 @@ import { registerCctvRoutes } from "./modules/cctv/http/routes.js";
 import { registerVcRoutes } from "./modules/vc/http/routes.js";
 import { registerAttendanceRoutes } from "./modules/attendance/http/routes.js";
 import { registerAnalyticsRoutes } from "./modules/analytics/http/routes.js";
+import { registerFundRoutes } from "./modules/funds/http/routes.js";
+import { registerFinancialRiskRoutes } from "./modules/financial-risk/http/routes.js";
 import { InvalidVcSessionTransitionError } from "./modules/vc/domain/vc-session.js";
 
 export async function buildApp(container: Container) {
@@ -59,7 +61,7 @@ export async function buildApp(container: Container) {
 
   await app.register(cors, { origin: container.config.NETRAM_CORS_ORIGIN });
   await app.register(multipart, {
-    limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 4 },
+    limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 10 },
   });
 
   await app.register(swagger, {
@@ -244,6 +246,8 @@ export async function buildApp(container: Container) {
       await registerVcRoutes(api, container);
       await registerAttendanceRoutes(api, container);
       await registerAnalyticsRoutes(api, container);
+      await registerFundRoutes(api, container);
+      await registerFinancialRiskRoutes(api, container);
     },
     { prefix: "/api/v1" },
   );

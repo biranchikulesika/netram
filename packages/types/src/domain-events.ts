@@ -71,6 +71,23 @@ export const DOMAIN_EVENT_TYPES = [
   "attendance.export_completed",
   "attendance.export_expired",
   "attendance.individual_accessed",
+  "fund.allocated",
+  "fund.revised",
+  "fund.released",
+  "fund.reversed",
+  "expense.created",
+  "expense.submitted",
+  "expense.verified",
+  "expense.rejected",
+  "expense.voided",
+  "financial_document.uploaded",
+  "financial_document.verified",
+  "financial_document.rejected",
+  "financial_risk.anomaly_detected",
+  "inspection_flag.created",
+  "inspection_flag.assigned",
+  "inspection_flag.resolved",
+  "inspection_flag.dismissed",
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
