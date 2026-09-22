@@ -951,6 +951,38 @@ td {
   color: var(--text-primary);
 }
 
+.filter-count-badge.danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.filter-tab-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.filter-tab-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* Attendance toolbar date picker (native input, styled like toolbar controls) */
+.toolbar-date-input {
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text-primary);
+}
+
+.toolbar-date-input:focus {
+  outline: none;
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 2px rgba(58, 72, 139, 0.18);
+}
+
 /* Facility Contextual Navigation (distinct from the global sidebar) */
 .facility-nav {
   display: flex;
@@ -1348,6 +1380,10 @@ td {
 }
 
 .table-card-projects {
+  overflow-x: auto;
+}
+
+.attendance-table-card {
   overflow-x: auto;
 }
 

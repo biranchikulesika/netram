@@ -70,10 +70,19 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
         <span style={{ fontWeight: 600, color: severityColor(anomaly.severity) }}>
           {anomaly.severity}
         </span>
-        <span style={{ color: "#64748b" }}>Score:</span>
-        <span style={{ fontWeight: 600 }}>{Math.round(anomaly.score * 100)}%</span>
-        <span style={{ color: "#64748b" }}>Confidence:</span>
-        <span style={{ fontWeight: 600 }}>{Math.round(anomaly.confidence * 100)}%</span>
+        <span style={{ color: "#64748b" }}>Basis:</span>
+        <span>
+          {anomaly.anomalyType === "PERSISTENT_LOW_ATTENDANCE" &&
+          typeof anomaly.supportingSignals?.streakDays === "number"
+            ? `Attendance below expected for ${anomaly.supportingSignals.streakDays} consecutive days`
+            : anomaly.anomalyType === "HISTORICAL_DEVIATION"
+              ? "Attendance deviates from the project's recent baseline"
+              : anomaly.anomalyType === "CROSS_SOURCE_DISCREPANCY"
+                ? "Discrepancy between biometric and reported attendance"
+                : anomaly.anomalyType === "SOURCE_QUALITY"
+                  ? "Insufficient source coverage; result has reduced reliability"
+                  : anomaly.anomalyType.replace(/_/g, " ")}
+        </span>
         {anomaly.projectCode && (
           <>
             <span style={{ color: "#64748b" }}>Project:</span>
@@ -87,34 +96,6 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
           </>
         )}
       </div>
-
-      {anomaly.supportingSignals && (
-        <div
-          style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            borderRadius: "6px",
-            padding: "0.75rem",
-            marginBottom: "1rem",
-            fontSize: "0.8rem",
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: "0.5rem", color: "#475569" }}>
-            Supporting Signals
-          </div>
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              fontFamily: "ui-monospace, monospace",
-              fontSize: "0.75rem",
-              color: "#64748b",
-              margin: 0,
-            }}
-          >
-            {JSON.stringify(anomaly.supportingSignals, null, 2)}
-          </pre>
-        </div>
-      )}
 
       {anomaly.reviewNotes && (
         <div
