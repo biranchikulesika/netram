@@ -9,7 +9,9 @@ import {
   getFacilityInspections,
   getFacilityAiAnomalies,
   getFacilityReports,
+  getFacilityRiskSnapshot,
 } from "../../../lib/facility";
+import { getSessionUser } from "../../../lib/api";
 import {
   getAuthorityName,
   getDistrictName,
@@ -21,6 +23,7 @@ import {
   formatShortDate,
 } from "../../../lib/presentation";
 import { IconChevronRight } from "../../components/icons";
+import { CompositeRiskCard } from "./composite-risk-card";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +56,10 @@ export default async function FacilityOverviewPage({
   const project = await getFacility(id);
   if (!project) notFound();
 
-  const [inspections, complaints, attendance, aiAnomalies, reports, audit] =
+  const [session, riskSnapshot, inspections, complaints, attendance, aiAnomalies, reports, audit] =
     await Promise.all([
+      getSessionUser(),
+      getFacilityRiskSnapshot(project.id),
       getFacilityInspections(project.id),
       getFacilityComplaints(project.id),
       getFacilityAttendance(project.id),
@@ -62,6 +67,10 @@ export default async function FacilityOverviewPage({
       getFacilityReports(project.code, project.name),
       getFacilityAudit(project.id),
     ]);
+  const canEvaluate =
+    session?.permissions.includes("project_risk:evaluate") ||
+    session?.permissions.includes("*") ||
+    false;
   const correctiveActions = await getFacilityCorrectiveActions(project.id, inspections);
   const facilityTab = (section: string) => `/projects/${project.id}/${section}`;
 
@@ -265,6 +274,14 @@ export default async function FacilityOverviewPage({
           </Link>
         ))}
       </div>
+
+      {/* Composite Risk Score Engine Widget */}
+      <CompositeRiskCard
+        projectId={project.id}
+        projectCode={project.code}
+        initialSnapshot={riskSnapshot}
+        canEvaluate={canEvaluate}
+      />
 
       <div className="facility-grid">
         {/* Attention queue */}

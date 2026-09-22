@@ -70,6 +70,7 @@ apps/inspector-mobile/web-build/
 Thumbs.db
 .idea/
 .vscode/
+.kilo/
 *.swp
 *.swo
 

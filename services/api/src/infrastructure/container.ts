@@ -28,6 +28,7 @@ import {
   FinancialDocumentRepository,
   FinancialRiskRepository,
   InspectionFlagRepository,
+  ProjectRiskRepository,
 } from "@netram/data";
 import type { AppConfig } from "../config.js";
 import { AppError } from "./errors.js";
@@ -66,6 +67,10 @@ import { FundService } from "../modules/funds/application/fund-service.js";
 import { ExpenseService } from "../modules/funds/application/expense-service.js";
 import { FinancialDocumentService } from "../modules/funds/application/document-service.js";
 import { FinancialRiskService } from "../modules/financial-risk/application/financial-risk-service.js";
+import { ProjectRiskService } from "../modules/project-risk/application/project-risk-service.js";
+import { ProjectRiskContextBuilder } from "../modules/project-risk/application/project-risk-context-builder.js";
+import { CompositeRiskScorer } from "../modules/project-risk/domain/composite-risk-scorer.js";
+import { InspectionScheduler } from "../modules/project-risk/application/inspection-scheduler.js";
 
 export interface Container {
   config: AppConfig;
@@ -106,6 +111,8 @@ export interface Container {
   docRepo: FinancialDocumentRepository;
   riskRepo: FinancialRiskRepository;
   flagRepo: InspectionFlagRepository;
+  projectRiskService: ProjectRiskService;
+  projectRiskRepo: ProjectRiskRepository;
 }
 
 export function buildContainer(config: AppConfig): Container {
@@ -273,6 +280,35 @@ export function buildContainer(config: AppConfig): Container {
     flagRepo,
   );
 
+  const projectRiskRepo = new ProjectRiskRepository(db);
+  const projectRiskContextBuilder = new ProjectRiskContextBuilder(
+    projectRepo,
+    inspectionRepo,
+    findingRepo,
+    correctiveActionRepo,
+    attendanceRepo,
+    complaintRepo,
+    aiAnomalyRepo,
+    riskRepo,
+    fundRepo,
+    expenseRepo,
+    financialRiskService,
+  );
+  const compositeRiskScorer = new CompositeRiskScorer();
+  const inspectionScheduler = new InspectionScheduler(
+    projectRiskRepo,
+    flagRepo,
+    inspectionService,
+  );
+  const projectRiskService = new ProjectRiskService(
+    authorizationService,
+    projectRiskContextBuilder,
+    compositeRiskScorer,
+    inspectionScheduler,
+    projectRiskRepo,
+    auditRepo,
+  );
+
   let provider: AuthProvider;
   let devAuthProvider: DevAuthProvider | null = null;
 
@@ -338,5 +374,7 @@ export function buildContainer(config: AppConfig): Container {
     docRepo,
     riskRepo,
     flagRepo,
+    projectRiskService,
+    projectRiskRepo,
   };
 }

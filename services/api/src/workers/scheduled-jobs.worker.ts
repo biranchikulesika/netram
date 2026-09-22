@@ -1,29 +1,54 @@
 import { pathToFileURL } from "node:url";
 import { getDb, CorrectiveActionRepository, auditEvents } from "@netram/data";
 import { loadWorkerEnv } from "@netram/config";
+import type { ProjectRiskService } from "../modules/project-risk/application/project-risk-service.js";
+import type { RequestUserContext } from "../infrastructure/request-context.js";
 
 export interface ScheduledJobsOptions {
   databaseUrl: string;
   intervalMs?: number;
+  projectRiskService?: Pick<ProjectRiskService, "sweepAllActiveProjects">;
 }
 
 export interface ScheduledJobsSummary {
   overdueActionsMarked: number;
   overdueActionIds: string[];
+  projectRiskSweep?: { evaluatedCount: number; scheduledCount: number };
   executedAt: string;
+}
+
+export function createWorkerSystemContext(): RequestUserContext {
+  return {
+    user: {
+      id: "00000000-0000-0000-0000-000000000000",
+      email: "system@netram.internal",
+      displayName: "System Scheduled Worker",
+      type: "netram",
+    },
+    userId: "00000000-0000-0000-0000-000000000000",
+    assignments: [],
+    permissions: new Set(["*"]),
+    requestId: "scheduled-job-runner",
+    ipAddress: "127.0.0.1",
+  };
 }
 
 export class ScheduledJobsRunner {
   private running = false;
   private processing = false;
   private readonly intervalMs: number;
+  private readonly projectRiskService?: Pick<ProjectRiskService, "sweepAllActiveProjects">;
 
   constructor(
     private readonly correctiveActionRepo: CorrectiveActionRepository,
     private readonly db: ReturnType<typeof getDb>,
-    opts?: { intervalMs?: number },
+    opts?: {
+      intervalMs?: number;
+      projectRiskService?: Pick<ProjectRiskService, "sweepAllActiveProjects">;
+    },
   ) {
     this.intervalMs = opts?.intervalMs ?? 5000;
+    this.projectRiskService = opts?.projectRiskService;
   }
 
   start(): void {
@@ -88,9 +113,26 @@ export class ScheduledJobsRunner {
       }
     }
 
+    // 2. Risk Engine Sweep: Automatically evaluate active projects and trigger inspections
+    let projectRiskSweep: { evaluatedCount: number; scheduledCount: number } | undefined;
+    if (this.projectRiskService) {
+      try {
+        const sysCtx = createWorkerSystemContext();
+        projectRiskSweep = await this.projectRiskService.sweepAllActiveProjects(sysCtx);
+        if (projectRiskSweep.evaluatedCount > 0) {
+          console.log(
+            `[scheduled-jobs] Project Risk Sweep: Evaluated ${projectRiskSweep.evaluatedCount} project(s), auto-scheduled ${projectRiskSweep.scheduledCount} inspection(s)`,
+          );
+        }
+      } catch (riskErr) {
+        console.warn("[scheduled-jobs] Error during project risk sweep:", riskErr);
+      }
+    }
+
     return {
       overdueActionsMarked: overdueResult.count,
       overdueActionIds: overdueResult.actionIds,
+      projectRiskSweep,
       executedAt,
     };
   }
@@ -103,6 +145,7 @@ export async function startScheduledJobsWorker(
   const correctiveActionRepo = new CorrectiveActionRepository(db);
   const runner = new ScheduledJobsRunner(correctiveActionRepo, db, {
     intervalMs: opts.intervalMs,
+    projectRiskService: opts.projectRiskService,
   });
   runner.start();
   return {

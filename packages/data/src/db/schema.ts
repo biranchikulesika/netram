@@ -1121,3 +1121,40 @@ export const inspectionFlags = pgTable(
   ],
 );
 
+/* ---------- Project Risk Snapshots ---------- */
+
+export const projectRiskSnapshots = pgTable(
+  "project_risk_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).defaultNow().notNull(),
+    scoringVersion: varchar("scoring_version", { length: 50 }).notNull(),
+    totalScore: integer("total_score").notNull(),
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+    financialScore: integer("financial_score").notNull(),
+    inspectionQualityScore: integer("inspection_quality_score").notNull(),
+    attendanceAnomalyScore: integer("attendance_anomaly_score").notNull(),
+    complaintDensityScore: integer("complaint_density_score").notNull(),
+    aiAnomalyScore: integer("ai_anomaly_score").notNull(),
+    financialSignals: json("financial_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    inspectionQualitySignals: json("inspection_quality_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    attendanceAnomalySignals: json("attendance_anomaly_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    complaintDensitySignals: json("complaint_density_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    aiAnomalySignals: json("ai_anomaly_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    topContributors: json("top_contributors").$type<Array<Record<string, unknown>>>().default([]).notNull(),
+    explanation: text("explanation").notNull(),
+    inspectionFlagId: uuid("inspection_flag_id").references(() => inspectionFlags.id),
+    scheduledInspectionId: uuid("scheduled_inspection_id").references(() => inspections.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("project_risk_snapshots_project_idx").on(t.projectId),
+    index("project_risk_snapshots_calculated_at_idx").on(t.calculatedAt),
+    index("project_risk_snapshots_total_score_idx").on(t.totalScore),
+    index("project_risk_snapshots_risk_level_idx").on(t.riskLevel),
+  ],
+);
+

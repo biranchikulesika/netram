@@ -28,4 +28,5 @@ export * from "./repositories/expense.repository.js";
 export * from "./repositories/financial-document.repository.js";
 export * from "./repositories/financial-risk.repository.js";
 export * from "./repositories/inspection-flag.repository.js";
+export * from "./repositories/project-risk.repository.js";
 

@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import type { MultipartFile, MultipartValue } from "@fastify/multipart";
 import { z } from "zod";
 import type { Container } from "../../../infrastructure/container.js";
 import { toJsonSchema } from "../../../infrastructure/schema-helper.js";

@@ -43,6 +43,7 @@ import { registerAttendanceRoutes } from "./modules/attendance/http/routes.js";
 import { registerAnalyticsRoutes } from "./modules/analytics/http/routes.js";
 import { registerFundRoutes } from "./modules/funds/http/routes.js";
 import { registerFinancialRiskRoutes } from "./modules/financial-risk/http/routes.js";
+import { registerProjectRiskRoutes } from "./modules/project-risk/http/project-risk.routes.js";
 import { InvalidVcSessionTransitionError } from "./modules/vc/domain/vc-session.js";
 
 export async function buildApp(container: Container) {
@@ -194,7 +195,11 @@ export async function buildApp(container: Container) {
       return;
     }
 
-    if (err.validation || err.code === "FST_ERR_VALIDATION") {
+    if (
+      err.validation ||
+      err.code === "FST_ERR_VALIDATION" ||
+      err.code === "FST_ERR_CTP_EMPTY_JSON_BODY"
+    ) {
       log.info({ validationError: err }, "Request schema validation failed");
       void reply.code(400).send({
         error: {
@@ -248,6 +253,7 @@ export async function buildApp(container: Container) {
       await registerAnalyticsRoutes(api, container);
       await registerFundRoutes(api, container);
       await registerFinancialRiskRoutes(api, container);
+      await registerProjectRiskRoutes(api, container);
     },
     { prefix: "/api/v1" },
   );

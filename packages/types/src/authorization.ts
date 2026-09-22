@@ -61,6 +61,8 @@ export const PERMISSIONS = [
   "inspection_flag:review",
   "inspection_flag:resolve",
   "inspection_flag:dismiss",
+  "project_risk:read",
+  "project_risk:evaluate",
 ] as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[number];

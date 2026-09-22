@@ -3,7 +3,7 @@ import type { AuthorizationService } from "../../authorization/application/autho
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { ProjectRepositoryPort } from "../../projects/application/ports/project-repository.js";
 import type { ExpenseRepository, FundRepository } from "@netram/data";
-import type { Expense, ExpenseListQuery, ExpenseStatus } from "@netram/types";
+import type { Expense, ExpenseListQuery } from "@netram/types";
 import type {
   CreateExpenseInput,
   PatchExpenseInput,

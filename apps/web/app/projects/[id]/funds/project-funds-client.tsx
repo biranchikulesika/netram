@@ -54,7 +54,6 @@ export function ProjectFundsClient({
     try {
       const res = await fetch(`/api/v1/financial-risk/evaluate/${projectId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -580,15 +579,26 @@ export function ProjectFundsClient({
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 50,
+            zIndex: 1000,
+            backdropFilter: "blur(4px)",
           }}
         >
-          <div className="card" style={{ width: "500px", maxWidth: "90%", padding: "1.5rem", backgroundColor: "var(--background)" }}>
-            <h3 style={{ marginTop: 0 }}>Record Expenditure Claim</h3>
+          <div
+            style={{
+              width: "500px",
+              maxWidth: "90%",
+              padding: "1.75rem",
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <h3 style={{ marginTop: 0, fontSize: "1.25rem", fontWeight: 600 }}>Record Expenditure Claim</h3>
             <form onSubmit={handleCreateExpense} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
                 <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Category *</label>
@@ -708,21 +718,32 @@ export function ProjectFundsClient({
         </div>
       )}
 
-      {/* Void Reason Modal */}
+      {/* Void Confirmation Modal */}
       {voidingExpenseId && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 50,
+            zIndex: 1000,
+            backdropFilter: "blur(4px)",
           }}
         >
-          <div className="card" style={{ width: "450px", maxWidth: "90%", padding: "1.5rem", backgroundColor: "var(--background)" }}>
-            <h3 style={{ marginTop: 0, color: "#dc2626" }}>Void Expense Record</h3>
+          <div
+            style={{
+              width: "450px",
+              maxWidth: "90%",
+              padding: "1.75rem",
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <h3 style={{ marginTop: 0, color: "#dc2626", fontSize: "1.25rem", fontWeight: 600 }}>Void Expense Record</h3>
             <p style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
               Financial records cannot be deleted. Voiding will permanently deactivate this claim while retaining an immutable audit trail.
             </p>

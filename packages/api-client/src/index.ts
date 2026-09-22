@@ -87,6 +87,10 @@ import type {
   AllocationListQuery,
   ExpenseListQuery,
   InspectionFlagListQuery,
+  ProjectRiskSnapshot,
+  ProjectRankEntry,
+  ProjectRiskRankingQuery,
+  ProjectRiskSnapshotQuery,
 } from "@netram/types";
 import type {
   CreateAllocationInput,
@@ -754,7 +758,7 @@ export class NetramApiClient extends HttpClient {
   // Financial Risk & Evaluation
   async evaluateProjectRisk(
     projectId: string,
-  ): Promise<{ flag: InspectionFlag | null; events: FinancialRiskEvent[]; scoreOutput: any }> {
+  ): Promise<{ flag: InspectionFlag | null; events: FinancialRiskEvent[]; scoreOutput: Record<string, unknown> }> {
     return this.post(`/api/v1/financial-risk/evaluate/${projectId}`, {});
   }
 
@@ -810,6 +814,29 @@ export class NetramApiClient extends HttpClient {
 
   async dismissInspectionFlag(id: string, dismissedReason: string): Promise<InspectionFlag> {
     return this.post(`/api/v1/inspection-flags/${id}/dismiss`, { dismissedReason });
+  }
+
+  // Project Risk & Priority Scheduling
+  async listProjectRiskRankings(
+    query: ProjectRiskRankingQuery = {},
+  ): Promise<{ items: ProjectRankEntry[]; total: number }> {
+    return this.get(`/api/v1/project-risk/rankings${queryString(query)}`);
+  }
+
+  async getProjectRiskSnapshots(query: ProjectRiskSnapshotQuery): Promise<ProjectRiskSnapshot[]> {
+    return this.get(`/api/v1/project-risk/projects/${query.projectId}/snapshots${queryString(query)}`);
+  }
+
+  async getLatestProjectRiskSnapshot(projectId: string): Promise<ProjectRiskSnapshot | null> {
+    return this.get(`/api/v1/project-risk/projects/${projectId}/latest`);
+  }
+
+  async evaluateProjectRiskScore(projectId: string): Promise<ProjectRiskSnapshot> {
+    return this.post(`/api/v1/project-risk/evaluate/${projectId}`, {});
+  }
+
+  async sweepProjectRiskScores(): Promise<{ evaluatedCount: number; scheduledCount: number }> {
+    return this.post("/api/v1/project-risk/sweep", {});
   }
 }
 
