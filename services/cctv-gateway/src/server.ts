@@ -5,6 +5,10 @@ import { loadConfig, type CctvGatewayConfig } from "./config.js";
 import { createStreamToken, verifyStreamToken } from "./auth/token.js";
 import type { CameraProvider } from "./providers/provider.js";
 import { SimulatedCameraProvider } from "./providers/simulated-provider.js";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import ffmpegPath from "ffmpeg-static";
+
 
 export interface BuildServerOptions {
   provider?: CameraProvider;
@@ -111,14 +115,38 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       });
     }
 
-    // Return simulated MPEG-TS media chunk relay
-    // Starts with MPEG-TS sync byte (0x47)
-    const simulatedTsPacket = Buffer.alloc(188, 0);
-    simulatedTsPacket[0] = 0x47; // TS Sync Byte
+    const { cameraId } = payload;
+    const sourcePath = await provider.acquireRawStream(cameraId);
 
-    void reply.header("Content-Type", "video/mp2t");
-    void reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
-    return reply.send(simulatedTsPacket);
+    reply.hijack();
+
+    reply.raw.writeHead(200,{
+      "Content-Type": "video/mp2t",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+    });
+    reply.raw.flushHeaders();
+
+    const ffmpegArgs = ["-re", "-stream_loop", "-1", "-i", sourcePath, "-c", "copy", "-f", "mpegts", "pipe:1"];
+    const child = spawn(ffmpegPath as string, ffmpegArgs);
+
+    child.stdout.pipe(reply.raw);
+
+    child.stderr.on("data", (data) => {
+      app.log.error(`ffmpeg stderr: ${data}`);
+    });
+
+    request.raw.on("close", () => {
+      child.kill("SIGKILL");
+    });
+
+    child.on("error", (err) => {
+      app.log.error(err, "ffmpeg failed to start");
+      if(!reply.raw.headersSent){
+        reply.raw.writeHead(500);   
+      }
+      reply.raw.end();
+    });
+    
   });
 
   // Snapshot capture for advisory AI pipeline / inspection verification (§7, §36)
@@ -143,7 +171,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   return app;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const config = loadConfig();
   buildServer()
     .then(async (app) => {

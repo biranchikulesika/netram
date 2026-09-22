@@ -1,4 +1,7 @@
 import type { CameraProvider, CameraRef, CameraSnapshotResult } from "./provider.js";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
 
 // Standard 1x1 valid JFIF JPEG buffer
 const MINIMAL_JPEG = Buffer.from([
@@ -14,12 +17,16 @@ const MINIMAL_JPEG = Buffer.from([
   0x00, 0xbf, 0x80, 0xff, 0xd9,
 ]);
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const samplesDir = path.resolve(__dirname,"../../samples");
+
 export class SimulatedCameraProvider implements CameraProvider {
   readonly name = "simulated";
 
   private cameras: Map<string, CameraRef> = new Map([
     [
-      "cctv:vani-gate",
+      "a8ccb317-76ab-5106-ac47-5bc1dc568967",
       {
         id: "cctv:vani-gate",
         label: "Vani Vihar - Main Gate",
@@ -28,7 +35,7 @@ export class SimulatedCameraProvider implements CameraProvider {
       },
     ],
     [
-      "cctv:cuttack-dinning",
+      "b488164c-0e08-585a-a5db-3ea2977ee28a",
       {
         id: "cctv:cuttack-dinning",
         label: "Cuttack Girls' Hostel - Dining Hall",
@@ -36,6 +43,81 @@ export class SimulatedCameraProvider implements CameraProvider {
         status: "online",
       },
     ],
+    [
+      "6a2121e7-bf35-5fb8-aa13-a4a6ad7e2e36",
+      {
+        id: "cctv:cuttack-dinning",
+        label: "Vani Vihar - Dormitory Block",
+        provider: "simulated",
+        status: "online",
+      },
+    ],
+    [
+      "4e940f8a-2448-5174-a232-2d2712de95a9",
+      {
+        id: "cctv:cuttack-dinning",
+        label: "Vani Vihar - Kitchen Entry",
+        provider: "simulated",
+        status: "online",
+      },
+    ],
+    [
+      "bc0c4cf0-950b-584e-84e5-e056d7ac9eee",
+      {
+        id: "cctv:cuttack-dinning",
+        label: "Cuttack Girls' Hostel - Main Gate",
+        provider: "simulated",
+        status: "online",
+      },
+    ],
+    [
+      "e5780131-b007-579f-aa51-4eccc168fe39",
+      {
+        id: "cctv:cuttack-dinning",
+        label: "Ganjam Model School - Main Gate",
+        provider: "simulated",
+        status: "online",
+      },
+    ],
+    [
+      "18ba6d47-6879-559b-9e8d-e3e6ad783a5b",
+      {
+        id: "cctv:cuttack-dinning",
+        label: "Ganjam Model School - Kitchen",
+        provider: "simulated",
+        status: "online",
+      },
+    ],
+    [
+      "d39dc90f-b150-51cd-9072-d177421f8cad",
+      {
+        id: "cctv:cuttack-dinning",
+        label: "Rajdhani Boys' Hostel - Main Gate",
+        provider: "simulated",
+        status: "online",
+      },
+    ],
+    [
+      "c79952b4-8322-5941-8cc4-fb6e3872b1c3",
+      {
+        id: "cctv:cuttack-dinning",
+        label: "Rourkela Model Girls' Hostel - Main Gate",
+        provider: "simulated",
+        status: "online",
+      },
+    ],
+  ]);
+
+  private samplePaths: Map<string, string> = new Map([
+    ["a8ccb317-76ab-5106-ac47-5bc1dc568967", path.join(samplesDir,"boys-at-lab.mp4")],
+    ["b488164c-0e08-585a-a5db-3ea2977ee28a", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
+    ["6a2121e7-bf35-5fb8-aa13-a4a6ad7e2e36", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
+    ["4e940f8a-2448-5174-a232-2d2712de95a9", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
+    ["bc0c4cf0-950b-584e-84e5-e056d7ac9eee", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
+    ["e5780131-b007-579f-aa51-4eccc168fe39", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
+    ["18ba6d47-6879-559b-9e8d-e3e6ad783a5b", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
+    ["d39dc90f-b150-51cd-9072-d177421f8cad", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
+    ["c79952b4-8322-5941-8cc4-fb6e3872b1c3", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
   ]);
 
   async listCameras(): Promise<CameraRef[]> {
@@ -50,7 +132,11 @@ export class SimulatedCameraProvider implements CameraProvider {
   }
 
   async acquireRawStream(cameraId: string): Promise<string> {
-    return `rtsp://simulated.internal:8554/live/${cameraId}`;
+    const path = this.samplePaths.get(cameraId);
+    if(!path){
+      throw new Error(`No sample video configured for camera: ${cameraId}`);
+    }
+    return path;
   }
 
   async acquireSnapshot(_cameraId: string): Promise<CameraSnapshotResult> {

@@ -2,11 +2,12 @@ import { resolve } from "node:path";
 import { v5 as uuidv5 } from "uuid";
 import { getDb } from "@netram/data";
 import * as s from "@netram/data/schema";
+import { fileURLToPath } from "node:url";
 
 try {
   process.loadEnvFile(resolve(import.meta.dirname, "../../.env"));
-} catch {
-  // Ignore if .env does not exist or already loaded
+} catch (err) {
+  console.log("ENV LOAD FAILED:", err);
 }
 
 /** Deterministic namespace for all seed IDs. */
@@ -205,6 +206,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       .insert(s.users)
       .values({ ...u })
       .onConflictDoNothing();
+    console.log("Inserted:", u.email);
     await db
       .insert(s.identities)
       .values({
@@ -3548,7 +3550,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   );
 }
 
-if (process.argv[1]?.endsWith("seed/index.ts")) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   seedDatabase()
     .then(() => process.exit(0))
     .catch((err) => {

@@ -13,3 +13,4 @@ allowBuilds:
   msgpackr-extract: true
   unrs-resolver: true
   workerd: true
+  ffmpeg-static: true
