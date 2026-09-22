@@ -427,8 +427,6 @@ export const correctiveActions = pgTable("corrective_actions", {
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
   /** Action Taken Report content: what was actually done (docs/DoSJE.md §16). */
   actionSummary: text("action_summary"),
-  /** Human-friendly ATR reference, e.g. ATR-2026-0007. */
-  atrCode: varchar("atr_code", { length: 50 }),
   /** When the authority verified the submitted action. */
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   verifiedByUserId: uuid("verified_by_user_id").references(() => users.id),
@@ -436,6 +434,23 @@ export const correctiveActions = pgTable("corrective_actions", {
   reviewRemarks: text("review_remarks"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Supporting attachments (PDFs, photos, videos) lodged with the Action Taken
+ * Report. Blobs live in object storage; only metadata is persisted (AGENTS.md §30).
+ */
+export const correctiveActionFiles = pgTable("corrective_action_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  correctiveActionId: uuid("corrective_action_id")
+    .notNull()
+    .references(() => correctiveActions.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 300 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  contentHash: varchar("content_hash", { length: 128 }).notNull(),
+  storageKey: varchar("storage_key", { length: 300 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- Complaints ---------- */

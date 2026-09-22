@@ -87,11 +87,15 @@ export default async function CorrectiveActionsPage() {
     .catch(() => ({ items: [], total: 0, page: 1, pageSize: 100 }));
 
   const canOrder =
-    permissions.includes("inspection:review") || permissions.includes("*");
-  const canTransition =
-    permissions.includes("corrective_action:submit") ||
-    permissions.includes("corrective_action:approve") ||
-    permissions.includes("*");
+    permissions.includes("*") ||
+    (permissions.includes("corrective_action:read") && permissions.includes("inspection:review"));
+
+  const [awaitingOrders, organisations] = canOrder
+    ? await Promise.all([
+        client.listFindingsAwaitingOrder().catch(() => []),
+        client.listOrganisations().catch(() => []),
+      ])
+    : [[], []];
 
   return (
     <main>
@@ -105,8 +109,9 @@ export default async function CorrectiveActionsPage() {
       <CorrectiveActionsLayout
         initialActions={page.items}
         totalActions={page.total}
+        awaitingOrders={awaitingOrders}
         canOrder={canOrder}
-        canTransition={canTransition}
+        organisations={organisations}
       />
     </main>
   );

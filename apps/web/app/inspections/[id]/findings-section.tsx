@@ -1,28 +1,50 @@
 import Link from "next/link";
-import type { Finding } from "@netram/types";
+import type { CorrectiveAction, Finding, OrganisationView } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
+import { IconGavel } from "../../components/icons";
+import { OrderCorrectiveActionButton } from "../../components/order-corrective-action-button";
 
 export interface FindingsSectionProps {
   items: Finding[];
+  inspectionId: string;
+  project: { name: string; code: string; organisationId: string | null } | null;
+  organisations: OrganisationView[];
+  canOrder: boolean;
+  caByFindingId: Record<string, CorrectiveAction>;
 }
 
-export function FindingsSection({ items }: FindingsSectionProps) {
+export function FindingsSection({
+  items,
+  inspectionId,
+  project,
+  organisations,
+  canOrder,
+  caByFindingId,
+}: FindingsSectionProps) {
   return (
     <section className="findings-section">
       <div className="section-title-row">
         <div>
           <h3>Formal Findings</h3>
-          <p className="muted">Authority-reviewed compliance issues and remediation orders</p>
         </div>
       </div>
 
       {items.length === 0 ? (
-        <div className="empty-box">No formal findings recorded for this inspection.</div>
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <IconGavel width={20} height={20} />
+          </div>
+          <div className="empty-state-title">No formal findings</div>
+          <p className="empty-state-sub">
+            Authority-reviewed compliance issues and remediation orders will appear here.
+          </p>
+        </div>
       ) : (
         <div className="findings-list">
           {items.map((f) => {
-            const hasAction = f.status === "action_required";
-            const canOrder = f.status === "confirmed";
+            const existingCa = caByFindingId[f.id];
+            const canOrderFinding = canOrder && f.status === "confirmed" && !existingCa;
+            const showButton = Boolean(existingCa || canOrderFinding);
 
             return (
               <article key={f.id} className={`finding-item severity-${f.severity}`}>
@@ -45,7 +67,7 @@ export function FindingsSection({ items }: FindingsSectionProps) {
                   </div>
                 )}
 
-                {(hasAction || canOrder) && (
+                {showButton && (
                   <div
                     style={{
                       marginTop: "0.85rem",
@@ -55,19 +77,39 @@ export function FindingsSection({ items }: FindingsSectionProps) {
                       justifyContent: "flex-end",
                     }}
                   >
-                    <Link
-                      href="/corrective-actions"
-                      className="btn-secondary"
-                      style={{
-                        fontSize: "0.75rem",
-                        padding: "0.25rem 0.6rem",
-                        textDecoration: "none",
-                        color: "var(--color-navy-brand)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {hasAction ? "View Remediation Order →" : "Order Corrective Action →"}
-                    </Link>
+                    {canOrderFinding ? (
+                      <OrderCorrectiveActionButton
+                        finding={{
+                          id: f.id,
+                          severity: f.severity,
+                          description: f.description,
+                          remediation: f.remediation,
+                        }}
+                        inspectionId={inspectionId}
+                        project={
+                          project && {
+                            name: project.name,
+                            code: project.code,
+                            organisationId: project.organisationId,
+                          }
+                        }
+                        organisations={organisations}
+                      />
+                    ) : (
+                      <Link
+                        href={existingCa ? `/corrective-actions/${existingCa.id}` : "/corrective-actions"}
+                        className="btn-secondary"
+                        style={{
+                          fontSize: "0.75rem",
+                          padding: "0.25rem 0.6rem",
+                          textDecoration: "none",
+                          color: "var(--color-navy-brand)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        View Remediation Order →
+                      </Link>
+                    )}
                   </div>
                 )}
               </article>

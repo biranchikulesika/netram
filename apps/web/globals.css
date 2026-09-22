@@ -604,36 +604,85 @@ body.has-portal-sidebar main {
   font-size: 0.9rem;
 }
 
+/* Designed empty state for section panels */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.empty-state-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.06);
+}
+
+.empty-state-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.empty-state-sub {
+  font-size: 0.8rem;
+  color: #64748b;
+  max-width: 440px;
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* Overview Cards */
 .overview-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
 }
 
 .overview-card {
-  background: #ffffff;
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface, #ffffff);
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong, #e2e8f0);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  box-shadow: 0 1px 2px rgba(12, 42, 82, 0.04);
 }
 
 .card-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.card-label svg {
+  color: #2563eb;
 }
 
 .card-val {
   font-size: 0.95rem;
-  font-weight: 600;
-  color: #0f172a;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 /* Tables */
@@ -663,6 +712,7 @@ th {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 
 td {
@@ -1336,6 +1386,17 @@ td {
 
 .table-card tr:hover td {
   background: var(--bg-hover);
+}
+
+/* Full-row clickable table rows: stretch an anchor across the first cell */
+.table-row-anchor-cell {
+  position: relative;
+}
+
+.table-row-anchor-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .code-badge {
@@ -2752,31 +2813,175 @@ a.registry-card-link:hover {
   border: 1px solid #bae6fd;
 }
 
-.trigger-pill {
-  font-size: 0.75rem;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-}
-
-.type-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.inspection-header {
+/* Inspection Hero */
+.inspection-hero {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
 }
 
-.inspection-header h2 {
-  margin: 0.25rem 0;
-  font-size: 1.5rem;
+.inspection-hero-title {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.inspection-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+  flex-wrap: wrap;
+}
+
+.inspection-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.inspection-meta-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  display: inline-block;
+}
+
+.inspection-id {
+  font-family: var(--font-mono);
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+}
+
+.inspection-hero-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.inspection-hero-side .status-large {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.75rem;
+}
+
+/* Workflow Stage Stepper */
+.workflow-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(12, 42, 82, 0.05);
+}
+
+.workflow-stepper {
+  display: flex;
+  align-items: flex-start;
+}
+
+.workflow-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  position: relative;
+  min-width: 0;
+}
+
+.workflow-step::before {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: #e2e8f0;
+  z-index: 0;
+}
+
+.workflow-step:first-child::before {
+  display: none;
+}
+
+.workflow-step.passed::before {
+  background: #86efac;
+}
+
+.workflow-step.current::before {
+  background: #bfdbfe;
+}
+
+.workflow-node {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  z-index: 1;
+  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  color: #94a3b8;
+}
+
+.workflow-step.passed .workflow-node {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
+}
+
+.workflow-step.current .workflow-node {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.15);
+}
+
+.workflow-step-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workflow-step.passed .workflow-step-label {
+  color: #15803d;
+}
+
+.workflow-step.current .workflow-step-label {
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.workflow-step-hint {
+  font-size: 0.62rem;
+  color: #cbd5e1;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.workflow-step.current .workflow-step-hint {
+  color: #3b82f6;
+  font-weight: 600;
 }
 
 /* Evidence Gallery Grid */
@@ -2977,6 +3182,23 @@ a.registry-card-link:hover {
   border: 1px solid #e2e8f0;
   margin-bottom: 2rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.section-pair-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.section-pair-grid > section {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .section-pair-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .observation-list,
@@ -3845,9 +4067,10 @@ a:hover {
 .vc-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 1.5rem;
-  margin-top: 2rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 

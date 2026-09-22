@@ -5,7 +5,12 @@ import type { AuthorizationService } from "../../authorization/application/autho
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { InspectionService } from "../../inspections/application/inspection-service.js";
 import type { FindingRepositoryPort } from "./ports/finding-repository.js";
-import type { Finding, FindingStatus, FindingSeverity } from "@netram/types";
+import type {
+  Finding,
+  FindingAwaitingOrder,
+  FindingStatus,
+  FindingSeverity,
+} from "@netram/types";
 import { evaluateFindingTransition } from "../domain/finding.js";
 
 const REVIEW = "inspection:review" as const;
@@ -48,6 +53,17 @@ export class FindingService {
   async listFindings(ctx: RequestUserContext, inspectionId: string): Promise<Finding[]> {
     await this.inspectionService.getInspection(ctx, inspectionId);
     return this.repository.listByInspection(inspectionId);
+  }
+
+  /**
+   * Confirmed findings across the caller's jurisdiction that are still
+   * awaiting a remediation order (authority ordering surface; AGENTS.md §32).
+   */
+  async listFindingsAwaitingOrder(ctx: RequestUserContext): Promise<FindingAwaitingOrder[]> {
+    this.authz.requirePermission(ctx, REVIEW);
+    this.authz.requirePermission(ctx, "corrective_action:read");
+    const scope = this.authz.accessibleDistrictIds(ctx);
+    return this.repository.listAwaitingOrder(scope ? [...scope] : undefined);
   }
 
   async createFinding(

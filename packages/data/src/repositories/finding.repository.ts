@@ -1,10 +1,18 @@
-import { desc, eq } from "drizzle-orm";
-import { findings as findingsTable, auditEvents, outboxEvents } from "../db/schema.js";
+import { and, desc, eq, inArray, notExists } from "drizzle-orm";
+import {
+  correctiveActions as correctiveActionsTable,
+  findings as findingsTable,
+  inspections as inspectionsTable,
+  projects as projectsTable,
+  auditEvents,
+  outboxEvents,
+} from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
 import type {
   AuditAction,
   DomainEventType,
   Finding,
+  FindingAwaitingOrder,
   FindingSeverity,
   FindingStatus,
 } from "@netram/types";
@@ -92,6 +100,78 @@ export class FindingRepository {
       .limit(1);
     if (rows.length === 0) return null;
     return toFinding(rows[0] as unknown as FindingRow);
+  }
+
+  /**
+   * Confirmed findings without a corrective action, optionally scoped to the
+   * given project district IDs. Joins inspection + project so authorities can
+   * identify the facility when ordering remediation.
+   */
+  async listAwaitingOrder(jurisdictionIds?: string[]): Promise<FindingAwaitingOrder[]> {
+    const rows = await this.db
+      .select({
+        id: findingsTable.id,
+        inspectionId: findingsTable.inspectionId,
+        observationId: findingsTable.observationId,
+        severity: findingsTable.severity,
+        description: findingsTable.description,
+        remediation: findingsTable.remediation,
+        status: findingsTable.status,
+        categoryId: findingsTable.categoryId,
+        amountInr: findingsTable.amountInr,
+        responsibleOrganisationId: findingsTable.responsibleOrganisationId,
+        createdAt: findingsTable.createdAt,
+        updatedAt: findingsTable.updatedAt,
+        inspectionStatus: inspectionsTable.status,
+        projectId: projectsTable.id,
+        projectCode: projectsTable.code,
+        projectName: projectsTable.name,
+        districtId: projectsTable.districtId,
+        organisationId: projectsTable.organisationId,
+      })
+      .from(findingsTable)
+      .innerJoin(inspectionsTable, eq(findingsTable.inspectionId, inspectionsTable.id))
+      .innerJoin(projectsTable, eq(inspectionsTable.projectId, projectsTable.id))
+      .where(
+        and(
+          eq(findingsTable.status, "confirmed"),
+          notExists(
+            this.db
+              .select({ id: correctiveActionsTable.id })
+              .from(correctiveActionsTable)
+              .where(eq(correctiveActionsTable.findingId, findingsTable.id)),
+          ),
+          jurisdictionIds?.length
+            ? inArray(projectsTable.districtId, jurisdictionIds)
+            : undefined,
+        ),
+      )
+      .orderBy(desc(findingsTable.createdAt));
+    return rows.map(
+      (r) =>
+        ({
+          id: r.id,
+          inspectionId: r.inspectionId,
+          observationId: r.observationId,
+          severity: r.severity,
+          description: r.description,
+          remediation: r.remediation,
+          status: r.status,
+          categoryId: r.categoryId,
+          amountInr: r.amountInr,
+          responsibleOrganisationId: r.responsibleOrganisationId,
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+          inspectionStatus: r.inspectionStatus,
+          project: {
+            id: r.projectId,
+            code: r.projectCode,
+            name: r.projectName,
+            districtId: r.districtId,
+            organisationId: r.organisationId,
+          },
+        }) as FindingAwaitingOrder,
+    );
   }
 
   async createWithAuditAndEvent(cmd: CreateFindingWrite): Promise<Finding> {

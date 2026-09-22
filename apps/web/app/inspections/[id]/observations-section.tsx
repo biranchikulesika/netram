@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Observation } from "@netram/types";
 import { useRouter } from "next/navigation";
 import { getUserDisplayName, formatDateTime } from "../../../lib/presentation";
+import { IconClipboard } from "../../components/icons";
 
 export interface ObservationsSectionProps {
   inspectionId: string;
@@ -49,14 +50,21 @@ export function ObservationsSection({ inspectionId, items, canAdd }: Observation
       <div className="section-title-row">
         <div>
           <h3>Field Observations</h3>
-          <p className="muted">Time-stamped notes captured on site by inspection team members</p>
         </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       {items.length === 0 ? (
-        <div className="empty-box">No field observations recorded yet.</div>
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <IconClipboard width={20} height={20} />
+          </div>
+          <div className="empty-state-title">No field observations yet</div>
+          <p className="empty-state-sub">
+            Time-stamped notes captured on site by inspection team members will appear here.
+          </p>
+        </div>
       ) : (
         <div className="observation-list">
           {items.map((obs) => (

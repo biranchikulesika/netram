@@ -59,6 +59,7 @@ export default async function FacilityInspectionsPage({
           <thead>
             <tr>
               <th style={{ width: "130px" }}>Type</th>
+              <th>Inspection ID</th>
               <th>Trigger</th>
               <th style={{ width: "150px" }}>Status</th>
               <th>Assignment</th>
@@ -69,7 +70,7 @@ export default async function FacilityInspectionsPage({
           <tbody>
             {inspections.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem" }}>
                   <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
                     No inspections recorded for this facility.
                   </div>
@@ -87,10 +88,18 @@ export default async function FacilityInspectionsPage({
 
                 return (
                   <tr key={i.id}>
-                    <td>
+                    <td className="table-row-anchor-cell" style={{ cursor: "pointer" }}>
+                      <Link
+                        href={`/inspections/${i.id}`}
+                        className="table-row-anchor-link"
+                        aria-label={`Open inspection ${i.id}`}
+                      />
                       <span className={`badge ${isSurprise ? "badge-surprise" : "badge-routine"}`}>
                         {i.type.toUpperCase()}
                       </span>
+                    </td>
+                    <td title={i.id} style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--text-subtle)" }}>
+                      {i.id.slice(0, 12)}
                     </td>
                     <td>
                       <span className="trigger-text">{i.trigger.replace(/_/g, " ")}</span>
@@ -114,7 +123,7 @@ export default async function FacilityInspectionsPage({
                     <td className="muted" style={{ fontSize: "0.8rem" }}>
                       {dateStr}
                     </td>
-                    <td style={{ textAlign: "right" }}>
+                    <td style={{ textAlign: "right", position: "relative", zIndex: 2 }}>
                       <Link
                         href={`/inspections/${i.id}`}
                         className="btn-secondary"

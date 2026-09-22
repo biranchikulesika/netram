@@ -2,571 +2,654 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import type { CorrectiveAction, CorrectiveActionStatus, Finding, Inspection, Project } from "@netram/types";
-import { CORRECTIVE_ACTION_TRANSITIONS } from "@netram/types";
+import type {
+  CorrectiveAction,
+  CorrectiveActionFile,
+  CorrectiveActionReviewOutcome,
+  CorrectiveActionStatus,
+  Finding,
+  Project,
+} from "@netram/types";
 import { formatDate, formatDateTime, getDistrictName } from "../../../lib/presentation";
-import { CorrectiveActionTransitionModal } from "../corrective-action-transition-modal";
+import { getStatusBadge } from "../corrective-action-card";
+import {
+  IconClock,
+  IconGavel,
+  IconClipboard,
+  IconShieldCheck,
+  IconCamera,
+  IconX,
+} from "../../components/icons";
+
+const ACCEPTED_ATTACHMENT_TYPES = ".pdf,.jpg,.jpeg,.png,.webp,.mp4,.mov,.webm";
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
+}
 
 export interface CorrectiveActionDetailClientProps {
   initialAction: CorrectiveAction;
   finding: Finding | null;
-  inspection: Inspection | null;
   project: Project | null;
-  canTransition: boolean;
+  canSubmitAtr: boolean;
+  canReview: boolean;
 }
 
-function getStatusBadge(status: CorrectiveActionStatus): {
-  bg: string;
-  color: string;
+const inputStyle = {
+  width: "100%",
+  padding: "0.55rem 0.75rem",
+  borderRadius: "6px",
+  border: "1px solid #cbd5e1",
+  fontSize: "0.85rem",
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+  color: "#1e293b",
+  background: "#fff",
+} as const;
+
+const LIFECYCLE_STAGES: {
+  id: string;
   label: string;
-} {
-  switch (status) {
-    case "pending":
-      return { bg: "#f1f5f9", color: "#475569", label: "PENDING" };
-    case "submitted":
-      return { bg: "#e0f2fe", color: "#0369a1", label: "SUBMITTED" };
-    case "under_review":
-      return { bg: "#fef3c7", color: "#b45309", label: "UNDER REVIEW" };
-    case "accepted":
-      return { bg: "#dcfce7", color: "#15803d", label: "ACCEPTED" };
-    case "rejected":
-      return { bg: "#fee2e2", color: "#b91c1c", label: "REJECTED" };
-    case "overdue":
-      return { bg: "#ffedd5", color: "#c2410c", label: "OVERDUE" };
-    case "escalated":
-      return { bg: "#f3e8ff", color: "#7e22ce", label: "ESCALATED" };
-    default:
-      return { bg: "#f1f5f9", color: "#334155", label: status };
-  }
-}
+  hint: string;
+  statuses: CorrectiveActionStatus[];
+}[] = [
+  {
+    id: "stage-1",
+    label: "Ordered",
+    hint: "remediation mandate issued",
+    statuses: ["pending"],
+  },
+  { id: "stage-2", label: "Submitted", hint: "ATR lodged by entity", statuses: ["submitted"] },
+  { id: "stage-3", label: "Authority Review", hint: "under scrutiny", statuses: ["under_review"] },
+  {
+    id: "stage-4",
+    label: "Outcome",
+    hint: "accepted · rejected · escalated",
+    statuses: ["accepted", "rejected", "overdue", "escalated"],
+  },
+];
 
 export function CorrectiveActionDetailClient({
   initialAction,
   finding,
-  inspection,
   project,
-  canTransition,
+  canSubmitAtr,
+  canReview,
 }: CorrectiveActionDetailClientProps) {
   const [action, setAction] = useState<CorrectiveAction>(initialAction);
-  const [isTransitionOpen, setIsTransitionOpen] = useState(false);
+
+  const [atrSummary, setAtrSummary] = useState("");
+  const [atrFiles, setAtrFiles] = useState<File[]>([]);
+  const [reviewOutcome, setReviewOutcome] = useState<CorrectiveActionReviewOutcome>(
+    "under_review",
+  );
+  const [reviewNote, setReviewNote] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const statusMeta = getStatusBadge(action.status);
-  const allowableTransitions = CORRECTIVE_ACTION_TRANSITIONS[action.status] ?? [];
-  const canAct = canTransition && allowableTransitions.length > 0;
+
+  const submitAllowed = ["pending", "rejected", "overdue"].includes(action.status);
+  const canWorkSubmit = canSubmitAtr && submitAllowed;
+
+  const reviewChoices: { value: CorrectiveActionReviewOutcome; label: string }[] =
+    action.status === "submitted"
+      ? [
+          { value: "under_review", label: "Begin review" },
+          { value: "accepted", label: "Accept & close" },
+          { value: "rejected", label: "Reject & require resubmission" },
+        ]
+      : action.status === "under_review"
+        ? [
+            { value: "accepted", label: "Accept & close" },
+            { value: "rejected", label: "Reject & require resubmission" },
+          ]
+        : [];
+  const canWorkReview = canReview && reviewChoices.length > 0;
 
   const isOverdue =
     action.deadline &&
     action.status !== "accepted" &&
     new Date(action.deadline) < new Date();
 
+  const districtLabel = project?.districtId
+    ? getDistrictName(project.districtId, project.code)
+    : "Odisha State Jurisdiction";
+
+  const lifecycleRendered = (() => {
+    const skippedForTerminal =
+      action.status === "overdue" || action.status === "escalated";
+    const currentIndex = LIFECYCLE_STAGES.findIndex((stage) =>
+      stage.statuses.includes(action.status),
+    );
+    return { skippedForTerminal, currentIndex };
+  })();
+
+  const statusLabel = action.status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const handleSubmitAtr = async () => {
+    if (!atrSummary.trim()) {
+      setActionError("Describe the remediation work performed before submitting.");
+      return;
+    }
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const form = new FormData();
+      form.append("actionSummary", atrSummary.trim());
+      for (const file of atrFiles) form.append("files", file, file.name);
+      const res = await fetch(`/api/corrective-actions/${action.id}/submit-atr`, {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error?.message ?? `Submission failed (${res.status})`);
+      setAction(data as CorrectiveAction);
+      setAtrSummary("");
+      setAtrFiles([]);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReview = async () => {
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/corrective-actions/${action.id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          outcome: reviewOutcome,
+          note: reviewNote.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error?.message ?? `Review failed (${res.status})`);
+      setAction(data as CorrectiveAction);
+      setReviewNote("");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div>
-      {/* Breadcrumb */}
-      <div style={{ marginBottom: "1rem" }}>
-        <Link
-          href="/corrective-actions"
-          style={{
-            color: "var(--color-navy-brand)",
-            textDecoration: "none",
-            fontSize: "0.85rem",
-            fontWeight: 600,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.3rem",
-          }}
-        >
-          <span>&larr; Back to Corrective Actions</span>
-        </Link>
+      {/* Hero */}
+      <header className="inspection-hero">
+        <div className="inspection-hero-main">
+          <h1 className="inspection-hero-title">
+            {project ? project.name : "Remediation Order Dossier"}
+          </h1>
+          <div className="inspection-hero-meta">
+            {project && (
+              <>
+                <span className="inspection-meta-chip">
+                  <IconGavel width={13} height={13} style={{ color: "#2563eb" }} />
+                  <Link href={`/projects/${project.id}`} style={{ fontWeight: 600 }}>
+                    Facility: {project.code}
+                  </Link>
+                </span>
+                <span className="inspection-meta-sep" />
+              </>
+            )}
+            <span className="inspection-meta-chip">
+              <IconClipboard width={13} height={13} style={{ color: "#2563eb" }} />
+              <Link href={`/inspections/${action.inspectionId}`} style={{ fontWeight: 600 }}>
+                Inspection #{action.inspectionId.slice(0, 8)}
+              </Link>
+            </span>
+            <span className="inspection-meta-sep" />
+            <span>{districtLabel}</span>
+            <span className="inspection-meta-sep" />
+            <span className="inspection-id">CA ref: {action.id.slice(0, 12)}</span>
+          </div>
+        </div>
+        <div className="inspection-hero-side">
+          <span className="status status-large" style={{ color: statusMeta.color }}>
+            {statusMeta.label}
+          </span>
+        </div>
+      </header>
+
+      {/* Lifecycle Stepper */}
+      <div className="workflow-card">
+        <div className="workflow-stepper" aria-label={`Corrective action workflow: ${statusLabel}`}>
+          {LIFECYCLE_STAGES.map((stage, idx) => {
+            const isCurrent = idx === lifecycleRendered.currentIndex;
+            const isPassed = lifecycleRendered.skippedForTerminal
+              ? idx === 0
+              : lifecycleRendered.currentIndex > -1 && idx < lifecycleRendered.currentIndex;
+            const nodeClass = isPassed ? "passed" : isCurrent ? "current" : "";
+
+            return (
+              <div key={stage.id} className={`workflow-step ${nodeClass}`}>
+                <div className="workflow-node" title={stage.label}>
+                  {isPassed ? (
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    idx + 1
+                  )}
+                </div>
+                <div className="workflow-step-label" title={stage.label}>
+                  {stage.label}
+                </div>
+                <div className="workflow-step-hint">
+                  {stage.hint}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Main Header Card */}
-      <div
-        className="table-card"
-        style={{
-          padding: "1.5rem",
-          marginBottom: "1.5rem",
-          borderLeft: `5px solid ${statusMeta.color}`,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: "#475569",
-                  background: "#f1f5f9",
-                  padding: "0.2rem 0.5rem",
-                  borderRadius: "4px",
-                }}
-              >
-                ACTION: {action.id.slice(0, 10)}...
-              </span>
-              <span
-                style={{
-                  fontSize: "0.72rem",
-                  fontWeight: 700,
-                  padding: "0.2rem 0.5rem",
-                  borderRadius: "4px",
-                  background: statusMeta.bg,
-                  color: statusMeta.color,
-                }}
-              >
-                {statusMeta.label}
-              </span>
-            </div>
+      {/* Overview Cards */}
+      <section className="overview-cards">
+        <div className="overview-card">
+          <span className="card-label">
+            <IconClock width={13} height={13} /> Compliance Deadline
+          </span>
+          <span className="card-val" style={isOverdue ? { color: "#dc2626" } : undefined}>
+            {action.deadline
+              ? `${formatDate(action.deadline)}${isOverdue ? " · Overdue" : ""}`
+              : "No deadline set"}
+          </span>
+        </div>
+        <div className="overview-card">
+          <span className="card-label">
+            <IconGavel width={13} height={13} /> Date Issued
+          </span>
+          <span className="card-val">{formatDate(action.createdAt)}</span>
+        </div>
+        <div className="overview-card">
+          <span className="card-label">
+            <IconClipboard width={13} height={13} /> Action Taken Report
+          </span>
+          <span className="card-val">
+            {action.submittedAt ? "ATR Submitted" : "Not yet submitted"}
+          </span>
+        </div>
+        <div className="overview-card">
+          <span className="card-label">
+            <IconShieldCheck width={13} height={13} /> Verification
+          </span>
+          <span className="card-val">
+            {action.verifiedAt
+              ? `Verified on ${formatDate(action.verifiedAt)}`
+              : action.status === "accepted"
+                ? "Verified & closed"
+                : "Pending authority review"}
+          </span>
+        </div>
+      </section>
 
-            <h1
-              style={{
-                margin: "0.6rem 0 0.2rem",
-                fontSize: "1.5rem",
-                fontWeight: 700,
-                color: "var(--color-navy-brand)",
-              }}
-            >
-              {project ? project.name : "Remediation Order Dossier"}
-            </h1>
-
-            <p className="muted" style={{ margin: 0, fontSize: "0.88rem" }}>
-              {project && (
-                <>
-                  Project:{" "}
-                  <Link
-                    href={`/projects/${project.id}`}
-                    style={{ color: "var(--color-navy-brand)", fontWeight: 600 }}
-                  >
-                    {project.code}
-                  </Link>{" "}
-                  ·{" "}
-                </>
-              )}
-              Inspection:{" "}
-              <Link
-                href={`/inspections/${action.inspectionId}`}
-                style={{ color: "var(--color-navy-brand)", fontWeight: 600 }}
-              >
-                #{action.inspectionId.slice(0, 8)}
-              </Link>
-            </p>
-          </div>
-
-          {canAct && (
-            <button
-              type="button"
-              onClick={() => setIsTransitionOpen(true)}
-              className="btn-primary"
-              style={{
-                padding: "0.55rem 1.25rem",
-                fontSize: "0.85rem",
-                background: "var(--color-navy-brand)",
-              }}
-            >
-              Transition Status &rarr;
-            </button>
+      {/* Underlying Deficiency */}
+      <section className="evidence-section">
+        <div className="section-title-row">
+          <h3>Underlying Deficiency Finding</h3>
+          {finding && (
+            <span className={`badge-severity ${finding.severity}`}>
+              {finding.severity.toUpperCase()} SEVERITY
+            </span>
           )}
         </div>
 
-        {/* Lifecycle Stepper */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-            gap: "0.5rem",
-            marginTop: "1.5rem",
-            paddingTop: "1.25rem",
-            borderTop: "1px solid #e2e8f0",
-          }}
-        >
-          {/* 1. Ordered */}
-          <div style={{ opacity: 1 }}>
-            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>1. ORDERED</div>
-            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", marginTop: "0.15rem" }}>
-              Action Mandate
-            </div>
-            <div className="muted" style={{ fontSize: "0.72rem" }}>
-              {formatDate(action.createdAt)}
-            </div>
-          </div>
-
-          {/* 2. Submitted */}
-          <div
-            style={{
-              opacity:
-                action.status === "submitted" ||
-                action.status === "under_review" ||
-                action.status === "accepted"
-                  ? 1
-                  : 0.35,
-            }}
-          >
-            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-              2. SUBMITTED
-            </div>
-            <div
-              style={{
-                fontSize: "0.85rem",
-                fontWeight: 700,
-                color: action.submittedAt ? "#0369a1" : "#64748b",
-                marginTop: "0.15rem",
-              }}
-            >
-              {action.submittedAt ? "Evidence Lodged" : "Awaiting Lodgment"}
-            </div>
-            <div className="muted" style={{ fontSize: "0.72rem" }}>
-              {action.submittedAt ? formatDate(action.submittedAt) : "Pending Contractor"}
-            </div>
-          </div>
-
-          {/* 3. Under Review */}
-          <div
-            style={{
-              opacity:
-                action.status === "under_review" || action.status === "accepted" ? 1 : 0.35,
-            }}
-          >
-            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-              3. UNDER REVIEW
-            </div>
-            <div
-              style={{
-                fontSize: "0.85rem",
-                fontWeight: 700,
-                color:
-                  action.status === "under_review"
-                    ? "#b45309"
-                    : action.status === "accepted"
-                      ? "#15803d"
-                      : "#64748b",
-                marginTop: "0.15rem",
-              }}
-            >
-              {action.status === "under_review"
-                ? "Active Verification"
-                : action.status === "accepted"
-                  ? "Approved"
-                  : "Awaiting Scrutiny"}
-            </div>
-            <div className="muted" style={{ fontSize: "0.72rem" }}>
-              Technical Scrutiny
-            </div>
-          </div>
-
-          {/* 4. Conclusion */}
-          <div
-            style={{
-              opacity:
-                action.status === "accepted" ||
-                action.status === "rejected" ||
-                action.status === "overdue" ||
-                action.status === "escalated"
-                  ? 1
-                  : 0.35,
-            }}
-          >
-            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-              4. CONCLUSION
-            </div>
-            <div
-              style={{
-                fontSize: "0.85rem",
-                fontWeight: 700,
-                color:
-                  action.status === "accepted"
-                    ? "#15803d"
-                    : action.status === "rejected"
-                      ? "#b91c1c"
-                      : action.status === "overdue"
-                        ? "#c2410c"
-                        : action.status === "escalated"
-                          ? "#7e22ce"
-                          : "#64748b",
-                marginTop: "0.15rem",
-              }}
-            >
-              {action.status === "accepted"
-                ? "Accepted & Closed"
-                : action.status === "rejected"
-                  ? "Rejected"
-                  : action.status === "overdue"
-                    ? "Overdue Breach"
-                    : action.status === "escalated"
-                      ? "Enforcement Escalated"
-                      : "In Progress"}
-            </div>
-            <div className="muted" style={{ fontSize: "0.72rem" }}>
-              {action.status === "accepted" ? "Remediation Satisfied" : "Lifecycle Outcome"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr",
-          gap: "1.5rem",
-          alignItems: "start",
-        }}
-      >
-        {/* Left Column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* Finding Details */}
-          <div className="table-card" style={{ padding: "1.5rem" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "0.75rem",
-              }}
-            >
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "1.05rem",
-                  fontWeight: 700,
-                  color: "var(--color-navy-brand)",
-                }}
-              >
-                Underlying Deficiency Finding
-              </h3>
-              {finding && (
-                <span className={`badge-severity ${finding.severity}`}>
-                  {finding.severity.toUpperCase()} SEVERITY
-                </span>
-              )}
-            </div>
-
-            {finding ? (
-              <div>
-                <p
-                  style={{
-                    fontSize: "0.9rem",
-                    lineHeight: 1.6,
-                    color: "#1e293b",
-                    margin: "0 0 1rem 0",
-                  }}
-                >
-                  {finding.description}
-                </p>
-
-                {finding.remediation && (
-                  <div
-                    style={{
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "6px",
-                      padding: "0.85rem 1rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "0.74rem",
-                        fontWeight: 700,
-                        color: "#475569",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.03em",
-                        marginBottom: "0.35rem",
-                      }}
-                    >
-                      Mandatory Remediation Terms:
-                    </div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: "0.86rem",
-                        lineHeight: 1.5,
-                        color: "#334155",
-                      }}
-                    >
-                      {finding.remediation}
-                    </p>
-                  </div>
-                )}
+        {finding ? (
+          <div>
+            <p className="finding-desc">{finding.description}</p>
+            {finding.remediation ? (
+              <div className="remediation-box">
+                <span className="remediation-label">Required Remediation</span>
+                <p className="remediation-text">{finding.remediation}</p>
               </div>
             ) : (
-              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                Finding UUID: {action.findingId}
+              <p className="muted" style={{ fontSize: "0.8rem" }}>
+                No mandatory remediation terms recorded for this finding.
               </p>
             )}
           </div>
+        ) : (
+          <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+            Finding: {action.findingId}
+          </p>
+        )}
+      </section>
 
-          {/* Compliance Deadlines and Timestamps */}
-          <div className="table-card" style={{ padding: "1.5rem" }}>
-            <h3
-              style={{
-                margin: "0 0 1rem 0",
-                fontSize: "1.05rem",
-                fontWeight: 700,
-                color: "var(--color-navy-brand)",
-              }}
-            >
-              Statutory Compliance & SLA
-            </h3>
+      {/* Action Taken Report | Authority Review */}
+      <div className="section-pair-grid">
+        <section className="evidence-section">
+          <div className="section-title-row">
+            <h3>Action Taken Report</h3>
+          </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: "1rem",
-              }}
-            >
-              <div>
-                <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-                  COMPLIANCE DEADLINE
+          {action.actionSummary ? (
+            <div>
+              {action.submittedAt && (
+                <div className="muted" style={{ marginBottom: "0.6rem", fontSize: "0.78rem" }}>
+                  Submitted {formatDateTime(action.submittedAt)}
                 </div>
-                <div
-                  style={{
-                    fontSize: "0.92rem",
-                    fontWeight: 700,
-                    color: isOverdue ? "#dc2626" : "#1e293b",
-                    marginTop: "0.2rem",
-                  }}
-                >
-                  {action.deadline ? formatDate(action.deadline) : "None specified"}
-                </div>
-                {isOverdue && (
-                  <div style={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 600 }}>
-                    Breach of statutory compliance window
+              )}
+              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#1e293b" }}>
+                {action.actionSummary}
+              </p>
+              {action.atrFiles.length > 0 && (
+                <div style={{ marginTop: "0.85rem", borderTop: "1px solid #e2e8f0", paddingTop: "0.75rem" }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    Supporting Attachments ({action.atrFiles.length})
                   </div>
-                )}
-              </div>
-
-              <div>
-                <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-                  DATE ISSUED
+                  <ul style={{ display: "grid", gap: "0.4rem", margin: 0, padding: 0, listStyle: "none" }}>
+                    {action.atrFiles.map((f: CorrectiveActionFile) => (
+                      <li key={f.id}>
+                        <a
+                          href={`/api/corrective-actions/${action.id}/files/${f.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            background: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "6px",
+                            padding: "0.45rem 0.6rem",
+                            fontSize: "0.8rem",
+                            color: "#0f172a",
+                            textDecoration: "none",
+                          }}
+                        >
+                          <IconClipboard width={14} height={14} style={{ color: "#64748b", flexShrink: 0 }} />
+                          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {f.fileName}
+                          </span>
+                          <span className="muted" style={{ fontSize: "0.72rem", flexShrink: 0 }}>
+                            {formatBytes(f.sizeBytes)}
+                          </span>
+                          <span style={{ color: "#2563eb", fontSize: "0.72rem", fontWeight: 600, flexShrink: 0 }}>
+                            Open &rsaquo;
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div style={{ fontSize: "0.92rem", fontWeight: 600, color: "#1e293b", marginTop: "0.2rem" }}>
-                  {formatDate(action.createdAt)}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-                  LAST UPDATED
-                </div>
-                <div style={{ fontSize: "0.92rem", fontWeight: 600, color: "#1e293b", marginTop: "0.2rem" }}>
-                  {formatDateTime(action.updatedAt)}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* Governance & Jurisdiction Card */}
-          <div className="table-card" style={{ padding: "1.25rem" }}>
-            <h4
-              style={{
-                margin: "0 0 0.75rem 0",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: "var(--color-navy-brand)",
-              }}
-            >
-              Jurisdiction & Authority
-            </h4>
-
-            <div style={{ marginBottom: "0.75rem" }}>
-              <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-                DISTRICT JURISDICTION
-              </div>
-              <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1e293b" }}>
-                {project?.districtId ? getDistrictName(project.districtId, project.code) : "State Oversight"}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: "0.75rem" }}>
-              <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-                RESPONSIBLE ENTITY
-              </div>
-              <div style={{ fontSize: "0.85rem", color: "#334155" }}>
-                {action.organisationId ? `Org ID: ${action.organisationId.slice(0, 12)}...` : "Contractor / Executing Agency"}
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "#eff6ff",
-                border: "1px solid #bfdbfe",
-                borderRadius: "4px",
-                padding: "0.5rem 0.65rem",
-                fontSize: "0.72rem",
-                color: "#1d4ed8",
-                lineHeight: 1.4,
-              }}
-            >
-              <strong>Regulatory Framework (§32):</strong> Deficiency remediation follows two-party separation:
-              institution submits work; authority independently verifies and closes.
-            </div>
-          </div>
-
-          {/* Quick Links Card */}
-          <div className="table-card" style={{ padding: "1.25rem" }}>
-            <h4
-              style={{
-                margin: "0 0 0.75rem 0",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: "var(--color-navy-brand)",
-              }}
-            >
-              Related Dossiers
-            </h4>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <Link
-                href={`/inspections/${action.inspectionId}`}
-                style={{
-                  fontSize: "0.82rem",
-                  color: "var(--color-navy-brand)",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                }}
-              >
-                {inspection
-                  ? `${inspection.type.toUpperCase()} Inspection #${action.inspectionId.slice(0, 8)}`
-                  : `Inspection Dossier #${action.inspectionId.slice(0, 8)}`}{" "}
-                &rarr;
-              </Link>
-
-              {project && (
-                <Link
-                  href={`/projects/${project.id}`}
-                  style={{
-                    fontSize: "0.82rem",
-                    color: "var(--color-navy-brand)",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                  }}
-                >
-                  Facility / Project {project.code} &rarr;
-                </Link>
               )}
             </div>
-          </div>
-        </div>
-      </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <IconClipboard width={20} height={20} />
+              </div>
+              <div className="empty-state-title">No action taken report</div>
+              <p className="empty-state-sub">
+                {action.status === "pending"
+                  ? "The responsible organisation has not yet lodged remediation evidence."
+                  : "No remediation evidence was lodged for this corrective action."}
+              </p>
+            </div>
+          )}
 
-      {/* Transition Modal */}
-      <CorrectiveActionTransitionModal
-        correctiveAction={action}
-        isOpen={isTransitionOpen}
-        onClose={() => setIsTransitionOpen(false)}
-        onSuccess={(updated) => setAction(updated)}
-      />
+          {canWorkSubmit && (
+            <div style={{ marginTop: "1rem", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155", marginBottom: "0.5rem" }}>
+                SUBMIT REMEDIATION EVIDENCE
+              </div>
+              <p className="muted" style={{ margin: "0 0 0.6rem", fontSize: "0.78rem" }}>
+                Recording the Action Taken Report automatically advances this order to{" "}
+                <strong>Submitted</strong> for authority review.
+              </p>
+              {actionError && (
+                <div
+                  style={{
+                    background: "#fee2e2",
+                    border: "1px solid #fca5a5",
+                    borderRadius: "6px",
+                    padding: "0.55rem 0.75rem",
+                    marginBottom: "0.6rem",
+                    color: "#991b1b",
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  {actionError}
+                </div>
+              )}
+              <textarea
+                value={atrSummary}
+                onChange={(e) => setAtrSummary(e.target.value)}
+                rows={4}
+                maxLength={4000}
+                placeholder="Detail the remediation work performed, contractor certifications, and proof of rectification..."
+                style={inputStyle}
+              />
+              <div style={{ marginTop: "0.6rem" }}>
+                <label
+                  htmlFor={`atr-files-${action.id}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.55rem 0.75rem",
+                    borderRadius: "6px",
+                    border: "1px dashed #94a3b8",
+                    background: "#f8fafc",
+                    fontSize: "0.8rem",
+                    color: "#334155",
+                    cursor: "pointer",
+                  }}
+                >
+                  <IconCamera width={15} height={15} style={{ color: "#0284c7" }} />
+                  Attach supporting files (PDF, photos, videos &mdash; up to 5, max 100&nbsp;MB each)
+                </label>
+                <input
+                  id={`atr-files-${action.id}`}
+                  type="file"
+                  multiple
+                  accept={ACCEPTED_ATTACHMENT_TYPES}
+                  onChange={(e) => {
+                    const picked = Array.from(e.target.files ?? []);
+                    setAtrFiles((prev) => {
+                      const merged = [...prev, ...picked].slice(0, 5);
+                      if (picked.length + prev.length > 5) {
+                        setActionError("You can attach at most 5 files with an ATR.");
+                      } else {
+                        setActionError(null);
+                      }
+                      return merged;
+                    });
+                    e.target.value = "";
+                  }}
+                  style={{ display: "none" }}
+                />
+                {atrFiles.length > 0 && (
+                  <ul style={{ display: "grid", gap: "0.35rem", margin: "0.5rem 0 0 0", padding: 0, listStyle: "none" }}>
+                    {atrFiles.map((f, idx) => (
+                      <li
+                        key={`${f.name}-${idx}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          background: "#fff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "6px",
+                          padding: "0.4rem 0.6rem",
+                          fontSize: "0.8rem",
+                          color: "#0f172a",
+                        }}
+                      >
+                        <IconClipboard width={13} height={13} style={{ color: "#64748b", flexShrink: 0 }} />
+                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {f.name}
+                        </span>
+                        <span className="muted" style={{ fontSize: "0.72rem", flexShrink: 0 }}>
+                          {formatBytes(f.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAtrFiles((prev) => prev.filter((_, i) => i !== idx))}
+                          aria-label={`Remove ${f.name}`}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            cursor: "pointer",
+                            color: "#dc2626",
+                            display: "flex",
+                            alignItems: "center",
+                            padding: 0,
+                          }}
+                        >
+                          <IconX width={14} height={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.6rem" }}>
+                <button
+                  type="button"
+                  onClick={handleSubmitAtr}
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                  style={{ padding: "0.5rem 1.1rem", fontSize: "0.82rem", background: "#0284c7", borderColor: "#0284c7", whiteSpace: "nowrap" }}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit ATR"}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="evidence-section">
+          <div className="section-title-row">
+            <h3>Authority Review</h3>
+          </div>
+
+          {action.reviewRemarks ? (
+            <div>
+              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#1e293b" }}>
+                {action.reviewRemarks}
+              </p>
+              {(action.verifiedAt || action.verifiedByUserId) && (
+                <div className="muted" style={{ marginTop: "0.75rem", fontSize: "0.78rem" }}>
+                  {action.verifiedAt && `Verified on ${formatDate(action.verifiedAt)}`}
+                  {action.verifiedByUserId &&
+                    ` · By ${action.verifiedByUserId.slice(0, 8)}`}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <IconShieldCheck width={20} height={20} />
+              </div>
+              <div className="empty-state-title">
+                {["rejected", "overdue", "escalated"].includes(action.status)
+                  ? "No review recorded"
+                  : "Awaiting authority review"}
+              </div>
+              <p className="empty-state-sub">
+                {["rejected", "overdue", "escalated"].includes(action.status)
+                  ? "The submitted remediation was not accepted; see the corrective action lifecycle for the outcome."
+                  : "Authority officers will scrutinise the submitted remediation before deciding."}
+              </p>
+            </div>
+          )}
+
+          {canWorkReview && (
+            <div style={{ marginTop: "1rem", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155", marginBottom: "0.5rem" }}>
+                RECORD AUTHORITY REVIEW
+              </div>
+              <p className="muted" style={{ margin: "0 0 0.6rem", fontSize: "0.78rem" }}>
+                Your decision here is what advances the workflow automatically.
+              </p>
+              {actionError && (
+                <div
+                  style={{
+                    background: "#fee2e2",
+                    border: "1px solid #fca5a5",
+                    borderRadius: "6px",
+                    padding: "0.55rem 0.75rem",
+                    marginBottom: "0.6rem",
+                    color: "#991b1b",
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  {actionError}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+                {reviewChoices.map((choice) => {
+                  const selected = reviewOutcome === choice.value;
+                  return (
+                    <button
+                      key={choice.value}
+                      type="button"
+                      onClick={() => {
+                        setReviewOutcome(choice.value);
+                        setActionError(null);
+                      }}
+                      style={{
+                        padding: "0.45rem 0.8rem",
+                        borderRadius: "6px",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        border: `1.5px solid ${selected ? "#2563eb" : "#cbd5e1"}`,
+                        background: selected ? "#eff6ff" : "#ffffff",
+                        color: selected ? "#1d4ed8" : "#475569",
+                      }}
+                    >
+                      {choice.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <textarea
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Verification notes, defects found, or formal closure justification..."
+                style={inputStyle}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.6rem" }}>
+                <button
+                  type="button"
+                  onClick={handleReview}
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                  style={{
+                    padding: "0.5rem 1.1rem",
+                    fontSize: "0.82rem",
+                    background: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#16a34a" : "#d97706",
+                    borderColor: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#16a34a" : "#d97706",
+                  }}
+                >
+                  {isSubmitting
+                    ? "Recording..."
+                    : reviewOutcome === "under_review"
+                      ? "Begin Review"
+                      : reviewOutcome === "accepted"
+                        ? "Accept & Close"
+                        : "Reject & Require Resubmission"}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

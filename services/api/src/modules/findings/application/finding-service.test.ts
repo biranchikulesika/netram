@@ -4,7 +4,7 @@ import type { FindingRepositoryPort } from "./ports/finding-repository.js";
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { AuthorizationService } from "../../authorization/application/authorization-service.js";
 import type { InspectionService } from "../../inspections/application/inspection-service.js";
-import type { Finding } from "@netram/types";
+import type { Finding, FindingAwaitingOrder } from "@netram/types";
 
 function mockCtx(): RequestUserContext {
   return {
@@ -109,5 +109,53 @@ describe("FindingService.createFinding responsibleOrganisationId defaulting", ()
     // No project lookup should occur when the caller is explicit.
     expect(projectRepo.findById).not.toHaveBeenCalled();
     expect(result.responsibleOrganisationId).toBe("org-explicit");
+  });
+});
+
+describe("FindingService.listFindingsAwaitingOrder", () => {
+  const reviewCtx: RequestUserContext = {
+    ...mockCtx(),
+    permissions: new Set(["inspection:review", "corrective_action:read"]),
+  };
+
+  function makeService(overrides?: {
+    scope?: Set<string> | null;
+    repoResult?: FindingAwaitingOrder[];
+  }) {
+    const authz = {
+      requirePermission: vi.fn(),
+      accessibleDistrictIds: vi.fn().mockReturnValue(
+        overrides ? overrides.scope : new Set(["dist-1"]),
+      ),
+    } as unknown as AuthorizationService;
+    const repo = {
+      listAwaitingOrder: vi.fn().mockResolvedValue(overrides?.repoResult ?? []),
+    } as unknown as FindingRepositoryPort;
+    const service = new FindingService(
+      authz,
+      { getInspection: vi.fn() } as unknown as Pick<InspectionService, "getInspection">,
+      { findById: vi.fn() },
+      repo,
+    );
+    return { authz, repo, service };
+  }
+
+  it("requires corrective_action:read and inspection:review", async () => {
+    const { authz, service } = makeService();
+    await service.listFindingsAwaitingOrder(reviewCtx);
+    expect(authz.requirePermission).toHaveBeenCalledWith(reviewCtx, "inspection:review");
+    expect(authz.requirePermission).toHaveBeenCalledWith(reviewCtx, "corrective_action:read");
+  });
+
+  it("scopes the repository call to the caller's accessible districts", async () => {
+    const { repo, service } = makeService();
+    await service.listFindingsAwaitingOrder(reviewCtx);
+    expect(repo.listAwaitingOrder).toHaveBeenCalledWith(["dist-1"]);
+  });
+
+  it("passes no jurisdiction filter when the caller has full reach", async () => {
+    const { repo, service } = makeService({ scope: null });
+    await service.listFindingsAwaitingOrder(reviewCtx);
+    expect(repo.listAwaitingOrder).toHaveBeenCalledWith(undefined);
   });
 });

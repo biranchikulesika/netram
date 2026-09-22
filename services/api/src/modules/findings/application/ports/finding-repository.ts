@@ -2,6 +2,7 @@ import type {
   AuditAction,
   DomainEventType,
   Finding,
+  FindingAwaitingOrder,
   FindingStatus,
   FindingSeverity,
   UUID,
@@ -38,6 +39,7 @@ export interface TransitionFindingCommand extends FindingWriteContext {
 export interface FindingRepositoryPort {
   listByInspection(inspectionId: string): Promise<Finding[]>;
   findById(id: string): Promise<Finding | null>;
+  listAwaitingOrder(jurisdictionIds?: UUID[]): Promise<FindingAwaitingOrder[]>;
   createWithAuditAndEvent(cmd: CreateFindingCommand): Promise<Finding>;
   transitionWithAuditAndEvent(cmd: TransitionFindingCommand): Promise<Finding>;
 }

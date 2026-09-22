@@ -1363,7 +1363,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         submittedAt: new Date("2026-02-12T10:00:00Z"),
         actionSummary:
           "Procurement records reconciled with the beneficiary register; excess stock of Rs 42,000 regularised against enhanced admissions.",
-        atrCode: "ATR-2026-0031",
       },
       {
         id: did("ca:jajapur-sa-1"),
@@ -1377,7 +1376,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         submittedAt: new Date("2026-03-02T10:00:00Z"),
         actionSummary:
           "Village development plan review completed; energisation requested from the distribution licensee.",
-        atrCode: "ATR-2026-0045",
       },
     ])
     .onConflictDoNothing();
@@ -2817,7 +2815,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         deadline: new Date("2025-11-25T23:59:00Z"),
         submittedAt: new Date("2025-11-18T10:00:00Z"),
         actionSummary: "Expired first-aid stock replaced; quarterly checklist circulated to wardens.",
-        atrCode: "ATR-2025-0112",
         verifiedAt: new Date("2025-11-22T10:00:00Z"),
         verifiedByUserId: did("user:officer-khordha"),
         reviewRemarks: "Verified against replaced stock photographs and the new checklist.",
@@ -2849,7 +2846,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         deadline: new Date("2026-01-30T23:59:00Z"),
         submittedAt: new Date("2026-01-26T10:00:00Z"),
         actionSummary: "Sanitation log backfilled and daily supervisor sign-off introduced.",
-        atrCode: "ATR-2026-0007",
         verifiedAt: new Date("2026-01-29T10:00:00Z"),
         verifiedByUserId: did("user:dept-admin"),
       },
@@ -3604,7 +3600,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         actorUserId: did("user:institution"),
         resourceType: "project",
         resourceId: did("project:purisch-1"),
-        metadata: { code: "PRJ-PURISCH-007", atrCode: "ATR-2026-0031" },
+        metadata: { code: "PRJ-PURISCH-007" },
         occurredAt: new Date("2026-02-12T10:00:00Z"),
       },
     ])

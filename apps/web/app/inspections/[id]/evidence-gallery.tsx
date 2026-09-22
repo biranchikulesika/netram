@@ -4,18 +4,12 @@ import { useState } from "react";
 import type { Evidence } from "@netram/types";
 import { useRouter } from "next/navigation";
 import { formatDateTime } from "../../../lib/presentation";
+import { IconCamera } from "../../components/icons";
 
 export interface EvidenceGalleryProps {
   inspectionId: string;
   items: Evidence[];
   canCapture: boolean;
-}
-
-function formatBytes(bytes: number | null): string {
-  if (bytes === null || bytes === undefined) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export function EvidenceGallery({ inspectionId, items, canCapture }: EvidenceGalleryProps) {
@@ -138,7 +132,6 @@ export function EvidenceGallery({ inspectionId, items, canCapture }: EvidenceGal
       <div className="section-title-row">
         <div>
           <h3>Inspection Evidence & Integrity</h3>
-          <p className="muted">Operational media verified with SHA-256 capture-time hashes</p>
         </div>
         {canCapture && (
           <button onClick={() => setShowCaptureModal(true)} className="btn-secondary">
@@ -150,14 +143,22 @@ export function EvidenceGallery({ inspectionId, items, canCapture }: EvidenceGal
       {actionError && <div className="error-banner">{actionError}</div>}
 
       {items.length === 0 ? (
-        <div className="empty-box">No evidence items recorded for this inspection yet.</div>
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <IconCamera width={20} height={20} />
+          </div>
+          <div className="empty-state-title">No evidence recorded yet</div>
+          <p className="empty-state-sub">
+            Operational media for this inspection will appear here as it is captured and verified
+            from the field.
+          </p>
+        </div>
       ) : (
         <div className="evidence-grid">
           {items.map((item) => {
             const isPhoto = item.evidenceType === "photo";
             const isUploaded = item.uploadState === "uploaded";
             const isVerified = item.integrityState === "verified";
-            const isMismatch = item.integrityState === "mismatch";
 
             return (
               <article key={item.id} className="evidence-card">
@@ -179,28 +180,11 @@ export function EvidenceGallery({ inspectionId, items, canCapture }: EvidenceGal
                 </div>
 
                 <div className="card-body">
-                  <div className="card-badges">
-                    <span
-                      className={`badge-integrity ${isVerified ? "verified" : isMismatch ? "mismatch" : "unknown"}`}
-                    >
-                      {isVerified ? "✓ Verified" : isMismatch ? "⚠ Mismatch" : "? Unknown"}
-                    </span>
-                    <span className={`badge-upload ${item.uploadState}`}>{item.uploadState}</span>
-                  </div>
-
                   <h4 className="file-name" title={item.fileName ?? "unnamed"}>
                     {item.fileName ?? "Evidence Object"}
                   </h4>
 
                   <dl className="meta-list">
-                    <div>
-                      <dt>Type:</dt>
-                      <dd>{item.evidenceType}</dd>
-                    </div>
-                    <div>
-                      <dt>Size:</dt>
-                      <dd>{formatBytes(item.sizeBytes)}</dd>
-                    </div>
                     <div>
                       <dt>Captured:</dt>
                       <dd>{formatDateTime(item.capturedAt)}</dd>
@@ -217,17 +201,6 @@ export function EvidenceGallery({ inspectionId, items, canCapture }: EvidenceGal
                       <div>
                         <dt>Device:</dt>
                         <dd>{item.deviceId}</dd>
-                      </div>
-                    )}
-                    {item.contentHash && (
-                      <div className="hash-row">
-                        <dt>Integrity:</dt>
-                        <dd
-                          style={{ color: "#16a34a", fontWeight: 600, fontSize: "0.76rem" }}
-                          title={`SHA-256 Checksum: ${item.contentHash}`}
-                        >
-                          Cryptographically Verified
-                        </dd>
                       </div>
                     )}
                   </dl>

@@ -1,6 +1,20 @@
 import { z } from "zod";
-import { CORRECTIVE_ACTION_STATUSES, CORRECTIVE_ACTION_TRANSITIONS } from "@netram/types";
+import {
+  CORRECTIVE_ACTION_REVIEW_OUTCOMES,
+  CORRECTIVE_ACTION_STATUSES,
+} from "@netram/types";
+import { FINDING_SEVERITIES } from "@netram/types";
 import { paginationSchema, uuidSchema } from "./common.js";
+
+export const correctiveActionFileSchema = z.object({
+  id: z.string().uuid(),
+  correctiveActionId: z.string().uuid(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().nonnegative(),
+  contentHash: z.string(),
+  createdAt: z.string().datetime(),
+});
 
 export const correctiveActionSchema = z.object({
   id: z.string().uuid(),
@@ -11,12 +25,30 @@ export const correctiveActionSchema = z.object({
   deadline: z.string().datetime().nullable(),
   submittedAt: z.string().datetime().nullable(),
   actionSummary: z.string().nullable(),
-  atrCode: z.string().nullable(),
+  atrFiles: z.array(correctiveActionFileSchema),
   verifiedAt: z.string().datetime().nullable(),
   verifiedByUserId: z.string().uuid().nullable(),
   reviewRemarks: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  project: z
+    .object({
+      id: z.string().uuid(),
+      code: z.string(),
+      name: z.string(),
+      districtId: z.string().uuid().nullable(),
+      description: z.string().nullable(),
+    })
+    .nullable(),
+  finding: z
+    .object({
+      id: z.string().uuid(),
+      severity: z.enum(FINDING_SEVERITIES),
+      description: z.string(),
+      categoryId: z.string().uuid().nullable(),
+      categoryName: z.string().nullable(),
+    })
+    .nullable(),
 });
 
 export const correctiveActionPageSchema = z.object({
@@ -34,13 +66,25 @@ export const createCorrectiveActionSchema = z
   })
   .strict();
 
-export const transitionCorrectiveActionSchema = z
+/**
+ * Institution lodges the Action Taken Report (docs/DoSJE.md §16). Recording
+ * this evidence is what advances the order to `submitted` — no manual status
+ * toggle exists.
+ */
+export const submitAtrSchema = z
   .object({
-    to: z.enum(CORRECTIVE_ACTION_STATUSES),
+    actionSummary: z.string().min(1).max(4000),
+  })
+  .strict();
+
+/**
+ * Authority records its review decision (`under_review` engagement, or the
+ * terminal accept/reject verdict). The status follows from this recorded work.
+ */
+export const reviewCorrectiveActionSchema = z
+  .object({
+    outcome: z.enum(CORRECTIVE_ACTION_REVIEW_OUTCOMES),
     note: z.string().max(500).optional(),
-    /** ATR content supplied with the institution's submit step (docs/DoSJE.md §16). */
-    actionSummary: z.string().min(1).max(4000).optional(),
-    atrCode: z.string().max(50).optional(),
   })
   .strict();
 
@@ -50,10 +94,3 @@ export const correctiveActionListQuerySchema = paginationSchema.extend({
   status: z.enum(CORRECTIVE_ACTION_STATUSES).optional(),
   organisationId: uuidSchema.optional(),
 });
-
-export function isAllowedCorrectiveActionTransition(
-  from: (typeof CORRECTIVE_ACTION_STATUSES)[number],
-  to: (typeof CORRECTIVE_ACTION_STATUSES)[number],
-): boolean {
-  return CORRECTIVE_ACTION_TRANSITIONS[from].includes(to);
-}

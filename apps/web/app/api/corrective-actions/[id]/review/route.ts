@@ -21,7 +21,7 @@ export async function POST(
   const body = await request.json();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/corrective-actions/${id}/transitions`, {
+  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/corrective-actions/${id}/review`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

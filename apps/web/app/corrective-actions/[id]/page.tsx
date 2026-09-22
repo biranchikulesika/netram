@@ -162,10 +162,8 @@ export default async function CorrectiveActionDetailPage({
 
   const finding = findings.find((f) => f.id === action.findingId) || null;
 
-  const canTransition =
-    permissions.includes("corrective_action:submit") ||
-    permissions.includes("corrective_action:approve") ||
-    permissions.includes("*");
+  const canSubmitAtr = permissions.includes("corrective_action:submit") || permissions.includes("*");
+  const canReview = permissions.includes("corrective_action:approve") || permissions.includes("*");
 
   return (
     <main>
@@ -179,9 +177,9 @@ export default async function CorrectiveActionDetailPage({
       <CorrectiveActionDetailClient
         initialAction={action}
         finding={finding}
-        inspection={inspection}
         project={project}
-        canTransition={canTransition}
+        canSubmitAtr={canSubmitAtr}
+        canReview={canReview}
       />
     </main>
   );

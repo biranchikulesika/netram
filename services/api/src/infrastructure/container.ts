@@ -152,6 +152,7 @@ export function buildContainer(config: AppConfig): Container {
     inspectionService,
     findingRepo,
     correctiveActionRepo,
+    objectStorage,
   );
   const observationService = new ObservationService(
     authorizationService,

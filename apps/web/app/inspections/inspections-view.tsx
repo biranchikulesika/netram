@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import type { Inspection } from "@netram/types";
-import { IconSearch, IconChevronRight } from "../components/icons";
+import { IconSearch } from "../components/icons";
 import { getProjectName, getProjectCode, formatDate } from "../../lib/presentation";
 import { ScheduleInspectionModal, type ProjectOption } from "./schedule-inspection-modal";
 
@@ -125,7 +125,7 @@ export function InspectionsView({
               aria-selected={filter === "ALL"}
             >
               <span>All</span>
-              <span className="filter-count-badge">{total}</span>
+              {filter === "ALL" && <span className="filter-count-badge">{total}</span>}
             </button>
 
             <button
@@ -136,7 +136,7 @@ export function InspectionsView({
               aria-selected={filter === "ACTIVE"}
             >
               <span>Active Attention</span>
-              <span className="filter-count-badge">{activeCount}</span>
+              {filter === "ACTIVE" && <span className="filter-count-badge">{activeCount}</span>}
             </button>
 
             <button
@@ -147,7 +147,7 @@ export function InspectionsView({
               aria-selected={filter === "REVIEW"}
             >
               <span>Review Pending</span>
-              <span className="filter-count-badge">{reviewCount}</span>
+              {filter === "REVIEW" && <span className="filter-count-badge">{reviewCount}</span>}
             </button>
 
             <button
@@ -158,7 +158,7 @@ export function InspectionsView({
               aria-selected={filter === "SCHEDULED"}
             >
               <span>Scheduled</span>
-              <span className="filter-count-badge">{scheduledCount}</span>
+              {filter === "SCHEDULED" && <span className="filter-count-badge">{scheduledCount}</span>}
             </button>
 
             <button
@@ -169,7 +169,7 @@ export function InspectionsView({
               aria-selected={filter === "COMPLETED"}
             >
               <span>Completed</span>
-              <span className="filter-count-badge">{completedCount}</span>
+              {filter === "COMPLETED" && <span className="filter-count-badge">{completedCount}</span>}
             </button>
           </div>
         </div>
@@ -205,11 +205,11 @@ export function InspectionsView({
             <tr>
               <th style={{ width: "130px" }}>Type</th>
               <th>Facility / Project</th>
+              <th>Inspection ID</th>
               <th>Trigger</th>
               <th style={{ width: "140px" }}>Status</th>
               <th>Assignment</th>
               <th>Timing</th>
-              <th style={{ width: "130px", textAlign: "right" }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -236,9 +236,14 @@ export function InspectionsView({
 
                 return (
                   <tr key={i.id}>
-                    <td>
-                      <span className={`badge ${isSurprise ? "badge-surprise" : "badge-routine"}`}>
-                        {i.type.toUpperCase()}
+                    <td className="table-row-anchor-cell" style={{ cursor: "pointer" }}>
+                      <Link
+                        href={`/inspections/${i.id}`}
+                        className="table-row-anchor-link"
+                        aria-label={`Open inspection ${i.id}`}
+                      />
+                      <span style={{ fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", color: isSurprise ? "#b45309" : "var(--text-primary)" }}>
+                        {i.type}
                       </span>
                     </td>
                     <td>
@@ -248,6 +253,9 @@ export function InspectionsView({
                       <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", color: "var(--text-subtle)", marginTop: "2px" }}>
                         {i.projectCode || getProjectCode(i.projectId)}
                       </div>
+                    </td>
+                    <td title={i.id} style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--text-subtle)" }}>
+                      {i.id.slice(0, 12)}
                     </td>
                     <td>
                       <span className="trigger-text">{i.trigger.replace(/_/g, " ")}</span>
@@ -270,24 +278,6 @@ export function InspectionsView({
                     </td>
                     <td className="muted" style={{ fontSize: "0.8rem" }}>
                       {dateStr}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <Link
-                        href={`/inspections/${i.id}`}
-                        className="btn-secondary"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.25rem",
-                          fontSize: "0.78rem",
-                          padding: "0.3rem 0.65rem",
-                          textDecoration: "none",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span>View</span>
-                        <IconChevronRight style={{ width: 13, height: 13 }} />
-                      </Link>
                     </td>
                   </tr>
                 );

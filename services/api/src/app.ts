@@ -13,7 +13,7 @@ import { createAuthHook } from "./infrastructure/auth-hook.js";
 import { InvalidTransitionError } from "./modules/projects/domain/project.js";
 import { InvalidInspectionTransitionError } from "./modules/inspections/domain/inspection.js";
 import { InvalidFindingTransitionError } from "./modules/findings/domain/finding.js";
-import { InvalidCorrectiveActionTransitionError } from "./modules/corrective-actions/domain/corrective-action.js";
+import { InvalidCorrectiveActionReviewError } from "./modules/corrective-actions/domain/corrective-action.js";
 import { InvalidObservationStageError } from "./modules/observations/domain/observation.js";
 import { InvalidEvidenceTransitionError } from "./modules/evidence/domain/evidence.js";
 import { InvalidComplaintTransitionError } from "./modules/complaints/domain/complaint.js";
@@ -59,7 +59,7 @@ export async function buildApp(container: Container) {
 
   await app.register(cors, { origin: container.config.NETRAM_CORS_ORIGIN });
   await app.register(multipart, {
-    limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 4 },
+    limits: { fileSize: 100 * 1024 * 1024, files: 10, fields: 8 },
   });
 
   await app.register(swagger, {
@@ -160,7 +160,7 @@ export async function buildApp(container: Container) {
 
     if (
       err instanceof InvalidFindingTransitionError ||
-      err instanceof InvalidCorrectiveActionTransitionError ||
+      err instanceof InvalidCorrectiveActionReviewError ||
       err instanceof InvalidObservationStageError ||
       err instanceof InvalidEvidenceTransitionError ||
       err instanceof InvalidComplaintTransitionError ||

@@ -64,13 +64,17 @@ otherwise noted.
 - `GET /inspections/:id/findings`
 - `POST /inspections/:id/findings`
 - `POST /findings/:id/transitions`
+- `GET /findings/awaiting-order` (`inspection:review` + `corrective_action:read`; confirmed findings without a corrective action, scoped to the caller's jurisdictions — the authority "pending remediation orders" queue)
 
 ### Corrective Actions
 
 - `GET /corrective-actions`
 - `POST /corrective-actions`
 - `GET /corrective-actions/:id`
-- `POST /corrective-actions/:id/transitions`
+- `POST /corrective-actions/:id/submit-atr` (institution lodges the Action Taken Report; automatically advances the order to `submitted`)
+- `POST /corrective-actions/:id/review` (authority records a review decision; automatically advances the workflow to `under_review`/`accepted`/`rejected`)
+
+Corrective action status is derived from recorded work — there is no manual status-transition endpoint. `overdue` is produced by the SLA scheduled job; `escalated` is reserved for job-driven escalation.
 
 ### Observations
 

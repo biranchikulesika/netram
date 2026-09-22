@@ -19,6 +19,19 @@ export const findingSchema = z.object({
 
 export const findingListSchema = z.array(findingSchema);
 
+export const findingAwaitingOrderSchema = findingSchema.extend({
+  inspectionStatus: z.string().min(1),
+  project: z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    name: z.string(),
+    districtId: z.string().uuid().nullable(),
+    organisationId: z.string().uuid().nullable(),
+  }),
+});
+
+export const findingAwaitingOrderListSchema = z.array(findingAwaitingOrderSchema);
+
 export const createFindingSchema = z
   .object({
     severity: z.enum(FINDING_SEVERITIES),
