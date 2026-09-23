@@ -24,10 +24,10 @@ import type {
   PublicComplaintTracking,
   CorrectiveAction,
   CorrectiveActionListQuery,
-  CorrectiveActionStatus,
   Evidence,
   EvidenceType,
   Finding,
+  FindingAwaitingOrder,
   FindingStatus,
   Inspection,
   InspectionAssignment,
@@ -308,6 +308,11 @@ export class NetramApiClient extends HttpClient {
     return this.post(`/api/v1/findings/${id}/transitions`, { to, note });
   }
 
+  /** Confirmed findings awaiting a remediation order across the caller's jurisdiction. */
+  async listFindingsAwaitingOrder(): Promise<FindingAwaitingOrder[]> {
+    return this.get("/api/v1/findings/awaiting-order");
+  }
+
   // corrective actions
   async listCorrectiveActions(
     query: CorrectiveActionListQuery = {},
@@ -327,15 +332,23 @@ export class NetramApiClient extends HttpClient {
     return this.post("/api/v1/corrective-actions", input);
   }
 
-  async transitionCorrectiveAction(
+  async submitAtr(
     id: string,
-    to: CorrectiveActionStatus,
-    note?: string,
+    input: { actionSummary: string; files?: { data: Blob; name: string; type?: string }[] },
   ): Promise<CorrectiveAction> {
-    return this.post(`/api/v1/corrective-actions/${id}/transitions`, {
-      to,
-      note,
-    });
+    const form = new FormData();
+    form.append("actionSummary", input.actionSummary);
+    for (const f of input.files ?? []) {
+      form.append("files", f.data, f.name);
+    }
+    return this.post(`/api/v1/corrective-actions/${id}/submit-atr`, form);
+  }
+
+  async reviewCorrectiveAction(
+    id: string,
+    input: { outcome: "under_review" | "accepted" | "rejected"; note?: string },
+  ): Promise<CorrectiveAction> {
+    return this.post(`/api/v1/corrective-actions/${id}/review`, input);
   }
 
   // observations

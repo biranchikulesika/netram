@@ -42,6 +42,36 @@ export const districts = pgTable("districts", {
   name: varchar("name", { length: 200 }).notNull(),
 });
 
+/** Sub-district unit (block/tehsil) for village-based audit targets. */
+export const blocks = pgTable("blocks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  districtId: uuid("district_id")
+    .notNull()
+    .references(() => districts.id),
+  code: varchar("code", { length: 20 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+});
+
+/** Gram panchayat under a block. */
+export const gramPanchayats = pgTable("gram_panchayats", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  blockId: uuid("block_id")
+    .notNull()
+    .references(() => blocks.id),
+  code: varchar("code", { length: 20 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+});
+
+/** Revenue village under a gram panchayat. */
+export const villages = pgTable("villages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  gramPanchayatId: uuid("gram_panchayat_id")
+    .notNull()
+    .references(() => gramPanchayats.id),
+  code: varchar("code", { length: 20 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+});
+
 /* ---------- Authorities & Jurisdictions ---------- */
 
 export const authorities = pgTable("authorities", {
@@ -143,10 +173,33 @@ export const organisations = pgTable("organisations", {
   name: varchar("name", { length: 300 }).notNull(),
   category: varchar("category", { length: 80 }).notNull(),
   authorityId: uuid("authority_id").references(() => authorities.id),
-  districtId: uuid("district_id").references(() => districts.id),
+  /** State an SAU / state department / state-level NGO belongs to. */
+  stateId: uuid("state_id").references(() => states.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Scheme component (docs/DoSJE.md §21): operational subdivision of a scheme
+ * whose targets get audited (e.g. IPSrC under AVYAY, Adarsh Gram / BJRC under
+ * PM-AJAY, IRCA under NAPDDR, SHRESHTA Mode 1/2).
+ */
+export const schemeComponents = pgTable(
+  "scheme_components",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    programmeId: uuid("programme_id")
+      .notNull()
+      .references(() => programmes.id, { onDelete: "cascade" }),
+    code: varchar("code", { length: 50 }).unique().notNull(),
+    name: varchar("name", { length: 300 }).notNull(),
+    description: text("description"),
+    /** Typical auditable target kind produced by this component. */
+    targetKind: varchar("target_kind", { length: 50 }).notNull().default("institution"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("scheme_components_programme_idx").on(t.programmeId)],
+);
 
 export const programmes = pgTable("programmes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -175,6 +228,10 @@ export const projects = pgTable("projects", {
   organisationId: uuid("organisation_id").references(() => organisations.id),
   authorityId: uuid("authority_id").references(() => authorities.id),
   districtId: uuid("district_id").references(() => districts.id),
+  /** Village-level location for village-type targets (PM-AJAY Adarsh Gram). */
+  villageId: uuid("village_id").references(() => villages.id),
+  /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
+  schemeComponentId: uuid("scheme_component_id").references(() => schemeComponents.id),
   status: varchar("status", { length: 30 }).notNull().default("Draft"),
   approvedById: uuid("approved_by_id").references(() => users.id),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
@@ -314,8 +371,22 @@ export const findings = pgTable("findings", {
   description: text("description").notNull(),
   remediation: text("remediation"),
   status: varchar("status", { length: 30 }).notNull().default("new"),
+  /** Issue category (DoSJE MIS tracks issues by category). */
+  categoryId: uuid("category_id").references(() => findingCategories.id),
+  /** Disputed/misappropriated amount in INR when the issue is financial. */
+  amountInr: integer("amount_inr"),
+  /** Organisation expected to answer the issue (ATR submitter). */
+  responsibleOrganisationId: uuid("responsible_organisation_id").references(() => organisations.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Issue categories for findings (docs/DoSJE.md §15). Extensible by seeding. */
+export const findingCategories = pgTable("finding_categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
 });
 
 /* ---------- Evidence ---------- */
@@ -355,8 +426,32 @@ export const correctiveActions = pgTable("corrective_actions", {
   status: varchar("status", { length: 30 }).notNull().default("pending"),
   deadline: timestamp("deadline", { withTimezone: true }),
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  /** Action Taken Report content: what was actually done (docs/DoSJE.md §16). */
+  actionSummary: text("action_summary"),
+  /** When the authority verified the submitted action. */
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  verifiedByUserId: uuid("verified_by_user_id").references(() => users.id),
+  /** Reviewer remarks recorded at accept/reject time. */
+  reviewRemarks: text("review_remarks"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Supporting attachments (PDFs, photos, videos) lodged with the Action Taken
+ * Report. Blobs live in object storage; only metadata is persisted (AGENTS.md §30).
+ */
+export const correctiveActionFiles = pgTable("corrective_action_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  correctiveActionId: uuid("corrective_action_id")
+    .notNull()
+    .references(() => correctiveActions.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 300 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  contentHash: varchar("content_hash", { length: 128 }).notNull(),
+  storageKey: varchar("storage_key", { length: 300 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- Complaints ---------- */
@@ -376,6 +471,23 @@ export const complaints = pgTable("complaints", {
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Supporting attachments (PDFs, photos, videos, docs) lodged with a public
+ * grievance. Blobs live in object storage; only metadata is persisted (AGENTS.md §30).
+ */
+export const complaintFiles = pgTable("complaint_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  complaintId: uuid("complaint_id")
+    .notNull()
+    .references(() => complaints.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 300 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  contentHash: varchar("content_hash", { length: 128 }).notNull(),
+  storageKey: varchar("storage_key", { length: 300 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- AI ---------- */
@@ -404,6 +516,8 @@ export const cctvCameras = pgTable("cctv_cameras", {
   protocol: varchar("protocol", { length: 50 }).notNull(),
   endpoint: varchar("endpoint", { length: 500 }).notNull(),
   districtId: uuid("district_id").references(() => districts.id),
+  /** Monitored target this camera watches; exact attribution for control-room links. */
+  projectId: uuid("project_id").references(() => projects.id),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

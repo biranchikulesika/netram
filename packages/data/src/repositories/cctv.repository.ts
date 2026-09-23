@@ -22,6 +22,7 @@ export interface CctvCameraRow {
   protocol: string;
   endpoint: string;
   districtId: string | null;
+  projectId: string | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -35,6 +36,7 @@ export function toCctvCamera(row: CctvCameraRow): CctvCamera {
     protocol: row.protocol,
     endpoint: row.endpoint,
     districtId: row.districtId,
+    projectId: row.projectId,
     status: row.status as CameraStatus,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

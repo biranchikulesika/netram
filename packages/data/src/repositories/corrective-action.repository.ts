@@ -1,14 +1,21 @@
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import {
   correctiveActions as correctiveActionsTable,
+  correctiveActionFiles as correctiveActionFilesTable,
   findings as findingsTable,
   inspections as inspectionsTable,
   projects as projectsTable,
+  findingCategories as findingCategoriesTable,
   auditEvents,
   outboxEvents,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
-import type { CorrectiveAction, CorrectiveActionStatus } from "@netram/types";
+import type {
+  CorrectiveAction,
+  CorrectiveActionFile,
+  CorrectiveActionStatus,
+  FindingSeverity,
+} from "@netram/types";
 import type { FindingWriteContext } from "./finding.repository.js";
 
 export interface CorrectiveActionRow {
@@ -19,8 +26,51 @@ export interface CorrectiveActionRow {
   status: CorrectiveActionStatus;
   deadline: Date | null;
   submittedAt: Date | null;
+  actionSummary: string | null;
+  verifiedAt: Date | null;
+  verifiedByUserId: string | null;
+  reviewRemarks: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CorrectiveActionFileRow {
+  id: string;
+  correctiveActionId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  contentHash: string;
+  storageKey: string;
+  createdAt: Date;
+}
+
+export function toCorrectiveActionFile(row: CorrectiveActionFileRow): CorrectiveActionFile {
+  return {
+    id: row.id,
+    correctiveActionId: row.correctiveActionId,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    sizeBytes: row.sizeBytes,
+    contentHash: row.contentHash,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export interface CorrectiveActionProjectRow {
+  id: string;
+  code: string;
+  name: string;
+  districtId: string | null;
+  description: string | null;
+}
+
+export interface CorrectiveActionFindingRow {
+  id: string;
+  severity: FindingSeverity;
+  description: string;
+  categoryId: string | null;
+  categoryName: string | null;
 }
 
 export interface CorrectiveActionWithDistrict extends CorrectiveAction {
@@ -36,8 +86,15 @@ export function toCorrectiveAction(row: CorrectiveActionRow): CorrectiveAction {
     status: row.status,
     deadline: row.deadline ? row.deadline.toISOString() : null,
     submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
+    actionSummary: row.actionSummary,
+    atrFiles: [],
+    verifiedAt: row.verifiedAt ? row.verifiedAt.toISOString() : null,
+    verifiedByUserId: row.verifiedByUserId,
+    reviewRemarks: row.reviewRemarks,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    project: null,
+    finding: null,
   };
 }
 
@@ -49,10 +106,21 @@ export interface CreateCorrectiveActionWrite extends FindingWriteContext {
   deadline: Date | string | null;
 }
 
-export interface TransitionCorrectiveActionWrite extends FindingWriteContext {
+export interface CorrectiveActionWorkWrite extends FindingWriteContext {
   correctiveActionId: string;
   to: CorrectiveActionStatus;
   note: string | null;
+  /** ATR content supplied on the submit step (docs/DoSJE.md §16). */
+  actionSummary?: string | null;
+  /** Attachments lodged with the ATR; replaces any earlier submission's files. */
+  files?: {
+    id: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    contentHash: string;
+    storageKey: string;
+  }[];
 }
 
 export interface CorrectiveActionListFilter {
@@ -91,10 +159,28 @@ export class CorrectiveActionRepository {
 
     const [rows, count] = await Promise.all([
       this.db
-        .select({ ca: correctiveActionsTable })
+        .select({
+          ca: correctiveActionsTable,
+          project: {
+            id: projectsTable.id,
+            code: projectsTable.code,
+            name: projectsTable.name,
+            districtId: projectsTable.districtId,
+            description: projectsTable.description,
+          },
+          finding: {
+            id: findingsTable.id,
+            severity: findingsTable.severity,
+            description: findingsTable.description,
+            categoryId: findingsTable.categoryId,
+            categoryName: findingCategoriesTable.name,
+          },
+        })
         .from(correctiveActionsTable)
         .innerJoin(inspectionsTable, eq(correctiveActionsTable.inspectionId, inspectionsTable.id))
         .innerJoin(projectsTable, eq(inspectionsTable.projectId, projectsTable.id))
+        .innerJoin(findingsTable, eq(correctiveActionsTable.findingId, findingsTable.id))
+        .leftJoin(findingCategoriesTable, eq(findingsTable.categoryId, findingCategoriesTable.id))
         .where(and(where, joinScope))
         .orderBy(desc(correctiveActionsTable.createdAt))
         .limit(filter.pageSize)
@@ -108,7 +194,23 @@ export class CorrectiveActionRepository {
     ]);
 
     return {
-      items: rows.map((r) => toCorrectiveAction(r.ca as unknown as CorrectiveActionRow)),
+      items: rows.map((r) => ({
+        ...toCorrectiveAction(r.ca as unknown as CorrectiveActionRow),
+        project: {
+          id: r.project.id,
+          code: r.project.code,
+          name: r.project.name,
+          districtId: r.project.districtId,
+          description: r.project.description,
+        },
+        finding: {
+          id: r.finding.id,
+          severity: r.finding.severity as FindingSeverity,
+          description: r.finding.description,
+          categoryId: r.finding.categoryId,
+          categoryName: r.finding.categoryName,
+        },
+      })),
       total: count[0]?.count ?? 0,
     };
   }
@@ -128,7 +230,36 @@ export class CorrectiveActionRepository {
     if (!row) return null;
     return {
       ...toCorrectiveAction(row.ca as unknown as CorrectiveActionRow),
+      atrFiles: await this.listFiles(id),
       districtId: row.districtId,
+    };
+  }
+
+  async listFiles(correctiveActionId: string): Promise<CorrectiveActionFile[]> {
+    const rows = await this.db
+      .select()
+      .from(correctiveActionFilesTable)
+      .where(eq(correctiveActionFilesTable.correctiveActionId, correctiveActionId))
+      .orderBy(correctiveActionFilesTable.createdAt);
+    return rows.map((r) => toCorrectiveActionFile(r as unknown as CorrectiveActionFileRow));
+  }
+
+  async findFileById(id: string): Promise<{
+    file: CorrectiveActionFile;
+    correctiveActionId: string;
+    storageKey: string;
+  } | null> {
+    const rows = await this.db
+      .select()
+      .from(correctiveActionFilesTable)
+      .where(eq(correctiveActionFilesTable.id, id))
+      .limit(1);
+    const row = rows[0] as unknown as CorrectiveActionFileRow | undefined;
+    if (!row) return null;
+    return {
+      file: toCorrectiveActionFile(row),
+      correctiveActionId: row.correctiveActionId,
+      storageKey: row.storageKey,
     };
   }
 
@@ -191,8 +322,13 @@ export class CorrectiveActionRepository {
     return created;
   }
 
-  async transitionWithAuditAndEvent(
-    cmd: TransitionCorrectiveActionWrite,
+  /**
+   * Persists a corrective action whose status is set as a byproduct of
+   * recorded work (ATR submission or authority review) (§32). There is no
+   * manual status transition.
+   */
+  async applyWorkWithAuditAndEvent(
+    cmd: CorrectiveActionWorkWrite,
   ): Promise<CorrectiveActionWithDistrict> {
     const current = await this.findById(cmd.correctiveActionId);
     if (!current) throw new Error("corrective action missing");
@@ -206,10 +342,48 @@ export class CorrectiveActionRepository {
             : null;
       const rows = await tx
         .update(correctiveActionsTable)
-        .set({ status: cmd.to, submittedAt, updatedAt: new Date() })
+        .set({
+          status: cmd.to,
+          submittedAt,
+          // ATR content arrives with the institution's submission step.
+          actionSummary: cmd.actionSummary ?? current.actionSummary,
+          // Verification stamp arrives with the authority accept decision.
+          verifiedAt:
+            cmd.to === "accepted"
+              ? new Date()
+              : current.verifiedAt
+                ? new Date(current.verifiedAt)
+                : null,
+          verifiedByUserId:
+            cmd.to === "accepted" ? cmd.actorUserId : current.verifiedByUserId,
+          reviewRemarks: cmd.note ?? current.reviewRemarks,
+          updatedAt: new Date(),
+        })
         .where(eq(correctiveActionsTable.id, cmd.correctiveActionId))
         .returning();
       const row = rows[0]!;
+
+      // ATR submission replaces the previous submission's attachments; the
+      // storage blobs of the old submission are left orphaned (mirrors how
+      // evidence handles re-uploads) but DB metadata is atomic with the status.
+      if (cmd.files) {
+        await tx
+          .delete(correctiveActionFilesTable)
+          .where(eq(correctiveActionFilesTable.correctiveActionId, cmd.correctiveActionId));
+        if (cmd.files.length > 0) {
+          await tx.insert(correctiveActionFilesTable).values(
+            cmd.files.map((f) => ({
+              id: f.id,
+              correctiveActionId: cmd.correctiveActionId,
+              fileName: f.fileName,
+              mimeType: f.mimeType,
+              sizeBytes: f.sizeBytes,
+              contentHash: f.contentHash,
+              storageKey: f.storageKey,
+            })),
+          );
+        }
+      }
 
       await tx.insert(auditEvents).values({
         action: cmd.auditAction,
@@ -243,7 +417,11 @@ export class CorrectiveActionRepository {
 
       return toCorrectiveAction(row as unknown as CorrectiveActionRow);
     });
-    return { ...transitioned, districtId: current.districtId };
+    return {
+      ...transitioned,
+      atrFiles: await this.listFiles(cmd.correctiveActionId),
+      districtId: current.districtId,
+    };
   }
 
   /**

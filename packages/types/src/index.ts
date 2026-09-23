@@ -23,5 +23,9 @@ export * from "./vc.js";
 export * from "./attendance.js";
 export * from "./analytics.js";
 export * from "./registry.js";
+<<<<<<< HEAD
 export * from "./fund.js";
 export * from "./project-risk.js";
+=======
+export * from "./scheme-component.js";
+>>>>>>> origin/website-ui-improvement

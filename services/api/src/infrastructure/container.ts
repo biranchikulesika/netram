@@ -166,12 +166,18 @@ export function buildContainer(config: AppConfig): Container {
     evidenceRepo,
     findingRepo,
   );
-  const findingService = new FindingService(authorizationService, inspectionService, findingRepo);
+  const findingService = new FindingService(
+    authorizationService,
+    inspectionService,
+    projectRepo,
+    findingRepo,
+  );
   const correctiveActionService = new CorrectiveActionService(
     authorizationService,
     inspectionService,
     findingRepo,
     correctiveActionRepo,
+    objectStorage,
   );
   const observationService = new ObservationService(
     authorizationService,
@@ -184,9 +190,20 @@ export function buildContainer(config: AppConfig): Container {
     evidenceRepo,
     objectStorage,
   );
-  const complaintService = new ComplaintService(authorizationService, projectRepo, complaintRepo);
+  const complaintService = new ComplaintService(
+    authorizationService,
+    projectRepo,
+    complaintRepo,
+    objectStorage,
+  );
   const auditService = new AuditService(authorizationService, auditRepo);
-  const aiAnomalyService = new AiAnomalyService(authorizationService, aiAnomalyRepo);
+  const aiAnomalyService = new AiAnomalyService(
+    authorizationService,
+    aiAnomalyRepo,
+    // Resolves the anomaly's project for follow-up inspection creation on
+    // escalation to `investigated` (§36 → §32).
+    inspectionRepo,
+  );
   const inspectionAssignmentService = new InspectionAssignmentService(
     authorizationService,
     inspectionService,

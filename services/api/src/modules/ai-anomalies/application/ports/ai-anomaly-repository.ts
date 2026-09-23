@@ -1,4 +1,5 @@
 import type { AIAnomaly, AnomalyStatus, AuditAction, DomainEventType, UUID } from "@netram/types";
+import type { FollowUpInspectionWrite } from "@netram/data";
 
 export interface AiAnomalyWriteContext {
   actorUserId: string | null;
@@ -15,6 +16,8 @@ export interface TransitionAiAnomalyCommand extends AiAnomalyWriteContext {
   to: AnomalyStatus;
   reviewedBy: UUID;
   reviewedAt: Date;
+  /** Present only when escalating to `investigated` (§36 → §32). */
+  followUpInspection?: FollowUpInspectionWrite;
 }
 
 export interface AiAnomalyListFilter {

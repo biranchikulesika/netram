@@ -11,7 +11,6 @@ export const createOrganisationSchema = z
       .regex(/^[A-Z0-9-]+$/, "Code must be uppercase letters, digits or dashes."),
     name: z.string().min(3).max(300),
     category: z.string().min(2).max(80),
-    districtId: uuidSchema.nullable().optional(),
   })
   .strict();
 
@@ -70,7 +69,6 @@ export const organisationSchema = z.object({
   name: z.string(),
   category: z.string(),
   authorityId: z.string().uuid().nullable(),
-  districtId: z.string().uuid().nullable(),
   createdAt: z.string().datetime(),
 });
 

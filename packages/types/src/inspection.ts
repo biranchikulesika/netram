@@ -1,6 +1,18 @@
 import type { UUID, ISODateTime } from "./common.js";
 
-export const INSPECTION_TYPES = ["surprise", "routine", "special", "follow_up"] as const;
+/**
+ * `social_audit` covers the DoSJE Social Audit process (docs/DoSJE.md §12):
+ * SAU Social Justice Cell verification of scheme targets, distinct from a
+ * PMU-style surprise inspection. See the Handbook for Social Justice Cell
+ * Members and the I-MESA guidelines.
+ */
+export const INSPECTION_TYPES = [
+  "surprise",
+  "routine",
+  "special",
+  "follow_up",
+  "social_audit",
+] as const;
 
 export const INSPECTION_TRIGGERS = ["officer", "risk_engine", "automatic"] as const;
 

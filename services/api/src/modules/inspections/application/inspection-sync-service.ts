@@ -212,6 +212,15 @@ export class InspectionSyncService {
           severity: op.payload.severity as "critical" | "high" | "medium" | "low",
           description: String(op.payload.description ?? ""),
           remediation: typeof op.payload.remediation === "string" ? op.payload.remediation : null,
+          categoryId: typeof op.payload.categoryId === "string" ? op.payload.categoryId : null,
+          amountInr:
+            typeof op.payload.amountInr === "number" && Number.isFinite(op.payload.amountInr)
+              ? Math.trunc(op.payload.amountInr)
+              : null,
+          responsibleOrganisationId:
+            typeof op.payload.responsibleOrganisationId === "string"
+              ? op.payload.responsibleOrganisationId
+              : null,
           actorUserId: ctx.userId,
           requestId: ctx.requestId ?? null,
           ipAddress: ctx.ipAddress ?? null,

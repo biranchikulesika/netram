@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function LoginPage() {
   const session = await getSessionUser();
-  if (session) redirect("/projects");
+  if (session) redirect("/dashboard/projects");
 
   const env = loadClientEnv();
   const isDev =

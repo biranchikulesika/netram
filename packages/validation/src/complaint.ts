@@ -2,6 +2,16 @@ import { z } from "zod";
 import { COMPLAINT_STATUSES, COMPLAINT_TRANSITIONS } from "@netram/types";
 import { paginationSchema, uuidSchema } from "./common.js";
 
+export const complaintFileSchema = z.object({
+  id: z.string().uuid(),
+  complaintId: z.string().uuid(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int(),
+  contentHash: z.string(),
+  createdAt: z.string().datetime(),
+});
+
 export const complaintSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string().uuid(),
@@ -18,6 +28,7 @@ export const complaintSchema = z.object({
   resolvedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  files: z.array(complaintFileSchema),
 });
 
 export const complaintPageSchema = z.object({

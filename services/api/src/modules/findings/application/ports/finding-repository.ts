@@ -2,8 +2,10 @@ import type {
   AuditAction,
   DomainEventType,
   Finding,
+  FindingAwaitingOrder,
   FindingStatus,
   FindingSeverity,
+  UUID,
 } from "@netram/types";
 
 export interface FindingWriteContext {
@@ -23,6 +25,9 @@ export interface CreateFindingCommand extends FindingWriteContext {
   severity: FindingSeverity;
   description: string;
   remediation: string | null;
+  categoryId: UUID | null;
+  amountInr: number | null;
+  responsibleOrganisationId: UUID | null;
 }
 
 export interface TransitionFindingCommand extends FindingWriteContext {
@@ -34,6 +39,7 @@ export interface TransitionFindingCommand extends FindingWriteContext {
 export interface FindingRepositoryPort {
   listByInspection(inspectionId: string): Promise<Finding[]>;
   findById(id: string): Promise<Finding | null>;
+  listAwaitingOrder(jurisdictionIds?: UUID[]): Promise<FindingAwaitingOrder[]>;
   createWithAuditAndEvent(cmd: CreateFindingCommand): Promise<Finding>;
   transitionWithAuditAndEvent(cmd: TransitionFindingCommand): Promise<Finding>;
 }

@@ -1,4 +1,11 @@
-import type { AuditAction, Complaint, ComplaintStatus, DomainEventType, UUID } from "@netram/types";
+import type {
+  AuditAction,
+  Complaint,
+  ComplaintFile,
+  ComplaintStatus,
+  DomainEventType,
+  UUID,
+} from "@netram/types";
 
 export interface ComplaintWriteContext {
   actorUserId: string | null;
@@ -10,6 +17,15 @@ export interface ComplaintWriteContext {
   eventPayload: Record<string, unknown>;
 }
 
+export interface ComplaintAttachmentCommand {
+  id: UUID;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  contentHash: string;
+  storageKey: string;
+}
+
 export interface CreateComplaintCommand extends ComplaintWriteContext {
   id: UUID;
   projectId: UUID;
@@ -17,6 +33,7 @@ export interface CreateComplaintCommand extends ComplaintWriteContext {
   contactInfo: string | null;
   trackingCode: string;
   description: string;
+  files?: ComplaintAttachmentCommand[];
 }
 
 export interface TransitionComplaintCommand extends ComplaintWriteContext {
@@ -39,4 +56,9 @@ export interface ComplaintRepositoryPort {
   findByTrackingCode(trackingCode: string): Promise<Complaint | null>;
   createWithAuditAndEvent(cmd: CreateComplaintCommand): Promise<Complaint>;
   transitionWithAuditAndEvent(cmd: TransitionComplaintCommand): Promise<Complaint>;
+  findFileById(id: UUID): Promise<{
+    file: ComplaintFile;
+    complaintId: UUID;
+    storageKey: string;
+  } | null>;
 }

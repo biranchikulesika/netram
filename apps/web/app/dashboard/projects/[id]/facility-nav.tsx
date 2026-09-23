@@ -1,0 +1,91 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  IconAlertTriangle,
+  IconBarChart,
+  IconCheck,
+  IconClipboard,
+  IconGrid,
+  IconUser,
+  IconVideo,
+  IconIndianRupee,
+} from "../../../components/icons";
+
+interface FacilityNavItem {
+  href: string;
+  label: string;
+  icon: (props: { width?: number | string; height?: number | string }) => React.ReactNode;
+  permission?: string | string[];
+}
+
+interface FacilityNavProps {
+  projectId: string;
+  permissions: string[];
+}
+
+/**
+ * Facility contextual navigation ("which aspect of this facility am I
+ * examining?"). This is NOT the global sidebar ("which system area am I working
+ * in?") — both coexist by design (§CORE IA).
+ */
+export function FacilityNav({ projectId, permissions }: FacilityNavProps) {
+  const pathname = usePathname();
+  const base = `/dashboard/projects/${projectId}`;
+
+  const items: FacilityNavItem[] = [
+    { href: base, label: "Overview", icon: IconGrid },
+    { href: `${base}/inspections`, label: "Inspections", icon: IconClipboard, permission: "inspection:read" },
+    { href: `${base}/funds`, label: "Funds & Expenses", icon: IconIndianRupee, permission: ["fund:read", "expense:read"] },
+    { href: `${base}/complaints`, label: "Complaints", icon: IconAlertTriangle, permission: "complaint:read" },
+    {
+      href: `${base}/monitoring`,
+      label: "Monitoring",
+      icon: IconVideo,
+      permission: ["cctv:read", "ai:anomaly:read"],
+    },
+    {
+      href: `${base}/attendance`,
+      label: "Attendance",
+      icon: IconUser,
+      permission: "attendance:monitor:read",
+    },
+    {
+      href: `${base}/actions`,
+      label: "Actions",
+      icon: IconCheck,
+      permission: "corrective_action:read",
+    },
+    { href: `${base}/reports`, label: "Reports", icon: IconBarChart, permission: "report:read" },
+  ];
+
+  const visible = items.filter((item) => {
+    if (!item.permission) return true;
+    if (permissions.includes("*") || permissions.length === 0) return true;
+    const required = Array.isArray(item.permission) ? item.permission : [item.permission];
+    return required.some((perm) => permissions.includes(perm));
+  });
+
+  const isActive = (href: string) =>
+    href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
+
+  return (
+    <nav className="facility-nav" aria-label="Facility sections">
+      {visible.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`facility-nav-link ${isActive(item.href) ? "active" : ""}`}
+            aria-current={isActive(item.href) ? "page" : undefined}
+          >
+            <Icon width={13} height={13} />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

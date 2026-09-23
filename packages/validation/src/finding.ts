@@ -10,11 +10,27 @@ export const findingSchema = z.object({
   description: z.string(),
   remediation: z.string().nullable(),
   status: z.enum(FINDING_STATUSES),
+  categoryId: z.string().uuid().nullable(),
+  amountInr: z.number().int().nullable(),
+  responsibleOrganisationId: z.string().uuid().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
 
 export const findingListSchema = z.array(findingSchema);
+
+export const findingAwaitingOrderSchema = findingSchema.extend({
+  inspectionStatus: z.string().min(1),
+  project: z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    name: z.string(),
+    districtId: z.string().uuid().nullable(),
+    organisationId: z.string().uuid().nullable(),
+  }),
+});
+
+export const findingAwaitingOrderListSchema = z.array(findingAwaitingOrderSchema);
 
 export const createFindingSchema = z
   .object({
@@ -22,6 +38,12 @@ export const createFindingSchema = z
     description: z.string().min(1).max(4000),
     remediation: z.string().max(4000).optional(),
     observationId: uuidSchema.nullable().optional(),
+    /** Issue category (docs/DoSJE.md §15). */
+    categoryId: uuidSchema.nullable().optional(),
+    /** Disputed/misappropriated amount in INR for financial issues. */
+    amountInr: z.number().int().min(0).max(2_000_000_000).nullable().optional(),
+    /** Organisation expected to answer the issue (ATR submitter). */
+    responsibleOrganisationId: uuidSchema.nullable().optional(),
   })
   .strict();
 

@@ -15,6 +15,8 @@ export interface CctvCamera {
   protocol: string;
   endpoint: string;
   districtId: UUID | null;
+  /** Monitored target this camera watches; exact attribution, not name-matched. */
+  projectId: UUID | null;
   status: CameraStatus;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
@@ -30,6 +32,8 @@ export interface PublicCctvCamera {
   provider: string;
   protocol: string;
   districtId: UUID | null;
+  /** Monitored target this camera watches; enables exact project links. */
+  projectId: UUID | null;
   status: CameraStatus;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;

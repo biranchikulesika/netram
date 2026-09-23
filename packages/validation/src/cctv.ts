@@ -25,6 +25,7 @@ export const publicCctvCameraSchema = z.object({
   provider: z.string(),
   protocol: z.string(),
   districtId: z.string().uuid().nullable(),
+  projectId: z.string().uuid().nullable(),
   status: z.enum(["active", "inactive", "maintenance"]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

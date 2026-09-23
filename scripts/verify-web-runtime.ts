@@ -824,91 +824,94 @@ async function main() {
     throw new Error(`GET /corrective-actions/${createdCa.id} returned ${caDetailRes.status}`);
   }
   const caDetailHtml = await caDetailRes.text();
-  if (!caDetailHtml.includes("Remediation") || !caDetailHtml.includes("Statutory Compliance")) {
-    throw new Error("Corrective action detail page missing expected headings");
+  if (!caDetailHtml.includes("Underlying Deficiency Finding") || !caDetailHtml.includes("remediation evidence")) {
+    throw new Error("Corrective action detail page missing expected content");
   }
   console.log(`✓ /corrective-actions/${createdCa.id} rendered successfully (${caDetailHtml.length} bytes)`);
 
-  // Test POST /api/corrective-actions/:id/transition (pending -> submitted)
-  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (pending -> submitted)...`);
-  const submitRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+  // Test POST /api/corrective-actions/:id/submit-atr (pending -> submitted, work-driven)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/submit-atr (pending -> submitted)...`);
+  const submitForm = new FormData();
+  submitForm.append("actionSummary", "Contractor completed structural waterproofing and submitted certified inspection reports.");
+  submitForm.append(
+    "files",
+    new Blob(["%PDF-1.7\n% ATR supporting attachment (verify-web-runtime)"], { type: "application/pdf" }),
+    "atr-support.pdf",
+  );
+  const submitRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/submit-atr`, {
     method: "POST",
     headers: {
       Cookie: officer.cookie,
-      "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      to: "submitted",
-      note: "Contractor submitted waterproofing test certificate and photos",
-    }),
+    body: submitForm,
   });
   if (!submitRes.ok) {
-    throw new Error(`POST transition to submitted failed: ${submitRes.status}: ${await submitRes.text()}`);
+    throw new Error(`POST submit-atr failed: ${submitRes.status}: ${await submitRes.text()}`);
   }
   const submittedCa = (await submitRes.json()) as { id: string; status: string };
   if (submittedCa.status !== "submitted") {
     throw new Error(`Expected status='submitted', got '${submittedCa.status}'`);
   }
-  console.log(`✓ Proxy transition to 'submitted' passed`);
+  console.log(`✓ ATR submission auto-advanced the order to 'submitted'`);
 
-  // Test POST /api/corrective-actions/:id/transition (submitted -> under_review)
-  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (submitted -> under_review)...`);
-  const reviewRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+  // Test POST /api/corrective-actions/:id/review (submitted -> under_review)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/review (submitted -> under_review)...`);
+  const reviewRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/review`, {
     method: "POST",
     headers: {
       Cookie: officer.cookie,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      to: "under_review",
+      outcome: "under_review",
       note: "Executive engineer commenced review of submitted materials",
     }),
   });
   if (!reviewRes.ok) {
-    throw new Error(`POST transition to under_review failed: ${reviewRes.status}: ${await reviewRes.text()}`);
+    throw new Error(`POST review to under_review failed: ${reviewRes.status}: ${await reviewRes.text()}`);
   }
   const reviewingCa = (await reviewRes.json()) as { id: string; status: string };
   if (reviewingCa.status !== "under_review") {
     throw new Error(`Expected status='under_review', got '${reviewingCa.status}'`);
   }
-  console.log(`✓ Proxy transition to 'under_review' passed`);
+  console.log(`✓ Authority review start auto-advanced the order to 'under_review'`);
 
-  // Test POST /api/corrective-actions/:id/transition (under_review -> accepted)
-  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/transition (under_review -> accepted)...`);
-  const acceptRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+  // Test POST /api/corrective-actions/:id/review (under_review -> accepted)
+  console.log(`Testing POST /api/corrective-actions/${createdCa.id}/review (under_review -> accepted)...`);
+  const acceptRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/review`, {
     method: "POST",
     headers: {
       Cookie: officer.cookie,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      to: "accepted",
+      outcome: "accepted",
       note: "Site reinspection verified compliant execution. Deficiency resolved.",
     }),
   });
   if (!acceptRes.ok) {
-    throw new Error(`POST transition to accepted failed: ${acceptRes.status}: ${await acceptRes.text()}`);
+    throw new Error(`POST review to accepted failed: ${acceptRes.status}: ${await acceptRes.text()}`);
   }
   const acceptedCa = (await acceptRes.json()) as { id: string; status: string };
   if (acceptedCa.status !== "accepted") {
     throw new Error(`Expected status='accepted', got '${acceptedCa.status}'`);
   }
-  console.log(`✓ Proxy transition to 'accepted' passed (Finding deficiency closed)`);
+  console.log(`✓ Authority verdict auto-closed the order as 'accepted' (Finding deficiency closed)`);
 
-  // Test Invalid Transition Rejection (accepted -> submitted should return 409 Conflict)
-  console.log("Testing invalid transition rejection on terminal state...");
-  const invalidCaRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/transition`, {
+  // Test recording a review on a terminal state is rejected with 409 Conflict
+  console.log("Testing review rejection on terminal state...");
+  const invalidCaRes = await fetch(`${WEB_BASE}/api/corrective-actions/${createdCa.id}/review`, {
     method: "POST",
     headers: {
       Cookie: officer.cookie,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ to: "submitted" }),
+    body: JSON.stringify({ outcome: "rejected", note: "Should be rejected" }),
   });
   if (invalidCaRes.status !== 409) {
-    throw new Error(`Expected 409 Conflict for invalid corrective action transition, got ${invalidCaRes.status}`);
+    throw new Error(`Expected 409 Conflict for review on terminal corrective action, got ${invalidCaRes.status}`);
   }
-  console.log(`✓ Invalid corrective action transition correctly rejected with 409 Conflict`);
+  console.log(`✓ Invalid review on terminal corrective action correctly rejected with 409 Conflict`);
 
   console.log("\n==================================================================");
   console.log("✓ ALL 15 NETRAM WEB DASHBOARD INTEGRATION CHECKS PASSED PERFECTLY!");

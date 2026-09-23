@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   aiAnomalies as aiAnomaliesTable,
   inspections as inspectionsTable,
+  inspectionAssignments,
   projects as projectsTable,
   auditEvents,
   outboxEvents,
@@ -22,6 +23,7 @@ export interface AiAnomalyRow {
   reviewedBy: string | null;
   reviewedAt: Date | null;
   createdAt: Date;
+  projectId: string | null;
   projectCode: string | null;
   projectName: string | null;
   districtId: string | null;
@@ -41,6 +43,7 @@ export function toAiAnomaly(row: AiAnomalyRow): AIAnomaly {
     reviewedBy: row.reviewedBy,
     reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
+    projectId: row.projectId,
     projectCode: row.projectCode,
     projectName: row.projectName,
     districtId: row.districtId,
@@ -62,6 +65,20 @@ export interface TransitionAiAnomalyWrite extends AiAnomalyWriteContext {
   to: AnomalyStatus;
   reviewedBy: string;
   reviewedAt: Date;
+  /**
+   * When escalating to `investigated`, the follow-up inspection to create in
+   * the same transaction. Absent for every other status change.
+   */
+  followUpInspection?: FollowUpInspectionWrite;
+}
+
+/** Follow-up inspection created by an AI-anomaly escalation (§36 → §32). */
+export interface FollowUpInspectionWrite {
+  id: string;
+  projectId: string;
+  assignmentId: string;
+  /** Officer recorded as lead of the follow-up inspection. */
+  leadUserId: string | null;
 }
 
 export interface AiAnomalyListFilter {
@@ -86,6 +103,7 @@ export class AiAnomalyRepository {
     return this.db
       .select({
         anomaly: aiAnomaliesTable,
+        projectId: projectsTable.id,
         projectCode: projectsTable.code,
         projectName: projectsTable.name,
         districtId: projectsTable.districtId,
@@ -128,6 +146,7 @@ export class AiAnomalyRepository {
     const items = rows.map((r) =>
       toAiAnomaly({
         ...r.anomaly,
+        projectId: r.projectId,
         projectCode: r.projectCode,
         projectName: r.projectName,
         districtId: r.districtId,
@@ -142,12 +161,19 @@ export class AiAnomalyRepository {
     const r = rows[0];
     return toAiAnomaly({
       ...r.anomaly,
+      projectId: r.projectId,
       projectCode: r.projectCode,
       projectName: r.projectName,
       districtId: r.districtId,
     } as unknown as AiAnomalyRow);
   }
 
+  /**
+   * Transitions an anomaly and, when escalating to investigation, creates the
+   * follow-up inspection and its lead assignment in the SAME transaction, so
+   * the escalation is atomic: status + inspection + assignment + audit + outbox
+   * all commit together or not at all.
+   */
   async transitionWithAuditAndEvent(cmd: TransitionAiAnomalyWrite): Promise<AIAnomaly> {
     await this.db.transaction(async (tx) => {
       await tx
@@ -158,6 +184,73 @@ export class AiAnomalyRepository {
           reviewedAt: cmd.reviewedAt,
         })
         .where(eq(aiAnomaliesTable.id, cmd.anomalyId));
+
+      if (cmd.followUpInspection) {
+        const f = cmd.followUpInspection;
+        await tx.insert(inspectionsTable).values({
+          id: f.id,
+          projectId: f.projectId,
+          type: "follow_up",
+          trigger: "automatic",
+          status: "assigned",
+        });
+
+        if (f.leadUserId) {
+          await tx.insert(inspectionAssignments).values({
+            id: f.assignmentId,
+            inspectionId: f.id,
+            userId: f.leadUserId,
+            role: "lead",
+            status: "assigned",
+          });
+        }
+
+        await tx.insert(auditEvents).values({
+          action: "inspection.created",
+          actorUserId: cmd.actorUserId,
+          resourceType: "inspection",
+          resourceId: f.id,
+          requestId: cmd.requestId,
+          ipAddress: cmd.ipAddress,
+          metadata: {
+            projectId: f.projectId,
+            type: "follow_up",
+            trigger: "automatic",
+            sourceAnomalyId: cmd.anomalyId,
+          },
+        });
+
+        await tx.insert(outboxEvents).values({
+          type: "inspection.created",
+          correlationId: f.id,
+          actorUserId: cmd.actorUserId,
+          resourceType: "inspection",
+          resourceId: f.id,
+          payload: {
+            inspectionId: f.id,
+            projectId: f.projectId,
+            type: "follow_up",
+            trigger: "automatic",
+            sourceAnomalyId: cmd.anomalyId,
+          },
+        });
+
+        if (f.leadUserId) {
+          await tx.insert(outboxEvents).values({
+            type: "inspection.assigned",
+            correlationId: f.id,
+            actorUserId: f.leadUserId,
+            resourceType: "inspection",
+            resourceId: f.id,
+            payload: {
+              inspectionId: f.id,
+              userId: f.leadUserId,
+              role: "lead",
+              sourceAnomalyId: cmd.anomalyId,
+            },
+          });
+        }
+      }
 
       await tx.insert(auditEvents).values({
         action: cmd.auditAction,

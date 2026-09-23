@@ -26,6 +26,8 @@ export interface ProjectRow {
   organisationId: string | null;
   authorityId: string | null;
   districtId: string | null;
+  villageId: string | null;
+  schemeComponentId: string | null;
   status: ProjectStatus;
   approvedById: string | null;
   approvedAt: Date | null;
@@ -44,6 +46,8 @@ export function toProject(row: ProjectRow): Project {
     organisationId: row.organisationId,
     authorityId: row.authorityId,
     districtId: row.districtId,
+    villageId: row.villageId,
+    schemeComponentId: row.schemeComponentId,
     status: row.status,
     approvedById: row.approvedById,
     approvedAt: row.approvedAt ? row.approvedAt.toISOString() : null,
@@ -62,6 +66,8 @@ export interface CreateProjectWrite {
   organisationId: string | null;
   authorityId: string | null;
   districtId: string | null;
+  villageId: string | null;
+  schemeComponentId: string | null;
   programmeIds: string[];
   actorUserId: string | null;
   requestId: string | null;
@@ -79,6 +85,8 @@ export interface UpdateProjectWrite {
   description: string | null;
   organisationId: string | null;
   districtId: string | null;
+  villageId: string | null;
+  schemeComponentId: string | null;
   programmeIds: string[];
   actorUserId: string | null;
   requestId: string | null;
@@ -181,6 +189,8 @@ export class ProjectRepository {
           organisationId: write.organisationId,
           authorityId: write.authorityId,
           districtId: write.districtId,
+          villageId: write.villageId,
+          schemeComponentId: write.schemeComponentId,
           programmeIds: write.programmeIds,
         })
         .returning();
@@ -221,6 +231,8 @@ export class ProjectRepository {
           description: write.description,
           organisationId: write.organisationId,
           districtId: write.districtId,
+          villageId: write.villageId,
+          schemeComponentId: write.schemeComponentId,
           programmeIds: write.programmeIds,
           updatedAt: new Date(),
         })

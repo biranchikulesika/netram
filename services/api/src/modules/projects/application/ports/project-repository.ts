@@ -17,6 +17,8 @@ export interface CreateProjectCommand {
   organisationId: string | null;
   authorityId: string | null;
   districtId: string | null;
+  villageId: string | null;
+  schemeComponentId: string | null;
   programmeIds: string[];
   actorUserId: string | null;
   requestId: string | null;
@@ -68,6 +70,8 @@ export interface UpdateProjectCommand {
   description: string | null;
   organisationId: string | null;
   districtId: string | null;
+  villageId: string | null;
+  schemeComponentId: string | null;
   programmeIds: string[];
   actorUserId: string | null;
   requestId: string | null;
