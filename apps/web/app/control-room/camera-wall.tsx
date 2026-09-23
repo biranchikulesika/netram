@@ -9,9 +9,10 @@ interface CameraWallProps {
   cameras: PublicCctvCamera[];
   cameraProjectLinks?: Record<string, string>;
   query: string;
+  columns?: 4 | 3 | 2;
 }
 
-export function CameraWall({ cameras, cameraProjectLinks = {}, query }: CameraWallProps) {
+export function CameraWall({ cameras, cameraProjectLinks = {}, query, columns = 4 }: CameraWallProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return cameras;
@@ -31,7 +32,7 @@ export function CameraWall({ cameras, cameraProjectLinks = {}, query }: CameraWa
           </p>
         </div>
       ) : (
-        <div className="camera-wall">
+        <div className={`camera-wall camera-wall-${columns}`}>
           {filtered.map((cam) => (
             <CameraCard key={cam.id} camera={cam} projectHref={cameraProjectLinks[cam.id]} />
           ))}

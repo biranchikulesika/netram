@@ -3665,7 +3665,45 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     ])
     .onConflictDoNothing();
 
-  // ---------- Attendance: full Ganjam setup (rolled-out monitoring) ----------
+  // ---------- Attendance: deterministic daily Vani series across 2026 ----------
+  // Feeds the yearly attendance record calendar (per-institute track record).
+  // Deterministic: present follows a weekly + monthly wave seeded by day-of-year
+  // (not random), with a summer school-holiday dip in May-June.
+  {
+    const vaniId = did("project:vani");
+    const windowId = did("attwindow:vani-morning");
+    const rows: typeof s.attendanceCalculations.$inferInsert[] = [];
+    for (let day = 1; day <= 365; day++) {
+      const base = new Date(Date.UTC(2026, 0, 1));
+      base.setUTCDate(base.getUTCDate() + day - 1);
+      if (base.getUTCFullYear() !== 2026) break;
+      const iso = base.toISOString().slice(0, 10);
+      const dow = base.getUTCDay();
+      const month = base.getUTCMonth(); // 0-based
+      const holidayDip = (month === 4 || month === 5) ? 12 : 0; // May/June
+      const wave = Math.round(Math.sin(day / 9) * 6 + Math.cos(day / 29) * 4);
+      const weekendLift = dow === 0 ? 3 : 0;
+      const present = Math.min(160, Math.max(108, 148 + wave + weekendLift - holidayDip));
+      const absent = 160 - present;
+      rows.push({
+        id: did(`attcalc:vani-${iso}`),
+        projectId: vaniId,
+        windowId,
+        operationalDate: iso,
+        expected: 160,
+        present,
+        absent,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: present, INSTITUTION_REPORTED: present, CCTV: 0, MANUAL: 0 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date(`${iso}T08:00:00Z`),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date(`${iso}T09:00:00Z`),
+      });
+    }
+    await db.insert(s.attendanceCalculations).values(rows).onConflictDoNothing();
+  }
   await db
     .insert(s.attendanceConfigs)
     .values([

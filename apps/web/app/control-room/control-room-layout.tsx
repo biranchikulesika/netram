@@ -25,6 +25,7 @@ export interface ControlRoomLayoutProps {
 
 type ControlRoomTab = "feeds" | "alerts" | "status";
 type StatusFilter = "all" | "online" | "offline";
+type FeedColumns = 4 | 3 | 2;
 
 const SEARCH_PLACEHOLDER: Record<ControlRoomTab, string> = {
   feeds: "Search cameras by facility, place or name…",
@@ -46,6 +47,7 @@ export function ControlRoomLayout({
   const [query, setQuery] = useState("");
   const [alertView, setAlertView] = useState<"active" | "resolved">("active");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [feedColumns, setFeedColumns] = useState<FeedColumns>(4);
 
   const SECTION_TABS: { key: ControlRoomTab; label: string; icon: React.ReactNode; count: number }[] = [
     { key: "feeds", label: "Live Feeds", icon: <IconVideo style={{ width: 15, height: 15 }} />, count: 0 },
@@ -90,6 +92,23 @@ export function ControlRoomLayout({
             ))}
           </div>
         </div>
+
+        {/* Feed grid column switcher: only visible on the Live Feeds tab */}
+        {activeTab === "feeds" && (
+          <div className="view-mode-toggle" aria-label="Feed grid columns">
+            {([4, 3, 2] as FeedColumns[]).map((cols) => (
+              <button
+                key={cols}
+                type="button"
+                className={`view-btn ${feedColumns === cols ? "active" : ""}`}
+                onClick={() => setFeedColumns(cols)}
+                title={`${cols} column view`}
+              >
+                <span>{cols}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Alert status filter: only visible on the Alerts tab, right-aligned on the same row */}
         {activeTab === "alerts" && (
@@ -167,6 +186,7 @@ export function ControlRoomLayout({
           cameras={cameras}
           cameraProjectLinks={cameraProjectLinks}
           query={query}
+          columns={feedColumns}
         />
       ) : activeTab === "status" ? (
         <CameraStatusView

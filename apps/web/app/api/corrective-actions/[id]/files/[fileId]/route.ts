@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
-import { SESSION_COOKIE } from "../../../../../lib/api";
+import { SESSION_COOKIE } from "../../../../../../lib/api";
 
 export async function GET(
   _request: NextRequest,

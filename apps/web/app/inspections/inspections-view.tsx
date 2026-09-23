@@ -2,10 +2,36 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import type { Inspection } from "@netram/types";
-import { IconSearch } from "../components/icons";
+import { IconSearch, IconList, IconGrid, IconMapPin } from "../components/icons";
 import { getProjectName, getProjectCode, formatDate } from "../../lib/presentation";
+import { useMediaQuery, distributeIntoColumns } from "../../lib/card-layout";
+import { InspectionCard } from "./inspection-card";
 import { ScheduleInspectionModal, type ProjectOption } from "./schedule-inspection-modal";
+
+const InspectionsMap = dynamic(() => import("./inspections-map"), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        height: "calc(100vh - 205px)",
+        minHeight: "440px",
+        background: "var(--bg-subtle)",
+        border: "1px solid var(--color-border-strong)",
+        borderRadius: "8px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text-muted)",
+        fontSize: "0.85rem",
+        fontWeight: 600,
+      }}
+    >
+      Loading map…
+    </div>
+  ),
+});
 
 interface InspectionsViewProps {
   initialInspections: Inspection[];
@@ -13,6 +39,8 @@ interface InspectionsViewProps {
   availableProjects?: ProjectOption[];
   canCreate?: boolean;
 }
+
+type ViewMode = "table" | "cards" | "map";
 
 export function InspectionsView({
   initialInspections,
@@ -25,6 +53,7 @@ export function InspectionsView({
   const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "REVIEW" | "SCHEDULED" | "COMPLETED">("ALL");
   const [search, setSearch] = useState("");
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   const handleCreated = (newInspection: Inspection) => {
     setInspections((prev) => [newInspection, ...prev]);
@@ -99,10 +128,22 @@ export function InspectionsView({
     });
   }, [inspections, filter, search]);
 
+  const isXl = useMediaQuery("(min-width: 1401px)");
+  const isLg = useMediaQuery("(min-width: 1101px) and (max-width: 1400px)");
+  const isMd = useMediaQuery("(min-width: 641px) and (max-width: 1100px)");
+  const columnCount = isXl ? 4 : isLg ? 3 : isMd ? 2 : 1;
+  const cardColumns = useMemo(
+    () => distributeIntoColumns(filtered, columnCount),
+    [filtered, columnCount],
+  );
+
   return (
     <div>
       {/* Toolbar */}
-      <div className="registry-toolbar">
+      <div
+        className="registry-toolbar"
+        style={{ marginBottom: viewMode === "map" ? "0.6rem" : "1.25rem" }}
+      >
         <div className="search-filter-group">
           <div className="search-input-wrap">
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
@@ -174,32 +215,65 @@ export function InspectionsView({
           </div>
         </div>
 
-        {canCreate && (
-          <button
-            type="button"
-            onClick={() => setScheduleModalOpen(true)}
-            style={{
-              background: "var(--color-navy-brand, #1e3a8a)",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "6px",
-              padding: "0.5rem 1rem",
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <span>+ Schedule Inspection</span>
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div className="view-mode-toggle" aria-label="Toggle view mode">
+            <button
+              type="button"
+              className={`view-btn ${viewMode === "table" ? "active" : ""}`}
+              onClick={() => setViewMode("table")}
+              title="Table View"
+            >
+              <IconList style={{ width: 14, height: 14 }} />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              className={`view-btn ${viewMode === "cards" ? "active" : ""}`}
+              onClick={() => setViewMode("cards")}
+              title="Cards View"
+            >
+              <IconGrid style={{ width: 14, height: 14 }} />
+              <span>Cards</span>
+            </button>
+            <button
+              type="button"
+              className={`view-btn ${viewMode === "map" ? "active" : ""}`}
+              onClick={() => setViewMode("map")}
+              title="Geographic Map View"
+            >
+              <IconMapPin style={{ width: 14, height: 14 }} />
+              <span>Map</span>
+            </button>
+          </div>
+
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setScheduleModalOpen(true)}
+              style={{
+                background: "var(--color-navy-brand, #1e3a8a)",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "0.5rem 1rem",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
+              }}
+            >
+              <span>+ Schedule Inspection</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Inspections Table */}
-      <div className="table-card">
+      {viewMode === "table" && (
+        <div className="table-card">
         <table>
           <thead>
             <tr>
@@ -289,7 +363,43 @@ export function InspectionsView({
         <div className="table-footer-info">
           <span>Showing {filtered.length} of {total} inspections</span>
         </div>
-      </div>
+        </div>
+      )}
+
+      {/* Inspections Cards */}
+      {viewMode === "cards" && (
+        <div>
+          {filtered.length === 0 ? (
+            <div className="empty-box" style={{ padding: "3rem 1rem", marginBottom: "2rem" }}>
+              <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+                No inspections found
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
+                {search || filter !== "ALL"
+                  ? "No inspections match the selected filter criteria."
+                  : "No inspections currently recorded."}
+              </div>
+            </div>
+          ) : (
+            <div className="facility-cards-grid">
+              {cardColumns.map((column, colIdx) => (
+                <div className="facility-cards-column" key={colIdx}>
+                  {column.map((i) => (
+                    <InspectionCard inspection={i} key={i.id} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inspections Map */}
+      {viewMode === "map" && (
+        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+          <InspectionsMap inspections={filtered} />
+        </div>
+      )}
 
       {scheduleModalOpen && (
         <ScheduleInspectionModal

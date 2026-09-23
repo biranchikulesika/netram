@@ -86,8 +86,7 @@ export async function registerCorrectiveActionRoutes(
         tags: ["corrective-actions"],
         security: [{ bearerAuth: [] }],
         consumes: ["multipart/form-data"],
-        params: paramsSchema,
-        response: {
+        params: paramsSchema,        response: {
           200: toJsonSchema("CorrectiveAction", correctiveActionSchema),
         },
       },

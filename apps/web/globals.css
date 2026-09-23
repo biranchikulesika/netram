@@ -3533,6 +3533,14 @@ a:hover {
   align-items: start;
 }
 
+.camera-wall-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.camera-wall-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 @media (max-width: 768px) {
   .camera-wall {
     grid-template-columns: 1fr !important;

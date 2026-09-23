@@ -394,7 +394,7 @@ export function CorrectiveActionDetailClient({
               <p className="empty-state-sub">
                 {action.status === "pending"
                   ? "The responsible organisation has not yet lodged remediation evidence."
-                  : "No remediation evidence was lodged for this corrective action."}
+                  : "Awaiting remediation evidence from the responsible organisation."}
               </p>
             </div>
           )}
@@ -560,7 +560,7 @@ export function CorrectiveActionDetailClient({
               </div>
               <p className="empty-state-sub">
                 {["rejected", "overdue", "escalated"].includes(action.status)
-                  ? "The submitted remediation was not accepted; see the corrective action lifecycle for the outcome."
+                  ? "The responsible organisation may resubmit remediation evidence for authority review."
                   : "Authority officers will scrutinise the submitted remediation before deciding."}
               </p>
             </div>

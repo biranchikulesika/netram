@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import type { AttendanceAnomaly, AttendanceCalculation, AttendanceReviewAction } from "@netram/types";
 import { getProjectName, getProjectCode } from "../../lib/presentation";
 import { AnomalyReviewPanel } from "./anomaly-review";
@@ -403,7 +404,7 @@ export function AttendanceOverviewSection({
                 <th style={thStyle}>Absent</th>
                 <th style={thStyle}>Unknown</th>
                 <th style={thStyle}>Data Quality</th>
-                <th style={thStyle}>Sources</th>
+                <th style={thStyle}>Track Record</th>
               </tr>
             </thead>
             <tbody>
@@ -439,17 +440,31 @@ export function AttendanceOverviewSection({
                       style={{ borderBottom: "1px solid #f1f5f9" }}
                     >
                       <td style={tdStyle}>
-                        <strong>{getProjectName(calc.projectId)}</strong>
-                        <div
-                          style={{
-                            fontSize: "0.72rem",
-                            color: "#64748b",
-                            marginTop: "2px",
-                            fontFamily: "var(--font-mono)",
-                          }}
+                        <Link
+                          href={`/projects/${calc.projectId}`}
+                          style={{ textDecoration: "none", color: "inherit" }}
+                          title={`Open project details for ${getProjectName(calc.projectId)}`}
                         >
-                          {getProjectCode(calc.projectId)}
-                        </div>
+                          <strong
+                            style={{
+                              color: "#1d4ed8",
+                              fontWeight: 600,
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            {getProjectName(calc.projectId)}
+                          </strong>
+                          <div
+                            style={{
+                              fontSize: "0.72rem",
+                              color: "#64748b",
+                              marginTop: "2px",
+                              fontFamily: "var(--font-mono)",
+                            }}
+                          >
+                            {getProjectCode(calc.projectId)}
+                          </div>
+                        </Link>
                       </td>
                       <td style={tdStyle}>{calc.operationalDate}</td>
                       <td style={tdStyle}>
@@ -483,28 +498,11 @@ export function AttendanceOverviewSection({
                       </td>
                       <td style={tdStyle}>
                         <span
-                          className="coverage-pill"
                           style={{
-                            background:
-                              calc.dataQuality === "GOOD"
-                                ? "#dcfce7"
-                                : calc.dataQuality === "DEGRADED"
-                                ? "#fef9c3"
-                                : calc.dataQuality === "POOR"
-                                ? "#fee2e2"
-                                : "#f1f5f9",
-                            color:
-                              calc.dataQuality === "GOOD"
-                                ? "#16a34a"
-                                : calc.dataQuality === "DEGRADED"
-                                ? "#a16207"
-                                : calc.dataQuality === "POOR"
-                                ? "#dc2626"
-                                : "#64748b",
-                            padding: "2px 8px",
-                            borderRadius: "12px",
-                            fontSize: "0.7rem",
-                            fontWeight: 500,
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.03em",
                           }}
                         >
                           {calc.dataQuality}
@@ -517,15 +515,22 @@ export function AttendanceOverviewSection({
                           color: "#64748b",
                         }}
                       >
-                        B: {calc.sourceCounts.BIOMETRIC ?? 0}
-                        {calc.sourceCounts.INSTITUTION_REPORTED !== undefined &&
-                          calc.sourceCounts.INSTITUTION_REPORTED !== 0 && (
-                            <> · R: {calc.sourceCounts.INSTITUTION_REPORTED}</>
-                          )}
-                        {calc.sourceCounts.CCTV !== undefined &&
-                          calc.sourceCounts.CCTV !== 0 && (
-                            <> · C: {calc.sourceCounts.CCTV}</>
-                          )}
+                        <Link
+                          href={`/attendance/records/${calc.projectId}?year=${calc.operationalDate.slice(0, 4)}`}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            color: "#2563eb",
+                            textDecoration: "none",
+                            whiteSpace: "nowrap",
+                          }}
+                          title={`View yearly attendance record for ${getProjectName(calc.projectId)}`}
+                        >
+                          View Record
+                        </Link>
                       </td>
                     </tr>
                   );
