@@ -69,7 +69,7 @@ export function OrderCorrectiveActionButton({
 
       const created = (await res.json()) as { id: string };
       setIsOpen(false);
-      router.push(`/corrective-actions/${created.id}`);
+      router.push(`/dashboard/corrective-actions/${created.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {

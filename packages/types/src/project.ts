@@ -87,6 +87,13 @@ export interface Project {
   updatedAt: ISODateTime;
 }
 
+/** Minimal public-facing facility reference shown to citizens (grievance portal). */
+export interface ProjectRegistryItem {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export interface ProjectListQuery {
   page?: number;
   pageSize?: number;

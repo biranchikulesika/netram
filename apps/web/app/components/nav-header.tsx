@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { SignOutButton } from "../projects/sign-out";
+import { SignOutButton } from "../dashboard/projects/sign-out";
 import {
   IconBuilding,
   IconClipboard,
@@ -69,18 +69,18 @@ const NAV_PERMISSIONS: Partial<Record<NavHeaderProps["activeSection"], string[]>
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/projects", label: "Projects", section: "projects", icon: IconBuilding },
-  { href: "/registry", label: "Registrations", section: "registry", icon: IconClipboard },
-  { href: "/inspections", label: "Inspections", section: "inspections", icon: IconClipboard },
-  { href: "/control-room", label: "Control Room", section: "control-room", icon: IconVideo },
-  { href: "/attendance", label: "Attendance", section: "attendance", icon: IconUser },
-  { href: "/corrective-actions", label: "Corrective Actions", section: "corrective-actions", icon: IconShieldCheck },
-  { href: "/complaints", label: "Complaints", section: "complaints", icon: IconAlertTriangle },
-  { href: "/reports", label: "Reports", section: "reports", icon: IconBarChart },
-  { href: "/analytics", label: "Analytics", section: "analytics", icon: IconTrendingUp },
-  { href: "/audit", label: "Audit Log", section: "audit", icon: IconLock },
-  { href: "/notifications", label: "Notifications", section: "notifications", icon: IconBell },
-  { href: "/admin", label: "Admin", section: "admin", icon: IconSettings },
+  { href: "/dashboard/projects", label: "Projects", section: "projects", icon: IconBuilding },
+  { href: "/dashboard/registry", label: "Registrations", section: "registry", icon: IconClipboard },
+  { href: "/dashboard/inspections", label: "Inspections", section: "inspections", icon: IconClipboard },
+  { href: "/dashboard/control-room", label: "Control Room", section: "control-room", icon: IconVideo },
+  { href: "/dashboard/attendance", label: "Attendance", section: "attendance", icon: IconUser },
+  { href: "/dashboard/corrective-actions", label: "Corrective Actions", section: "corrective-actions", icon: IconShieldCheck },
+  { href: "/dashboard/complaints", label: "Complaints", section: "complaints", icon: IconAlertTriangle },
+  { href: "/dashboard/reports", label: "Reports", section: "reports", icon: IconBarChart },
+  { href: "/dashboard/analytics", label: "Analytics", section: "analytics", icon: IconTrendingUp },
+  { href: "/dashboard/audit", label: "Audit Log", section: "audit", icon: IconLock },
+  { href: "/dashboard/notifications", label: "Notifications", section: "notifications", icon: IconBell },
+  { href: "/dashboard/admin", label: "Admin", section: "admin", icon: IconSettings },
 ];
 
 const SECTION_LABELS: Record<NavHeaderProps["activeSection"], string> = {
@@ -232,7 +232,7 @@ export function NavHeader({
           <div className="topbar-right">
             {/* Notifications Icon Button with Unread Badge */}
             <Link
-              href="/notifications"
+              href="/dashboard/notifications"
               className={`topbar-account-btn ${activeSection === "notifications" ? "active" : ""}`}
               title={unreadCount > 0 ? `${unreadCount} Unread Notifications` : "Notifications"}
               aria-label="Notifications"
@@ -267,7 +267,7 @@ export function NavHeader({
 
             {/* Account Profile / Management Icon Button */}
             <Link
-              href="/account"
+              href="/dashboard/account"
               className={`topbar-account-btn ${activeSection === "account" ? "active" : ""}`}
               title={userEmail ? `Account Settings (${userEmail})` : "Account Settings"}
               aria-label="Account Settings"

@@ -26,6 +26,20 @@ export const COMPLAINT_TRANSITIONS: Record<
 
 export type ComplaintStatus = (typeof COMPLAINT_STATUSES)[number];
 
+/**
+ * A supporting attachment (PDF, photo, video, doc) lodged with a grievance.
+ * The blob lives in object storage; only metadata is persisted (§30).
+ */
+export interface ComplaintFile {
+  id: UUID;
+  complaintId: UUID;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  contentHash: string;
+  createdAt: ISODateTime;
+}
+
 export interface Complaint {
   id: UUID;
   projectId: UUID;
@@ -42,6 +56,8 @@ export interface Complaint {
   resolvedAt: ISODateTime | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
+  /** Supporting attachments lodged with the grievance (object metadata only, §30). */
+  files: ComplaintFile[];
 }
 
 export interface ComplaintListQuery {

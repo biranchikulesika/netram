@@ -4,7 +4,14 @@ import type { AuthorizationService } from "../../authorization/application/autho
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { ProjectRepositoryPort } from "./ports/project-repository.js";
 import { evaluateTransition } from "../domain/project.js";
-import type { Page, Project, ProjectGeofence, ProjectListQuery, ProjectType } from "@netram/types";
+import type {
+  Page,
+  Project,
+  ProjectGeofence,
+  ProjectListQuery,
+  ProjectRegistryItem,
+  ProjectType,
+} from "@netram/types";
 
 export interface CreateProjectInput {
   name: string;
@@ -70,6 +77,15 @@ export class ProjectService {
       organisationId: undefined,
       jurisdictionIds: scope ? [...scope] : undefined,
     });
+  }
+
+  /**
+   * Public facility registry for the citizen grievance portal (no authz):
+   * a minimal, jurisdiction-free reference of monitored facilities.
+   */
+  async listPublicRegistry(): Promise<ProjectRegistryItem[]> {
+    const page = await this.repository.list({ page: 1, pageSize: 1000 });
+    return page.items.map((p) => ({ id: p.id, code: p.code, name: p.name }));
   }
 
   async getProject(ctx: RequestUserContext, id: string): Promise<Project> {

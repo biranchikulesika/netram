@@ -165,7 +165,12 @@ export function buildContainer(config: AppConfig): Container {
     evidenceRepo,
     objectStorage,
   );
-  const complaintService = new ComplaintService(authorizationService, projectRepo, complaintRepo);
+  const complaintService = new ComplaintService(
+    authorizationService,
+    projectRepo,
+    complaintRepo,
+    objectStorage,
+  );
   const auditService = new AuditService(authorizationService, auditRepo);
   const aiAnomalyService = new AiAnomalyService(
     authorizationService,

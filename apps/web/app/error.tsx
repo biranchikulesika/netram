@@ -85,7 +85,7 @@ export default function GlobalErrorBoundary({
             Retry Action
           </button>
           <Link
-            href="/projects"
+            href="/dashboard/projects"
             style={{
               display: "inline-flex",
               alignItems: "center",

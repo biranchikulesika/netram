@@ -472,6 +472,23 @@ export const complaints = pgTable("complaints", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Supporting attachments (PDFs, photos, videos, docs) lodged with a public
+ * grievance. Blobs live in object storage; only metadata is persisted (AGENTS.md §30).
+ */
+export const complaintFiles = pgTable("complaint_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  complaintId: uuid("complaint_id")
+    .notNull()
+    .references(() => complaints.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 300 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  contentHash: varchar("content_hash", { length: 128 }).notNull(),
+  storageKey: varchar("storage_key", { length: 300 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 /* ---------- AI ---------- */
 
 export const aiAnomalies = pgTable("ai_anomalies", {

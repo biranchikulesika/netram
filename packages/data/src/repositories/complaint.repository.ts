@@ -1,12 +1,42 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   complaints as complaintsTable,
+  complaintFiles as complaintFilesTable,
   projects as projectsTable,
   auditEvents,
   outboxEvents,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
-import type { AuditAction, Complaint, ComplaintStatus, DomainEventType } from "@netram/types";
+import type {
+  AuditAction,
+  Complaint,
+  ComplaintFile,
+  ComplaintStatus,
+  DomainEventType,
+} from "@netram/types";
+
+export interface ComplaintFileRow {
+  id: string;
+  complaintId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  contentHash: string;
+  storageKey: string;
+  createdAt: Date;
+}
+
+export function toComplaintFile(row: ComplaintFileRow): ComplaintFile {
+  return {
+    id: row.id,
+    complaintId: row.complaintId,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    sizeBytes: row.sizeBytes,
+    contentHash: row.contentHash,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
 
 export interface ComplaintRow {
   id: string;
@@ -26,7 +56,7 @@ export interface ComplaintRow {
   updatedAt: Date;
 }
 
-export function toComplaint(row: ComplaintRow): Complaint {
+export function toComplaint(row: ComplaintRow, files: ComplaintFile[] = []): Complaint {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -43,6 +73,7 @@ export function toComplaint(row: ComplaintRow): Complaint {
     resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    files,
   };
 }
 
@@ -56,6 +87,15 @@ export interface ComplaintWriteContext {
   eventPayload: Record<string, unknown>;
 }
 
+export interface ComplaintFileWrite {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  contentHash: string;
+  storageKey: string;
+}
+
 export interface CreateComplaintWrite extends ComplaintWriteContext {
   id: string;
   projectId: string;
@@ -63,6 +103,7 @@ export interface CreateComplaintWrite extends ComplaintWriteContext {
   contactInfo: string | null;
   trackingCode: string;
   description: string;
+  files?: ComplaintFileWrite[];
 }
 
 export interface TransitionComplaintWrite extends ComplaintWriteContext {
@@ -142,12 +183,43 @@ export class ComplaintRepository {
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return toComplaint({
-      ...row.complaint,
-      projectCode: row.projectCode,
-      projectName: row.projectName,
-      districtId: row.districtId,
-    } as unknown as ComplaintRow);
+    return toComplaint(
+      {
+        ...row.complaint,
+        projectCode: row.projectCode,
+        projectName: row.projectName,
+        districtId: row.districtId,
+      } as unknown as ComplaintRow,
+      await this.listFiles(id),
+    );
+  }
+
+  async listFiles(complaintId: string): Promise<ComplaintFile[]> {
+    const rows = await this.db
+      .select()
+      .from(complaintFilesTable)
+      .where(eq(complaintFilesTable.complaintId, complaintId))
+      .orderBy(complaintFilesTable.createdAt);
+    return rows.map((r) => toComplaintFile(r as unknown as ComplaintFileRow));
+  }
+
+  async findFileById(id: string): Promise<{
+    file: ComplaintFile;
+    complaintId: string;
+    storageKey: string;
+  } | null> {
+    const rows = await this.db
+      .select()
+      .from(complaintFilesTable)
+      .where(eq(complaintFilesTable.id, id))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      file: toComplaintFile(row as unknown as ComplaintFileRow),
+      complaintId: row.complaintId,
+      storageKey: row.storageKey,
+    };
   }
 
   async findByTrackingCode(trackingCode: string): Promise<Complaint | null> {
@@ -188,6 +260,20 @@ export class ComplaintRepository {
         .returning();
       const row = rows[0]!;
 
+      if (cmd.files && cmd.files.length > 0) {
+        await tx.insert(complaintFilesTable).values(
+          cmd.files.map((f) => ({
+            id: f.id,
+            complaintId: cmd.id,
+            fileName: f.fileName,
+            mimeType: f.mimeType,
+            sizeBytes: f.sizeBytes,
+            contentHash: f.contentHash,
+            storageKey: f.storageKey,
+          })),
+        );
+      }
+
       await tx.insert(auditEvents).values({
         action: cmd.auditAction,
         actorUserId: cmd.actorUserId,
@@ -222,12 +308,23 @@ export class ComplaintRepository {
         .where(eq(projectsTable.id, cmd.projectId))
         .limit(1);
       const project = projectRows[0]!;
-      return toComplaint({
-        ...row,
-        projectCode: project.code,
-        projectName: project.name,
-        districtId: project.districtId,
-      } as unknown as ComplaintRow);
+
+      const fileRows = cmd.files?.length
+        ? await tx
+            .select()
+            .from(complaintFilesTable)
+            .where(eq(complaintFilesTable.complaintId, cmd.id))
+            .orderBy(complaintFilesTable.createdAt)
+        : [];
+      return toComplaint(
+        {
+          ...row,
+          projectCode: project.code,
+          projectName: project.name,
+          districtId: project.districtId,
+        } as unknown as ComplaintRow,
+        fileRows.map((r) => toComplaintFile(r as unknown as ComplaintFileRow)),
+      );
     });
     return created;
   }

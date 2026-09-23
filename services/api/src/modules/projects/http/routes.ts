@@ -14,6 +14,7 @@ import {
   projectPhotoListSchema,
   projectPhotoSchema,
   uploadProjectPhotoSchema,
+  publicProjectRegistrySchema,
 } from "@netram/validation";
 import { z } from "zod";
 import { AppError } from "../../../infrastructure/errors.js";
@@ -91,6 +92,18 @@ export async function registerProjectRoutes(
     async (request) => {
       return projectService.listGeofences(request.netram!);
     },
+  );
+
+  app.get(
+    "/projects/registry",
+    {
+      config: { public: true },
+      schema: {
+        tags: ["projects"],
+        response: { 200: toJsonSchema("PublicProjectRegistry", publicProjectRegistrySchema) },
+      },
+    },
+    async () => projectService.listPublicRegistry(),
   );
 
   app.get(

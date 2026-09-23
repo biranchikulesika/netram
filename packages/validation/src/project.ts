@@ -56,6 +56,14 @@ export const projectPageSchema = z.object({
   pageSize: z.number().int().positive(),
 });
 
+export const projectRegistryItemSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+});
+
+export const publicProjectRegistrySchema = z.array(projectRegistryItemSchema);
+
 export const createProjectSchema = z
   .object({
     name: z.string().min(3).max(200),
