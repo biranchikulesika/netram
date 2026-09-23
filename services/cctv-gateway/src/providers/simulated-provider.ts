@@ -46,7 +46,7 @@ export class SimulatedCameraProvider implements CameraProvider {
     [
       "6a2121e7-bf35-5fb8-aa13-a4a6ad7e2e36",
       {
-        id: "cctv:cuttack-dinning",
+        id: "cctv:vani-dormitory",
         label: "Vani Vihar - Dormitory Block",
         provider: "simulated",
         status: "online",
@@ -55,7 +55,7 @@ export class SimulatedCameraProvider implements CameraProvider {
     [
       "4e940f8a-2448-5174-a232-2d2712de95a9",
       {
-        id: "cctv:cuttack-dinning",
+        id: "cctv:vani-kitchen",
         label: "Vani Vihar - Kitchen Entry",
         provider: "simulated",
         status: "online",
@@ -64,7 +64,7 @@ export class SimulatedCameraProvider implements CameraProvider {
     [
       "bc0c4cf0-950b-584e-84e5-e056d7ac9eee",
       {
-        id: "cctv:cuttack-dinning",
+        id: "cctv:cuttack-gate",
         label: "Cuttack Girls' Hostel - Main Gate",
         provider: "simulated",
         status: "online",
@@ -73,7 +73,7 @@ export class SimulatedCameraProvider implements CameraProvider {
     [
       "e5780131-b007-579f-aa51-4eccc168fe39",
       {
-        id: "cctv:cuttack-dinning",
+        id: "cctv:ganjam-gate",
         label: "Ganjam Model School - Main Gate",
         provider: "simulated",
         status: "online",
@@ -82,7 +82,7 @@ export class SimulatedCameraProvider implements CameraProvider {
     [
       "18ba6d47-6879-559b-9e8d-e3e6ad783a5b",
       {
-        id: "cctv:cuttack-dinning",
+        id: "cctv:ganjam-kitchen",
         label: "Ganjam Model School - Kitchen",
         provider: "simulated",
         status: "online",
@@ -91,7 +91,7 @@ export class SimulatedCameraProvider implements CameraProvider {
     [
       "d39dc90f-b150-51cd-9072-d177421f8cad",
       {
-        id: "cctv:cuttack-dinning",
+        id: "cctv:rajdhani-gate",
         label: "Rajdhani Boys' Hostel - Main Gate",
         provider: "simulated",
         status: "online",
@@ -100,7 +100,7 @@ export class SimulatedCameraProvider implements CameraProvider {
     [
       "c79952b4-8322-5941-8cc4-fb6e3872b1c3",
       {
-        id: "cctv:cuttack-dinning",
+        id: "cctv:rourkela-gate",
         label: "Rourkela Model Girls' Hostel - Main Gate",
         provider: "simulated",
         status: "online",

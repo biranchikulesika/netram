@@ -206,7 +206,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       .insert(s.users)
       .values({ ...u })
       .onConflictDoNothing();
-    console.log("Inserted:", u.email);
     await db
       .insert(s.identities)
       .values({
