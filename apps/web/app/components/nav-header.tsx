@@ -16,6 +16,7 @@ import {
   IconSettings,
   IconMenu,
   IconUser,
+  IconIndianRupee,
   type IconProps,
 } from "./icons";
 
@@ -30,6 +31,7 @@ export interface NavHeaderProps {
     | "inspections"
     | "control-room"
     | "attendance"
+    | "funds"
     | "notifications"
     | "complaints"
     | "reports"
@@ -59,6 +61,7 @@ const NAV_PERMISSIONS: Partial<Record<NavHeaderProps["activeSection"], string[]>
   inspections: ["inspection:read"],
   "control-room": ["cctv:read", "ai:anomaly:read"],
   attendance: ["attendance:monitor:read"],
+  funds: ["fund:read", "expense:read"],
   "corrective-actions": ["corrective_action:read"],
   complaints: ["complaint:read"],
   reports: ["report:read"],
@@ -72,6 +75,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/projects", label: "Projects", section: "projects", icon: IconBuilding },
   { href: "/registry", label: "Registrations", section: "registry", icon: IconClipboard },
   { href: "/inspections", label: "Inspections", section: "inspections", icon: IconClipboard },
+  { href: "/funds", label: "Funds & Expenses", section: "funds", icon: IconIndianRupee },
   { href: "/control-room", label: "Control Room", section: "control-room", icon: IconVideo },
   { href: "/attendance", label: "Attendance", section: "attendance", icon: IconUser },
   { href: "/corrective-actions", label: "Corrective Actions", section: "corrective-actions", icon: IconShieldCheck },
@@ -87,6 +91,7 @@ const SECTION_LABELS: Record<NavHeaderProps["activeSection"], string> = {
   projects: "Projects",
   registry: "Registrations",
   inspections: "Inspections",
+  funds: "Funds & Expenses",
   "control-room": "Control Room",
   attendance: "Attendance",
   "corrective-actions": "Corrective Actions",

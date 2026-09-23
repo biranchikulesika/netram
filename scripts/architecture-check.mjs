@@ -24,6 +24,7 @@ function walk(dir, out = []) {
           "openapi",
           "coverage",
           ".pnpm",
+          ".kilo",
         ].includes(entry.name)
       )
         continue;

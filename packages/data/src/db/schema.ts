@@ -9,6 +9,7 @@ import {
   varchar,
   boolean,
   integer,
+  numeric,
   real,
   doublePrecision,
   unique,
@@ -921,3 +922,239 @@ export const attendanceExports = pgTable(
   },
   (t) => [index("attendance_exports_project_status_idx").on(t.projectId, t.status)],
 );
+
+/* ---------- Fund Utilization & Transparency ---------- */
+
+export const fundAllocations = pgTable(
+  "fund_allocations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    programmeId: uuid("programme_id").references(() => programmes.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    allocatedAmount: numeric("allocated_amount", { precision: 18, scale: 2 }).notNull(),
+    fiscalYear: varchar("fiscal_year", { length: 10 }).notNull(),
+    currency: varchar("currency", { length: 5 }).notNull().default("INR"),
+    sanctionedById: uuid("sanctioned_by_id").references(() => users.id),
+    sanctionedAt: timestamp("sanctioned_at", { withTimezone: true }),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    description: text("description"),
+    notes: text("notes"),
+    createdById: uuid("created_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("fund_allocations_project_idx").on(t.projectId),
+    index("fund_allocations_org_idx").on(t.organisationId),
+    index("fund_allocations_fy_idx").on(t.fiscalYear),
+  ],
+);
+
+export const fundReleases = pgTable(
+  "fund_releases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    allocationId: uuid("allocation_id")
+      .notNull()
+      .references(() => fundAllocations.id),
+    releasedAmount: numeric("released_amount", { precision: 18, scale: 2 }).notNull(),
+    releaseDate: timestamp("release_date", { withTimezone: true }).notNull(),
+    referenceNumber: varchar("reference_number", { length: 100 }).unique().notNull(),
+    releasedById: uuid("released_by_id").references(() => users.id),
+    remarks: text("remarks"),
+    status: varchar("status", { length: 20 }).notNull().default("released"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("fund_releases_allocation_idx").on(t.allocationId)],
+);
+
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    allocationId: uuid("allocation_id").references(() => fundAllocations.id),
+    category: varchar("category", { length: 80 }).notNull(),
+    description: text("description").notNull(),
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    transactionDate: timestamp("transaction_date", { withTimezone: true }).notNull(),
+    vendorName: varchar("vendor_name", { length: 300 }).notNull(),
+    vendorGstin: varchar("vendor_gstin", { length: 20 }),
+    invoiceNumber: varchar("invoice_number", { length: 100 }),
+    invoiceDate: timestamp("invoice_date", { withTimezone: true }),
+    paymentReference: varchar("payment_reference", { length: 200 }),
+    paymentMethod: varchar("payment_method", { length: 50 }),
+    status: varchar("status", { length: 30 }).notNull().default("draft"),
+    submittedById: uuid("submitted_by_id").references(() => users.id),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    verifiedById: uuid("verified_by_id").references(() => users.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    voidReason: text("void_reason"),
+    voidedById: uuid("voided_by_id").references(() => users.id),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    createdById: uuid("created_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("expenses_project_idx").on(t.projectId),
+    index("expenses_status_idx").on(t.status),
+    index("expenses_tx_date_idx").on(t.transactionDate),
+    index("expenses_project_invoice_idx").on(t.projectId, t.invoiceNumber),
+  ],
+);
+
+export const financialDocuments = pgTable(
+  "financial_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expenseId: uuid("expense_id").references(() => expenses.id),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    documentType: varchar("document_type", { length: 80 }).notNull(),
+    fileName: varchar("file_name", { length: 300 }).notNull(),
+    mimeType: varchar("mime_type", { length: 100 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256Hash: varchar("sha256_hash", { length: 64 }).notNull(),
+    storageKey: varchar("storage_key", { length: 300 }).notNull(),
+    verificationStatus: varchar("verification_status", { length: 20 }).notNull().default("pending"),
+    uploadedById: uuid("uploaded_by_id").references(() => users.id),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow().notNull(),
+    verifiedById: uuid("verified_by_id").references(() => users.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    rejectionReason: text("rejection_reason"),
+    duplicateOfId: uuid("duplicate_of_id").references((): AnyPgColumn => financialDocuments.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("financial_docs_expense_idx").on(t.expenseId),
+    index("financial_docs_hash_idx").on(t.sha256Hash),
+    index("financial_docs_project_idx").on(t.projectId),
+  ],
+);
+
+export const financialRiskRules = pgTable(
+  "financial_risk_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: varchar("code", { length: 50 }).unique().notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    category: varchar("category", { length: 80 }).notNull(),
+    description: text("description").notNull(),
+    conditionConfig: json("condition_config").$type<Record<string, unknown>>().default({}).notNull(),
+    weight: integer("weight").notNull(),
+    severity: varchar("severity", { length: 20 }).notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    createdById: uuid("created_by_id").references(() => users.id),
+    updatedById: uuid("updated_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+);
+
+export const financialRiskEvents = pgTable(
+  "financial_risk_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => financialRiskRules.id),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    expenseId: uuid("expense_id").references(() => expenses.id),
+    documentId: uuid("document_id").references(() => financialDocuments.id),
+    allocationId: uuid("allocation_id").references(() => fundAllocations.id),
+    scoreContribution: integer("score_contribution").notNull(),
+    detail: json("detail").$type<Record<string, unknown>>().default({}).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("open"),
+    resolvedById: uuid("resolved_by_id").references(() => users.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("risk_events_project_idx").on(t.projectId),
+    index("risk_events_rule_idx").on(t.ruleId),
+    index("risk_events_status_idx").on(t.status),
+  ],
+);
+
+export const inspectionFlags = pgTable(
+  "inspection_flags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    allocationId: uuid("allocation_id").references(() => fundAllocations.id),
+    riskScore: integer("risk_score").notNull(),
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+    triggerSource: varchar("trigger_source", { length: 30 }).notNull(),
+    explanation: text("explanation").notNull(),
+    evidenceRefs: json("evidence_refs").$type<Array<Record<string, unknown>>>().default([]).notNull(),
+    status: varchar("status", { length: 40 }).notNull().default("open"),
+    assignedInspectorId: uuid("assigned_inspector_id").references(() => users.id),
+    linkedInspectionId: uuid("linked_inspection_id").references(() => inspections.id),
+    reviewNotes: text("review_notes"),
+    resolution: text("resolution"),
+    reviewerById: uuid("reviewer_id").references(() => users.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    dismissedReason: text("dismissed_reason"),
+    dismissedById: uuid("dismissed_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("inspection_flags_project_idx").on(t.projectId),
+    index("inspection_flags_status_idx").on(t.status),
+    index("inspection_flags_risk_level_idx").on(t.riskLevel),
+  ],
+);
+
+/* ---------- Project Risk Snapshots ---------- */
+
+export const projectRiskSnapshots = pgTable(
+  "project_risk_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).defaultNow().notNull(),
+    scoringVersion: varchar("scoring_version", { length: 50 }).notNull(),
+    totalScore: integer("total_score").notNull(),
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+    financialScore: integer("financial_score").notNull(),
+    inspectionQualityScore: integer("inspection_quality_score").notNull(),
+    attendanceAnomalyScore: integer("attendance_anomaly_score").notNull(),
+    complaintDensityScore: integer("complaint_density_score").notNull(),
+    aiAnomalyScore: integer("ai_anomaly_score").notNull(),
+    financialSignals: json("financial_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    inspectionQualitySignals: json("inspection_quality_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    attendanceAnomalySignals: json("attendance_anomaly_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    complaintDensitySignals: json("complaint_density_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    aiAnomalySignals: json("ai_anomaly_signals").$type<Record<string, unknown>>().default({}).notNull(),
+    topContributors: json("top_contributors").$type<Array<Record<string, unknown>>>().default([]).notNull(),
+    explanation: text("explanation").notNull(),
+    inspectionFlagId: uuid("inspection_flag_id").references(() => inspectionFlags.id),
+    scheduledInspectionId: uuid("scheduled_inspection_id").references(() => inspections.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("project_risk_snapshots_project_idx").on(t.projectId),
+    index("project_risk_snapshots_calculated_at_idx").on(t.calculatedAt),
+    index("project_risk_snapshots_total_score_idx").on(t.totalScore),
+    index("project_risk_snapshots_risk_level_idx").on(t.riskLevel),
+  ],
+);
+

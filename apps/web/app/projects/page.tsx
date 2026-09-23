@@ -29,19 +29,31 @@ export default async function ProjectsPage({
       ? (params.status as ProjectStatus)
       : undefined;
   const validView =
-    params.view === "cards" || params.view === "map"
-      ? params.view
-      : ("table" as "table" | "cards" | "map");
+    params.view === "cards" || params.view === "map" || params.view === "risk"
+      ? (params.view as "table" | "cards" | "map" | "risk")
+      : ("table" as "table" | "cards" | "map" | "risk");
   const searchQuery = params.q?.trim() ?? "";
 
+  const canReadRisk =
+    session.permissions.includes("project_risk:read") ||
+    session.permissions.includes("*");
+  const canEvaluateRisk =
+    session.permissions.includes("project_risk:evaluate") ||
+    session.permissions.includes("*");
+
   const client = await getClient();
-  const page = await client
-    .listProjects({
-      page: pageNumber,
-      pageSize,
-      status: validStatus,
-    })
-    .catch(() => ({ items: [], total: 0, page: 1, pageSize }));
+  const [page, rankingsResult] = await Promise.all([
+    client
+      .listProjects({
+        page: pageNumber,
+        pageSize,
+        status: validStatus,
+      })
+      .catch(() => ({ items: [], total: 0, page: 1, pageSize })),
+    canReadRisk
+      ? client.listProjectRiskRankings({ pageSize: 100 }).catch(() => ({ items: [], total: 0 }))
+      : Promise.resolve({ items: [], total: 0 }),
+  ]);
 
   // Verification queue: facility registrations awaiting an approve/reject
   // decision. Only fetched for users holding project:approve — for everyone
@@ -52,7 +64,7 @@ export default async function ProjectsPage({
         .listVerificationQueue()
         .then((r) => r.items)
         .catch(() => [])
-    : [];
+      : [];
 
   const apiUrl = loadClientEnv().NEXT_PUBLIC_API_URL;
 
@@ -74,6 +86,8 @@ export default async function ProjectsPage({
         initialView={validView}
         initialSearch={searchQuery}
         verificationQueue={verificationQueue}
+        initialRankings={rankingsResult.items}
+        canEvaluateRisk={canEvaluateRisk}
         apiUrl={apiUrl}
       />
     </main>

@@ -23,6 +23,12 @@ import {
   VcSessionRepository,
   AttendanceRepository,
   AnalyticsRepository,
+  FundRepository,
+  ExpenseRepository,
+  FinancialDocumentRepository,
+  FinancialRiskRepository,
+  InspectionFlagRepository,
+  ProjectRiskRepository,
 } from "@netram/data";
 import type { AppConfig } from "../config.js";
 import { AppError } from "./errors.js";
@@ -57,6 +63,14 @@ import { BullAttendanceExportJobQueue } from "../modules/attendance/infrastructu
 import { MinioObjectStorage } from "./object-storage.js";
 import { NotificationProviderRegistry } from "../modules/notifications/infrastructure/providers/notification-provider-registry.js";
 import type { AuthProvider } from "../modules/auth/application/auth-provider-port.js";
+import { FundService } from "../modules/funds/application/fund-service.js";
+import { ExpenseService } from "../modules/funds/application/expense-service.js";
+import { FinancialDocumentService } from "../modules/funds/application/document-service.js";
+import { FinancialRiskService } from "../modules/financial-risk/application/financial-risk-service.js";
+import { ProjectRiskService } from "../modules/project-risk/application/project-risk-service.js";
+import { ProjectRiskContextBuilder } from "../modules/project-risk/application/project-risk-context-builder.js";
+import { CompositeRiskScorer } from "../modules/project-risk/domain/composite-risk-scorer.js";
+import { InspectionScheduler } from "../modules/project-risk/application/inspection-scheduler.js";
 
 export interface Container {
   config: AppConfig;
@@ -88,6 +102,17 @@ export interface Container {
   outboxRepo: OutboxRepository;
   attendanceService: AttendanceService;
   analyticsService: AnalyticsService;
+  fundService: FundService;
+  expenseService: ExpenseService;
+  financialDocumentService: FinancialDocumentService;
+  financialRiskService: FinancialRiskService;
+  fundRepo: FundRepository;
+  expenseRepo: ExpenseRepository;
+  docRepo: FinancialDocumentRepository;
+  riskRepo: FinancialRiskRepository;
+  flagRepo: InspectionFlagRepository;
+  projectRiskService: ProjectRiskService;
+  projectRiskRepo: ProjectRiskRepository;
 }
 
 export function buildContainer(config: AppConfig): Container {
@@ -216,6 +241,74 @@ export function buildContainer(config: AppConfig): Container {
   const analyticsRepo = new AnalyticsRepository(db);
   const analyticsService = new AnalyticsService(authorizationService, analyticsRepo);
 
+  const fundRepo = new FundRepository(db);
+  const expenseRepo = new ExpenseRepository(db);
+  const docRepo = new FinancialDocumentRepository(db);
+  const riskRepo = new FinancialRiskRepository(db);
+  const flagRepo = new InspectionFlagRepository(db);
+
+  const fundService = new FundService(
+    authorizationService,
+    projectRepo,
+    fundRepo,
+    expenseRepo,
+    riskRepo,
+    flagRepo,
+  );
+  const expenseService = new ExpenseService(
+    authorizationService,
+    projectRepo,
+    expenseRepo,
+    fundRepo,
+  );
+  const financialDocumentService = new FinancialDocumentService(
+    authorizationService,
+    projectRepo,
+    expenseRepo,
+    docRepo,
+    objectStorage,
+  );
+  const financialRiskService = new FinancialRiskService(
+    authorizationService,
+    projectRepo,
+    inspectionRepo,
+    inspectionService,
+    fundRepo,
+    expenseRepo,
+    docRepo,
+    riskRepo,
+    flagRepo,
+  );
+
+  const projectRiskRepo = new ProjectRiskRepository(db);
+  const projectRiskContextBuilder = new ProjectRiskContextBuilder(
+    projectRepo,
+    inspectionRepo,
+    findingRepo,
+    correctiveActionRepo,
+    attendanceRepo,
+    complaintRepo,
+    aiAnomalyRepo,
+    riskRepo,
+    fundRepo,
+    expenseRepo,
+    financialRiskService,
+  );
+  const compositeRiskScorer = new CompositeRiskScorer();
+  const inspectionScheduler = new InspectionScheduler(
+    projectRiskRepo,
+    flagRepo,
+    inspectionService,
+  );
+  const projectRiskService = new ProjectRiskService(
+    authorizationService,
+    projectRiskContextBuilder,
+    compositeRiskScorer,
+    inspectionScheduler,
+    projectRiskRepo,
+    auditRepo,
+  );
+
   let provider: AuthProvider;
   let devAuthProvider: DevAuthProvider | null = null;
 
@@ -272,5 +365,16 @@ export function buildContainer(config: AppConfig): Container {
     outboxRepo,
     attendanceService,
     analyticsService,
+    fundService,
+    expenseService,
+    financialDocumentService,
+    financialRiskService,
+    fundRepo,
+    expenseRepo,
+    docRepo,
+    riskRepo,
+    flagRepo,
+    projectRiskService,
+    projectRiskRepo,
   };
 }

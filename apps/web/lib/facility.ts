@@ -11,6 +11,7 @@ import type {
   Report,
   AuditEvent,
   PublicCctvCamera,
+  ProjectRiskSnapshot,
 } from "@netram/types";
 import { getClient } from "./api";
 
@@ -174,3 +175,19 @@ export async function getDistrictCameras(districtId: string | null): Promise<Pub
     .catch(() => EMPTY_CAMERAS);
   return page.items;
 }
+
+export async function getFacilityFunds(projectId: string) {
+  const client = await getClient();
+  return client.getProjectFundOverview(projectId).catch(() => null);
+}
+
+export const getFacilityRiskSnapshot = cache(
+  async (projectId: string): Promise<ProjectRiskSnapshot | null> => {
+    const client = await getClient();
+    try {
+      return await client.getLatestProjectRiskSnapshot(projectId);
+    } catch {
+      return null;
+    }
+  },
+);

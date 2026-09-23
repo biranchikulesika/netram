@@ -21,3 +21,6 @@ export * from "./vc.js";
 export * from "./attendance.js";
 export * from "./analytics.js";
 export * from "./registry.js";
+export * from "./fund.js";
+export * from "./project-risk.js";
+

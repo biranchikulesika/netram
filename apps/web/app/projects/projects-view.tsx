@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useEffect, useCallback, useSyncExternalStore } from "react";
-import type { Project } from "@netram/types";
+import type { Project, ProjectRankEntry } from "@netram/types";
 import { StatusBadge } from "./[id]/status-badge";
 import {
   IconSearch,
@@ -22,6 +22,7 @@ import {
 import { getDistrictName } from "../../lib/presentation";
 import { ProjectsMapView } from "./projects-map-view";
 import { ProjectOverviewCard, formatRegisteredDate } from "./project-overview-card";
+import { RiskLeaderboardView } from "./risk-leaderboard-view";
 
 interface ProjectsViewProps {
   initialProjects: Project[];
@@ -29,10 +30,12 @@ interface ProjectsViewProps {
   serverPage?: number;
   serverPageSize?: number;
   initialStatus?: string;
-  initialView?: "table" | "cards" | "map";
+  initialView?: "table" | "cards" | "map" | "risk";
   initialSearch?: string;
   /** Registrations awaiting an approve/reject decision (only passed to approvers). */
   verificationQueue?: Project[];
+  initialRankings?: ProjectRankEntry[];
+  canEvaluateRisk?: boolean;
   apiUrl: string;
 }
 
@@ -232,6 +235,8 @@ export function ProjectsView({
   initialView = "table",
   initialSearch = "",
   verificationQueue,
+  initialRankings = [],
+  canEvaluateRisk = false,
   apiUrl: _apiUrl,
 }: ProjectsViewProps) {
   const router = useRouter();
@@ -239,7 +244,7 @@ export function ProjectsView({
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [viewMode, setViewMode] = useState<"table" | "cards" | "map">(initialView);
+  const [viewMode, setViewMode] = useState<"table" | "cards" | "map" | "risk">(initialView);
   const [jumpPage, setJumpPage] = useState("");
 
   useEffect(() => {
@@ -256,7 +261,7 @@ export function ProjectsView({
       page?: number;
       pageSize?: number;
       status?: string;
-      view?: "table" | "cards" | "map";
+      view?: "table" | "cards" | "map" | "risk";
       q?: string;
     } = {},
   ) => {
@@ -316,7 +321,7 @@ export function ProjectsView({
     }
   };
 
-  const handleViewModeChange = (mode: "table" | "cards" | "map") => {
+  const handleViewModeChange = (mode: "table" | "cards" | "map" | "risk") => {
     setViewMode(mode);
     patchUrl({ view: mode === "table" ? null : mode });
   };
@@ -454,6 +459,22 @@ export function ProjectsView({
             >
               <IconMapPin style={{ width: 14, height: 14 }} />
               <span>Map View</span>
+            </button>
+            <button
+              type="button"
+              className={`view-btn ${viewMode === "risk" ? "active" : ""}`}
+              onClick={() => handleViewModeChange("risk")}
+              title="Risk Priority Leaderboard"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.25rem",
+                color: viewMode === "risk" ? "#dc2626" : undefined,
+                fontWeight: viewMode === "risk" ? 700 : undefined,
+              }}
+            >
+              <IconShieldCheck style={{ width: 14, height: 14 }} />
+              <span>Risk Priority</span>
             </button>
           </div>
         </div>
@@ -616,6 +637,14 @@ export function ProjectsView({
         <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
           <ProjectsMapView projects={filteredProjects} />
         </div>
+      )}
+
+      {/* View Mode D: Composite Risk Priority Leaderboard */}
+      {viewMode === "risk" && (
+        <RiskLeaderboardView
+          initialRankings={initialRankings}
+          canEvaluate={canEvaluateRisk}
+        />
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import {
   IconGrid,
   IconUser,
   IconVideo,
+  IconIndianRupee,
 } from "../../components/icons";
 
 interface FacilityNavItem {
@@ -36,6 +37,7 @@ export function FacilityNav({ projectId, permissions }: FacilityNavProps) {
   const items: FacilityNavItem[] = [
     { href: base, label: "Overview", icon: IconGrid },
     { href: `${base}/inspections`, label: "Inspections", icon: IconClipboard, permission: "inspection:read" },
+    { href: `${base}/funds`, label: "Funds & Expenses", icon: IconIndianRupee, permission: ["fund:read", "expense:read"] },
     { href: `${base}/complaints`, label: "Complaints", icon: IconAlertTriangle, permission: "complaint:read" },
     {
       href: `${base}/monitoring`,

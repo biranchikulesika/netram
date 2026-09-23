@@ -75,7 +75,32 @@ import type {
   RegisterOfficialInput,
   StateView,
   DistrictView,
+  FundAllocation,
+  FundRelease,
+  Expense,
+  FinancialDocument,
+  FinancialRiskRule,
+  FinancialRiskEvent,
+  InspectionFlag,
+  FundSummary,
+  ProjectFundOverview,
+  AllocationListQuery,
+  ExpenseListQuery,
+  InspectionFlagListQuery,
+  ProjectRiskSnapshot,
+  ProjectRankEntry,
+  ProjectRiskRankingQuery,
+  ProjectRiskSnapshotQuery,
 } from "@netram/types";
+import type {
+  CreateAllocationInput,
+  UpdateAllocationInput,
+  CreateReleaseInput,
+  CreateExpenseInput,
+  PatchExpenseInput,
+  CreateRiskRuleInput,
+  PatchRiskRuleInput,
+} from "@netram/validation";
 import { HttpClient } from "./http.js";
 import type { HttpOptions } from "./http.js";
 
@@ -638,6 +663,180 @@ export class NetramApiClient extends HttpClient {
   // analytics & statutory SLA compliance
   async getAnalyticsOverview(query: AnalyticsQuery = {}): Promise<AuthorityAnalyticsOverview> {
     return this.get(`/api/v1/analytics/overview${queryString(query)}`);
+  }
+
+  // Funds & Allocations
+  async listAllocations(
+    query: AllocationListQuery = {},
+  ): Promise<{ items: FundAllocation[]; total: number; page: number; pageSize: number }> {
+    return this.get(`/api/v1/funds/allocations${queryString(query)}`);
+  }
+
+  async getAllocation(id: string): Promise<FundAllocation> {
+    return this.get(`/api/v1/funds/allocations/${id}`);
+  }
+
+  async createAllocation(input: CreateAllocationInput): Promise<FundAllocation> {
+    return this.post("/api/v1/funds/allocations", input);
+  }
+
+  async updateAllocation(id: string, input: UpdateAllocationInput): Promise<FundAllocation> {
+    return this.patch(`/api/v1/funds/allocations/${id}`, input);
+  }
+
+  async listReleases(allocationId: string): Promise<FundRelease[]> {
+    return this.get(`/api/v1/funds/allocations/${allocationId}/releases`);
+  }
+
+  async createRelease(input: CreateReleaseInput): Promise<FundRelease> {
+    return this.post("/api/v1/funds/releases", input);
+  }
+
+  async reverseRelease(id: string, remarks?: string): Promise<FundRelease> {
+    return this.post(`/api/v1/funds/releases/${id}/reverse`, { remarks });
+  }
+
+  async getProjectFundSummary(projectId: string): Promise<FundSummary> {
+    return this.get(`/api/v1/funds/projects/${projectId}/summary`);
+  }
+
+  async getProjectFundOverview(projectId: string): Promise<ProjectFundOverview> {
+    return this.get(`/api/v1/funds/projects/${projectId}/overview`);
+  }
+
+  // Expenses
+  async listExpenses(
+    query: ExpenseListQuery = {},
+  ): Promise<{ items: Expense[]; total: number; page: number; pageSize: number }> {
+    return this.get(`/api/v1/funds/expenses${queryString(query)}`);
+  }
+
+  async getExpense(id: string): Promise<Expense> {
+    return this.get(`/api/v1/funds/expenses/${id}`);
+  }
+
+  async createExpense(input: CreateExpenseInput): Promise<Expense> {
+    return this.post("/api/v1/funds/expenses", input);
+  }
+
+  async updateExpense(id: string, input: PatchExpenseInput): Promise<Expense> {
+    return this.patch(`/api/v1/funds/expenses/${id}`, input);
+  }
+
+  async submitExpense(id: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/submit`, {});
+  }
+
+  async verifyExpense(id: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/verify`, {});
+  }
+
+  async rejectExpense(id: string, reason: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/reject`, { reason });
+  }
+
+  async voidExpense(id: string, voidReason: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/void`, { voidReason });
+  }
+
+  // Financial Documents
+  async getFinancialDocument(id: string): Promise<FinancialDocument> {
+    return this.get(`/api/v1/funds/documents/${id}`);
+  }
+
+  async listExpenseDocuments(expenseId: string): Promise<FinancialDocument[]> {
+    return this.get(`/api/v1/funds/expenses/${expenseId}/documents`);
+  }
+
+  async verifyFinancialDocument(
+    id: string,
+    input: { status: "verified" | "rejected" | "flagged"; rejectionReason?: string },
+  ): Promise<FinancialDocument> {
+    return this.post(`/api/v1/funds/documents/${id}/verify`, input);
+  }
+
+  // Financial Risk & Evaluation
+  async evaluateProjectRisk(
+    projectId: string,
+  ): Promise<{ flag: InspectionFlag | null; events: FinancialRiskEvent[]; scoreOutput: Record<string, unknown> }> {
+    return this.post(`/api/v1/financial-risk/evaluate/${projectId}`, {});
+  }
+
+  async listRiskRules(enabledOnly?: boolean): Promise<FinancialRiskRule[]> {
+    return this.get(`/api/v1/financial-risk/rules${queryString({ enabledOnly })}`);
+  }
+
+  async getRiskRule(id: string): Promise<FinancialRiskRule> {
+    return this.get(`/api/v1/financial-risk/rules/${id}`);
+  }
+
+  async createRiskRule(input: CreateRiskRuleInput): Promise<FinancialRiskRule> {
+    return this.post("/api/v1/financial-risk/rules", input);
+  }
+
+  async updateRiskRule(id: string, input: PatchRiskRuleInput): Promise<FinancialRiskRule> {
+    return this.patch(`/api/v1/financial-risk/rules/${id}`, input);
+  }
+
+  async listRiskEvents(projectId: string): Promise<FinancialRiskEvent[]> {
+    return this.get(`/api/v1/financial-risk/events${queryString({ projectId })}`);
+  }
+
+  // Inspection Flags
+  async listInspectionFlags(
+    query: InspectionFlagListQuery = {},
+  ): Promise<{ items: InspectionFlag[]; total: number; page: number; pageSize: number }> {
+    return this.get(`/api/v1/inspection-flags${queryString(query)}`);
+  }
+
+  async getInspectionFlag(id: string): Promise<InspectionFlag> {
+    return this.get(`/api/v1/inspection-flags/${id}`);
+  }
+
+  async assignInspectionFlag(id: string, assignedInspectorId: string): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/assign`, { assignedInspectorId });
+  }
+
+  async createInspectionFromFlag(
+    id: string,
+    opts: { templateId?: string; scheduledStart?: string; scheduledEnd?: string } = {},
+  ): Promise<{ flag: InspectionFlag; inspection: Inspection }> {
+    return this.post(`/api/v1/inspection-flags/${id}/create-inspection`, opts);
+  }
+
+  async reviewInspectionFlag(id: string, reviewNotes: string, status?: string): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/review`, { reviewNotes, status });
+  }
+
+  async resolveInspectionFlag(id: string, resolution: string): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/resolve`, { resolution });
+  }
+
+  async dismissInspectionFlag(id: string, dismissedReason: string): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/dismiss`, { dismissedReason });
+  }
+
+  // Project Risk & Priority Scheduling
+  async listProjectRiskRankings(
+    query: ProjectRiskRankingQuery = {},
+  ): Promise<{ items: ProjectRankEntry[]; total: number }> {
+    return this.get(`/api/v1/project-risk/rankings${queryString(query)}`);
+  }
+
+  async getProjectRiskSnapshots(query: ProjectRiskSnapshotQuery): Promise<ProjectRiskSnapshot[]> {
+    return this.get(`/api/v1/project-risk/projects/${query.projectId}/snapshots${queryString(query)}`);
+  }
+
+  async getLatestProjectRiskSnapshot(projectId: string): Promise<ProjectRiskSnapshot | null> {
+    return this.get(`/api/v1/project-risk/projects/${projectId}/latest`);
+  }
+
+  async evaluateProjectRiskScore(projectId: string): Promise<ProjectRiskSnapshot> {
+    return this.post(`/api/v1/project-risk/evaluate/${projectId}`, {});
+  }
+
+  async sweepProjectRiskScores(): Promise<{ evaluatedCount: number; scheduledCount: number }> {
+    return this.post("/api/v1/project-risk/sweep", {});
   }
 }
 
