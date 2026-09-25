@@ -5,7 +5,6 @@ import { getDb, OutboxRepository } from "@netram/data";
 import { loadWorkerEnv } from "@netram/config";
 import type { OutboxRecord, NotificationType } from "@netram/types";
 import type { NotificationJobData } from "./notification.worker.js";
-import type { ReportJobData } from "./report.worker.js";
 
 export interface OutboxDispatcherOptions {
   redisUrl: string;
@@ -18,7 +17,6 @@ export interface OutboxDispatcherOptions {
 export const DISPATCHER_HANDLED_EVENT_TYPES = [
   "inspection.assigned",
   "corrective_action.overdue",
-  "report.requested",
   "ai.anomaly_detected",
 ] as const;
 
@@ -26,7 +24,6 @@ export class OutboxDispatcher {
   private running = false;
   private processing = false;
   private readonly notificationQueue: Queue<NotificationJobData>;
-  private readonly reportQueue: Queue<ReportJobData>;
   private readonly redisConnection: Redis;
   private readonly maxRetries: number;
   private readonly pollIntervalMs: number;
@@ -38,9 +35,6 @@ export class OutboxDispatcher {
   ) {
     this.redisConnection = new Redis(opts.redisUrl, { maxRetriesPerRequest: null });
     this.notificationQueue = new Queue<NotificationJobData>("netram-notifications", {
-      connection: this.redisConnection,
-    });
-    this.reportQueue = new Queue<ReportJobData>("netram-reports", {
       connection: this.redisConnection,
     });
     this.maxRetries = opts.maxRetries ?? 5;
@@ -61,7 +55,6 @@ export class OutboxDispatcher {
   async close(): Promise<void> {
     this.stop();
     await this.notificationQueue.close();
-    await this.reportQueue.close();
     await this.redisConnection.quit();
   }
 
@@ -169,25 +162,6 @@ export class OutboxDispatcher {
             removeOnFail: { count: 1000 },
           },
         );
-        break;
-      }
-
-      case "report.requested": {
-        const payload = record.payload as { reportId?: string };
-        const reportId = payload.reportId ?? record.resourceId;
-        if (reportId) {
-          await this.reportQueue.add(
-            "report.generate",
-            { reportId },
-            {
-              jobId: reportId,
-              attempts: 3,
-              backoff: { type: "exponential", delay: 1000 },
-              removeOnComplete: { count: 500 },
-              removeOnFail: { count: 1000 },
-            },
-          );
-        }
         break;
       }
 

@@ -20,6 +20,7 @@ scripts/                           @biranchikulesika
 
 infrastructure/                    @biranchikulesika @BISHNU-CHARAN-BARIK
 docs/architecture/                 @biranchikulesika
+docs/history/                      @biranchikulesika
 docs/domain/                       @biranchikulesika
 docs/contracts/                    @biranchikulesika
 docs/decisions/                    @biranchikulesika

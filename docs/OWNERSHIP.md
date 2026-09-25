@@ -21,16 +21,16 @@ relevant owners.
 |------|----------|----------------|
 | `apps/web` | @biranchikulesika | Next.js platform, Server Components, UI engineering |
 | `apps/inspector-mobile` | @srutiswarupa @smrutirekhaparida576 | Expo app, offline/sync operations, idempotency |
-| `services/api` | @biranchikulesika @jyotirmaya2004 | REST API, application/domain logic, authorization, audit, outbox |
+| `services/api` | @biranchikulesika @jyotirmaya2004 | REST API, application/domain logic, authorisation, audit, outbox |
 | `services/ai` | @dipteshrpradhan @jyotirmaya2004 | Advisory models, anomaly processing, reviewable results |
-| `services/cctv-gateway` | @dipteshrpradhan @biranchikulesika | Provider abstraction, authorized stream delivery |
-| `services/realtime` | @biranchikulesika @jyotirmaya2004 | Outbox publishing, authorized event delivery |
+| `services/cctv-gateway` | @dipteshrpradhan @biranchikulesika | Provider abstraction, authorised stream delivery |
+| `services/realtime` | @biranchikulesika @jyotirmaya2004 | Outbox publishing, authorised event delivery |
 | `packages/data` | @biranchikulesika | Drizzle/Postgres, repositories, migrations, seed |
 | `packages/types` | @biranchikulesika @jyotirmaya2004 | Canonical domain/contract types |
 | `packages/validation` | @biranchikulesika @jyotirmaya2004 | Zod validation schemas |
 | `packages/api-client` | @biranchikulesika | Typed API client |
 | `packages/ui` | @biranchikulesika | Reusable presentation primitives |
-| `packages/config` | @biranchikulesika | Centralized validated configuration |
+| `packages/config` | @biranchikulesika | Centralised validated configuration |
 | `infrastructure` | @biranchikulesika @BISHNU-CHARAN-BARIK | Docker/CI, environments, service deployments |
 
 ## Rules

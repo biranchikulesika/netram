@@ -174,7 +174,7 @@ export function ComplaintsLayout({
               type="button"
               className={`view-btn ${viewMode === "map" ? "active" : ""}`}
               onClick={() => setViewMode("map")}
-              title="Geographic Map View"
+              title="Map"
             >
               <IconMapPin style={{ width: 14, height: 14 }} />
               <span>Map</span>

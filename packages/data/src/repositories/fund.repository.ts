@@ -30,6 +30,7 @@ export interface FundAllocationRow {
   sanctionedById: string | null;
   sanctionedAt: Date | null;
   status: FundAllocationStatus;
+  scheme: string | null;
   description: string | null;
   notes: string | null;
   createdById: string | null;
@@ -62,6 +63,7 @@ export function toFundAllocation(row: FundAllocationRow): FundAllocation {
     sanctionedById: row.sanctionedById,
     sanctionedAt: row.sanctionedAt ? row.sanctionedAt.toISOString() : null,
     status: row.status,
+    scheme: row.scheme,
     description: row.description,
     notes: row.notes,
     createdById: row.createdById,
@@ -105,6 +107,7 @@ export interface CreateAllocationWrite extends FundWriteContext {
   currency?: string;
   sanctionedById?: string | null;
   sanctionedAt?: Date | null;
+  scheme?: string | null;
   description?: string | null;
   notes?: string | null;
 }
@@ -113,6 +116,7 @@ export interface UpdateAllocationWrite extends FundWriteContext {
   id: string;
   allocatedAmount?: string;
   status?: FundAllocationStatus;
+  scheme?: string | null;
   description?: string | null;
   notes?: string | null;
 }
@@ -236,6 +240,7 @@ export class FundRepository {
           sanctionedById: cmd.sanctionedById,
           sanctionedAt: cmd.sanctionedAt,
           status: "active",
+          scheme: cmd.scheme,
           description: cmd.description,
           notes: cmd.notes,
           createdById: cmd.actorUserId,
@@ -280,6 +285,7 @@ export class FundRepository {
       };
       if (cmd.allocatedAmount !== undefined) patch.allocatedAmount = cmd.allocatedAmount;
       if (cmd.status !== undefined) patch.status = cmd.status;
+      if (cmd.scheme !== undefined) patch.scheme = cmd.scheme;
       if (cmd.description !== undefined) patch.description = cmd.description;
       if (cmd.notes !== undefined) patch.notes = cmd.notes;
 

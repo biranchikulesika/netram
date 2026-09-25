@@ -255,6 +255,7 @@ const SHORT_MONTHS = [
 function getCalendarParts(
   d: Date,
   withTime: boolean,
+  withSeconds = false,
 ): Record<string, string> {
   const parts = new Intl.DateTimeFormat(
     "en-IN",
@@ -265,6 +266,7 @@ function getCalendarParts(
           year: "numeric",
           hour: "numeric",
           minute: "2-digit",
+          ...(withSeconds ? { second: "2-digit" } : {}),
           hour12: true,
           timeZone: "Asia/Kolkata",
         }
@@ -333,4 +335,55 @@ export function formatDateTime(dateInput: string | Date | null | undefined): str
   } catch {
     return "—";
   }
+}
+
+/**
+ * Formats datetime into exact administrative timestamp with seconds: "12 Sep, 2026 at 10:58:24 PM"
+ */
+export function formatTimestamp(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return "—";
+  try {
+    const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+    if (isNaN(d.getTime())) return "—";
+    const p = getCalendarParts(d, true, true);
+    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+    const period = (p.dayPeriod ?? "").toUpperCase();
+    const second = p.second ? p.second.padStart(2, "0") : "00";
+    return `${p.day} ${month}, ${p.year} at ${p.hour}:${p.minute}:${second} ${period}`;
+  } catch {
+    return "—";
+  }
+}
+
+const ROLE_TITLE_MAP: Record<string, string> = {
+  system_admin: "System Administrator",
+  authority_officer: "Authority Officer",
+  control_room: "Control Room Operator",
+  institution_admin: "Institution Admin",
+  inspector: "Field Inspector",
+  competent_authority: "Competent Authority",
+  programme_officer: "Programme Officer",
+  auditor: "Financial Auditor",
+};
+
+/**
+ * Translates backend role codes (e.g. "inspector", "authority_officer")
+ * into human-readable, executive administrative role titles.
+ */
+export function formatRoleTitle(roleCode?: string | null, rawName?: string | null): string {
+  if (!roleCode && !rawName) return "—";
+  const code = (roleCode || "").toLowerCase().trim();
+  if (code && ROLE_TITLE_MAP[code]) {
+    return ROLE_TITLE_MAP[code];
+  }
+  if (rawName && rawName.trim() && rawName.toLowerCase() !== code) {
+    const rawLower = rawName.toLowerCase().trim();
+    if (ROLE_TITLE_MAP[rawLower]) return ROLE_TITLE_MAP[rawLower];
+    return rawName.trim();
+  }
+  if (!code) return rawName?.trim() || "—";
+  return code
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 }

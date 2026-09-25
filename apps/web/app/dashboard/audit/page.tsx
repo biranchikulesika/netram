@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClient, getSessionUser } from "../../../lib/api";
 import { NavHeader } from "../../components/nav-header";
-import { IconAlertTriangle, IconBuilding } from "../../components/icons";
+import { IconAlertTriangle } from "../../components/icons";
+import { ErrorActions } from "../../components/error-actions";
 import { AuditExplorerView } from "./audit-explorer-view";
 
 export const dynamic = "force-dynamic";
@@ -53,17 +53,12 @@ export default async function AuditPage() {
             Access Restricted
           </h3>
           <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}>
-            Your official account does not have authorization to view the statutory audit ledger. Please contact your administrative supervisor if you require elevated access.
+            Your official account does not have authorization to view the
+            activity log. Please contact your administrative supervisor if you
+            require elevated access.
           </p>
 
-          <Link
-            href="/dashboard/projects"
-            className="btn-secondary"
-            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
-          >
-            <IconBuilding style={{ width: 14, height: 14 }} />
-            <span>Return to Projects</span>
-          </Link>
+          <ErrorActions fallbackHref="/dashboard" />
         </div>
       </main>
     );
@@ -71,8 +66,18 @@ export default async function AuditPage() {
 
   const client = await getClient();
   const page = await client
-    .listAuditEvents({ pageSize: 50 })
-    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 }));
+    .listAuditEvents({ pageSize: 100 })
+    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 100 }));
+
+  // Actor directory (server-side; user-admin API is permission-gated). The
+  // activity log degrades gracefully to role labels when the viewer lacks it.
+  const usersPage = await client
+    .listUsers({ pageSize: 200 })
+    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 200 }));
+  const userNames: Record<string, string> = {};
+  for (const u of usersPage.items) {
+    if (u.displayName) userNames[u.id] = u.displayName;
+  }
 
   return (
     <main>
@@ -83,8 +88,11 @@ export default async function AuditPage() {
         activeSection="audit"
       />
 
-      <AuditExplorerView initialEvents={page.items} initialTotal={page.total} />
+      <AuditExplorerView
+        initialEvents={page.items}
+        initialTotal={page.total}
+        userNames={userNames}
+      />
     </main>
   );
 }
-

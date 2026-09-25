@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const session = await getSessionUser();
-  if (session) redirect("/dashboard/projects");
+  if (session) redirect("/dashboard");
 
   return (
     <main style={{ minHeight: "100vh", padding: "3rem 1rem" }}>

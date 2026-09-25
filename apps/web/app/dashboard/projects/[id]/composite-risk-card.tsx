@@ -1,14 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
 import Link from "next/link";
 import type { ProjectRiskSnapshot, CompositeRiskLevel } from "@netram/types";
 
 interface CompositeRiskCardProps {
-  projectId: string;
-  projectCode: string;
   initialSnapshot: ProjectRiskSnapshot | null;
-  canEvaluate: boolean;
 }
 
 const LEVEL_COLORS: Record<CompositeRiskLevel, { text: string; bg: string; border: string; label: string }> = {
@@ -19,42 +15,13 @@ const LEVEL_COLORS: Record<CompositeRiskLevel, { text: string; bg: string; borde
 };
 
 export function CompositeRiskCard({
-  projectId,
   initialSnapshot,
-  canEvaluate,
 }: CompositeRiskCardProps) {
-  const [snapshot, setSnapshot] = useState<ProjectRiskSnapshot | null>(initialSnapshot);
-  const [evaluating, setEvaluating] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const snapshot = initialSnapshot;
 
   const levelInfo = snapshot
     ? LEVEL_COLORS[snapshot.riskLevel]
     : { text: "#64748b", bg: "#f8fafc", border: "#cbd5e1", label: "Not Evaluated" };
-
-  async function handleEvaluate() {
-    setEvaluating(true);
-    setFeedback(null);
-    try {
-      const res = await fetch(`/api/v1/project-risk/evaluate/${projectId}`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || "Failed to evaluate composite risk");
-      }
-      const updatedSnapshot: ProjectRiskSnapshot = await res.json();
-      setSnapshot(updatedSnapshot);
-      setFeedback({
-        type: "success",
-        message: `Evaluation completed: Score ${Math.round(updatedSnapshot.totalScore)}/100 (${updatedSnapshot.riskLevel.toUpperCase()})`,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setFeedback({ type: "error", message: msg });
-    } finally {
-      setEvaluating(false);
-    }
-  }
 
   const score = snapshot ? Math.round(snapshot.totalScore) : 0;
 
@@ -110,7 +77,7 @@ export function CompositeRiskCard({
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+<div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           {snapshot && (
             <span
               style={{
@@ -128,62 +95,8 @@ export function CompositeRiskCard({
               {levelInfo.label}
             </span>
           )}
-
-          {canEvaluate && (
-            <button
-              type="button"
-              onClick={handleEvaluate}
-              disabled={evaluating}
-              style={{
-                padding: "0.375rem 0.875rem",
-                fontSize: "0.8125rem",
-                fontWeight: 500,
-                color: evaluating ? "#94a3b8" : "#ffffff",
-                backgroundColor: evaluating ? "#cbd5e1" : "#0f766e",
-                border: "none",
-                borderRadius: "6px",
-                cursor: evaluating ? "not-allowed" : "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.375rem",
-                transition: "background-color 0.15s ease",
-              }}
-            >
-              {evaluating ? (
-                <>
-                  <span
-                    style={{
-                      width: 12,
-                      height: 12,
-                      border: "2px solid #ffffff",
-                      borderTopColor: "transparent",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
-                    }}
-                  />
-                  Evaluating...
-                </>
-              ) : (
-                "⚡ Evaluate Risk Now"
-              )}
-            </button>
-          )}
         </div>
       </div>
-
-      {feedback && (
-        <div
-          style={{
-            padding: "0.75rem 1.5rem",
-            fontSize: "0.8125rem",
-            backgroundColor: feedback.type === "success" ? "#f0fdf4" : "#fef2f2",
-            color: feedback.type === "success" ? "#166534" : "#991b1b",
-            borderBottom: `1px solid ${feedback.type === "success" ? "#bbf7d0" : "#fecaca"}`,
-          }}
-        >
-          {feedback.message}
-        </div>
-      )}
 
       {/* Main Grid: Gauge + 5 Dimensions Breakdown */}
       <div
@@ -255,7 +168,7 @@ export function CompositeRiskCard({
                     hour: "2-digit",
                     minute: "2-digit",
                   })}`
-                : "Click Evaluate Risk Now to score this facility"}
+                : "Awaiting the hourly scheduled evaluation"}
             </div>
           </div>
 

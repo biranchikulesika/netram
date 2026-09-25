@@ -13,11 +13,31 @@ export class ProviderRegistry implements CameraProvider {
   private providers: Map<string, CameraProvider> = new Map();
   // Cache mapping cameraId -> providerName for fast lookup
   private cameraToProvider: Map<string, string> = new Map();
+  /**
+   * Provider used when NO registered provider claims a camera (Phase 3).
+   * The gateway is camera-context-driven: the NETRAM API passes camera
+   * configuration from the DB, so the registry cannot rely on listCameras()
+   * membership alone. The default provider exists for the dev rig (simulated
+   * source); in production it stays unset and unknown cameras fail closed.
+   */
+  private defaultProviderName: string | null = null;
 
   constructor(initialProviders: CameraProvider[] = []) {
     for (const p of initialProviders) {
       this.registerProvider(p);
     }
+  }
+
+  /**
+   * Marks a provider as the fallback for cameras no provider claims.
+   * Dev-rig mechanism only — never set in production-oriented configs.
+   */
+  setDefaultProvider(providerName: string): this {
+    if (!this.providers.has(providerName)) {
+      throw new Error(`Cannot set unknown default provider: ${providerName}`);
+    }
+    this.defaultProviderName = providerName;
+    return this;
   }
 
   /**
@@ -78,6 +98,15 @@ export class ProviderRegistry implements CameraProvider {
         }
       } catch {
         // Skip failing provider during lookup
+      }
+    }
+
+    // 3. Fall back to the default provider (dev rig) when configured.
+    if (this.defaultProviderName !== null) {
+      const fallback = this.providers.get(this.defaultProviderName);
+      if (fallback) {
+        this.cameraToProvider.set(cameraId, fallback.name);
+        return fallback;
       }
     }
 

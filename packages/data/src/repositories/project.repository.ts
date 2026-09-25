@@ -175,6 +175,19 @@ export class ProjectRepository {
     };
   }
 
+  async findAllActiveProjects(): Promise<Array<{ id: string; code: string; name: string; districtId: string | null; organisationId: string | null }>> {
+    return this.db
+      .select({
+        id: projectsTable.id,
+        code: projectsTable.code,
+        name: projectsTable.name,
+        districtId: projectsTable.districtId,
+        organisationId: projectsTable.organisationId,
+      })
+      .from(projectsTable)
+      .where(eq(projectsTable.status, "Active"));
+  }
+
   /** Creates a project and writes audit + outbox rows in the same transaction. */
   async createWithAuditAndEvent(write: CreateProjectWrite): Promise<Project> {
     const created: Project = await this.db.transaction(async (tx) => {

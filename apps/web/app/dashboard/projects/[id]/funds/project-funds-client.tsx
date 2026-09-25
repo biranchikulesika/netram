@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import type { ProjectFundOverview } from "@netram/types";
-import { IconShieldCheck } from "../../../components/icons";
+import { IconShieldCheck } from "../../../../components/icons";
 
 interface ProjectFundsClientProps {
   projectId: string;
@@ -11,7 +11,6 @@ interface ProjectFundsClientProps {
   initialOverview: ProjectFundOverview;
   canSubmitExpense: boolean;
   canVerifyExpense: boolean;
-  canEvaluateRisk: boolean;
 }
 
 export function ProjectFundsClient({
@@ -21,11 +20,8 @@ export function ProjectFundsClient({
   initialOverview,
   canSubmitExpense,
   canVerifyExpense,
-  canEvaluateRisk,
 }: ProjectFundsClientProps) {
   const [overview, setOverview] = useState<ProjectFundOverview>(initialOverview);
-  const [evaluating, setEvaluating] = useState(false);
-  const [evalMessage, setEvalMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"expenses" | "flags" | "allocations">("expenses");
 
   // New Expense modal state
@@ -46,38 +42,6 @@ export function ProjectFundsClient({
   const [voidingExpenseId, setVoidingExpenseId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [voiding, setVoiding] = useState(false);
-
-  // Trigger evaluation
-  async function handleEvaluateRisk() {
-    setEvaluating(true);
-    setEvalMessage(null);
-    try {
-      const res = await fetch(`/api/v1/financial-risk/evaluate/${projectId}`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || "Evaluation failed");
-      }
-      const data = await res.json();
-      setEvalMessage(
-        data.flag
-          ? `Review flag updated: Score ${data.scoreOutput?.totalScore} (${data.scoreOutput?.riskLevel?.toUpperCase()})`
-          : "Evaluation complete: No risk discrepancies detected.",
-      );
-      // Refresh overview
-      const refreshRes = await fetch(`/api/v1/funds/projects/${projectId}/overview`);
-      if (refreshRes.ok) {
-        const updated = await refreshRes.json();
-        setOverview(updated);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setEvalMessage(`Error: ${msg}`);
-    } finally {
-      setEvaluating(false);
-    }
-  }
 
   // Submit new expense
   async function handleCreateExpense(e: React.FormEvent) {
@@ -280,32 +244,8 @@ export function ProjectFundsClient({
               + Record Expense
             </button>
           )}
-          {canEvaluateRisk && (
-            <button
-              type="button"
-              className="btn outline"
-              onClick={handleEvaluateRisk}
-              disabled={evaluating}
-            >
-              {evaluating ? "Evaluating..." : "Run Risk Engine"}
-            </button>
-          )}
         </div>
       </div>
-
-      {evalMessage && (
-        <div
-          className="card"
-          style={{
-            padding: "0.875rem 1.25rem",
-            backgroundColor: evalMessage.includes("Error") ? "#fef2f2" : "#f0fdf4",
-            borderColor: evalMessage.includes("Error") ? "#f87171" : "#86efac",
-            fontSize: "0.875rem",
-          }}
-        >
-          {evalMessage}
-        </div>
-      )}
 
       {/* Tab: Active Inspection Flags */}
       {activeTab === "flags" && (
@@ -525,7 +465,7 @@ export function ProjectFundsClient({
                         </span>
                       </td>
                       <td>{a.sanctionedAt ? new Date(a.sanctionedAt).toLocaleDateString("en-IN") : "—"}</td>
-                      <td>{a.description || a.notes || "—"}</td>
+                      <td>{a.scheme || a.description || a.notes || "—"}</td>
                     </tr>
                   ))
                 )}

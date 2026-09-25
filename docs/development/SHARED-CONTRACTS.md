@@ -9,7 +9,7 @@ Cross-area contracts, their owners, and change protocols.
 | `@netram/types` | `packages/types/src/` | Canonical domain and contract types (22 files) | @biranchikulesika @jyotirmaya2004 |
 | `@netram/validation` | `packages/validation/src/` | Zod runtime validation schemas (21 files) | @biranchikulesika @jyotirmaya2004 |
 | `@netram/api-client` | `packages/api-client/src/` | Typed HTTP client for the REST API | @biranchikulesika |
-| `@netram/config` | `packages/config/src/` | Centralized validated environment configuration | @biranchikulesika |
+| `@netram/config` | `packages/config/src/` | Centralised validated environment configuration | @biranchikulesika |
 | `@netram/data` | `packages/data/src/` | Repository interfaces and implementations | @biranchikulesika |
 
 ## Type files (`packages/types/src/`)
@@ -28,7 +28,6 @@ Cross-area contracts, their owners, and change protocols.
 | `evidence.ts` | `Evidence`, `EvidenceIntegrityState`, `EvidenceUploadState` |
 | `observation.ts` | `Observation`, `ObservationType` |
 | `complaint.ts` | `Complaint`, `ComplaintStatus` |
-| `report.ts` | `Report`, `ReportStatus`, report generation |
 | `notification.ts` | `Notification`, notification channels |
 | `audit.ts` | `AuditEvent`, append-only audit trail |
 | `ai-anomaly.ts` | `AIAnomaly`, `AnomalyScore`, `AnomalySeverity`, confidence |
@@ -120,7 +119,7 @@ Operations submitted offline include:
 
 The server:
 1. Authenticates the request.
-2. Authorizes the operation.
+2. Authorises the operation.
 3. Validates the operation.
 4. Compares against current state.
 5. Accepts, rejects, or flags conflict.

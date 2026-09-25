@@ -1,9 +1,14 @@
 # Netram Environment Matrix & Isolation Specification
 
-**Owner:** @BISHNU-CHARAN-BARIK (Area 5: Integration + Infrastructure)  
-**Authority:** AGENTS.md §11–13, §21–22, §28, §30  
+**Authority:** AGENTS.md §11–13, §21–22, §28, §30.
+Deployment status (what is actually running): [`../deployment.md`](../deployment.md).
+Day-to-day setup: [`setup.md`](setup.md).
 
-This document defines the configuration, network topology, persistence rules, and security isolation across all Netram deployment targets.
+This document defines the configuration, network topology, persistence rules,
+and security isolation across all Netram deployment targets. The `dev` and
+`ci` columns are **implemented**; `demo` and `prod` rows describe required
+properties of future environments (**Planned** — nothing is deployed there
+yet).
 
 ---
 
@@ -20,7 +25,7 @@ This document defines the configuration, network topology, persistence rules, an
 | **Auth Provider** | Dev-auth token exchange (`/api/v1/auth/dev-login`) | Dev-auth mock tokens | Controlled staging auth / dev tokens | Production IAM / OIDC / Sovereign Govt IdP |
 | **Realtime Service** | Local WS (`ws://localhost:3002`) | Test socket server | Managed WS server | Load-balanced WS cluster behind TLS |
 | **AI Inference** | Local advisory service (`localhost:8000`) | Pytest test harness | Advisory inference container | Dedicated GPU/accelerated advisory service |
-| **CCTV Gateway** | Simulated camera feeds (`localhost:3003`) | Unit/integration mocks | Simulated + test hardware streams | Authorized RTSP/WebRTC gateway |
+| **CCTV Gateway** | Simulated camera feeds (`localhost:3003`) | Unit/integration mocks | Simulated + test hardware streams | Authorised RTSP/WebRTC gateway |
 
 ---
 

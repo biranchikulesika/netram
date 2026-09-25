@@ -1,6 +1,6 @@
 # Netram Design System Specification
 
-This document defines the authoritative visual language, color palette, typography, and styling rules for the Netram platform across **all web applications (`apps/web`) and mobile applications (`apps/inspector-mobile`)**.
+This document defines the authoritative visual language, colour palette, typography, and styling rules for the Netram platform across **all web applications (`apps/web`) and mobile applications (`apps/inspector-mobile`)**.
 
 Netram is a **mission-critical public-sector product** built for the Department of Social Justice & Empowerment (DoSJE), Government of India. 
 
@@ -12,11 +12,11 @@ Netram is a **mission-critical public-sector product** built for the Department 
 
 ---
 
-## 1. Official Color Palette
+## 1. Official Colour Palette
 
-The color system is derived from the official Netram portal identity:
+The colour system is derived from the official Netram portal identity:
 
-### 1.1 Canvas & Background Colors
+### 1.1 Canvas & Background Colours
 
 | Token Name | Hex Code | Purpose & Usage |
 | :--- | :--- | :--- |
@@ -26,12 +26,12 @@ The color system is derived from the official Netram portal identity:
 | `--color-bg-hover` | `#edf2fa` | Interactive row hover, list item hover, and secondary button hover. |
 | `--color-backdrop` | `#001a38` | Modal/dialog scrim backdrop (applied with `rgba(0, 26, 56, 0.55)`). |
 
-### 1.2 Institutional Navy & Text Colors
+### 1.2 Institutional Navy & Text Colours
 
 | Token Name | Hex Code | Purpose & Usage |
 | :--- | :--- | :--- |
 | `--color-navy-dark` | `#002449` | Deepest institutional navy. Header accents, institution badges. |
-| `--color-text-primary` | `#0c2a52` | **Primary text color**. Headings, card titles, prominent labels. |
+| `--color-text-primary` | `#0c2a52` | **Primary text colour**. Headings, card titles, prominent labels. |
 | `--color-text-data` | `#1c3a63` | Data values in tables, definition lists, and formal metrics. |
 | `--color-text-muted` | `#475569` | Body copy, descriptions, explanatory text (slate-600). |
 | `--color-text-subtle` | `#64748b` | Timestamps, field hints, secondary metadata (slate-500). |
@@ -45,7 +45,7 @@ The color system is derived from the official Netram portal identity:
 | `--color-border-subtle` | `#e2e8f0` | Standard card borders, table dividers, panel outlines (slate-200). |
 | `--color-border-strong` | `#cbd5e1` | Input field borders, active card borders on hover (slate-300). |
 
-### 1.4 Functional & Status Colors
+### 1.4 Functional & Status Colours
 
 | Token Name | Hex Code | Purpose & Usage |
 | :--- | :--- | :--- |
@@ -81,11 +81,11 @@ The color system is derived from the official Netram portal identity:
 
 ### 2.2 Typographic Hierarchy
 
-* **Page / View Title**: `28px - 36px` (`1.75rem - 2.25rem`), font-weight `700` or `800`, tracking `tight` (`-0.025em`), color `#0c2a52`.
-* **Section / Card Heading**: `18px - 22px` (`1.125rem - 1.375rem`), font-weight `600` or `700`, color `#0c2a52`.
-* **Section Eyebrow / Tag**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em - 0.2em`, color `#3a488b`, font-weight `600`.
-* **Body Text**: `14px - 15px` (`0.875rem - 0.9375rem`), font-weight `400` or `500`, line-height `1.5 - 1.6`, color `#475569`.
-* **Technical Labels / Keys**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em`, color `#475569`, background `#f3f6fb`.
+* **Page / View Title**: `28px - 36px` (`1.75rem - 2.25rem`), font-weight `700` or `800`, tracking `tight` (`-0.025em`), colour `#0c2a52`.
+* **Section / Card Heading**: `18px - 22px` (`1.125rem - 1.375rem`), font-weight `600` or `700`, colour `#0c2a52`.
+* **Section Eyebrow / Tag**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em - 0.2em`, colour `#3a488b`, font-weight `600`.
+* **Body Text**: `14px - 15px` (`0.875rem - 0.9375rem`), font-weight `400` or `500`, line-height `1.5 - 1.6`, colour `#475569`.
+* **Technical Labels / Keys**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em`, colour `#475569`, background `#f3f6fb`.
 * **Form Inputs & Buttons**: `15px - 16px` (ensuring 16px on mobile to prevent iOS viewport auto-zoom), font-weight `500` - `600`.
 
 ---

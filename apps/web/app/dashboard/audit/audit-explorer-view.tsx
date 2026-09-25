@@ -1,12 +1,25 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuditEvent } from "@netram/types";
-import { formatDateTime, getUserDisplayName } from "../../../lib/presentation";
+import { formatTimestamp } from "../../../lib/presentation";
 import {
-  IconLock,
+  categoryLabel,
+  formatAuditActivity,
+  matchesTimeRange,
+  resolveActor,
+  TIME_RANGE_PRESETS,
+  type AuditFormatContext,
+  type AuditActivity,
+  type AuditActor,
+  type TimeRangePreset,
+} from "../../../lib/audit-activity";
+import {
   IconSearch,
-  IconShieldCheck,
+  IconLock,
+  IconClock,
+  IconCalendar,
+  IconRotateCcw,
 } from "../../components/icons";
 
 interface AuditExplorerViewProps {
@@ -14,425 +27,498 @@ interface AuditExplorerViewProps {
   initialTotal: number;
 }
 
-type ActionCategory =
+type CategoryId =
   | "all"
+  | "facilities"
   | "inspections"
   | "remediations"
-  | "reports"
   | "grievances"
-  | "facilities"
-  | "security"
   | "surveillance"
-  | "attendance";
+  | "security"
+  | "attendance"
+  | "finance";
 
-const CATEGORIES: Array<{ id: ActionCategory; label: string }> = [
-  { id: "all", label: "All Events" },
-  { id: "inspections", label: "Inspections" },
-  { id: "remediations", label: "Remediations" },
-  { id: "reports", label: "Reports" },
-  { id: "grievances", label: "Grievances" },
+const ALL_CATEGORIES: Array<{ id: CategoryId; label: string }> = [
+  { id: "all", label: "All" },
   { id: "facilities", label: "Facilities" },
-  { id: "security", label: "Security & Access" },
-  { id: "surveillance", label: "Surveillance & AI" },
+  { id: "inspections", label: "Inspections" },
+  { id: "remediations", label: "Remediation" },
+  { id: "grievances", label: "Grievances" },
+  { id: "surveillance", label: "Surveillance" },
+  { id: "security", label: "Security" },
   { id: "attendance", label: "Attendance" },
+  { id: "finance", label: "Finance" },
 ];
 
-function getActionBadgeClass(action: string): string {
-  if (
-    action.includes("failed") ||
-    action.includes("rejected") ||
-    action.includes("overdue") ||
-    action.includes("authorization_failed")
-  ) {
-    return "badge-critical";
-  }
-  if (
-    action.includes("anomaly") ||
-    action.includes("escalated") ||
-    action.includes("conflict") ||
-    action.includes("under_review")
-  ) {
-    return "badge-warning";
-  }
-  return "badge-routine";
-}
-
-function matchesCategory(action: string, category: ActionCategory): boolean {
+function categoryMatches(action: string, category: CategoryId): boolean {
   if (category === "all") return true;
-  if (category === "inspections") {
-    return (
-      action.startsWith("inspection.") ||
-      action.startsWith("finding.") ||
-      action.startsWith("observation.") ||
-      action.startsWith("evidence.")
-    );
-  }
-  if (category === "remediations") {
-    return action.startsWith("corrective_action.");
-  }
-  if (category === "reports") {
-    return action.startsWith("report.");
-  }
-  if (category === "grievances") {
-    return action.startsWith("complaint.");
-  }
-  if (category === "facilities") {
-    return action.startsWith("project.");
-  }
-  if (category === "security") {
-    return (
-      action.startsWith("auth.") ||
-      action.startsWith("user.") ||
-      action.startsWith("role.") ||
-      action.startsWith("admin.")
-    );
-  }
-  if (category === "surveillance") {
-    return action.startsWith("cctv.") || action.startsWith("ai.") || action.startsWith("vc.");
-  }
-  if (category === "attendance") {
-    return action.startsWith("attendance.") || action.startsWith("scheduled_job.");
-  }
-  return false;
+  const map: Record<Exclude<CategoryId, "all">, string[]> = {
+    facilities: ["project."],
+    inspections: ["inspection.", "finding.", "observation.", "evidence."],
+    remediations: ["corrective_action."],
+    grievances: ["complaint."],
+    surveillance: ["cctv.", "ai.", "vc."],
+    security: ["auth.", "user.", "role.", "admin."],
+    attendance: ["attendance."],
+    finance: ["fund.", "expense.", "financial_document.", "financial_risk.", "scheduled_job."],
+  };
+  return (map[category] ?? []).some((p) => action.startsWith(p));
 }
 
-export function AuditExplorerView({ initialEvents, initialTotal }: AuditExplorerViewProps) {
-  const [events, setEvents] = useState<AuditEvent[]>(initialEvents);
-  const [totalCount, setTotalCount] = useState<number>(initialTotal);
-  const [categoryFilter, setCategoryFilter] = useState<ActionCategory>("all");
-  const [resourceFilter, setResourceFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Available resource types in current dataset
-  const availableResourceTypes = useMemo(() => {
-    const types = new Set<string>();
+const TONE_COLORS: Record<AuditActivity["tone"], { dot: string; text: string }> = {
+  routine: { dot: "#0284c7", text: "#0369a1" },
+  attention: { dot: "#f59e0b", text: "#b45309" },
+  critical: { dot: "#ef4444", text: "#dc2626" },
+  positive: { dot: "#16a34a", text: "#15803d" },
+};
+
+function matchesSearch(e: AuditEvent, activity: AuditActivity, actor: AuditActor | null, q: string): boolean {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = [
+    activity.summary,
+    activity.subject ?? "",
+    activity.status,
+    activity.category,
+    activity.transition ?? "",
+    actor ? `${actor.role} ${actor.account}` : "system",
+    e.action,
+    e.resourceType ?? "",
+    e.resourceId ?? "",
+    ...activity.context.map((c) => c.value),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(needle);
+}
+
+
+
+export function AuditExplorerView({
+  initialEvents,
+  initialTotal: _initialTotal,
+  userNames,
+}: AuditExplorerViewProps & { userNames?: Record<string, string> }) {
+  const [events] = useState<AuditEvent[]>(initialEvents);
+  const [categoryFilter, setCategoryFilter] = useState<CategoryId>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [timePreset, setTimePreset] = useState<TimeRangePreset>("all");
+  const [appliedStartDate, setAppliedStartDate] = useState<string>("");
+  const [appliedEndDate, setAppliedEndDate] = useState<string>("");
+  const [dateRangeModalOpen, setDateRangeModalOpen] = useState<boolean>(false);
+  const [pendingStartDate, setPendingStartDate] = useState<string>("");
+  const [pendingEndDate, setPendingEndDate] = useState<string>("");
+  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
+
+  const isCustomRangeActive = Boolean(appliedStartDate || appliedEndDate);
+  const hasActiveTimeFilter = timePreset !== "all" || isCustomRangeActive;
+
+  const formatContext: AuditFormatContext = useMemo(
+    () => ({ userNames }),
+    [userNames],
+  );
+
+  const presented = useMemo(
+    () =>
+      events.map((e) => ({
+        event: e,
+        activity: formatAuditActivity(e, formatContext),
+        actor: resolveActor(e, formatContext),
+      })),
+    [events, formatContext],
+  );
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<CategoryId, number> = {
+      all: events.length,
+      facilities: 0,
+      inspections: 0,
+      remediations: 0,
+      grievances: 0,
+      surveillance: 0,
+      security: 0,
+      attendance: 0,
+      finance: 0,
+    };
     for (const e of events) {
-      if (e.resourceType) types.add(e.resourceType);
+      for (const cat of ALL_CATEGORIES) {
+        if (cat.id !== "all" && categoryMatches(e.action, cat.id)) {
+          counts[cat.id] = (counts[cat.id] ?? 0) + 1;
+        }
+      }
     }
-    return Array.from(types).sort();
+    return counts;
   }, [events]);
 
-  // Filtered audit events
-  const filteredEvents = useMemo(() => {
-    return events.filter((e) => {
-      if (!matchesCategory(e.action, categoryFilter)) return false;
-      if (resourceFilter !== "all" && e.resourceType !== resourceFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesAction = e.action.toLowerCase().includes(q);
-        const matchesActor = e.actorUserId ? e.actorUserId.toLowerCase().includes(q) : false;
-        const matchesResource = e.resourceId ? e.resourceId.toLowerCase().includes(q) : false;
-        const matchesReq = e.requestId ? e.requestId.toLowerCase().includes(q) : false;
-        const matchesIp = e.ipAddress ? e.ipAddress.toLowerCase().includes(q) : false;
-        if (!matchesAction && !matchesActor && !matchesResource && !matchesReq && !matchesIp) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [events, categoryFilter, resourceFilter, searchQuery]);
+  const filterTabs = useMemo(() => {
+    const coreKeys: CategoryId[] = [
+      "all",
+      "facilities",
+      "inspections",
+      "remediations",
+      "grievances",
+      "surveillance",
+      "security",
+    ];
+    return ALL_CATEGORIES.filter(
+      (cat) => coreKeys.includes(cat.id) || (categoryCounts[cat.id] ?? 0) > 0,
+    ).map((cat) => ({
+      key: cat.id,
+      label: cat.label,
+      count: categoryCounts[cat.id] ?? 0,
+    }));
+  }, [categoryCounts]);
 
-  async function handleRefresh() {
-    setIsRefreshing(true);
-    try {
-      const res = await fetch("/api/audit?pageSize=100");
-      if (res.ok) {
-        const data = (await res.json()) as { items: AuditEvent[]; total: number };
-        if (Array.isArray(data.items)) {
-          setEvents(data.items);
-          setTotalCount(data.total ?? data.items.length);
-        }
-      }
-    } catch {
-      // Keep existing data on network failure
-    } finally {
-      setIsRefreshing(false);
+  const filtered = useMemo(
+    () =>
+      presented.filter(({ event, activity, actor }) => {
+        if (!categoryMatches(event.action, categoryFilter)) return false;
+        if (!matchesTimeRange(event.occurredAt, timePreset, appliedStartDate, appliedEndDate)) return false;
+        return matchesSearch(event, activity, actor, searchQuery);
+      }),
+    [presented, categoryFilter, timePreset, appliedStartDate, appliedEndDate, searchQuery],
+  );
+
+  const closeDialog = useCallback(() => setSelectedEvent(null), []);
+  const closeDateRangeModal = useCallback(() => setDateRangeModalOpen(false), []);
+
+  const openDateRangeModal = useCallback(() => {
+    setPendingStartDate(appliedStartDate);
+    setPendingEndDate(appliedEndDate);
+    setDateRangeModalOpen(true);
+  }, [appliedStartDate, appliedEndDate]);
+
+  const applyDateRange = useCallback(() => {
+    setAppliedStartDate(pendingStartDate);
+    setAppliedEndDate(pendingEndDate);
+    if (pendingStartDate || pendingEndDate) {
+      setTimePreset("all");
     }
-  }
+    setDateRangeModalOpen(false);
+  }, [pendingStartDate, pendingEndDate]);
 
-  function handleCopy(text: string, key: string) {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => {
-      setCopiedKey(null);
-    }, 2000);
-  }
+  const clearDateRange = useCallback(() => {
+    setPendingStartDate("");
+    setPendingEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    setDateRangeModalOpen(false);
+  }, []);
+
+  const resetAllTimeFilters = useCallback(() => {
+    setTimePreset("all");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    setPendingStartDate("");
+    setPendingEndDate("");
+  }, []);
+
+  // Dialog: escape closes, background scroll locked while open.
+  useEffect(() => {
+    if (!selectedEvent && !dateRangeModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (dateRangeModalOpen) closeDateRangeModal();
+        else if (selectedEvent) closeDialog();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [selectedEvent, dateRangeModalOpen, closeDialog, closeDateRangeModal]);
+
+  const selected = selectedEvent
+    ? presented.find((p) => p.event.id === selectedEvent.id) ?? null
+    : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Header & Assurance Info */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "1rem",
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <h2 style={{ margin: 0 }}>Statutory Audit Ledger Explorer</h2>
-            <span
-              className="badge badge-routine"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.3rem",
-                fontSize: "0.8rem",
-                padding: "0.2rem 0.6rem",
-              }}
-            >
-              <IconShieldCheck style={{ width: 13, height: 13 }} />
-              <span>Immutable Ledger (§37)</span>
-            </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      {/* Toolbar: Search, Filters & Time Range */}
+      <div className="registry-toolbar" style={{ marginBottom: "0.25rem" }}>
+        <div className="search-filter-group">
+          <div className="search-input-wrap">
+            <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
+            <input
+              type="search"
+              placeholder="Search by action, facility, actor, reference…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input-with-icon"
+              aria-label="Filter activity"
+            />
           </div>
-          <p className="muted" style={{ margin: "0.35rem 0 0 0" }}>
-            Append-only, tamper-evident chronological ledger of all administrative actions and state mutations
-          </p>
+
+          <div className="filter-tabs" role="tablist" aria-label="Activity category filters">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`filter-tab-btn ${categoryFilter === tab.key ? "active" : ""}`}
+                onClick={() => setCategoryFilter(tab.key)}
+                role="tab"
+                aria-selected={categoryFilter === tab.key}
+              >
+                <span>{tab.label}</span>
+                {categoryFilter === tab.key && (
+                  <span className="filter-count-badge">{tab.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-          <span className="muted" style={{ fontSize: "0.85rem" }}>
-            Total Records: <strong>{totalCount}</strong>
-          </span>
+        {/* Time Filters (Top Right) */}
+        <div
+          className="audit-time-toolbar"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+            marginLeft: "auto",
+          }}
+        >
+          {/* Pop-up Date Range Trigger */}
           <button
             type="button"
-            className="btn-secondary"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            style={{ fontSize: "0.85rem", padding: "0.35rem 0.8rem" }}
+            className={`filter-tab-btn ${isCustomRangeActive ? "active" : ""}`}
+            onClick={openDateRangeModal}
+            aria-haspopup="dialog"
+            aria-expanded={dateRangeModalOpen}
+            title={isCustomRangeActive ? "Date range filter active — click to edit" : "Select date range"}
+            style={{
+              padding: "0.42rem 0.75rem",
+              border: isCustomRangeActive
+                ? "1px solid var(--color-navy-brand)"
+                : "1px solid var(--color-border-strong)",
+              background: "var(--bg-surface)",
+              borderRadius: "6px",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.35rem",
+            }}
           >
-            {isRefreshing ? "Refreshing..." : "Refresh Ledger"}
+            <IconCalendar style={{ width: 14, height: 14 }} />
+            <span>Date Range</span>
+            {isCustomRangeActive && (
+              <span className="filter-count-badge">Active</span>
+            )}
           </button>
-        </div>
-      </div>
 
-      {/* Category Pills */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0.4rem",
-          flexWrap: "wrap",
-          paddingBottom: "0.25rem",
-        }}
-      >
-        {CATEGORIES.map((cat) => {
-          const isActive = categoryFilter === cat.id;
-          return (
+          {/* Standard Presets Dropdown (hidden when custom date range is active to save space) */}
+          {!isCustomRangeActive && (
+            <div className="toolbar-select-wrap">
+              <IconClock className="select-icon-svg" style={{ width: 14, height: 14 }} />
+              <select
+                value={timePreset}
+                onChange={(e) => {
+                  const val = e.target.value as TimeRangePreset;
+                  setTimePreset(val);
+                  if (val !== "all") {
+                    setAppliedStartDate("");
+                    setAppliedEndDate("");
+                  }
+                }}
+                className="toolbar-select"
+                aria-label="Filter by standard time range"
+              >
+                {TIME_RANGE_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Quick Reset Button with Icon */}
+          {hasActiveTimeFilter && (
             <button
-              key={cat.id}
               type="button"
-              className={isActive ? "btn-primary" : "btn-secondary"}
+              className="filter-tab-btn"
+              onClick={resetAllTimeFilters}
+              title="Reset time range filter"
+              aria-label="Reset time range filter"
               style={{
-                padding: "0.3rem 0.75rem",
-                fontSize: "0.825rem",
-                borderRadius: "9999px",
+                padding: "0.42rem 0.55rem",
+                border: "1px solid var(--color-border-subtle)",
+                background: "var(--bg-surface)",
+                borderRadius: "6px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text-muted)",
               }}
-              onClick={() => setCategoryFilter(cat.id)}
             >
-              {cat.label}
+              <IconRotateCcw style={{ width: 14, height: 14 }} />
             </button>
-          );
-        })}
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div
-        className="table-card"
-        style={{
-          padding: "1rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "1rem",
-        }}
-      >
-        {/* Search input */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: "1 1 280px" }}>
-          <IconSearch style={{ width: 16, height: 16, color: "var(--color-muted, #9ca3af)" }} />
-          <input
-            type="text"
-            placeholder="Search action, actor ID, resource ID, request ID, IP..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "0.4rem 0.75rem",
-              borderRadius: "6px",
-              border: "1px solid var(--color-border, #d1d5db)",
-              fontSize: "0.85rem",
-              background: "var(--color-surface, #ffffff)",
-              color: "var(--color-text, #111827)",
-            }}
-            aria-label="Search audit events"
-          />
-        </div>
-
-        {/* Resource Filter */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <label htmlFor="resource-filter" className="muted" style={{ fontSize: "0.85rem", whiteSpace: "nowrap" }}>
-            Resource Type:
-          </label>
-          <select
-            id="resource-filter"
-            value={resourceFilter}
-            onChange={(e) => setResourceFilter(e.target.value)}
-            style={{
-              padding: "0.4rem 0.75rem",
-              borderRadius: "6px",
-              border: "1px solid var(--color-border, #d1d5db)",
-              fontSize: "0.85rem",
-              background: "var(--color-surface, #ffffff)",
-              color: "var(--color-text, #111827)",
-            }}
-          >
-            <option value="all">All Resources ({events.length})</option>
-            {availableResourceTypes.map((t) => (
-              <option key={t} value={t}>
-                {t.toUpperCase()}
-              </option>
-            ))}
-          </select>
+          )}
         </div>
       </div>
 
-      {/* Audit Events Table */}
+      {/* Activity table */}
       <div className="table-card" style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ paddingLeft: "1.25rem" }}>Action</th>
-              <th>Actor</th>
-              <th>Resource</th>
-              <th>Traceability (Request / IP)</th>
-              <th>Occurred At</th>
-              <th style={{ textAlign: "right", paddingRight: "1.25rem" }}>Dossier</th>
+              <th style={{ paddingLeft: "1.25rem", width: "140px" }}>Status</th>
+              <th>Activity</th>
+              <th style={{ width: "260px" }}>Performed by</th>
+              <th style={{ textAlign: "right", paddingRight: "1.25rem", width: "190px" }}>Time Stamp</th>
             </tr>
           </thead>
           <tbody>
-            {filteredEvents.length === 0 ? (
+            {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="muted" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
-                  <IconLock style={{ width: 32, height: 32, margin: "0 auto 0.75rem auto", opacity: 0.35 }} />
-                  <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>No matching audit records found</div>
-                  <div style={{ fontSize: "0.825rem", marginTop: "0.25rem" }}>
-                    {searchQuery || categoryFilter !== "all" || resourceFilter !== "all"
-                      ? "Try adjusting your search query, category, or resource filter."
-                      : "No statutory audit events recorded in this environment yet."}
+                <td colSpan={4} className="muted" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+                  <IconLock style={{ width: 28, height: 28, margin: "0 auto 0.75rem auto", opacity: 0.3 }} />
+                  <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                    {searchQuery || categoryFilter !== "all" || hasActiveTimeFilter
+                      ? "No matching activity"
+                      : "No activity yet"}
                   </div>
+                  {searchQuery || categoryFilter !== "all" || hasActiveTimeFilter ? (
+                    <div style={{ fontSize: "0.825rem", marginTop: "0.25rem" }}>
+                      Try adjusting your search, category, or time range filter.
+                    </div>
+                  ) : null}
+                  {searchQuery || categoryFilter !== "all" || hasActiveTimeFilter ? (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ marginTop: "0.75rem", fontSize: "0.8rem", padding: "0.3rem 0.75rem" }}
+                      onClick={() => {
+                        setCategoryFilter("all");
+                        setSearchQuery("");
+                        resetAllTimeFilters();
+                      }}
+                    >
+                      Reset filters
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             ) : (
-              filteredEvents.map((e) => {
-                const badgeClass = getActionBadgeClass(e.action);
+              filtered.map(({ event, activity, actor }) => (
+                <tr
+                  key={event.id}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`View details: ${activity.summary}`}
+                  onClick={() => setSelectedEvent(event)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedEvent(event);
+                    }
+                  }}
+                  style={{ cursor: "pointer" }}
+                  className="audit-row"
+                >
+                  {/* Status (Clean text, no dot) */}
+                  <td style={{ paddingLeft: "1.25rem", whiteSpace: "nowrap", verticalAlign: "middle" }}>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: "0.8125rem",
+                        color: TONE_COLORS[activity.tone].text,
+                        letterSpacing: "0.01em",
+                      }}
+                    >
+                      {activity.status}
+                    </span>
+                  </td>
 
-                return (
-                  <tr key={e.id}>
-                    {/* Action */}
-                    <td style={{ paddingLeft: "1.25rem" }}>
-                      <span
-                        className={`badge ${badgeClass}`}
-                        style={{
-                          fontSize: "0.75rem",
-                          fontFamily: "monospace",
-                        }}
-                      >
-                        {e.action}
-                      </span>
-                    </td>
+                  {/* Activity (Primary summary only, no secondary text) */}
+                  <td
+                    style={{
+                      whiteSpace: "nowrap",
+                      verticalAlign: "middle",
+                      maxWidth: "540px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        fontSize: "0.84rem",
+                        color: "var(--text-primary, #0c2a52)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        display: "block",
+                      }}
+                      title={activity.summary}
+                    >
+                      {activity.summary}
+                    </span>
+                  </td>
 
-                    {/* Actor */}
-                    <td>
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>
-                          {getUserDisplayName(e.actorUserId, "Automated System")}
-                        </span>
-                        {e.actorUserId && (
-                          <span
-                            className="muted"
-                            style={{
-                              fontFamily: "monospace",
-                              fontSize: "0.72rem",
-                              letterSpacing: "-0.3px",
-                            }}
-                            title={e.actorUserId}
-                          >
-                            {e.actorUserId.slice(0, 8)}...
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                  {/* Performed by (Actor account name only, no secondary role text) */}
+                  <td
+                    style={{
+                      whiteSpace: "nowrap",
+                      verticalAlign: "middle",
+                      maxWidth: "240px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "0.8125rem",
+                        fontWeight: 500,
+                        color: actor ? "var(--text-data, #1c3a63)" : "var(--text-muted, #64748b)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        display: "block",
+                      }}
+                      title={actor ? `${actor.account} (${actor.role})` : "System"}
+                    >
+                      {actor ? actor.account : "System"}
+                    </span>
+                  </td>
 
-                    {/* Resource */}
-                    <td>
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span style={{ fontWeight: 500, fontSize: "0.85rem" }}>
-                          {e.resourceType ? e.resourceType.toUpperCase() : "—"}
-                        </span>
-                        {e.resourceId && (
-                          <span
-                            className="muted"
-                            style={{
-                              fontFamily: "monospace",
-                              fontSize: "0.72rem",
-                              letterSpacing: "-0.3px",
-                            }}
-                            title={e.resourceId}
-                          >
-                            {e.resourceId.slice(0, 12)}...
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Request / IP */}
-                    <td className="muted" style={{ fontSize: "0.78rem", fontFamily: "monospace" }}>
-                      <div>{e.requestId ? `#${e.requestId.slice(0, 8)}` : "—"}</div>
-                      <div style={{ fontSize: "0.72rem", opacity: 0.85 }}>{e.ipAddress ?? "—"}</div>
-                    </td>
-
-                    {/* Occurred At */}
-                    <td className="muted" style={{ fontSize: "0.825rem", whiteSpace: "nowrap" }}>
-                      {formatDateTime(e.occurredAt)}
-                    </td>
-
-                    {/* Dossier action */}
-                    <td style={{ textAlign: "right", paddingRight: "1.25rem", whiteSpace: "nowrap" }}>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem" }}
-                        onClick={() => setSelectedEvent(e)}
-                      >
-                        Inspect Dossier
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
+                  {/* Time Stamp (When) */}
+                  <td
+                    className="muted"
+                    style={{
+                      fontSize: "0.8125rem",
+                      whiteSpace: "nowrap",
+                      textAlign: "right",
+                      paddingRight: "1.25rem",
+                      verticalAlign: "middle",
+                      fontVariantNumeric: "tabular-nums",
+                      fontFamily: "var(--font-mono, monospace)",
+                    }}
+                  >
+                    {formatTimestamp(event.occurredAt)}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Tamper-Evident Dossier Inspection Modal */}
-      {selectedEvent && (
+      {/* Detail pop up dialog */}
+      {selected && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="audit-dossier-title"
+          aria-labelledby="audit-detail-title"
           style={{
             position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.45)",
+            inset: 0,
+            background: "rgba(0, 26, 56, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -440,13 +526,13 @@ export function AuditExplorerView({ initialEvents, initialTotal }: AuditExplorer
             padding: "1rem",
           }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedEvent(null);
+            if (e.target === e.currentTarget) closeDialog();
           }}
         >
           <div
             className="table-card"
             style={{
-              maxWidth: "680px",
+              maxWidth: "620px",
               width: "100%",
               maxHeight: "90vh",
               overflowY: "auto",
@@ -455,195 +541,351 @@ export function AuditExplorerView({ initialEvents, initialTotal }: AuditExplorer
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
               display: "flex",
               flexDirection: "column",
-              gap: "1.25rem",
+              gap: "1.15rem",
             }}
           >
-            {/* Modal Header */}
+            {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
-              <div>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.4rem" }}>
-                  <span className={`badge ${getActionBadgeClass(selectedEvent.action)}`} style={{ fontSize: "0.75rem" }}>
-                    {selectedEvent.action}
-                  </span>
-                  <span
-                    className="badge badge-routine"
-                    style={{ fontSize: "0.7rem", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
-                  >
-                    <IconShieldCheck style={{ width: 11, height: 11 }} />
-                    <span>Tamper-Evident Dossier</span>
-                  </span>
-                </div>
-                <h3
-                  id="audit-dossier-title"
-                  style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "var(--color-navy-brand)" }}
-                >
-                  Audit Record: {selectedEvent.action}
-                </h3>
-              </div>
+              <h3
+                id="audit-detail-title"
+                style={{
+                  margin: 0,
+                  fontSize: "1.15rem",
+                  fontWeight: 700,
+                  color: "var(--color-navy-brand, #0c2a52)",
+                  lineHeight: 1.35,
+                }}
+              >
+                {selected.activity.summary}
+              </h3>
               <button
                 type="button"
-                onClick={() => setSelectedEvent(null)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontSize: "1.4rem",
-                  lineHeight: 1,
-                  cursor: "pointer",
-                  color: "var(--color-muted, #6b7280)",
-                }}
-                aria-label="Close dialog"
+                onClick={closeDialog}
+                className="audit-dialog-close"
+                aria-label="Close details"
               >
                 &times;
               </button>
             </div>
 
-            {/* Traceability Metadata Grid */}
+            {/* Unique narrative note (only shown when providing unique context, not when repeating the transition) */}
+            {selected.activity.detail &&
+              !selected.activity.transition &&
+              selected.activity.detail !== selected.activity.summary && (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.875rem",
+                    lineHeight: 1.55,
+                    color: "var(--text-muted, #475569)",
+                  }}
+                >
+                  {selected.activity.detail}
+                </p>
+              )}
+
+            {/* Key Information Table */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: "0.75rem",
-                background: "var(--color-surface-subtle, #f8fafc)",
-                padding: "1rem",
+                border: "1px solid var(--color-border-subtle, #e2e8f0)",
                 borderRadius: "8px",
-                border: "1px solid var(--color-border, #e2e8f0)",
-                fontSize: "0.825rem",
+                overflow: "hidden",
+                background: "var(--bg-surface, #ffffff)",
               }}
             >
-              <div>
-                <div className="muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-                  Event Identifier
-                </div>
-                <div style={{ fontFamily: "monospace", fontSize: "0.78rem", wordBreak: "break-all" }}>
-                  {selectedEvent.id}
-                </div>
-              </div>
+              <table style={{ width: "100%", margin: 0, fontSize: "0.825rem", borderCollapse: "collapse" }}>
+                <tbody>
+                  <tr>
+                    <td className="muted" style={{ width: "32%", padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      Category
+                    </td>
+                    <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-data, #1c3a63)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      {categoryLabel(selected.activity.category)}
+                    </td>
+                  </tr>
 
-              <div>
-                <div className="muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-                  Timestamp (UTC)
-                </div>
-                <div style={{ fontWeight: 500 }}>{formatDateTime(selectedEvent.occurredAt)}</div>
-              </div>
+                  <tr>
+                    <td className="muted" style={{ width: "32%", padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      Status
+                    </td>
+                    <td style={{ padding: "0.6rem 0.9rem", fontWeight: 600, color: TONE_COLORS[selected.activity.tone].text, borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      {selected.activity.status}
+                    </td>
+                  </tr>
 
-              <div>
-                <div className="muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-                  Actor User
-                </div>
-                <div style={{ fontWeight: 500 }}>{selectedEvent.actorUserId ?? "System Automated"}</div>
-              </div>
+                  {selected.activity.transition && (
+                    <tr>
+                      <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                        Transition
+                      </td>
+                      <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-primary, #0c2a52)", fontFamily: "var(--font-mono, monospace)", fontSize: "0.8rem", fontWeight: 600, borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                        {selected.activity.transition}
+                      </td>
+                    </tr>
+                  )}
 
-              <div>
-                <div className="muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-                  Resource Target
-                </div>
-                <div style={{ fontWeight: 500 }}>
-                  {selectedEvent.resourceType ? `${selectedEvent.resourceType.toUpperCase()}` : "—"}
-                  {selectedEvent.resourceId ? ` (${selectedEvent.resourceId.slice(0, 8)})` : ""}
-                </div>
-              </div>
 
-              <div>
-                <div className="muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-                  Trace Request ID
-                </div>
-                <div style={{ fontFamily: "monospace", fontSize: "0.78rem" }}>
-                  {selectedEvent.requestId ?? "—"}
-                </div>
-              </div>
+                  <tr>
+                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      Performed by
+                    </td>
+                    <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-primary, #0c2a52)", fontWeight: 500, borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      {selected.actor ? (
+                        <span>
+                          {selected.actor.account}{" "}
+                          <span className="muted" style={{ fontWeight: 400 }}>· {selected.actor.role}</span>
+                        </span>
+                      ) : (
+                        <span className="muted">System (Automated)</span>
+                      )}
+                    </td>
+                  </tr>
 
-              <div>
-                <div className="muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 600 }}>
-                  Origin Client IP
-                </div>
-                <div style={{ fontFamily: "monospace", fontSize: "0.78rem" }}>
-                  {selectedEvent.ipAddress ?? "—"}
-                </div>
-              </div>
+                  {selected.activity.subject && (
+                    <tr>
+                      <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                        Facility / Target
+                      </td>
+                      <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-data, #1c3a63)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                        {selected.activity.subject}
+                      </td>
+                    </tr>
+                  )}
+
+                  <tr>
+                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      Action Code
+                    </td>
+                    <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.78rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      {selected.event.action}
+                    </td>
+                  </tr>
+
+                  {selected.activity.context
+                    .filter(
+                      (c) =>
+                        c.label !== "Performed by" &&
+                        c.label !== "Account" &&
+                        c.label !== "Facility / project" &&
+                        c.label !== "Facility / Target" &&
+                        c.value !== selected.activity.subject,
+                    )
+                    .map((item) => (
+                      <tr key={item.label}>
+                        <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                          {item.label}
+                        </td>
+                        <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-data, #1c3a63)" }}>
+                          {item.value}
+                        </td>
+                      </tr>
+                    ))}
+
+                  {selected.event.ipAddress && (
+                    <tr>
+                      <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                        IP Address
+                      </td>
+                      <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.78rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                        {selected.event.ipAddress}
+                      </td>
+                    </tr>
+                  )}
+
+                  <tr>
+                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      Time Stamp
+                    </td>
+                    <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.8rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      {formatTimestamp(selected.event.occurredAt)}
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)" }}>
+                      Event ID
+                    </td>
+                    <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.75rem", wordBreak: "break-all" }}>
+                      {selected.event.id}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            {/* Mutation Metadata Payload Viewer */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-navy-brand)" }}>
-                  Mutation Metadata & Audit State Payload
-                </span>
-                {selectedEvent.metadata && (
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    style={{ padding: "0.2rem 0.5rem", fontSize: "0.72rem" }}
-                    onClick={() => handleCopy(JSON.stringify(selectedEvent.metadata, null, 2), "payload")}
-                  >
-                    {copiedKey === "payload" ? "Copied!" : "Copy JSON"}
-                  </button>
-                )}
-              </div>
-
-              <div
-                style={{
-                  background: "#0f172a",
-                  color: "#e2e8f0",
-                  padding: "1rem",
-                  borderRadius: "6px",
-                  fontSize: "0.8rem",
-                  fontFamily: "monospace",
-                  lineHeight: 1.5,
-                  overflowX: "auto",
-                  maxHeight: "260px",
-                }}
-              >
-                {selectedEvent.metadata ? (
-                  <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                    {JSON.stringify(selectedEvent.metadata, null, 2)}
-                  </pre>
-                ) : (
-                  <span style={{ color: "#94a3b8", fontStyle: "italic" }}>
-                    No state mutation payload captured for this audit event.
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Statutory Compliance Note */}
-            <div
-              style={{
-                display: "flex",
-                gap: "0.6rem",
-                padding: "0.75rem 1rem",
-                background: "#f0fdf4",
-                borderRadius: "6px",
-                border: "1px solid #bbf7d0",
-                fontSize: "0.8rem",
-                lineHeight: 1.5,
-                color: "#166534",
-              }}
-            >
-              <IconShieldCheck style={{ width: 16, height: 16, flexShrink: 0, marginTop: "2px" }} />
-              <span>
-                <strong>Statutory Integrity Guarantee:</strong> In accordance with DoSJE operating standards (§37, §38),
-                all audit entries are immutable, cryptographically verifiable, and permanently retained in PostgreSQL.
-              </span>
-            </div>
-
-            {/* Modal Actions */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "0.25rem" }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => handleCopy(selectedEvent.id, "id")}
-                style={{ fontSize: "0.85rem" }}
-              >
-                {copiedKey === "id" ? "Copied ID!" : "Copy Event ID"}
-              </button>
+            {/* Footer */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => setSelectedEvent(null)}
-                style={{ fontSize: "0.85rem" }}
+                onClick={closeDialog}
+                style={{ fontSize: "0.85rem", padding: "0.4rem 1.1rem" }}
               >
-                Close Dossier
+                Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date Range Pop-up Modal */}
+      {dateRangeModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="date-range-dialog-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(12, 42, 82, 0.45)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "1.5rem",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeDateRangeModal();
+          }}
+        >
+          <div
+            className="table-card"
+            style={{
+              maxWidth: "400px",
+              width: "100%",
+              padding: "1.5rem",
+              borderRadius: "10px",
+              boxShadow: "0 20px 40px -10px rgba(12, 42, 82, 0.25), 0 1px 3px rgba(0, 0, 0, 0.08)",
+              background: "var(--bg-surface)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1.25rem",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <IconCalendar style={{ width: 18, height: 18, color: "var(--color-navy-brand)" }} />
+                <h3
+                  id="date-range-dialog-title"
+                  style={{
+                    margin: 0,
+                    fontSize: "1.05rem",
+                    fontWeight: 700,
+                    color: "var(--color-navy-brand)",
+                  }}
+                >
+                  Select Date Range
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="audit-dialog-close"
+                onClick={closeDateRangeModal}
+                aria-label="Close date range dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Inputs */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+              <div>
+                <label
+                  htmlFor="audit-filter-start-date"
+                  style={{
+                    display: "block",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    marginBottom: "0.35rem",
+                  }}
+                >
+                  Start Date (From)
+                </label>
+                <input
+                  id="audit-filter-start-date"
+                  type="date"
+                  className="toolbar-date-input"
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                  value={pendingStartDate}
+                  max={pendingEndDate || undefined}
+                  onChange={(e) => setPendingStartDate(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="audit-filter-end-date"
+                  style={{
+                    display: "block",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    marginBottom: "0.35rem",
+                  }}
+                >
+                  End Date (To)
+                </label>
+                <input
+                  id="audit-filter-end-date"
+                  type="date"
+                  className="toolbar-date-input"
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                  value={pendingEndDate}
+                  min={pendingStartDate || undefined}
+                  onChange={(e) => setPendingEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              {pendingStartDate || pendingEndDate || appliedStartDate || appliedEndDate ? (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ fontSize: "0.82rem", padding: "0.4rem 0.6rem", color: "var(--text-muted)" }}
+                  onClick={clearDateRange}
+                >
+                  Clear Range
+                </button>
+              ) : (
+                <div />
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ fontSize: "0.85rem", padding: "0.4rem 0.9rem" }}
+                  onClick={closeDateRangeModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{ fontSize: "0.85rem", padding: "0.4rem 1.1rem" }}
+                  onClick={applyDateRange}
+                  disabled={!pendingStartDate && !pendingEndDate}
+                >
+                  Apply
+                </button>
+              </div>
             </div>
           </div>
         </div>

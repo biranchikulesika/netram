@@ -533,6 +533,18 @@ export const cctvStreams = pgTable("cctv_streams", {
   startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // ---- Phase 4 session lifecycle (docs/history/cctv-phase-4.md) ----
+  /** MediaMTX path the playback token is scoped to (media-plane contract). */
+  mediaPath: varchar("media_path", { length: 200 }),
+  /** SHA-256 of the playback token; plaintext is never persisted (§22). */
+  tokenHash: varchar("token_hash", { length: 64 }),
+  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+  /** Token expiry; the sweeper never ends a session before this. */
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  /** "viewer" | "sweeper" | "admin" — who drove the end. */
+  endedBy: varchar("ended_by", { length: 20 }),
+  /** "viewer_stop" | "token_expired" | "heartbeat_timeout" | "admin_revoke". */
+  endReason: varchar("end_reason", { length: 40 }),
 });
 
 /* ---------- Video Conferencing ---------- */
@@ -581,30 +593,6 @@ export const notifications = pgTable("notifications", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-/* ---------- Audit ---------- */
-
-/* ---------- Reports ---------- */
-
-export const reports = pgTable("reports", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  inspectionId: uuid("inspection_id")
-    .notNull()
-    .references(() => inspections.id),
-  format: varchar("format", { length: 20 }).notNull().default("json"),
-  status: varchar("status", { length: 20 }).notNull().default("requested"),
-  requestedBy: uuid("requested_by").references(() => users.id),
-  requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
-  artifact: json("artifact").$type<Record<string, unknown>>(),
-  storageRef: varchar("storage_ref", { length: 300 }),
-  generatedBy: uuid("generated_by").references(() => users.id),
-  generatedAt: timestamp("generated_at", { withTimezone: true }),
-  error: text("error"),
-  finalizedBy: uuid("finalized_by").references(() => users.id),
-  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- Audit ---------- */
@@ -1054,6 +1042,7 @@ export const fundAllocations = pgTable(
     sanctionedById: uuid("sanctioned_by_id").references(() => users.id),
     sanctionedAt: timestamp("sanctioned_at", { withTimezone: true }),
     status: varchar("status", { length: 20 }).notNull().default("active"),
+    scheme: text("scheme"),
     description: text("description"),
     notes: text("notes"),
     createdById: uuid("created_by_id").references(() => users.id),

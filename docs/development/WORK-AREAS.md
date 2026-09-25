@@ -1,7 +1,7 @@
 # Work Areas
 
-Detailed file scope, responsibilities, and dependencies for each parallel work area.
-
+Detailed file scope, responsibilities, and dependencies for each parallel work
+area. Team ownership table: [`../OWNERSHIP.md`](../OWNERSHIP.md).
 ---
 
 ## Area 1: Web Platform
@@ -20,13 +20,17 @@ apps/web/
     control-room/     # CCTV grid, anomaly review, attendance overview
     complaints/       # Complaint intake
     corrective-actions/# Corrective action tracking
-    reports/          # Report status
     audit/            # Audit trail view
     notifications/    # In-app notifications
     admin/            # Administration
     components/       # nav-header, realtime-provider, camera-card, etc.
   lib/
     api.ts            # Shared API/session helpers
+    cctv-player.ts    # Production WHEP playback controller
+    use-cctv-live-stream.ts # CCTV session lifecycle hook (create/heartbeat/cleanup)
+    hls-playlist.ts   # HLS playlist rewriter for the same-origin HLS proxy
+  app/api/
+    cctv/             # Same-origin CCTV proxies (streams, WHEP, HLS, heartbeat)
   next.config.mjs     # Next.js configuration
   globals.css         # Styling
   package.json        # Dependencies (next, react, @netram/api-client, @netram/types)
@@ -39,7 +43,7 @@ packages/ui/
 - All SSR pages and layouts (website, workspace views, authentication, dashboards)
 - Server Components (default) and Client Components (interaction, hooks, realtime UI)
 - Browser-side API calls via `@netram/api-client`
-- Responsive layout, accessibility, image optimization (`next/image`)
+- Responsive layout, accessibility, image optimisation (`next/image`)
 - No business logic in components; no direct database access; no backend-only imports
 
 ### Key contracts consumed
@@ -171,7 +175,6 @@ services/api/
       observations/   # Inspector observations
       projects/       # Project lifecycle
       realtime/       # Token exchange for WS auth
-      reports/        # Report generation
       user-admin/     # User/role management
       vc/             # Video conferencing
     app.ts            # Fastify app setup + middleware
@@ -180,7 +183,6 @@ services/api/
     run-workers.ts    # Worker pool launcher
     outbox-dispatcher.worker.ts  # Outbox → notification queue
     notification.worker.ts       # Notification delivery
-    report.worker.ts             # Report generation
     attendance-export.worker.ts  # Attendance data export
     scheduled-jobs.worker.ts     # Cron-like scheduled tasks
 
@@ -205,10 +207,10 @@ packages/config/src/      # Centralized env config (server, client, realtime, cc
 ### Responsibilities
 
 - REST API under `/api/v1/` (73 routes — see `docs/contracts/README.md`)
-- Application and domain logic (state transitions, authorization, audit, outbox)
+- Application and domain logic (state transitions, authorisation, audit, outbox)
 - Database schema, migrations, seed data
 - Repository implementations (all DB access confined to `packages/data`)
-- Background workers (outbox dispatch, notifications, reports, attendance export, scheduled jobs)
+- Background workers (outbox dispatch, notifications, attendance export, scheduled jobs)
 - No business logic in route handlers; no DB queries outside `packages/data`
 
 ### Key contracts owned
@@ -224,7 +226,7 @@ packages/config/src/      # Centralized env config (server, client, realtime, cc
 
 ### Domain modules (have `domain/` folder)
 
-`ai-anomalies`, `attendance`, `audit`, `complaints`, `corrective-actions`, `evidence`, `findings`, `inspections`, `notifications`, `observations`, `projects`, `reports`, `vc`
+`ai-anomalies`, `attendance`, `audit`, `complaints`, `corrective-actions`, `evidence`, `findings`, `inspections`, `notifications`, `observations`, `projects`, `vc`
 
 ### Orchestration-only modules (no `domain/` folder)
 
@@ -283,7 +285,9 @@ services/cctv-gateway/
       provider.ts     # CameraProvider interface
       simulated-provider.ts  # Simulated camera for dev/testing
     auth/             # Stream token signing/verification
-    server.ts         # Fastify server (health, cameras, health, streams, snapshots)
+    mediamtx/         # MediaMTX control client + media control service
+    server.ts         # Fastify server (media control plane: paths, health,
+                      # stats, token verify, reader correlation/kick)
 
 services/realtime/
   src/
@@ -303,15 +307,16 @@ services/realtime/
 - AI results are reviewable — never make authoritative decisions (no auto-suspension, no fraud declaration)
 
 **CCTV Gateway:**
+- Media **control plane** (docs/architecture/cctv.md): MediaMTX path
+  provisioning, real health, statistics, playback-token verification,
+  WebRTC-reader correlation and kick. Carries no media bytes.
 - Provider abstraction (camera operations behind `CameraProvider` interface)
-- Authorized stream relay (signed tokens, short-lived URLs)
-- Stream health monitoring
 - Raw RTSP credentials never exposed to clients
 
 **Realtime service:**
 - Outbox poller reads `pending` events from `outbox_events` table
 - Broadcasts events to WebSocket subscribers based on topic subscriptions
-- Authorization via JWT → allowed topics
+- Authorisation via JWT → allowed topics
 - Delivery only — never authority; clients resync from API after reconnect
 
 ### Key contracts consumed
@@ -343,7 +348,7 @@ The `outbox_events` table is consumed by **two independent pollers**:
 1. The realtime outpoller (`services/realtime/src/outbox-poller.ts`) — broadcasts to WS subscribers.
 2. The outbox dispatcher worker (`services/api/workers/outbox-dispatcher.worker.ts`) — enqueues to BullMQ for notifications.
 
-Both use a blind `SELECT` without `FOR UPDATE SKIP LOCKED` (`packages/data/src/repositories/outbox.repository.ts:69`). Whichever consumer claims the row first marks it processed; the other consumer does not see it. This is a documented race — not a product defect — but it means realtime event delivery may be delayed or missed when the worker pool is active. Delivery is verified via DB-persisted outbox rows and the realtime hub unit test (`services/realtime/src/hub.test.ts`).
+Both use a blind `SELECT` without `FOR UPDATE SKIP LOCKED`. Whichever consumer claims the row first marks it processed; the other consumer does not see it. This is a documented race — not a product defect — but it means realtime event delivery may be delayed or missed when the worker pool is active. Delivery is verified via DB-persisted outbox rows and the realtime hub unit test (`services/realtime/src/hub.test.ts`).
 
 ### Parallel rules
 
@@ -355,9 +360,10 @@ Both use a blind `SELECT` without `FOR UPDATE SKIP LOCKED` (`packages/data/src/r
 ### Verification
 
 - `pytest` in `services/ai` (Python service) — run from `services/ai`
-- `pnpm --filter @netram/cctv-gateway typecheck && pnpm --filter @netram/cctv-gateway test` (12 tests)
-- `pnpm --filter @netram/realtime typecheck && pnpm --filter @netram/realtime test` (1 test)
-- `pnpm verify:runtime:cctv` (requires API on 3001 + gateway on 3003)
+- `pnpm --filter @netram/cctv-gateway typecheck && pnpm --filter @netram/cctv-gateway test`
+- `pnpm --filter @netram/realtime typecheck && pnpm --filter @netram/realtime test`
+- `pnpm verify:runtime:cctv-phase2` … `-phase5` (media suites; see
+  docs/architecture/cctv.md §10)
 - `pnpm verify:runtime:evidence` (requires API on 3001 + realtime on 3002 + MinIO on 9000)
 
 ---
@@ -376,15 +382,20 @@ scripts/
   architecture-check.mjs   # Boundary guard script
   security-check.mjs       # Secret/security scan
   verify-web-runtime.ts    # Web runtime verifier
-  verify-cctv-runtime.ts   # CCTV runtime verifier
+  verify-cctv-runtime.ts   # CCTV runtime verifier (control plane)
+  verify-cctv-phase-*.ts   # CCTV media suites (phases 2–5)
+  measure-cctv-latency.ts  # CCTV latency decomposition
   verify-evidence-runtime.ts  # Evidence runtime verifier
   verify-mobile-offline-runtime.ts  # Mobile runtime verifier
   verify-workers-runtime.ts  # Worker runtime verifier
 docs/
   architecture/README.md    # Architecture overview
+  architecture/cctv.md      # CCTV current architecture
   domain/README.md          # Domain model reference
   contracts/README.md       # API contract inventory
+  deployment.md             # Deployment status (implemented vs planned)
   development/setup.md      # Environment setup
+  history/                  # Historical implementation records
   OWNERSHIP.md              # Team ownership
   decisions/                # Architecture decision records
 ```

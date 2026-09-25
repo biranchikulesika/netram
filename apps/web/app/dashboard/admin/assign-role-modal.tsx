@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type {
   AssignmentScope,
   JurisdictionView,
@@ -8,6 +8,7 @@ import type {
   RoleView,
   UserAdminView,
 } from "@netram/types";
+import { formatRoleTitle } from "../../../lib/presentation";
 
 export interface AssignRoleModalProps {
   user: UserAdminView | null;
@@ -36,9 +37,21 @@ export function AssignRoleModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen || !user) return null;
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      if (roles.length > 0 && !roles.some((r) => r.code === selectedRoleCode)) {
+        const firstRole = roles[0];
+        if (firstRole?.code) setSelectedRoleCode(firstRole.code);
+      }
+      if (jurisdictions.length > 0 && !jurisdictions.some((j) => j.id === selectedJurisdictionId)) {
+        const firstJurisdiction = jurisdictions[0];
+        if (firstJurisdiction?.id) setSelectedJurisdictionId(firstJurisdiction.id);
+      }
+    }
+  }, [isOpen, user, roles, jurisdictions, selectedRoleCode, selectedJurisdictionId]);
 
-  const selectedRole = roles.find((r) => r.code === selectedRoleCode);
+  if (!isOpen || !user) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,11 +110,11 @@ export function AssignRoleModal({
       <div
         className="modal-content"
         style={{
-          maxWidth: "540px",
+          maxWidth: "440px",
           width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          borderRadius: "10px",
+          padding: "1.25rem",
         }}
       >
         {/* Modal Header */}
@@ -110,38 +123,25 @@ export function AssignRoleModal({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            borderBottom: "1px solid #e2e8f0",
+            borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)",
             paddingBottom: "0.85rem",
-            marginBottom: "1rem",
+            marginBottom: "1.2rem",
           }}
         >
           <div>
-            <span
-              style={{
-                fontSize: "0.72rem",
-                fontFamily: "var(--font-mono)",
-                background: "#f1f5f9",
-                padding: "0.15rem 0.4rem",
-                borderRadius: "4px",
-                color: "#475569",
-                fontWeight: 600,
-              }}
-            >
-              OPERATOR IDENTITY
-            </span>
             <h3
               id="modal-assign-role-title"
               style={{
-                margin: "0.4rem 0 0",
+                margin: 0,
                 fontSize: "1.15rem",
                 fontWeight: 700,
                 color: "var(--color-navy-brand)",
               }}
             >
-              Assign Scoped Role
+              Assign Role
             </h3>
             <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.82rem" }}>
-              {user.displayName || "Operator"} &bull; {user.email}
+              {user.displayName ? `${user.displayName} • ${user.email}` : user.email}
             </p>
           </div>
 
@@ -149,13 +149,14 @@ export function AssignRoleModal({
             type="button"
             onClick={onClose}
             style={{
-              background: "none",
+              background: "transparent",
               border: "none",
-              fontSize: "1.4rem",
-              color: "#64748b",
+              fontSize: "1.35rem",
+              color: "var(--text-muted, #64748b)",
               cursor: "pointer",
-              padding: "0.2rem 0.5rem",
+              padding: "0.2rem 0.4rem",
               lineHeight: 1,
+              borderRadius: "4px",
             }}
             aria-label="Close dialog"
           >
@@ -170,7 +171,7 @@ export function AssignRoleModal({
               background: "#fee2e2",
               border: "1px solid #fca5a5",
               borderRadius: "6px",
-              padding: "0.65rem 0.85rem",
+              padding: "0.6rem 0.85rem",
               marginBottom: "1rem",
               color: "#991b1b",
               fontSize: "0.82rem",
@@ -182,113 +183,134 @@ export function AssignRoleModal({
 
         <form onSubmit={handleSubmit}>
           {/* Role Selection */}
-          <div style={{ marginBottom: "1.25rem" }}>
+          <div style={{ marginBottom: "1.15rem" }}>
             <label
               htmlFor="assign-role-select"
               style={{
                 display: "block",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "#334155",
-                marginBottom: "0.35rem",
+                color: "var(--color-navy-brand, #0f2d59)",
+                marginBottom: "0.4rem",
               }}
             >
-              Select Authoritative Role:
+              Role
             </label>
-            <select
-              id="assign-role-select"
-              value={selectedRoleCode}
-              onChange={(e) => setSelectedRoleCode(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.55rem 0.75rem",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontSize: "0.85rem",
-                background: "#ffffff",
-                boxSizing: "border-box",
-              }}
-            >
-              {roles.map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.name} ({r.code})
-                </option>
-              ))}
-            </select>
-
-            {selectedRole && (
-              <div
+            <div style={{ position: "relative" }}>
+              <select
+                id="assign-role-select"
+                value={selectedRoleCode}
+                onChange={(e) => setSelectedRoleCode(e.target.value)}
                 style={{
-                  marginTop: "0.5rem",
-                  padding: "0.5rem 0.75rem",
-                  background: "#f8fafc",
-                  borderRadius: "6px",
-                  border: "1px solid #e2e8f0",
-                  fontSize: "0.78rem",
-                  color: "#475569",
+                  width: "100%",
+                  padding: "0.6rem 2.25rem 0.6rem 0.85rem",
+                  borderRadius: "7px",
+                  border: "1px solid var(--color-border-subtle, #cbd5e1)",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: "var(--text-primary, #0f172a)",
+                  background: "var(--bg-surface, #ffffff)",
+                  boxSizing: "border-box",
+                  appearance: "none",
+                  cursor: "pointer",
+                  outline: "none",
                 }}
               >
-                Grants <strong>{selectedRole.permissions.length}</strong> permissions under policy:{" "}
-                <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-navy-brand)" }}>
-                  {selectedRole.code}
-                </span>
+                {roles.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {formatRoleTitle(r.code, r.name)}
+                  </option>
+                ))}
+              </select>
+              <div
+                style={{
+                  position: "absolute",
+                  right: "0.85rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  color: "var(--text-muted, #64748b)",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Scope Selection */}
-          <div style={{ marginBottom: "1.25rem" }}>
+          {/* Scope Selection (Segmented Control) */}
+          <div style={{ marginBottom: "1.15rem" }}>
             <label
               style={{
                 display: "block",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "#334155",
-                marginBottom: "0.5rem",
+                color: "var(--color-navy-brand, #0f2d59)",
+                marginBottom: "0.4rem",
               }}
             >
-              Jurisdiction Authorization Boundary (&sect;16, &sect;17):
+              Scope
             </label>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <label
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                background: "var(--bg-subtle, #f1f5f9)",
+                padding: "0.25rem",
+                borderRadius: "8px",
+                border: "1px solid var(--color-border-subtle, #e2e8f0)",
+                gap: "0.25rem",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setScope("jurisdiction")}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
+                  padding: "0.45rem 0.75rem",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  borderRadius: "6px",
+                  border: "none",
                   cursor: "pointer",
-                  fontSize: "0.85rem",
-                  color: "#1e293b",
+                  background: scope === "jurisdiction" ? "#ffffff" : "transparent",
+                  color:
+                    scope === "jurisdiction"
+                      ? "var(--color-navy-brand, #0f2d59)"
+                      : "var(--text-secondary, #64748b)",
+                  boxShadow: scope === "jurisdiction" ? "0 1px 3px rgba(0, 0, 0, 0.08)" : "none",
+                  transition: "all 0.15s ease",
                 }}
               >
-                <input
-                  type="radio"
-                  name="assignScope"
-                  checked={scope === "jurisdiction"}
-                  onChange={() => setScope("jurisdiction")}
-                  style={{ accentColor: "var(--color-navy-brand)" }}
-                />
-                <span>Jurisdiction-Scoped (District / State)</span>
-              </label>
-
-              <label
+                Jurisdiction
+              </button>
+              <button
+                type="button"
+                onClick={() => setScope("national")}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
+                  padding: "0.45rem 0.75rem",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  borderRadius: "6px",
+                  border: "none",
                   cursor: "pointer",
-                  fontSize: "0.85rem",
-                  color: "#1e293b",
+                  background: scope === "national" ? "#ffffff" : "transparent",
+                  color:
+                    scope === "national"
+                      ? "var(--color-navy-brand, #0f2d59)"
+                      : "var(--text-secondary, #64748b)",
+                  boxShadow: scope === "national" ? "0 1px 3px rgba(0, 0, 0, 0.08)" : "none",
+                  transition: "all 0.15s ease",
                 }}
               >
-                <input
-                  type="radio"
-                  name="assignScope"
-                  checked={scope === "national"}
-                  onChange={() => setScope("national")}
-                  style={{ accentColor: "var(--color-navy-brand)" }}
-                />
-                <span>National (Unrestricted)</span>
-              </label>
+                National
+              </button>
             </div>
           </div>
 
@@ -301,35 +323,59 @@ export function AssignRoleModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "#334155",
-                  marginBottom: "0.35rem",
+                  color: "var(--color-navy-brand, #0f2d59)",
+                  marginBottom: "0.4rem",
                 }}
               >
-                Target Jurisdiction: <span style={{ color: "#dc2626" }}>*</span>
+                Jurisdiction
               </label>
-              <select
-                id="assign-jurisdiction-select"
-                value={selectedJurisdictionId}
-                onChange={(e) => setSelectedJurisdictionId(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "0.55rem 0.75rem",
-                  borderRadius: "6px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.85rem",
-                  background: "#ffffff",
-                  boxSizing: "border-box",
-                }}
-              >
-                {jurisdictions.map((j) => (
-                  <option key={j.id} value={j.id}>
-                    {j.name} ({j.code}) &mdash; {j.scopeLevel}
-                  </option>
-                ))}
-              </select>
-              <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.74rem" }}>
-                Under &sect;17, this operator will only possess authoritative powers for resources situated inside this specific boundary.
-              </p>
+              <div style={{ position: "relative" }}>
+                <select
+                  id="assign-jurisdiction-select"
+                  value={selectedJurisdictionId}
+                  onChange={(e) => setSelectedJurisdictionId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.6rem 2.25rem 0.6rem 0.85rem",
+                    borderRadius: "7px",
+                    border: "1px solid var(--color-border-subtle, #cbd5e1)",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "var(--text-primary, #0f172a)",
+                    background: "var(--bg-surface, #ffffff)",
+                    boxSizing: "border-box",
+                    appearance: "none",
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  {jurisdictions.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.name} ({j.code})
+                    </option>
+                  ))}
+                </select>
+                <div
+                  style={{
+                    position: "absolute",
+                    right: "0.85rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    pointerEvents: "none",
+                    color: "var(--text-muted, #64748b)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
             </div>
           )}
 
@@ -338,9 +384,10 @@ export function AssignRoleModal({
             style={{
               display: "flex",
               justifyContent: "flex-end",
-              gap: "0.75rem",
-              borderTop: "1px solid #e2e8f0",
+              gap: "0.6rem",
+              borderTop: "1px solid var(--color-border-subtle, #e2e8f0)",
               paddingTop: "0.85rem",
+              marginTop: "0.5rem",
             }}
           >
             <button
@@ -348,7 +395,11 @@ export function AssignRoleModal({
               onClick={onClose}
               className="btn-secondary"
               disabled={isSubmitting}
-              style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+              style={{
+                padding: "0.45rem 1rem",
+                fontSize: "0.82rem",
+                borderRadius: "6px",
+              }}
             >
               Cancel
             </button>
@@ -357,9 +408,11 @@ export function AssignRoleModal({
               disabled={isSubmitting}
               className="btn-primary"
               style={{
-                padding: "0.5rem 1.25rem",
-                fontSize: "0.85rem",
-                background: "var(--color-navy-brand)",
+                padding: "0.45rem 1.25rem",
+                fontSize: "0.82rem",
+                borderRadius: "6px",
+                background: "var(--color-navy-brand, #0f2d59)",
+                borderColor: "var(--color-navy-brand, #0f2d59)",
               }}
             >
               {isSubmitting ? "Assigning..." : "Assign Role"}

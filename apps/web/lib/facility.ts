@@ -8,7 +8,6 @@ import type {
   AttendanceOverviewItem,
   AttendanceAnomaly,
   AIAnomaly,
-  Report,
   AuditEvent,
   PublicCctvCamera,
   ProjectRiskSnapshot,
@@ -20,10 +19,10 @@ import { getClient } from "./api";
  *
  * A facility is the primary operational context. These helpers serve one
  * facility's aspects (inspections, complaints, monitoring, attendance,
- * corrective actions, reports, activity) from the existing REST API so the
+ * corrective actions, activity) from the existing REST API so the
  * facility hub can present them without duplicating global navigation.
  *
- * APIs without a native project filter (AI anomalies, reports, corrective
+ * APIs without a native project filter (AI anomalies, corrective
  * actions, CCTV) are scoped here by following the facility's own records
  * (inspection/project context). Server-side jurisdiction still applies at the
  * API layer; these filters only narrow to the current facility.
@@ -38,7 +37,6 @@ const EMPTY_CORRECTIVE_ACTIONS = {
   pageSize: 0,
 };
 const EMPTY_ANOMALIES = { items: [] as AIAnomaly[], total: 0, page: 1, pageSize: 0 };
-const EMPTY_REPORTS = { items: [] as Report[], total: 0, page: 1, pageSize: 0 };
 const EMPTY_AUDIT = {
   items: [] as AuditEvent[],
   total: 0,
@@ -145,17 +143,6 @@ export async function getFacilityAttendance(projectId: string): Promise<{
       .catch(() => EMPTY_ATTENDANCE_ANOMALIES),
   ]);
   return { overview: overview.items, anomalies: anomalies.items };
-}
-
-export async function getFacilityReports(
-  projectCode: string,
-  projectName: string,
-): Promise<Report[]> {
-  const client = await getClient();
-  const page = await client.listReports({ pageSize: 100 }).catch(() => EMPTY_REPORTS);
-  return page.items.filter(
-    (r) => r.projectCode === projectCode || r.projectName === projectName,
-  );
 }
 
 export async function getFacilityAudit(projectId: string): Promise<AuditEvent[]> {

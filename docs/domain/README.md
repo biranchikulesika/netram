@@ -20,7 +20,7 @@ Report · AIAnomaly · AuditEvent · DomainEvent
   authority in one district and none in another.
 - **Scope** — `national` (unrestricted) or `jurisdiction`-limited.
 
-Authorization is centralized (`AuthorizationService`) and re-evaluated
+Authorisation is centralised (`AuthorizationService`) and re-evaluated
 server-side on every request; never trust client-side UI hiding (AGENTS.md §16,
 §34).
 
@@ -36,7 +36,7 @@ decisions. The mobile app never performs authority-level decisions
 Draft → Pending Verification → Approved → Active ↔ Suspended → Closed → Archived
 ```
 
-Transitions are explicit, authorized, audited, and enforced by
+Transitions are explicit, authorised, audited, and enforced by
 `evaluateTransition` (`services/api/src/modules/projects/domain/project.ts`).
 Invalid transitions are rejected.
 

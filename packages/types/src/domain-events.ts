@@ -41,8 +41,6 @@ export const DOMAIN_EVENT_TYPES = [
   "ai.anomaly_investigated",
   "ai.anomaly_acted",
   "notification.created",
-  "report.requested",
-  "report.generated",
   "user.status_changed",
   "user.role_assigned",
   "user.role_unassigned",

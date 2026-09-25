@@ -11,7 +11,6 @@ import {
   AiAnomalyRepository,
   InspectionAssignmentRepository,
   NotificationRepository,
-  ReportRepository,
   AuditRepository,
   OutboxRepository,
   UserRepository,
@@ -22,7 +21,6 @@ import {
   CctvRepository,
   VcSessionRepository,
   AttendanceRepository,
-  AnalyticsRepository,
   FundRepository,
   ExpenseRepository,
   FinancialDocumentRepository,
@@ -36,7 +34,6 @@ import { AuthService } from "../modules/auth/application/auth-service.js";
 import { DevAuthProvider } from "../modules/auth/infrastructure/providers/dev-auth-provider.js";
 import { SupabaseAuthProvider } from "../modules/auth/infrastructure/providers/supabase-auth-provider.js";
 import { AuthorizationService } from "../modules/authorization/application/authorization-service.js";
-import { AnalyticsService } from "../modules/analytics/application/analytics-service.js";
 import { ProjectService } from "../modules/projects/application/project-service.js";
 import { ProjectPhotoService } from "../modules/projects/application/project-photo-service.js";
 import { InspectionService } from "../modules/inspections/application/inspection-service.js";
@@ -50,13 +47,11 @@ import { AuditService } from "../modules/audit/application/audit-service.js";
 import { AiAnomalyService } from "../modules/ai-anomalies/application/ai-anomaly-service.js";
 import { InspectionAssignmentService } from "../modules/assignments/application/inspection-assignment-service.js";
 import { NotificationService } from "../modules/notifications/application/notification-service.js";
-import { ReportService } from "../modules/reports/application/report-service.js";
 import { UserAdminService } from "../modules/user-admin/application/user-admin-service.js";
 import { RegistryService } from "../modules/registry/application/registry-service.js";
 import { CctvService } from "../modules/cctv/application/cctv-service.js";
 import { VcService } from "../modules/vc/application/vc-service.js";
 import { WebRtcMeshProvider } from "../modules/vc/infrastructure/providers/webrtc-mesh-provider.js";
-import { BullReportJobQueue } from "../modules/reports/infrastructure/bull-report-job-queue.js";
 import { AttendanceService } from "../modules/attendance/application/attendance-service.js";
 import { BiometricSimulatorProvider } from "../modules/attendance/infrastructure/providers/biometric-simulator.js";
 import { BullAttendanceExportJobQueue } from "../modules/attendance/infrastructure/bull-attendance-export-job-queue.js";
@@ -91,7 +86,6 @@ export interface Container {
   aiAnomalyService: AiAnomalyService;
   inspectionAssignmentService: InspectionAssignmentService;
   notificationService: NotificationService;
-  reportService: ReportService;
   userAdminService: UserAdminService;
   registryService: RegistryService;
   cctvService: CctvService;
@@ -101,7 +95,6 @@ export interface Container {
   auditRepo: AuditRepository;
   outboxRepo: OutboxRepository;
   attendanceService: AttendanceService;
-  analyticsService: AnalyticsService;
   fundService: FundService;
   expenseService: ExpenseService;
   financialDocumentService: FinancialDocumentService;
@@ -140,7 +133,6 @@ export function buildContainer(config: AppConfig): Container {
   const aiAnomalyRepo = new AiAnomalyRepository(db);
   const inspectionAssignmentRepo = new InspectionAssignmentRepository(db);
   const notificationRepo = new NotificationRepository(db);
-  const reportRepo = new ReportRepository(db);
 
   const syncRepo = new InspectionSyncRepository(db);
 
@@ -218,13 +210,6 @@ export function buildContainer(config: AppConfig): Container {
     authz: authorizationService,
     providers: [notificationRegistry.get("in_app")],
   });
-  const reportJobs = new BullReportJobQueue(config.REDIS_URL);
-  const reportService = new ReportService(
-    authorizationService,
-    inspectionService,
-    reportRepo,
-    reportJobs,
-  );
   const userAdminRepo = new UserAdminRepository(db);
   const userAdminService = new UserAdminService(authorizationService, userAdminRepo);
   const registryRepo = new RegistryRepository(db);
@@ -234,6 +219,7 @@ export function buildContainer(config: AppConfig): Container {
     authorizationService,
     cctvRepo,
     config.NETRAM_CCTV_GATEWAY_URL,
+    config.NETRAM_CCTV_SERVICE_SECRET,
   );
   const vcRepo = new VcSessionRepository(db);
   const vcProvider = new WebRtcMeshProvider({
@@ -254,9 +240,6 @@ export function buildContainer(config: AppConfig): Container {
     storage: objectStorage,
     exportJobs: attendanceExportJobs,
   });
-
-  const analyticsRepo = new AnalyticsRepository(db);
-  const analyticsService = new AnalyticsService(authorizationService, analyticsRepo);
 
   const fundRepo = new FundRepository(db);
   const expenseRepo = new ExpenseRepository(db);
@@ -371,7 +354,6 @@ export function buildContainer(config: AppConfig): Container {
     aiAnomalyService,
     inspectionAssignmentService,
     notificationService,
-    reportService,
     userAdminService,
     registryService,
     cctvService,
@@ -381,7 +363,6 @@ export function buildContainer(config: AppConfig): Container {
     auditRepo,
     outboxRepo,
     attendanceService,
-    analyticsService,
     fundService,
     expenseService,
     financialDocumentService,

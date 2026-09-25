@@ -126,7 +126,7 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
         );
       }
 
-      router.push("/dashboard/projects");
+      router.push("/dashboard");
       router.refresh();
     } catch (err) {
       setServerError(
