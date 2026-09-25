@@ -1,8 +1,9 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   financialDocuments as documentsTable,
   auditEvents,
   outboxEvents,
+  projects as projectsTable,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
 import type {
@@ -95,6 +96,45 @@ export class FinancialDocumentRepository {
       .where(eq(documentsTable.expenseId, expenseId))
       .orderBy(desc(documentsTable.createdAt));
     return rows.map((r) => toFinancialDocument(r as unknown as FinancialDocumentRow));
+  }
+
+  /**
+   * Documents awaiting verification across the caller's jurisdiction (Action
+   * Inbox, AGENTS.md §16-§17). Joins the project so the verifier sees the
+   * facility without a second lookup.
+   */
+  async listPending(jurisdictionIds?: string[]): Promise<
+    (FinancialDocument & {
+      projectCode: string | null;
+      projectName: string | null;
+      districtId: string | null;
+    })[]
+  > {
+    const rows = await this.db
+      .select({
+        document: documentsTable,
+        projectCode: projectsTable.code,
+        projectName: projectsTable.name,
+        districtId: projectsTable.districtId,
+      })
+      .from(documentsTable)
+      .innerJoin(projectsTable, eq(documentsTable.projectId, projectsTable.id))
+      .where(
+        and(
+          eq(documentsTable.verificationStatus, "pending"),
+          jurisdictionIds?.length
+            ? inArray(projectsTable.districtId, jurisdictionIds)
+            : undefined,
+        ),
+      )
+      .orderBy(desc(documentsTable.createdAt))
+      .limit(100);
+    return rows.map((r) => ({
+      ...toFinancialDocument(r.document as unknown as FinancialDocumentRow),
+      projectCode: r.projectCode,
+      projectName: r.projectName,
+      districtId: r.districtId,
+    }));
   }
 
   async listByProject(projectId: string): Promise<FinancialDocument[]> {

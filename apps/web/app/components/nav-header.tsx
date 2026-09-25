@@ -22,11 +22,23 @@ import {
   type IconProps,
 } from "./icons";
 
+/** Local inbox icon (not in the shared icon set). */
+function IconInbox({ width = 16, height = 16, ...props }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={width} height={height} aria-hidden="true" {...props}>
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
+  );
+}
+
 export interface NavHeaderProps {
   userEmail: string;
   permissionsCount: number;
   permissions?: string[];
   unreadNotificationsCount?: number;
+  /** Items awaiting the caller's decision across all inbox sections. */
+  actionInboxCount?: number;
   activeSection:
     | "dashboard"
     | "projects"
@@ -40,7 +52,8 @@ export interface NavHeaderProps {
     | "audit"
     | "admin"
     | "account"
-    | "corrective-actions";
+    | "corrective-actions"
+    | "action-inbox";
 }
 
 interface NavItem {
@@ -81,6 +94,12 @@ const NAV_GROUPS: NavGroup[] = [
     id: "main",
     items: [
       { href: "/dashboard", label: "Dashboard", section: "dashboard", icon: IconLayoutDashboard },
+      {
+        href: "/dashboard/action-inbox",
+        label: "Action Inbox",
+        section: "action-inbox",
+        icon: IconInbox,
+      },
     ],
   },
   {
@@ -116,6 +135,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 const SECTION_LABELS: Record<NavHeaderProps["activeSection"], string> = {
   dashboard: "Dashboard",
+  "action-inbox": "Action Inbox",
   projects: "Projects",
   registry: "Registrations",
   inspections: "Inspections",
@@ -135,12 +155,14 @@ export function NavHeader({
   permissionsCount: _permissionsCount,
   permissions,
   unreadNotificationsCount,
+  actionInboxCount = 0,
   activeSection,
 }: NavHeaderProps) {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(unreadNotificationsCount ?? 0);
+  const [inboxCount, setInboxCount] = useState(actionInboxCount);
   const isExpanded = isPinned || isHovered;
 
   useEffect(() => {
@@ -148,6 +170,30 @@ export function NavHeader({
       setUnreadCount(unreadNotificationsCount);
     }
   }, [unreadNotificationsCount]);
+
+  useEffect(() => {
+    setInboxCount(actionInboxCount);
+  }, [actionInboxCount]);
+
+  /**
+   * Pending-decision badge (Action Inbox). Fetched client-side like the
+   * notification badge; the server already scopes the count to the caller's
+   * permissions and jurisdiction, so the number itself is disclosure-safe.
+   */
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/v1/action-inbox")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data && typeof data.total === "number") {
+          setInboxCount(data.total);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [activeSection]);
 
   useEffect(() => {
     const canReadNotifications =
@@ -366,6 +412,8 @@ export function NavHeader({
                 const IconComp = item.icon;
                 const isActive = activeSection === item.section;
                 const isNotifications = item.section === "notifications";
+                const isInbox = item.section === "action-inbox";
+                const inboxBadge = isInbox && inboxCount > 0;
 
                 return (
                   <Link
@@ -404,6 +452,29 @@ export function NavHeader({
                           {unreadCount > 9 ? "!" : unreadCount}
                         </span>
                       )}
+                      {inboxBadge && !isExpanded && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "-2px",
+                            right: "-2px",
+                            background: "#b45309",
+                            color: "#ffffff",
+                            fontSize: "0.55rem",
+                            fontWeight: 700,
+                            borderRadius: "9999px",
+                            minWidth: "12px",
+                            height: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: 1,
+                            padding: "0 2px",
+                          }}
+                        >
+                          {inboxCount > 9 ? "!" : inboxCount}
+                        </span>
+                      )}
                     </span>
                     {isExpanded && (
                       <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, gap: "0.5rem" }}>
@@ -418,6 +489,21 @@ export function NavHeader({
                             }}
                           >
                             {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
+                        )}
+                        {inboxBadge && (
+                          <span
+                            className="badge"
+                            style={{
+                              fontSize: "0.65rem",
+                              padding: "1px 6px",
+                              borderRadius: "9999px",
+                              background: "#fef3c7",
+                              color: "#b45309",
+                              border: "1px solid #fde68a",
+                            }}
+                          >
+                            {inboxCount > 99 ? "99+" : inboxCount}
                           </span>
                         )}
                       </span>

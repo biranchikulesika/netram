@@ -85,6 +85,7 @@ import type {
   ProjectRankEntry,
   ProjectRiskRankingQuery,
   ProjectRiskSnapshotQuery,
+  ActionInboxResponse,
 } from "@netram/types";
 import type {
   CreateAllocationInput,
@@ -616,6 +617,11 @@ export class NetramApiClient extends HttpClient {
     input: { ttlSeconds?: number } = {},
   ): Promise<AuthorizedStream> {
     return this.post(`/api/v1/cctv/cameras/${id}/streams`, input);
+  }
+
+  // action inbox (unified pending-decision queue, AGENTS.md §32)
+  async listActionInbox(): Promise<ActionInboxResponse> {
+    return this.get("/api/v1/action-inbox");
   }
 
   /** Keep a stream session alive against the sweeper (Phase 4). */

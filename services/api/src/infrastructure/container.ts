@@ -63,6 +63,7 @@ import { ExpenseService } from "../modules/funds/application/expense-service.js"
 import { FinancialDocumentService } from "../modules/funds/application/document-service.js";
 import { FinancialRiskService } from "../modules/financial-risk/application/financial-risk-service.js";
 import { ProjectRiskService } from "../modules/project-risk/application/project-risk-service.js";
+import { ActionInboxService } from "../modules/action-inbox/application/action-inbox-service.js";
 import { ProjectRiskContextBuilder } from "../modules/project-risk/application/project-risk-context-builder.js";
 import { CompositeRiskScorer } from "../modules/project-risk/domain/composite-risk-scorer.js";
 import { InspectionScheduler } from "../modules/project-risk/application/inspection-scheduler.js";
@@ -106,6 +107,7 @@ export interface Container {
   flagRepo: InspectionFlagRepository;
   projectRiskService: ProjectRiskService;
   projectRiskRepo: ProjectRiskRepository;
+  actionInboxService: ActionInboxService;
 }
 
 export function buildContainer(config: AppConfig): Container {
@@ -309,6 +311,22 @@ export function buildContainer(config: AppConfig): Container {
     auditRepo,
   );
 
+  // Action Inbox aggregates each module's pending-decision queue (§32). It
+  // depends only on the application services (never repositories directly) and
+  // enforces its own permission gating before each section fetch.
+  const actionInboxService = new ActionInboxService({
+    authz: authorizationService,
+    projectService,
+    findingService,
+    correctiveActionService,
+    complaintService,
+    aiAnomalyService,
+    attendanceService,
+    expenseService,
+    financialDocumentService,
+    financialRiskService,
+  });
+
   let provider: AuthProvider;
   let devAuthProvider: DevAuthProvider | null = null;
 
@@ -374,5 +392,6 @@ export function buildContainer(config: AppConfig): Container {
     flagRepo,
     projectRiskService,
     projectRiskRepo,
+    actionInboxService,
   };
 }

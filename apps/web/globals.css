@@ -5661,4 +5661,125 @@ body.has-portal-sidebar:has(.map-view-wrapper) main {
   background: var(--bg-subtle, #f1f5f9) !important;
 }
 
+/* ---------- Action Inbox (facility-card family) ---------- */
+
+/* Footer action row: CTAs left, dossier link right. */
+.ai-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  padding: 0.4rem 1.1rem 0.7rem 0.85rem;
+  border-top: 1px solid var(--color-border-subtle);
+  margin-top: auto;
+}
+
+/*
+ * Decision CTAs — flat, borderless text+icon actions (no box around them).
+ * Hierarchy comes from colour and weight: approve = strong green,
+ * reject = quiet muted that reveals red on hover. Busy/done states
+ * communicate in-flight and completed decisions.
+ */
+.ai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.45rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  flex: none;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    color 130ms ease,
+    opacity 130ms ease;
+}
+
+.ai-btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+/* Approve / Verify / Accept — strong green action. */
+.ai-btn-approve {
+  color: #16a34a;
+}
+
+.ai-btn-approve:hover:not(:disabled) {
+  color: #15803d;
+}
+
+/* Reject — quiet destructive: muted until hover reveals red intent. */
+.ai-btn-reject {
+  color: var(--text-muted);
+}
+
+.ai-btn-reject:hover:not(:disabled) {
+  color: #b91c1c;
+}
+
+/* In-flight decision: spinner replaces the icon, button dims. */
+.ai-btn:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.ai-btn-busy {
+  opacity: 0.6;
+}
+
+.ai-btn-spinner {
+  animation: ai-btn-spin 700ms linear infinite;
+}
+
+@keyframes ai-btn-spin {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* Decision recorded — buttons stop competing for attention. */
+.ai-btn-done {
+  color: var(--text-subtle);
+  cursor: default;
+}
+
+/* Review-only items: flat dossier action matching the CTA row. */
+.ai-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: auto;
+  padding: 0.45rem 0.45rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: var(--color-navy-brand);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 130ms ease;
+}
+
+.ai-open-btn:hover {
+  color: var(--color-accent-blue);
+  text-decoration: none;
+}
+
+.ai-card-error {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  color: #b91c1c;
+}
+
 

@@ -100,6 +100,23 @@ Corrective action status is derived from recorded work — there is no manual st
 
 - `GET /audit-events`
 
+### Action Inbox
+
+- `GET /action-inbox` (read-only; no extra permission of its own — each section
+  appears only when the caller holds the section's decision permission and stays
+  within its jurisdiction, AGENTS.md §16-§17, §34)
+
+  Unified pending-decision queue aggregating: project verification
+  (`project:approve`), finding review (`inspection:review`), ATR review
+  (`corrective_action:approve`), complaint decisions (`complaint:resolve`), AI
+  anomaly review (`ai:anomaly:transition`), attendance anomaly review
+  (`attendance:anomaly:review`), attendance correction approval
+  (`attendance:correction:approve`), expense verification (`expense:verify`),
+  financial document verification (`financial_document:verify`), and risk flag
+  review (`inspection_flag:review`). Items disappear once the underlying
+  workflow moves past its decision point; decisions are executed through each
+  workflow's own canonical endpoints (never through the inbox).
+
 ### AI Anomalies
 
 - `GET /ai-anomalies`

@@ -117,6 +117,16 @@ export class FinancialDocumentService {
     });
   }
 
+  /**
+   * Documents awaiting verification across the caller's jurisdiction, for the
+   * Action Inbox. Gated by the verify permission (AGENTS.md §16).
+   */
+  async listPendingDocuments(ctx: RequestUserContext) {
+    this.authz.requirePermission(ctx, DOC_VERIFY);
+    const scope = this.authz.accessibleDistrictIds(ctx);
+    return this.docRepo.listPending(scope ? [...scope] : undefined);
+  }
+
   async getDocument(ctx: RequestUserContext, id: string): Promise<FinancialDocument> {
     const doc = await this.docRepo.findById(id);
     if (!doc) throw AppError.notFound("Financial document not found");

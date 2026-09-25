@@ -41,6 +41,7 @@ import { registerAttendanceRoutes } from "./modules/attendance/http/routes.js";
 import { registerFundRoutes } from "./modules/funds/http/routes.js";
 import { registerFinancialRiskRoutes } from "./modules/financial-risk/http/routes.js";
 import { registerProjectRiskRoutes } from "./modules/project-risk/http/project-risk.routes.js";
+import { registerActionInboxRoutes } from "./modules/action-inbox/http/routes.js";
 import { InvalidVcSessionTransitionError } from "./modules/vc/domain/vc-session.js";
 
 export async function buildApp(container: Container) {
@@ -110,6 +111,10 @@ export async function buildApp(container: Container) {
         { name: "vc", description: "Video conferencing and remote review sessions" },
         { name: "attendance", description: "Attendance monitoring and anomaly oversight" },
         { name: "registry", description: "Registration of agencies, schemes and people" },
+        {
+          name: "action-inbox",
+          description: "Unified queue of items awaiting an authority decision",
+        },
       ],
     },
   });
@@ -253,6 +258,7 @@ export async function buildApp(container: Container) {
       await registerFundRoutes(api, container);
       await registerFinancialRiskRoutes(api, container);
       await registerProjectRiskRoutes(api, container);
+      await registerActionInboxRoutes(api, container);
     },
     { prefix: "/api/v1" },
   );

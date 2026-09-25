@@ -1210,6 +1210,17 @@ export class AttendanceService {
     return correction;
   }
 
+  /**
+   * Pending corrections across the caller's jurisdiction, for the Action
+   * Inbox. Gated by the approval permission: an approver sees what they can
+   * lawfully decide; requesters keep using the project-scoped listCorrections.
+   */
+  async listPendingCorrections(ctx: RequestUserContext) {
+    this.authz.requirePermission(ctx, CORRECTION_APPROVE);
+    const scope = this.authz.accessibleDistrictIds(ctx);
+    return this.repo.listPendingCorrections(scope ? [...scope] : undefined);
+  }
+
   async listCorrections(ctx: RequestUserContext, projectId: string) {
     this.authz.requirePermission(ctx, CORRECTION_CREATE);
     await this.requireProjectScope(ctx, projectId, CORRECTION_CREATE);

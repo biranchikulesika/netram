@@ -19,6 +19,7 @@ import {
   auditEvents,
   outboxEvents,
   projects as projectsTable,
+  users as usersTable,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
 import type {
@@ -1485,6 +1486,51 @@ export class AttendanceRepository {
       resourceId: write.resourceId,
       payload: write.payload as never,
     });
+  }
+
+  /**
+   * Pending corrections across the caller's jurisdiction (Action Inbox,
+   * AGENTS.md §16-§17). The caller's corrections endpoint is project-scoped;
+   * the inbox needs a cross-project, jurisdiction-scoped read so approvers see
+   * every pending correction they could lawfully decide on. Joins the project
+   * for name/district context.
+   */
+  async listPendingCorrections(jurisdictionIds?: string[]): Promise<
+    (AttendanceCorrection & {
+      projectCode: string | null;
+      projectName: string | null;
+      districtId: string | null;
+      requesterName: string | null;
+    })[]
+  > {
+    const rows = await this.db
+      .select({
+        correction: correctionsTable,
+        projectCode: projectsTable.code,
+        projectName: projectsTable.name,
+        districtId: projectsTable.districtId,
+        requesterName: usersTable.displayName,
+      })
+      .from(correctionsTable)
+      .innerJoin(projectsTable, eq(correctionsTable.projectId, projectsTable.id))
+      .leftJoin(usersTable, eq(correctionsTable.requestedBy, usersTable.id))
+      .where(
+        and(
+          eq(correctionsTable.status, "PENDING"),
+          jurisdictionIds?.length
+            ? inArray(projectsTable.districtId, jurisdictionIds)
+            : undefined,
+        ),
+      )
+      .orderBy(desc(correctionsTable.createdAt))
+      .limit(100);
+    return rows.map((r) => ({
+      ...toCorrection(r.correction as CorrectionRow),
+      projectCode: r.projectCode,
+      projectName: r.projectName,
+      districtId: r.districtId,
+      requesterName: r.requesterName,
+    }));
   }
 
   async projectDistrictId(projectId: string): Promise<string | null> {
