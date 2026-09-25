@@ -9,14 +9,16 @@ import {
   IconVideo,
   IconShieldCheck,
   IconAlertTriangle,
-  IconBarChart,
-  IconTrendingUp,
   IconLock,
   IconBell,
   IconSettings,
   IconMenu,
   IconUser,
   IconIndianRupee,
+  IconLayoutDashboard,
+  IconFileText,
+  IconChevronLeft,
+  IconChevronRight,
   type IconProps,
 } from "./icons";
 
@@ -26,6 +28,7 @@ export interface NavHeaderProps {
   permissions?: string[];
   unreadNotificationsCount?: number;
   activeSection:
+    | "dashboard"
     | "projects"
     | "registry"
     | "inspections"
@@ -34,12 +37,10 @@ export interface NavHeaderProps {
     | "funds"
     | "notifications"
     | "complaints"
-    | "reports"
     | "audit"
     | "admin"
     | "account"
-    | "corrective-actions"
-    | "analytics";
+    | "corrective-actions";
 }
 
 interface NavItem {
@@ -47,6 +48,12 @@ interface NavItem {
   label: string;
   section: NavHeaderProps["activeSection"];
   icon: React.ComponentType<IconProps>;
+}
+
+interface NavGroup {
+  id: string;
+  title?: string;
+  items: NavItem[];
 }
 
 const NAV_PERMISSIONS: Partial<Record<NavHeaderProps["activeSection"], string[]>> = {
@@ -64,30 +71,51 @@ const NAV_PERMISSIONS: Partial<Record<NavHeaderProps["activeSection"], string[]>
   funds: ["fund:read", "expense:read"],
   "corrective-actions": ["corrective_action:read"],
   complaints: ["complaint:read"],
-  reports: ["report:read"],
-  analytics: ["report:read", "project:read"],
   audit: ["audit:read"],
   notifications: ["notification:read"],
   admin: ["user:manage", "role:manage"],
 };
 
-const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard/projects", label: "Projects", section: "projects", icon: IconBuilding },
-  { href: "/dashboard/registry", label: "Registrations", section: "registry", icon: IconClipboard },
-  { href: "/dashboard/inspections", label: "Inspections", section: "inspections", icon: IconClipboard },
-  { href: "/dashboard/funds", label: "Funds & Expenses", section: "funds", icon: IconIndianRupee },
-  { href: "/dashboard/control-room", label: "Control Room", section: "control-room", icon: IconVideo },
-  { href: "/dashboard/attendance", label: "Attendance", section: "attendance", icon: IconUser },
-  { href: "/dashboard/corrective-actions", label: "Corrective Actions", section: "corrective-actions", icon: IconShieldCheck },
-  { href: "/dashboard/complaints", label: "Complaints", section: "complaints", icon: IconAlertTriangle },
-  { href: "/dashboard/reports", label: "Reports", section: "reports", icon: IconBarChart },
-  { href: "/dashboard/analytics", label: "Analytics", section: "analytics", icon: IconTrendingUp },
-  { href: "/dashboard/audit", label: "Audit Log", section: "audit", icon: IconLock },
-  { href: "/dashboard/notifications", label: "Notifications", section: "notifications", icon: IconBell },
-  { href: "/dashboard/admin", label: "Admin", section: "admin", icon: IconSettings },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "main",
+    items: [
+      { href: "/dashboard", label: "Dashboard", section: "dashboard", icon: IconLayoutDashboard },
+    ],
+  },
+  {
+    id: "operations",
+    title: "Field Operations",
+    items: [
+      { href: "/dashboard/projects", label: "Projects", section: "projects", icon: IconBuilding },
+      { href: "/dashboard/inspections", label: "Inspections", section: "inspections", icon: IconClipboard },
+      { href: "/dashboard/corrective-actions", label: "Corrective Actions", section: "corrective-actions", icon: IconShieldCheck },
+      { href: "/dashboard/complaints", label: "Complaints", section: "complaints", icon: IconAlertTriangle },
+    ],
+  },
+  {
+    id: "monitoring",
+    title: "Monitoring",
+    items: [
+      { href: "/dashboard/control-room", label: "Control Room", section: "control-room", icon: IconVideo },
+      { href: "/dashboard/attendance", label: "Attendance", section: "attendance", icon: IconUser },
+      { href: "/dashboard/funds", label: "Funds & Expenses", section: "funds", icon: IconIndianRupee },
+    ],
+  },
+  {
+    id: "governance",
+    title: "Administration",
+    items: [
+      { href: "/dashboard/registry", label: "Registrations", section: "registry", icon: IconFileText },
+      { href: "/dashboard/audit", label: "Audit Log", section: "audit", icon: IconLock },
+      { href: "/dashboard/admin", label: "Admin", section: "admin", icon: IconSettings },
+      { href: "/dashboard/notifications", label: "Notifications", section: "notifications", icon: IconBell },
+    ],
+  },
 ];
 
 const SECTION_LABELS: Record<NavHeaderProps["activeSection"], string> = {
+  dashboard: "Dashboard",
   projects: "Projects",
   registry: "Registrations",
   inspections: "Inspections",
@@ -96,8 +124,6 @@ const SECTION_LABELS: Record<NavHeaderProps["activeSection"], string> = {
   attendance: "Attendance",
   "corrective-actions": "Corrective Actions",
   complaints: "Complaints",
-  reports: "Reports",
-  analytics: "Authority Analytics & SLA Oversight",
   audit: "Audit Log",
   notifications: "Notifications",
   admin: "Admin",
@@ -111,9 +137,11 @@ export function NavHeader({
   unreadNotificationsCount,
   activeSection,
 }: NavHeaderProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(unreadNotificationsCount ?? 0);
+  const isExpanded = isPinned || isHovered;
 
   useEffect(() => {
     if (unreadNotificationsCount !== undefined) {
@@ -140,27 +168,47 @@ export function NavHeader({
       })
       .catch(() => {});
 
+    function handleNotificationsRead() {
+      fetch("/api/notifications?pageSize=1")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (isMounted && data && typeof data.unread === "number") {
+            setUnreadCount(data.unread);
+          }
+        })
+        .catch(() => {});
+    }
+
+    window.addEventListener("netram:notifications-read", handleNotificationsRead);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("netram:notifications-read", handleNotificationsRead);
     };
   }, [permissions, activeSection]);
 
-  const visibleNavItems = React.useMemo(() => {
-    if (!permissions || permissions.length === 0 || permissions.includes("*")) {
-      return NAV_ITEMS;
-    }
-    return NAV_ITEMS.filter((item) => {
-      const required = NAV_PERMISSIONS[item.section];
-      if (!required || required.length === 0) return true;
-      return required.some((req) => permissions.includes(req));
-    });
+  const visibleNavGroups = React.useMemo(() => {
+    const hasAll = !permissions || permissions.length === 0 || permissions.includes("*");
+    return NAV_GROUPS.map((group) => {
+      const items = group.items.filter((item) => {
+        if (hasAll) return true;
+        if (item.section === "dashboard") return true;
+        const required = NAV_PERMISSIONS[item.section];
+        if (!required || required.length === 0) return true;
+        return required.some((req) => permissions.includes(req));
+      });
+      return { ...group, items };
+    }).filter((group) => group.items.length > 0);
   }, [permissions]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("netram_sidebar_collapsed");
+    const stored = localStorage.getItem("netram_sidebar_pinned");
     if (stored === "true") {
-      setIsCollapsed(true);
-      document.body.classList.add("sidebar-collapsed");
+      setIsPinned(true);
+      document.body.classList.add("sidebar-expanded");
+    } else {
+      setIsPinned(false);
+      document.body.classList.remove("sidebar-expanded");
     }
     document.body.classList.add("has-portal-sidebar");
 
@@ -174,7 +222,7 @@ export function NavHeader({
 
     return () => {
       document.body.classList.remove("has-portal-sidebar");
-      document.body.classList.remove("sidebar-collapsed");
+      document.body.classList.remove("sidebar-expanded");
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
@@ -183,16 +231,28 @@ export function NavHeader({
     if (window.innerWidth <= 768) {
       setMobileOpen((prev) => !prev);
     } else {
-      setIsCollapsed((prev) => {
+      setIsPinned((prev) => {
         const next = !prev;
-        localStorage.setItem("netram_sidebar_collapsed", String(next));
+        localStorage.setItem("netram_sidebar_pinned", String(next));
         if (next) {
-          document.body.classList.add("sidebar-collapsed");
+          document.body.classList.add("sidebar-expanded");
         } else {
-          document.body.classList.remove("sidebar-collapsed");
+          document.body.classList.remove("sidebar-expanded");
         }
         return next;
       });
+    }
+  }
+
+  function handleMouseEnter() {
+    if (!isPinned) {
+      setIsHovered(true);
+    }
+  }
+
+  function handleMouseLeave() {
+    if (!isPinned) {
+      setIsHovered(false);
     }
   }
 
@@ -218,9 +278,9 @@ export function NavHeader({
               type="button"
               className="topbar-toggle-btn"
               onClick={toggleSidebar}
-              title={isCollapsed ? "Expand sidepanel (Ctrl+B)" : "Collapse sidepanel (Ctrl+B)"}
-              aria-label={isCollapsed ? "Expand sidepanel" : "Collapse sidepanel"}
-              aria-expanded={!isCollapsed}
+              title={isPinned ? "Collapse sidepanel (Ctrl+B)" : "Expand sidepanel (Ctrl+B)"}
+              aria-label={isPinned ? "Collapse sidepanel" : "Expand sidepanel"}
+              aria-expanded={isPinned}
             >
               <IconMenu style={{ width: 17, height: 17 }} />
             </button>
@@ -288,74 +348,110 @@ export function NavHeader({
 
       {/* COLLAPSIBLE LEFT SIDEPANEL */}
       <aside
-        className={`portal-sidepanel ${isCollapsed ? "collapsed" : ""} ${
-          mobileOpen ? "mobile-open" : ""
-        }`}
+        className={`portal-sidepanel ${isPinned ? "pinned" : "collapsed"} ${
+          !isPinned && isHovered ? "hover-expanded" : ""
+        } ${mobileOpen ? "mobile-open" : ""}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         aria-label="Side Navigation"
       >
-        {/* Clean Sidepanel Navigation Links */}
+        {/* Grouped Sidepanel Navigation Links */}
         <nav className="sidepanel-nav">
-          {visibleNavItems.map((item) => {
-            const IconComp = item.icon;
-            const isActive = activeSection === item.section;
-            const isNotifications = item.section === "notifications";
+          {visibleNavGroups.map((group) => (
+            <div key={group.id} className="sidepanel-group">
+              {group.title && isExpanded && (
+                <div className="sidepanel-group-title">{group.title}</div>
+              )}
+              {group.items.map((item) => {
+                const IconComp = item.icon;
+                const isActive = activeSection === item.section;
+                const isNotifications = item.section === "notifications";
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={`sidepanel-link ${isActive ? "active" : ""}`}
-                title={isCollapsed ? item.label : undefined}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <span className="sidepanel-icon-wrap" style={{ position: "relative" }}>
-                  <IconComp className="sidepanel-icon" />
-                  {isNotifications && unreadCount > 0 && isCollapsed && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: "-2px",
-                        right: "-2px",
-                        background: "#dc2626",
-                        color: "#ffffff",
-                        fontSize: "0.55rem",
-                        fontWeight: 700,
-                        borderRadius: "9999px",
-                        minWidth: "12px",
-                        height: "12px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        lineHeight: 1,
-                        padding: "0 2px",
-                      }}
-                    >
-                      {unreadCount > 9 ? "!" : unreadCount}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => {
+                      setMobileOpen(false);
+                      if (!isPinned) setIsHovered(false);
+                    }}
+                    className={`sidepanel-link ${isActive ? "active" : ""}`}
+                    title={!isExpanded ? item.label : undefined}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    <span className="sidepanel-icon-wrap" style={{ position: "relative" }}>
+                      <IconComp className="sidepanel-icon" />
+                      {isNotifications && unreadCount > 0 && !isExpanded && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "-2px",
+                            right: "-2px",
+                            background: "#dc2626",
+                            color: "#ffffff",
+                            fontSize: "0.55rem",
+                            fontWeight: 700,
+                            borderRadius: "9999px",
+                            minWidth: "12px",
+                            height: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: 1,
+                            padding: "0 2px",
+                          }}
+                        >
+                          {unreadCount > 9 ? "!" : unreadCount}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-                {!isCollapsed && (
-                  <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, gap: "0.5rem" }}>
-                    <span className="sidepanel-link-text">{item.label}</span>
-                    {isNotifications && unreadCount > 0 && (
-                      <span
-                        className="badge badge-critical"
-                        style={{
-                          fontSize: "0.65rem",
-                          padding: "1px 6px",
-                          borderRadius: "9999px",
-                        }}
-                      >
-                        {unreadCount > 99 ? "99+" : unreadCount}
+                    {isExpanded && (
+                      <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, gap: "0.5rem" }}>
+                        <span className="sidepanel-link-text">{item.label}</span>
+                        {isNotifications && unreadCount > 0 && (
+                          <span
+                            className="badge badge-critical"
+                            style={{
+                              fontSize: "0.65rem",
+                              padding: "1px 6px",
+                              borderRadius: "9999px",
+                            }}
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
+                        )}
                       </span>
                     )}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
+
+        {/* Footer Pin / Collapse Toggle Action */}
+        <div className="sidepanel-footer">
+          <button
+            type="button"
+            className="sidepanel-toggle-footer-btn"
+            onClick={toggleSidebar}
+            title={isPinned ? "Collapse sidepanel (Ctrl+B)" : "Expand & pin sidepanel (Ctrl+B)"}
+            aria-label={isPinned ? "Collapse sidepanel" : "Expand sidepanel"}
+          >
+            <span className="sidepanel-icon-wrap">
+              {isPinned ? (
+                <IconChevronLeft style={{ width: 16, height: 16 }} />
+              ) : (
+                <IconChevronRight style={{ width: 16, height: 16 }} />
+              )}
+            </span>
+            {isExpanded && (
+              <span className="sidepanel-link-text" style={{ fontSize: "0.82rem", fontWeight: 500 }}>
+                {isPinned ? "Collapse sidebar" : "Pin sidebar open"}
+              </span>
+            )}
+          </button>
+        </div>
       </aside>
     </>
   );

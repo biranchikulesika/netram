@@ -2,18 +2,14 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useMemo, useEffect, useCallback, useSyncExternalStore } from "react";
-import type { Project, ProjectRankEntry } from "@netram/types";
+import { useState, useMemo, useEffect } from "react";
+import type { Project } from "@netram/types";
 import { StatusBadge } from "./[id]/status-badge";
 import {
   IconSearch,
   IconGrid,
   IconList,
   IconMapPin,
-  IconTag,
-  IconBuilding,
-  IconGavel,
-  IconChevronRight,
   IconCheck,
   IconX,
   IconClock,
@@ -22,7 +18,6 @@ import {
 import { getDistrictName } from "../../../lib/presentation";
 import { ProjectsMapView } from "./projects-map-view";
 import { ProjectOverviewCard, formatRegisteredDate } from "./project-overview-card";
-import { RiskLeaderboardView } from "./risk-leaderboard-view";
 
 interface ProjectsViewProps {
   initialProjects: Project[];
@@ -30,12 +25,10 @@ interface ProjectsViewProps {
   serverPage?: number;
   serverPageSize?: number;
   initialStatus?: string;
-  initialView?: "table" | "cards" | "map" | "risk";
+  initialView?: "table" | "cards" | "map";
   initialSearch?: string;
   /** Registrations awaiting an approve/reject decision (only passed to approvers). */
   verificationQueue?: Project[];
-  initialRankings?: ProjectRankEntry[];
-  canEvaluateRisk?: boolean;
   apiUrl: string;
 }
 
@@ -210,8 +203,6 @@ export function ProjectsView({
   initialView = "table",
   initialSearch = "",
   verificationQueue,
-  initialRankings = [],
-  canEvaluateRisk = false,
   apiUrl: _apiUrl,
 }: ProjectsViewProps) {
   const router = useRouter();
@@ -219,7 +210,7 @@ export function ProjectsView({
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [viewMode, setViewMode] = useState<"table" | "cards" | "map" | "risk">(initialView);
+  const [viewMode, setViewMode] = useState<"table" | "cards" | "map">(initialView);
   const [jumpPage, setJumpPage] = useState("");
 
   useEffect(() => {
@@ -234,9 +225,9 @@ export function ProjectsView({
   const navigate = (
     overrides: {
       page?: number;
-      pageSize?: number;
+       pageSize?: number;
       status?: string;
-      view?: "table" | "cards" | "map" | "risk";
+      view?: "table" | "cards" | "map";
       q?: string;
     } = {},
   ) => {
@@ -296,7 +287,7 @@ export function ProjectsView({
     }
   };
 
-  const handleViewModeChange = (mode: "table" | "cards" | "map" | "risk") => {
+  const handleViewModeChange = (mode: "table" | "cards" | "map") => {
     setViewMode(mode);
     patchUrl({ view: mode === "table" ? null : mode });
   };
@@ -430,26 +421,10 @@ export function ProjectsView({
               type="button"
               className={`view-btn ${viewMode === "map" ? "active" : ""}`}
               onClick={() => handleViewModeChange("map")}
-              title="Geographic Map View"
+              title="Map"
             >
               <IconMapPin style={{ width: 14, height: 14 }} />
-              <span>Map View</span>
-            </button>
-            <button
-              type="button"
-              className={`view-btn ${viewMode === "risk" ? "active" : ""}`}
-              onClick={() => handleViewModeChange("risk")}
-              title="Risk Priority Leaderboard"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.25rem",
-                color: viewMode === "risk" ? "#dc2626" : undefined,
-                fontWeight: viewMode === "risk" ? 700 : undefined,
-              }}
-            >
-              <IconShieldCheck style={{ width: 14, height: 14 }} />
-              <span>Risk Priority</span>
+              <span>Map</span>
             </button>
           </div>
         </div>
@@ -461,28 +436,18 @@ export function ProjectsView({
           <table className="projects-table">
             <thead>
               <tr>
-                <th style={{ width: "12%" }}>
-                  <span className="th-icon" title="Project identifier"><IconTag width={12} height={12} /></span>
-                  Code
-                </th>
+                <th style={{ width: "12%" }}>Code</th>
                 <th style={{ width: "32%" }}>Facility / Project</th>
-                <th style={{ width: "13%" }}>
-                  <span className="th-icon" title="Classification"><IconBuilding width={12} height={12} /></span>
-                  Type
-                </th>
-                <th style={{ width: "14%" }}>
-                  <span className="th-icon" title="Jurisdiction district"><IconGavel width={12} height={12} /></span>
-                  Jurisdiction
-                </th>
+                <th style={{ width: "13%" }}>Type</th>
+                <th style={{ width: "14%" }}>Jurisdiction</th>
                 <th style={{ width: "12%" }}>Registered</th>
                 <th style={{ width: "10%" }}>Status</th>
-                <th style={{ width: "3%" }} aria-hidden="true"></th>
               </tr>
             </thead>
             <tbody>
               {filteredProjects.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
+                  <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
                     <IconSearch width={22} height={22} style={{ opacity: 0.5, margin: "0 auto 0.5rem", display: "block" }} />
                     <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>No projects found</div>
                     <div style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
@@ -538,9 +503,6 @@ export function ProjectsView({
                       </td>
                       <td>
                         <StatusBadge status={p.status} />
-                      </td>
-                      <td className="table-chevron-cell" aria-hidden="true">
-                        <IconChevronRight width={14} height={14} className="table-chevron" />
                       </td>
                     </tr>
                   );
@@ -607,19 +569,11 @@ export function ProjectsView({
         </div>
       )}
 
-      {/* View Mode C: GIS Geographic Map View */}
+      {/* View Mode C: Map */}
       {viewMode === "map" && (
         <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
           <ProjectsMapView projects={filteredProjects} />
         </div>
-      )}
-
-      {/* View Mode D: Composite Risk Priority Leaderboard */}
-      {viewMode === "risk" && (
-        <RiskLeaderboardView
-          initialRankings={initialRankings}
-          canEvaluate={canEvaluateRisk}
-        />
       )}
     </div>
   );

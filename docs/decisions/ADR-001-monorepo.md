@@ -12,7 +12,7 @@ state.
 ## Decision
 
 - Single pnpm + Turborepo workspace.
-- `services/api` is a modular monolith owning all application/domain behavior.
+- `services/api` is a modular monolith owning all application/domain behaviour.
 - Only `realtime`, `ai`, and `cctv-gateway` exist as separate services, and only
   because their isolation is justified (transport/streaming, model inference,
   provider SDKs).

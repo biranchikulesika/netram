@@ -2,18 +2,23 @@ import { pathToFileURL } from "node:url";
 import { getDb, CorrectiveActionRepository, auditEvents } from "@netram/data";
 import { loadWorkerEnv } from "@netram/config";
 import type { ProjectRiskService } from "../modules/project-risk/application/project-risk-service.js";
+import type { FinancialRiskService } from "../modules/financial-risk/application/financial-risk-service.js";
 import type { RequestUserContext } from "../infrastructure/request-context.js";
 
 export interface ScheduledJobsOptions {
   databaseUrl: string;
   intervalMs?: number;
   projectRiskService?: Pick<ProjectRiskService, "sweepAllActiveProjects">;
+  financialRiskService?: Pick<FinancialRiskService, "sweepAllActiveProjects">;
+  projectRiskSweepIntervalMs?: number;
+  financialRiskSweepIntervalMs?: number;
 }
 
 export interface ScheduledJobsSummary {
   overdueActionsMarked: number;
   overdueActionIds: string[];
   projectRiskSweep?: { evaluatedCount: number; scheduledCount: number };
+  financialRiskSweep?: { evaluatedCount: number };
   executedAt: string;
 }
 
@@ -26,7 +31,17 @@ export function createWorkerSystemContext(): RequestUserContext {
       type: "netram",
     },
     userId: "00000000-0000-0000-0000-000000000000",
-    assignments: [],
+    assignments: [
+      {
+        assignmentId: "system-scheduled-worker",
+        roleCode: "system",
+        authorityId: null,
+        jurisdictionId: null,
+        scope: "national",
+        permissions: new Set(["*"]),
+        allowedDistrictIds: null,
+      },
+    ],
     permissions: new Set(["*"]),
     requestId: "scheduled-job-runner",
     ipAddress: "127.0.0.1",
@@ -38,6 +53,11 @@ export class ScheduledJobsRunner {
   private processing = false;
   private readonly intervalMs: number;
   private readonly projectRiskService?: Pick<ProjectRiskService, "sweepAllActiveProjects">;
+  private readonly financialRiskService?: Pick<FinancialRiskService, "sweepAllActiveProjects">;
+  private readonly projectRiskSweepIntervalMs: number;
+  private readonly financialRiskSweepIntervalMs: number;
+  private lastProjectRiskSweepAt = 0;
+  private lastFinancialRiskSweepAt = 0;
 
   constructor(
     private readonly correctiveActionRepo: CorrectiveActionRepository,
@@ -45,10 +65,16 @@ export class ScheduledJobsRunner {
     opts?: {
       intervalMs?: number;
       projectRiskService?: Pick<ProjectRiskService, "sweepAllActiveProjects">;
+      financialRiskService?: Pick<FinancialRiskService, "sweepAllActiveProjects">;
+      projectRiskSweepIntervalMs?: number;
+      financialRiskSweepIntervalMs?: number;
     },
   ) {
     this.intervalMs = opts?.intervalMs ?? 5000;
     this.projectRiskService = opts?.projectRiskService;
+    this.financialRiskService = opts?.financialRiskService;
+    this.projectRiskSweepIntervalMs = opts?.projectRiskSweepIntervalMs ?? 60 * 60 * 1000;
+    this.financialRiskSweepIntervalMs = opts?.financialRiskSweepIntervalMs ?? 60 * 60 * 1000;
   }
 
   start(): void {
@@ -115,10 +141,12 @@ export class ScheduledJobsRunner {
 
     // 2. Risk Engine Sweep: Automatically evaluate active projects and trigger inspections
     let projectRiskSweep: { evaluatedCount: number; scheduledCount: number } | undefined;
-    if (this.projectRiskService) {
+    const now = Date.now();
+    if (this.projectRiskService && now - this.lastProjectRiskSweepAt >= this.projectRiskSweepIntervalMs) {
       try {
         const sysCtx = createWorkerSystemContext();
         projectRiskSweep = await this.projectRiskService.sweepAllActiveProjects(sysCtx);
+        this.lastProjectRiskSweepAt = now;
         if (projectRiskSweep.evaluatedCount > 0) {
           console.log(
             `[scheduled-jobs] Project Risk Sweep: Evaluated ${projectRiskSweep.evaluatedCount} project(s), auto-scheduled ${projectRiskSweep.scheduledCount} inspection(s)`,
@@ -129,10 +157,28 @@ export class ScheduledJobsRunner {
       }
     }
 
+    // 3. Financial Risk Engine Sweep: evaluate the 13-rule discrepancy engine across all active projects
+    let financialRiskSweep: { evaluatedCount: number } | undefined;
+    if (this.financialRiskService && now - this.lastFinancialRiskSweepAt >= this.financialRiskSweepIntervalMs) {
+      try {
+        const sysCtx = createWorkerSystemContext();
+        financialRiskSweep = await this.financialRiskService.sweepAllActiveProjects(sysCtx);
+        this.lastFinancialRiskSweepAt = now;
+        if (financialRiskSweep.evaluatedCount > 0) {
+          console.log(
+            `[scheduled-jobs] Financial Risk Sweep: Evaluated ${financialRiskSweep.evaluatedCount} project(s) for financial discrepancies`,
+          );
+        }
+      } catch (riskErr) {
+        console.warn("[scheduled-jobs] Error during financial risk sweep:", riskErr);
+      }
+    }
+
     return {
       overdueActionsMarked: overdueResult.count,
       overdueActionIds: overdueResult.actionIds,
       projectRiskSweep,
+      financialRiskSweep,
       executedAt,
     };
   }
@@ -146,6 +192,9 @@ export async function startScheduledJobsWorker(
   const runner = new ScheduledJobsRunner(correctiveActionRepo, db, {
     intervalMs: opts.intervalMs,
     projectRiskService: opts.projectRiskService,
+    financialRiskService: opts.financialRiskService,
+    projectRiskSweepIntervalMs: opts.projectRiskSweepIntervalMs,
+    financialRiskSweepIntervalMs: opts.financialRiskSweepIntervalMs,
   });
   runner.start();
   return {

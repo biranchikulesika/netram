@@ -23,7 +23,7 @@ the typed client in `packages/api-client`.
    ```
 
 4. No stack traces, SQL errors, or provider internals in responses.
-5. Information disclosure is server-side: unauthorized fields are **omitted**,
+5. Information disclosure is server-side: unauthorised fields are **omitted**,
    never merely hidden in the UI (AGENTS.md §34).
 
 ## Changing an API
@@ -119,13 +119,6 @@ Corrective action status is derived from recorded work — there is no manual st
 - `POST /notifications/:id/read`
 - `POST /notifications/read-all`
 
-### Reports
-
-- `GET /reports`
-- `POST /reports`
-- `GET /reports/:id`
-- `POST /reports/:id/finalize`
-
 ### User Administration
 
 - `GET /users`
@@ -156,11 +149,20 @@ Permissions for these routes are governed by the
 
 ### CCTV
 
+The CCTV surface follows the two-plane architecture in
+[`../architecture/cctv.md`](../architecture/cctv.md): camera/session control
+below, plus the MediaMTX-facing external auth hook. Session lifecycle
+(creation, heartbeat, explicit end), the hook route, and health reflect the
+implemented Phase 3–5 behaviour.
+
 - `GET /cctv/cameras`
 - `GET /cctv/cameras/:id`
 - `GET /cctv/cameras/:id/health`
 - `POST /cctv/cameras/:id/streams`
+- `POST /cctv/cameras/:id/streams/:streamId/heartbeat`
+- `DELETE /cctv/cameras/:id/streams/:streamId`
 - `GET /cctv/cameras/:id/snapshot`
+- `POST /media/auth` (MediaMTX external auth hook; secret-gated, public route)
 
 ### Video Conferencing
 

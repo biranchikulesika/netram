@@ -52,4 +52,42 @@ export const authorizedStreamSchema = z.object({
   streamUrl: z.string(),
   expiresAt: z.string().datetime(),
   token: z.string(),
+  playback: z
+    .object({
+      protocol: z.literal("webrtc"),
+      whepUrl: z.string(),
+      token: z.string(),
+      mediaPath: z.string(),
+    })
+    .optional(),
 });
+
+/** MediaMTX external auth hook payload (verified against the live docs, v1.21.x). */
+export const mediaAuthHookRequestSchema = z.object({
+  user: z.string(),
+  password: z.string(),
+  token: z.string(),
+  ip: z.string(),
+  action: z.enum(["publish", "read", "playback", "api", "metrics", "pprof"]),
+  path: z.string(),
+  protocol: z.enum(["rtsp", "rtmp", "hls", "webrtc", "srt"]),
+  id: z.string(),
+  query: z.string(),
+  userAgent: z.string(),
+});
+
+export type MediaAuthHookRequest = z.infer<typeof mediaAuthHookRequestSchema>;
+
+/** Input for POST /cctv/cameras/:id/streams/:streamId/heartbeat. */
+export const streamHeartbeatSchema = z
+  .object({
+    whepSessionId: z.string().min(1).max(100).optional(),
+  })
+  .strict();
+
+/** Input for DELETE /cctv/cameras/:id/streams/:streamId. */
+export const endStreamSchema = z
+  .object({
+    endReason: z.enum(["viewer_stop", "admin_revoke"]).default("viewer_stop"),
+  })
+  .strict();

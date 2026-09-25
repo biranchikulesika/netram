@@ -8,10 +8,8 @@ import {
   getFacilityCorrectiveActions,
   getFacilityInspections,
   getFacilityAiAnomalies,
-  getFacilityReports,
   getFacilityRiskSnapshot,
 } from "../../../../lib/facility";
-import { getSessionUser } from "../../../../lib/api";
 import {
   getAuthorityName,
   getDistrictName,
@@ -56,21 +54,15 @@ export default async function FacilityOverviewPage({
   const project = await getFacility(id);
   if (!project) notFound();
 
-  const [session, riskSnapshot, inspections, complaints, attendance, aiAnomalies, reports, audit] =
+  const [riskSnapshot, inspections, complaints, attendance, aiAnomalies, audit] =
     await Promise.all([
-      getSessionUser(),
       getFacilityRiskSnapshot(project.id),
       getFacilityInspections(project.id),
       getFacilityComplaints(project.id),
       getFacilityAttendance(project.id),
       getFacilityAiAnomalies(project.id, project.code, project.name),
-      getFacilityReports(project.code, project.name),
       getFacilityAudit(project.id),
     ]);
-  const canEvaluate =
-    session?.permissions.includes("project_risk:evaluate") ||
-    session?.permissions.includes("*") ||
-    false;
   const correctiveActions = await getFacilityCorrectiveActions(project.id, inspections);
   const facilityTab = (section: string) => `/dashboard/projects/${project.id}/${section}`;
 
@@ -89,7 +81,6 @@ export default async function FacilityOverviewPage({
   );
   const outstandingActions = correctiveActions.filter((ca) => ca.status !== "accepted");
   const overdueActions = outstandingActions.filter((ca) => CA_ALERT_STATUSES.has(ca.status));
-  const finalizedReports = reports.filter((r) => r.status === "ready" || r.status === "finalized");
 
   const attendanceToday = attendance.overview[0] ?? null;
 
@@ -143,13 +134,6 @@ export default async function FacilityOverviewPage({
           : "All closed",
       href: facilityTab("actions"),
       alert: outstandingActions.length > 0,
-    },
-    {
-      label: "Reports",
-      value: String(reports.length),
-      sub: `${finalizedReports.length} ready`,
-      href: facilityTab("reports"),
-      alert: false,
     },
   ];
 
@@ -277,10 +261,7 @@ export default async function FacilityOverviewPage({
 
       {/* Composite Risk Score Engine Widget */}
       <CompositeRiskCard
-        projectId={project.id}
-        projectCode={project.code}
         initialSnapshot={riskSnapshot}
-        canEvaluate={canEvaluate}
       />
 
       <div className="facility-grid">

@@ -6,6 +6,7 @@ import { CameraWall } from "./camera-wall";
 import { CameraStatusView } from "./camera-status";
 import { AlertsScreen } from "./alerts-screen";
 import { AIAnomalyModal } from "./ai-anomaly-modal";
+import { CameraLiveViewer } from "./camera-live-viewer";
 import {
   IconVideo,
   IconAlertTriangle,
@@ -44,10 +45,37 @@ export function ControlRoomLayout({
   const [activeTab, setActiveTab] = useState<ControlRoomTab>("feeds");
   const [anomalyList, setAnomalyList] = useState<AIAnomaly[]>(anomalies);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AIAnomaly | null>(null);
+  const [selectedCamera, setSelectedCamera] = useState<PublicCctvCamera | null>(null);
+  /** Max simultaneous HLS wall sessions (bounded viewership, PART 7). */
+  const MAX_WALL_TILES = 9;
+  /** Camera ids currently playing HLS wall tiles (explicit user enable, PART 7/8). */
+  const [hlsEnabled, setHlsEnabled] = useState<Set<string>>(new Set());
+  const [wallCapMessage, setWallCapMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [alertView, setAlertView] = useState<"active" | "resolved">("active");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [feedColumns, setFeedColumns] = useState<FeedColumns>(4);
+
+  /**
+   * Bounded concurrent wall viewers (PART 7): each HLS tile is one authorized
+   * MediaMTX session, so the wall never opens more than MAX_WALL_TILES of
+   * them. Users enable tiles explicitly — online cameras never auto-connect.
+   */
+  const toggleHls = (cameraId: string): void => {
+    setWallCapMessage(null);
+    setHlsEnabled((prev) => {
+      const next = new Set(prev);
+      if (next.has(cameraId)) {
+        next.delete(cameraId);
+      } else if (next.size >= MAX_WALL_TILES) {
+        setWallCapMessage(`Wall mode is limited to ${MAX_WALL_TILES} concurrent streams. Disable a tile to enable another.`);
+        return prev;
+      } else {
+        next.add(cameraId);
+      }
+      return next;
+    });
+  };
 
   const SECTION_TABS: { key: ControlRoomTab; label: string; icon: React.ReactNode; count: number }[] = [
     { key: "feeds", label: "Live Feeds", icon: <IconVideo style={{ width: 15, height: 15 }} />, count: 0 },
@@ -181,12 +209,21 @@ export function ControlRoomLayout({
         )}
       </div>
 
+      {wallCapMessage && (
+        <p className="muted" role="status" style={{ margin: "0 0 0.75rem 0" }}>
+          {wallCapMessage}
+        </p>
+      )}
+
       {activeTab === "feeds" ? (
         <CameraWall
           cameras={cameras}
           cameraProjectLinks={cameraProjectLinks}
           query={query}
           columns={feedColumns}
+          hlsEnabled={hlsEnabled}
+          onToggleHls={toggleHls}
+          onOpenCamera={(camera) => setSelectedCamera(camera)}
         />
       ) : activeTab === "status" ? (
         <CameraStatusView
@@ -211,6 +248,11 @@ export function ControlRoomLayout({
           searchQuery={query}
           onSelectAnomaly={(a) => setSelectedAnomaly(a)}
         />
+      )}
+
+      {/* Camera detail / live viewer (WebRTC session lifecycle owned here) */}
+      {selectedCamera && (
+        <CameraLiveViewer camera={selectedCamera} onClose={() => setSelectedCamera(null)} />
       )}
 
       {/* Review & Transition Modal (shared across tabs) */}

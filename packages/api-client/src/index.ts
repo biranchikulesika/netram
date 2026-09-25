@@ -1,8 +1,6 @@
 import type {
   AIAnomaly,
   AIAnomalyListQuery,
-  AnalyticsQuery,
-  AuthorityAnalyticsOverview,
   AnomalyStatus,
   AssignRoleInput,
   AssignmentListQuery,
@@ -45,10 +43,6 @@ import type {
   SealGeofenceCommand,
   ProjectListQuery,
   ProjectStatus,
-  Report,
-  ReportFormat,
-  ReportListQuery,
-  ReportListResponse,
   RoleAssignmentView,
   RoleView,
   UpdateUserInput,
@@ -541,22 +535,6 @@ export class NetramApiClient extends HttpClient {
     return this.post("/api/v1/notifications/read-all", {});
   }
 
-  async listReports(query: ReportListQuery = {}): Promise<ReportListResponse> {
-    return this.get(`/api/v1/reports${queryString(query)}`);
-  }
-
-  async getReport(id: string): Promise<Report> {
-    return this.get(`/api/v1/reports/${id}`);
-  }
-
-  async createReport(inspectionId: string, format: ReportFormat = "json"): Promise<Report> {
-    return this.post("/api/v1/reports", { inspectionId, format });
-  }
-
-  async finalizeReport(id: string): Promise<Report> {
-    return this.post(`/api/v1/reports/${id}/finalize`, {});
-  }
-
   async listUsers(query: UserListQuery = {}): Promise<UserListResponse> {
     return this.get(`/api/v1/users${queryString(query)}`);
   }
@@ -640,6 +618,20 @@ export class NetramApiClient extends HttpClient {
     return this.post(`/api/v1/cctv/cameras/${id}/streams`, input);
   }
 
+  /** Keep a stream session alive against the sweeper (Phase 4). */
+  async streamHeartbeat(cameraId: string, streamId: string): Promise<{ lastHeartbeatAt: string }> {
+    return this.post(`/api/v1/cctv/cameras/${cameraId}/streams/${streamId}/heartbeat`, {});
+  }
+
+  /** End a stream session (viewer stop or admin revoke, Phase 4). */
+  async endCameraStream(
+    cameraId: string,
+    streamId: string,
+    input: { endReason?: "viewer_stop" | "admin_revoke" } = {},
+  ): Promise<{ ended: true; endReason: string }> {
+    return this.delete(`/api/v1/cctv/cameras/${cameraId}/streams/${streamId}`, input);
+  }
+
   async getCameraSnapshot(id: string): Promise<Blob> {
     return this.getBlob(`/api/v1/cctv/cameras/${id}/snapshot`);
   }
@@ -671,11 +663,6 @@ export class NetramApiClient extends HttpClient {
 
   async leaveVcSession(id: string): Promise<void> {
     return this.post(`/api/v1/vc/sessions/${id}/leave`, {});
-  }
-
-  // analytics & statutory SLA compliance
-  async getAnalyticsOverview(query: AnalyticsQuery = {}): Promise<AuthorityAnalyticsOverview> {
-    return this.get(`/api/v1/analytics/overview${queryString(query)}`);
   }
 
   // Funds & Allocations

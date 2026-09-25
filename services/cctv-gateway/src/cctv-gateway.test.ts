@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createStreamToken, verifyStreamToken } from "./auth/token.js";
 import { buildServer } from "./server.js";
+import type { MediamtxClient } from "./mediamtx/client.js";
 import {
   SimulatedCameraProvider,
   RtspCameraProvider,
@@ -11,6 +12,7 @@ import {
 } from "./index.js";
 
 const TEST_SECRET = "test-secret-at-least-32-chars-long-12345";
+const TEST_SERVICE_SECRET = "test-service-secret-at-least-32-chars";
 
 describe("CCTV Gateway Token Auth", () => {
   it("creates and verifies a valid stream token", () => {
@@ -19,6 +21,7 @@ describe("CCTV Gateway Token Auth", () => {
       {
         streamId: "stream-001",
         cameraId: "camera-001",
+        mediaPath: "facility-vani/cam-gate",
         exp,
       },
       TEST_SECRET,
@@ -28,6 +31,7 @@ describe("CCTV Gateway Token Auth", () => {
     expect(verified).not.toBeNull();
     expect(verified?.streamId).toBe("stream-001");
     expect(verified?.cameraId).toBe("camera-001");
+    expect(verified?.mediaPath).toBe("facility-vani/cam-gate");
     expect(verified?.exp).toBe(exp);
   });
 
@@ -37,6 +41,7 @@ describe("CCTV Gateway Token Auth", () => {
       {
         streamId: "stream-001",
         cameraId: "camera-001",
+        mediaPath: "facility-vani/cam-gate",
         exp,
       },
       TEST_SECRET,
@@ -52,6 +57,7 @@ describe("CCTV Gateway Token Auth", () => {
       {
         streamId: "stream-001",
         cameraId: "camera-001",
+        mediaPath: "facility-vani/cam-gate",
         exp,
       },
       TEST_SECRET,
@@ -72,6 +78,7 @@ describe("CCTV Gateway Token Auth", () => {
       {
         streamId: "stream-expired",
         cameraId: "camera-001",
+        mediaPath: "facility-vani/cam-gate",
         exp: pastExp,
       },
       TEST_SECRET,
@@ -226,27 +233,43 @@ describe("ProviderRegistry Composite Adapter", () => {
     expect(registry.name).toBe("registry");
     expect(registry.listProviders()).toHaveLength(3);
 
-    // Aggregates cameras across all registered providers
+    // Aggregates provider-side cameras (simulated has NO catalog by design —
+    // the DB is the camera source of truth; it only resolves the rig source).
     const cameras = await registry.listCameras();
-    expect(cameras.length).toBeGreaterThanOrEqual(4);
-    expect(cameras.map((c) => c.id)).toContain("cctv:vani-gate"); // from simulated
     expect(cameras.map((c) => c.id)).toContain("cctv:rtsp-library"); // from rtsp
     expect(cameras.map((c) => c.id)).toContain("cctv:onvif-entrance"); // from onvif
 
-    // Routes health checks to respective provider
-    expect(await registry.cameraHealth("cctv:vani-gate")).toBe("online");
+    // Routes health to the claiming provider; unclaimed cameras use the
+    // configured default (simulated resolver reports "unknown" — real health
+    // comes from media state, not provider presence).
     expect(await registry.cameraHealth("cctv:rtsp-library")).toBe("online");
-    expect(await registry.cameraHealth("cctv:nonexistent")).toBe("offline");
+    expect(await registry.cameraHealth("cctv:onvif-entrance")).toBe("online");
 
-    // Routes raw streams
-    const simStream = await registry.acquireRawStream("cctv:vani-gate");
-    expect(simStream).toContain("rtsp://simulated.internal:8554");
+    // Routes raw sources
     const rtspStream = await registry.acquireRawStream("cctv:rtsp-library");
     expect(rtspStream).toBe("rtsp://library.local:554/main");
 
     // Routes snapshots
     const snap = await registry.acquireSnapshot("cctv:onvif-entrance");
     expect(snap.contentType).toBe("image/jpeg");
+  });
+
+  it("falls back to the default provider for unclaimed cameras (dev rig)", async () => {
+    const simulated = new SimulatedCameraProvider();
+    const registry = new ProviderRegistry([simulated]).setDefaultProvider("simulated");
+
+    // No provider claims this DB camera; the default resolves its source.
+    const source = await registry.acquireRawStream("some-db-camera-uuid");
+    expect(source).toBe("rtsp://facility-nvr:8554/facility-vani/cam-gate");
+    expect(await registry.cameraHealth("some-db-camera-uuid")).toBe("unknown");
+  });
+
+  it("fails closed for unknown cameras when no default provider is set", async () => {
+    const registry = new ProviderRegistry([]);
+    await expect(registry.acquireRawStream("unknown-camera")).rejects.toThrow(
+      "No camera provider found",
+    );
+    expect(await registry.cameraHealth("unknown-camera")).toBe("offline");
   });
 
   it("supports dynamic unregistration of providers", async () => {
@@ -266,144 +289,257 @@ describe("ProviderRegistry Composite Adapter", () => {
   });
 });
 
-describe("CCTV Gateway Server with Multi-Provider Registry", () => {
-  it("responds to /health", async () => {
-    const server = await buildServer({ config: { streamSecret: TEST_SECRET } });
-    const res = await server.inject({
-      method: "GET",
-      url: "/health",
+const RIG_CAMERA = {
+  id: "a8ccb317-76ab-5106-ac47-5bc1dc568967",
+  provider: "simulated",
+  protocol: "rtsp",
+  endpoint: "rtsp://facility-nvr:8554/facility-vani/cam-gate",
+};
+
+const PATH_STATE_ONLINE = {
+  name: "facility-vani/cam-gate",
+  confName: "facility-vani/cam-gate",
+  ready: true,
+  readyTime: "2026-09-23T12:00:00Z",
+  available: true,
+  availableTime: "2026-09-23T12:00:00Z",
+  online: true,
+  source: { type: "rtspSource", id: "" },
+  tracks: ["H264"],
+  readers: [],
+  bytesReceived: 0,
+  bytesSent: 0,
+};
+
+/** MediaMTX stub: controllable per-test path state. */
+function mediamtxStub(pathState: unknown | null, opts: { fail?: boolean } = {}) {
+  return {
+    ensurePath: vi.fn().mockResolvedValue({ created: true }),
+    getPath: vi.fn().mockImplementation(() =>
+      opts.fail ? Promise.reject(new Error("unreachable")) : Promise.resolve(pathState),
+    ),
+    getPathStats: vi.fn().mockImplementation(() => {
+      if (opts.fail) return Promise.reject(new Error("unreachable"));
+      if (pathState === null) return Promise.resolve(null);
+      const p = pathState as typeof PATH_STATE_ONLINE;
+      return Promise.resolve({
+        exists: true,
+        ready: p.ready,
+        available: p.available,
+        online: p.online,
+        readerCount: p.readers.length,
+        readers: p.readers,
+        sourceType: p.source.type,
+        bytesSent: p.bytesSent,
+      });
+    }),
+    listPaths: vi.fn().mockResolvedValue(pathState ? [pathState] : []),
+    kickReader: vi.fn().mockResolvedValue(true),
+    listWebRtcSessions: vi.fn().mockResolvedValue([]),
+    checkHealth: vi.fn().mockResolvedValue(opts.fail ? { ok: false } : { ok: true }),
+  };
+}
+
+describe("CCTV Gateway Server (media control bridge)", () => {
+  it("responds to /health with the bridge role", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(PATH_STATE_ONLINE) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
     });
+    const res = await server.inject({ method: "GET", url: "/health" });
     expect(res.statusCode).toBe(200);
     const json = JSON.parse(res.body);
     expect(json.status).toBe("ok");
-    expect(json.service).toBe("cctv-gateway");
+    expect(json.role).toBe("media-control-bridge");
     await server.close();
   });
 
-  it("lists cameras across multiple registered providers", async () => {
-    const registry = new ProviderRegistry([
-      new SimulatedCameraProvider(),
-      new RtspCameraProvider([
-        {
-          id: "cctv:external-rtsp",
-          label: "External Perimeter Cam",
-          rtspUrl: "rtsp://perimeter.internal:554/live",
-        },
-      ]),
-    ]);
-
+  it("reports media control plane availability", async () => {
     const server = await buildServer({
-      provider: registry,
-      config: { streamSecret: TEST_SECRET },
+      mediamtxClient: mediamtxStub(null, { fail: true }) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
     });
-
-    const res = await server.inject({
-      method: "GET",
-      url: "/cameras",
-    });
+    const res = await server.inject({ method: "GET", url: "/media/health" });
     expect(res.statusCode).toBe(200);
     const json = JSON.parse(res.body);
-    expect(Array.isArray(json.cameras)).toBe(true);
-    const ids = json.cameras.map((c: { id: string }) => c.id);
-    expect(ids).toContain("cctv:vani-gate");
-    expect(ids).toContain("cctv:external-rtsp");
+    expect(json.status).toBe("unavailable");
+    expect(json.mediamtx).toBe("unreachable");
     await server.close();
   });
 
-  it("returns camera health for cameras on different providers", async () => {
+  it("lists provider-side cameras (dev/diagnostics only)", async () => {
     const registry = new ProviderRegistry([
-      new SimulatedCameraProvider(),
       new RtspCameraProvider([
-        {
-          id: "cctv:external-rtsp",
-          label: "External Perimeter Cam",
-          rtspUrl: "rtsp://perimeter.internal:554/live",
-          initialStatus: "online",
-        },
+        { id: "cctv:external-rtsp", label: "Perimeter", rtspUrl: "rtsp://p:554/live" },
       ]),
     ]);
-
     const server = await buildServer({
       provider: registry,
-      config: { streamSecret: TEST_SECRET },
+      mediamtxClient: mediamtxStub(null) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
     });
-
-    const res = await server.inject({
-      method: "GET",
-      url: "/cameras/cctv:external-rtsp/health",
-    });
+    const res = await server.inject({ method: "GET", url: "/cameras" });
     expect(res.statusCode).toBe(200);
     const json = JSON.parse(res.body);
-    expect(json.cameraId).toBe("cctv:external-rtsp");
-    expect(json.status).toBe("online");
+    expect(json.cameras.map((c: { id: string }) => c.id)).toContain("cctv:external-rtsp");
     await server.close();
   });
 
-  it("issues authorized stream relay with signed HMAC token", async () => {
-    const server = await buildServer({ config: { streamSecret: TEST_SECRET } });
+  it("derives REAL health from MediaMTX state (context-driven)", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(PATH_STATE_ONLINE) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
+    });
     const res = await server.inject({
       method: "POST",
-      url: "/cameras/cctv:vani-gate/streams",
-      payload: { ttlSeconds: 120 },
+      url: "/cameras/health",
+      headers: { "x-netram-service-secret": TEST_SERVICE_SECRET },
+      payload: RIG_CAMERA,
+    });
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.status).toBe("online");
+    expect(json.details.mediaPath).toBe("facility-vani/cam-gate");
+    await server.close();
+  });
+
+  it("rejects control-plane calls without the service secret", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(PATH_STATE_ONLINE) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
+    });
+    const res = await server.inject({
+      method: "POST",
+      url: "/cameras/health",
+      payload: RIG_CAMERA,
+    });
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body).error.code).toBe("UNAUTHORIZED_SERVICE");
+    await server.close();
+  });
+
+  it("reports offline when MediaMTX is unreachable (no fake online)", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(PATH_STATE_ONLINE, { fail: true }) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
+    });
+    const res = await server.inject({
+      method: "POST",
+      url: "/cameras/health",
+      headers: { "x-netram-service-secret": TEST_SERVICE_SECRET },
+      payload: RIG_CAMERA,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).status).toBe("offline");
+    await server.close();
+  });
+
+  it("exposes media statistics for a camera path", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(PATH_STATE_ONLINE) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
+    });
+    const res = await server.inject({
+      method: "POST",
+      url: "/cameras/stats",
+      headers: { "x-netram-service-secret": TEST_SERVICE_SECRET },
+      payload: RIG_CAMERA,
+    });
+    expect(res.statusCode).toBe(200);
+    const json = JSON.parse(res.body);
+    expect(json.exists).toBe(true);
+    expect(json.sourceType).toBe("rtspSource");
+    expect(json.mediaPath).toBe("facility-vani/cam-gate");
+    await server.close();
+  });
+
+  it("prepares a WHEP playback contract with signed token (no MPEG-TS relay)", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(null) as unknown as MediamtxClient,
+      config: {
+        streamSecret: TEST_SECRET,
+        serviceSecret: TEST_SERVICE_SECRET,
+        mediamtxWhepPublicUrl: "http://localhost:8189",
+      },
+    });
+    const res = await server.inject({
+      method: "POST",
+      url: `/cameras/${RIG_CAMERA.id}/streams`,
+      headers: { "x-netram-service-secret": TEST_SERVICE_SECRET },
+      payload: { ttlSeconds: 120, ...RIG_CAMERA },
     });
     expect(res.statusCode).toBe(201);
     const json = JSON.parse(res.body);
-    expect(json.streamId).toBeDefined();
-    expect(json.cameraId).toBe("cctv:vani-gate");
+    expect(json.playback.protocol).toBe("webrtc");
+    expect(json.playback.whepUrl).toBe("http://localhost:8189/facility-vani/cam-gate/whep");
+    expect(json.playback.mediaPath).toBe("facility-vani/cam-gate");
+    expect(json.streamUrl).toBe(json.playback.whepUrl);
     expect(json.token).toBeDefined();
-    expect(json.streamUrl).toContain(`/streams/${json.streamId}?token=${json.token}`);
     expect(new Date(json.expiresAt).getTime()).toBeGreaterThan(Date.now());
+    // No ingest details may leak into the browser-facing contract.
+    expect(JSON.stringify(json)).not.toContain("facility-nvr:8554");
     await server.close();
   });
 
-  it("allows access to stream relay with valid signed token", async () => {
-    const server = await buildServer({ config: { streamSecret: TEST_SECRET } });
+  it("rejects stream requests with missing or mismatched camera context", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(null) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
+    });
+    const res = await server.inject({
+      method: "POST",
+      url: `/cameras/${RIG_CAMERA.id}/streams`,
+      headers: { "x-netram-service-secret": TEST_SERVICE_SECRET },
+      payload: { ttlSeconds: 120, id: "other-id", provider: "simulated", protocol: "rtsp", endpoint: "rtsp://x/y" },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error.code).toBe("INVALID_CAMERA_CONTEXT");
+    await server.close();
+  });
+
+  it("validates signed playback tokens on /streams/:streamId", async () => {
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(null) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
+    });
     const createRes = await server.inject({
       method: "POST",
-      url: "/cameras/cctv:vani-gate/streams",
-      payload: { ttlSeconds: 60 },
+      url: `/cameras/${RIG_CAMERA.id}/streams`,
+      headers: { "x-netram-service-secret": TEST_SERVICE_SECRET },
+      payload: { ttlSeconds: 60, ...RIG_CAMERA },
     });
     const { streamId, token } = JSON.parse(createRes.body);
 
-    const streamRes = await server.inject({
+    const okRes = await server.inject({
       method: "GET",
-      url: `/streams/${streamId}?token=${token}`,
+      url: `/streams/${streamId}?token=${token}&cameraId=${RIG_CAMERA.id}`,
     });
-    expect(streamRes.statusCode).toBe(200);
-    expect(streamRes.headers["content-type"]).toBe("video/mp2t");
-    const buf = Buffer.from(streamRes.rawPayload);
-    expect(buf.length).toBe(188);
-    expect(buf[0]).toBe(0x47); // MPEG-TS Sync byte
-    await server.close();
-  });
+    expect(okRes.statusCode).toBe(200);
+    expect(JSON.parse(okRes.body).valid).toBe(true);
 
-  it("rejects unauthorized stream access without token", async () => {
-    const server = await buildServer({ config: { streamSecret: TEST_SECRET } });
-    const res = await server.inject({
+    const badRes = await server.inject({
       method: "GET",
-      url: "/streams/any-stream-id",
+      url: `/streams/${streamId}?token=bad.token`,
     });
-    expect(res.statusCode).toBe(401);
-    const json = JSON.parse(res.body);
-    expect(json.error.code).toBe("UNAUTHORIZED");
-    await server.close();
-  });
+    expect(badRes.statusCode).toBe(401);
 
-  it("rejects unauthorized stream access with invalid or mismatched token", async () => {
-    const server = await buildServer({ config: { streamSecret: TEST_SECRET } });
-    const res = await server.inject({
+    const noTokRes = await server.inject({
       method: "GET",
-      url: "/streams/stream-123?token=invalid.token",
+      url: `/streams/${streamId}`,
     });
-    expect(res.statusCode).toBe(401);
+    expect(noTokRes.statusCode).toBe(401);
+    expect(JSON.parse(noTokRes.body).error.code).toBe("UNAUTHORIZED");
     await server.close();
   });
 
   it("serves JPEG camera snapshots for advisory AI inference", async () => {
-    const server = await buildServer({ config: { streamSecret: TEST_SECRET } });
+    const server = await buildServer({
+      mediamtxClient: mediamtxStub(null) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
+    });
     const res = await server.inject({
       method: "GET",
-      url: "/cameras/cctv:vani-gate/snapshot",
+      url: `/cameras/${RIG_CAMERA.id}/snapshot`,
     });
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("image/jpeg");
@@ -415,11 +551,12 @@ describe("CCTV Gateway Server with Multi-Provider Registry", () => {
     await server.close();
   });
 
-  it("returns 404 CAMERA_NOT_FOUND on snapshot for unknown camera", async () => {
-    const registry = new ProviderRegistry([new SimulatedCameraProvider()]);
+  it("returns 404 CAMERA_NOT_FOUND on snapshot when no provider resolves the camera", async () => {
+    const registry = new ProviderRegistry([]);
     const server = await buildServer({
       provider: registry,
-      config: { streamSecret: TEST_SECRET },
+      mediamtxClient: mediamtxStub(null) as unknown as MediamtxClient,
+      config: { streamSecret: TEST_SECRET, serviceSecret: TEST_SERVICE_SECRET },
     });
     const res = await server.inject({
       method: "GET",

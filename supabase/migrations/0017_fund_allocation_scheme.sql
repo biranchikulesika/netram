@@ -1,0 +1,1 @@
+ALTER TABLE fund_allocations ADD COLUMN scheme text;

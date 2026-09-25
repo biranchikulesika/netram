@@ -91,6 +91,7 @@ describe("Financial Risk Engine - Detection Rules", () => {
       sanctionedById: null,
       sanctionedAt: null,
       status: "active",
+      scheme: null,
       description: null,
       notes: null,
       createdById: null,

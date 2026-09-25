@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IconAlertTriangle,
-  IconBarChart,
   IconCheck,
   IconClipboard,
   IconGrid,
@@ -57,7 +56,6 @@ export function FacilityNav({ projectId, permissions }: FacilityNavProps) {
       icon: IconCheck,
       permission: "corrective_action:read",
     },
-    { href: `${base}/reports`, label: "Reports", icon: IconBarChart, permission: "report:read" },
   ];
 
   const visible = items.filter((item) => {

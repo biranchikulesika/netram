@@ -13,6 +13,7 @@ export const createAllocationSchema = z.object({
   allocatedAmount: moneySchema,
   fiscalYear: z.string().min(4).max(10),
   currency: z.string().max(5).default("INR").optional(),
+  scheme: z.string().optional(),
   description: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -20,6 +21,7 @@ export const createAllocationSchema = z.object({
 export const updateAllocationSchema = z.object({
   allocatedAmount: moneySchema.optional(),
   status: z.enum(["active", "revised", "cancelled"]).optional(),
+  scheme: z.string().optional(),
   description: z.string().optional(),
   notes: z.string().optional(),
 });

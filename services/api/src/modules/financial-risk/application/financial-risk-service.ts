@@ -40,7 +40,7 @@ export class FinancialRiskService {
 
   constructor(
     private readonly authz: AuthorizationService,
-    private readonly projectRepo: Pick<ProjectRepositoryPort, "findById">,
+    private readonly projectRepo: Pick<ProjectRepositoryPort, "findById" | "findAllActiveProjects">,
     private readonly inspectionRepo: Pick<InspectionRepositoryPort, "list">,
     private readonly inspectionService: Pick<InspectionService, "createInspection">,
     private readonly fundRepo: FundRepository,
@@ -199,6 +199,27 @@ export class FinancialRiskService {
     }
 
     return { flag, events: recordedEvents, scoreOutput };
+  }
+
+  /** Scheduled sweep: evaluate the financial risk engine across all active projects. */
+  async sweepAllActiveProjects(
+    ctx: RequestUserContext,
+  ): Promise<{ evaluatedCount: number }> {
+    this.authz.requirePermission(ctx, RISK_READ);
+
+    const activeProjects = await this.projectRepo.findAllActiveProjects();
+    let evaluatedCount = 0;
+
+    for (const project of activeProjects) {
+      try {
+        await this.evaluateProject(ctx, project.id);
+        evaluatedCount++;
+      } catch {
+        // Continue processing other projects
+      }
+    }
+
+    return { evaluatedCount };
   }
 
   /* ---------- Flag Management ---------- */

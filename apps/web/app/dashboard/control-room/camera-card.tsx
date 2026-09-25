@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import type { PublicCctvCamera } from "@netram/types";
-import { IconPlay, IconPause, IconFullscreen, IconFullscreenExit } from "../../components/icons";
-
-const FRAME_REFRESH_MS = 10_000;
+import { IconPlay } from "../../components/icons";
 
 // "Vani Vihar - Dormitory Block" -> ["Vani Vihar", "Dormitory Block"]
 // "Main Gate" -> ["Main Gate", ""]
@@ -18,73 +16,39 @@ function splitFacilityPlace(name: string): [string, string] {
 export interface CameraCardProps {
   camera: PublicCctvCamera;
   projectHref?: string;
+  /** Open the camera detail / live viewer (real WebRTC session, PART 10). */
+  onOpen: (camera: PublicCctvCamera) => void;
+  /** Switch this tile to an HLS wall tile (PART 8 — explicit user intent). */
+  onToggleHls: (cameraId: string) => void;
 }
 
-export function CameraCard({ camera, projectHref }: CameraCardProps) {
+/**
+ * Production CCTV camera card (Phase 5).
+ *
+ * The card itself holds NO stream session — a camera being online does NOT
+ * mean this browser has an active WebRTC session (PART 7). Two explicit
+ * user paths exist:
+ *
+ *   "Live"  → CameraLiveViewer modal (WebRTC/WHEP, one session, heartbeat,
+ *             cleanup on close).
+ *   "HLS"   → HlsWallTile (authorized HLS via the same-origin proxy) for
+ *             wall-style monitoring.
+ *
+ * Honest states: the tile shows "Camera available" vs "Camera offline"
+ * from the camera's real status; connection states surface inside the
+ * live viewer ("Connecting to camera…", "LIVE", "Unable to connect…").
+ */
+export function CameraCard({ camera, projectHref, onOpen, onToggleHls }: CameraCardProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [frameTs, setFrameTs] = useState(Date.now());
 
-  const offline = camera.status !== "active";
+  const online = camera.status === "active";
 
-  // Refresh the snapshot frame so the tile behaves like a live feed
-  useEffect(() => {
-    const id = setInterval(() => setFrameTs(Date.now()), FRAME_REFRESH_MS);
-    return () => clearInterval(id);
-  }, []);
-
-  // Track fullscreen state of the tile viewport
-  useEffect(() => {
-    const onChange = () => setFullscreen(document.fullscreenElement === viewportRef.current);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  const handleToggle = async () => {
-    if (playing) {
-      setPlaying(false);
-      return;
-    }
-    if (offline) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/cctv/${camera.id}/streams`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ttlSeconds: 300 }),
-      });
-      if (!res.ok) {
-        throw new Error(`Failed to initiate stream (${res.status})`);
-      }
-      setPlaying(true);
-    } catch {
-      setPlaying(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggleFullscreen = useCallback(async () => {
-    const el = viewportRef.current;
-    if (!el) return;
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else {
-        await el.requestFullscreen();
-      }
-    } catch {
-      // fullscreen denied by browser; ignore
-    }
-  }, []);
+  const handleOpen = useCallback(() => {
+    if (online) onOpen(camera);
+  }, [camera, online, onOpen]);
 
   const [facility, place] = splitFacilityPlace(camera.name);
-
-  const showCenterButton = !playing || hover || loading;
 
   const facilityNode = projectHref ? (
     <Link
@@ -105,14 +69,10 @@ export function CameraCard({ camera, projectHref }: CameraCardProps) {
       onMouseLeave={() => setHover(false)}
     >
       <div className="cc-viewport" ref={viewportRef}>
-        <img
-          src={`/api/cctv/${camera.id}/snapshot?t=${frameTs}`}
-          alt={camera.name}
-          loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLElement).style.display = "none";
-          }}
-        />
+        <div className="cc-idle-placeholder" aria-hidden="true">
+          <span className="cc-idle-label">{online ? "Camera available" : "Camera offline"}</span>
+        </div>
+
         <div className="cc-vp-osd cc-vp-osd-tl">
           {facilityNode}
           {place && <span className="cc-osd-place">{place}</span>}
@@ -121,42 +81,25 @@ export function CameraCard({ camera, projectHref }: CameraCardProps) {
         <div className="cc-center">
           <button
             type="button"
-            onClick={handleToggle}
-            disabled={loading || offline}
-            title={offline ? "Camera offline" : playing ? "Pause" : "Play live stream"}
-            className={`cc-play-btn ${showCenterButton ? "cc-play-btn-visible" : ""} ${playing ? "cc-play-btn-playing" : ""}`}
+            onClick={handleOpen}
+            disabled={!online}
+            title={online ? "Open live viewer" : "Camera offline"}
+            className={`cc-play-btn ${hover || !online ? "cc-play-btn-visible" : ""}`}
           >
-            {loading ? (
-              "Connecting…"
-            ) : offline ? (
-              "Offline"
-            ) : playing ? (
-              <>
-                <IconPause style={{ width: 15, height: 15 }} />
-                Pause
-              </>
-            ) : (
-              <>
-                <IconPlay style={{ width: 15, height: 15 }} />
-                Live
-              </>
-            )}
+            <IconPlay style={{ width: 15, height: 15 }} />
+            Live
           </button>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleToggleFullscreen}
-          title={fullscreen ? "Exit fullscreen" : "Open fullscreen"}
-          aria-label={fullscreen ? "Exit fullscreen" : "Open fullscreen"}
-          className="cc-fullscreen-btn"
-        >
-          {fullscreen ? (
-            <IconFullscreenExit style={{ width: 14, height: 14 }} />
-          ) : (
-            <IconFullscreen style={{ width: 14, height: 14 }} />
+          {online && (
+            <button
+              type="button"
+              onClick={() => onToggleHls(camera.id)}
+              title="Play HLS wall stream (lower latency mode: WebRTC)"
+              className={`cc-play-btn cc-hls-btn ${hover ? "cc-play-btn-visible" : ""}`}
+            >
+              HLS
+            </button>
           )}
-        </button>
+        </div>
       </div>
     </div>
   );

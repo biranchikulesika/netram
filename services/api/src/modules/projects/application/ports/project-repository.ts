@@ -92,6 +92,7 @@ export interface ProjectListFilter {
 
 export interface ProjectRepositoryPort {
   findById(id: string): Promise<Project | null>;
+  findAllActiveProjects(): Promise<Array<{ id: string; code: string; name: string; districtId: string | null; organisationId: string | null }>>;
   findByCode?(code: string): Promise<Project | null>;
   list(filter: ProjectListFilter): Promise<Page<Project>>;
   createWithAuditAndEvent(cmd: CreateProjectCommand): Promise<Project>;

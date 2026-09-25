@@ -1158,104 +1158,6 @@ async function main() {
   }
   console.log(`✓ Invalid inspection transition correctly rejected with 409 Conflict`);
 
-  // Step 18: Official Inspection Reports & Statutory Dossiers Integration
-  console.log("\n18. Testing Official Inspection Reports & Statutory Dossiers Integration...");
-
-  // 1. Test SSR GET /reports
-  console.log("Testing SSR GET /reports...");
-  const reportsRes = await fetch(`${WEB_BASE}/reports`, {
-    headers: { Cookie: officer.cookie },
-  });
-  if (!reportsRes.ok) {
-    throw new Error(`GET /reports returned ${reportsRes.status}`);
-  }
-  const reportsHtml = await reportsRes.text();
-  if (!reportsHtml.includes("Inspection Reports") || !reportsHtml.includes("Compile Report")) {
-    throw new Error("Reports page HTML missing expected reports dashboard content");
-  }
-  console.log(`✓ /reports rendered successfully (${reportsHtml.length} bytes, contains dashboard & compile button)`);
-
-  // 2. Test Proxy POST /api/reports to compile statutory report for the completed inspection
-  console.log(`Testing POST /api/reports proxy for inspection ${scheduledInsp.id}...`);
-  const createReportRes = await fetch(`${WEB_BASE}/api/reports`, {
-    method: "POST",
-    headers: {
-      Cookie: officer.cookie,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      inspectionId: scheduledInsp.id,
-      format: "json",
-    }),
-  });
-  if (!createReportRes.ok) {
-    throw new Error(`POST /api/reports failed: ${createReportRes.status}: ${await createReportRes.text()}`);
-  }
-  const createdReport = (await createReportRes.json()) as { id: string; status: string; inspectionId: string; format: string };
-  if (!createdReport.id || createdReport.inspectionId !== scheduledInsp.id) {
-    throw new Error(`Unexpected report creation response: ${JSON.stringify(createdReport)}`);
-  }
-  console.log(`✓ Report generation requested via proxy: id=${createdReport.id}, status=${createdReport.status}`);
-
-  // 3. Poll Proxy GET /api/reports/:id until report worker completes artifact generation
-  console.log(`Polling GET /api/reports/${createdReport.id} proxy for generated artifact...`);
-  let pollReport = createdReport;
-  const pollStart = Date.now();
-  while (pollReport.status !== "ready" && pollReport.status !== "finalized") {
-    if (Date.now() - pollStart > 15000) {
-      throw new Error(`Report generation timed out after 15s (current status=${pollReport.status})`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const getRepRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}`, {
-      headers: { Cookie: officer.cookie },
-    });
-    if (!getRepRes.ok) {
-      throw new Error(`GET /api/reports/:id returned ${getRepRes.status}`);
-    }
-    pollReport = (await getRepRes.json()) as typeof createdReport & { artifact?: Record<string, unknown> };
-  }
-  console.log(`✓ Report artifact generated and ready: id=${pollReport.id}, status=${pollReport.status}`);
-
-  // 4. Test SSR GET /reports/[id]
-  console.log(`Testing SSR GET /reports/${createdReport.id}...`);
-  const reportDetailRes = await fetch(`${WEB_BASE}/reports/${createdReport.id}`, {
-    headers: { Cookie: officer.cookie },
-  });
-  if (!reportDetailRes.ok) {
-    throw new Error(`GET /reports/:id returned ${reportDetailRes.status}`);
-  }
-  const reportDetailHtml = await reportDetailRes.text();
-  if (!reportDetailHtml.includes("STATUTORY REPORT") || !reportDetailHtml.includes("Deterministic Statutory JSON Dossier")) {
-    throw new Error("Report detail HTML missing expected statutory report content");
-  }
-  console.log(`✓ /reports/${createdReport.id} rendered successfully (${reportDetailHtml.length} bytes, contains dossier)`);
-
-  // 5. Test Proxy POST /api/reports/:id/finalize
-  console.log(`Testing POST /api/reports/${createdReport.id}/finalize proxy...`);
-  const finalizeRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}/finalize`, {
-    method: "POST",
-    headers: { Cookie: officer.cookie },
-  });
-  if (!finalizeRes.ok) {
-    throw new Error(`POST /api/reports/:id/finalize failed: ${finalizeRes.status}: ${await finalizeRes.text()}`);
-  }
-  const finalizedReport = (await finalizeRes.json()) as { id: string; status: string; finalizedAt: string; finalizedBy: string };
-  if (finalizedReport.status !== "finalized" || !finalizedReport.finalizedAt) {
-    throw new Error(`Expected report status='finalized', got '${finalizedReport.status}'`);
-  }
-  console.log(`✓ Statutory report finalized and sealed: finalizedAt=${finalizedReport.finalizedAt}`);
-
-  // 6. Test Finalization Immutability (§34) - cannot re-finalize or transition finalized report
-  console.log("Testing finalized report immutability rejection...");
-  const reFinalizeRes = await fetch(`${WEB_BASE}/api/reports/${createdReport.id}/finalize`, {
-    method: "POST",
-    headers: { Cookie: officer.cookie },
-  });
-  if (reFinalizeRes.status !== 409) {
-    throw new Error(`Expected 409 Conflict when re-finalizing report, got ${reFinalizeRes.status}`);
-  }
-  console.log(`✓ Re-finalizing immutable report correctly rejected with 409 Conflict`);
-
   // Step 19: Interactive Notifications Center & Unread Alerting Integration (§37, §38)
   console.log("\n19. Testing Interactive Notifications Center & Unread Alerting Integration...");
 
@@ -1417,28 +1319,7 @@ async function main() {
     `✓ Proxy GET /api/audit returned ${auditPage.items.length} records (total=${auditPage.total} statutory events)`,
   );
 
-  // 3. Test Proxy GET /api/audit with action filter (?action=report.finalized)
-  console.log("Testing Proxy GET /api/audit?action=report.finalized...");
-  const filteredActionRes = await fetch(`${WEB_BASE}/api/audit?action=report.finalized`, {
-    headers: { Cookie: officer.cookie },
-  });
-  if (!filteredActionRes.ok) {
-    throw new Error(`GET /api/audit?action=report.finalized failed with ${filteredActionRes.status}`);
-  }
-  const filteredActionPage = (await filteredActionRes.json()) as typeof auditPage;
-  if (!Array.isArray(filteredActionPage.items) || filteredActionPage.items.length === 0) {
-    throw new Error("Expected at least 1 'report.finalized' audit record from Step 18");
-  }
-  for (const item of filteredActionPage.items) {
-    if (item.action !== "report.finalized") {
-      throw new Error(`Expected action='report.finalized', got '${item.action}'`);
-    }
-  }
-  console.log(
-    `✓ Action-filtered audit events verified: ${filteredActionPage.items.length} report.finalized event(s)`,
-  );
-
-  // 4. Test Proxy GET /api/audit with resourceType filter (?resourceType=inspection)
+  // 3. Test Proxy GET /api/audit with resourceType filter (?resourceType=inspection)
   console.log("Testing Proxy GET /api/audit?resourceType=inspection...");
   const filteredResTypeRes = await fetch(`${WEB_BASE}/api/audit?resourceType=inspection`, {
     headers: { Cookie: officer.cookie },
@@ -1463,28 +1344,6 @@ async function main() {
   // Step 21: Facility Sub-Workspaces Enhancement & Statutory Deep-Linking
   // -------------------------------------------------------------------------
   console.log("\n21. Testing Facility Sub-Workspaces & Statutory Deep-Linking Integration...");
-
-  // 1. SSR GET /projects/:id/reports
-  console.log(`Testing SSR GET /projects/${targetProject.id}/reports...`);
-  const facReportsRes = await fetch(`${WEB_BASE}/projects/${targetProject.id}/reports`, {
-    headers: { Cookie: officer.cookie },
-  });
-  if (!facReportsRes.ok) {
-    throw new Error(`GET /projects/${targetProject.id}/reports failed with ${facReportsRes.status}`);
-  }
-  const facReportsHtml = await facReportsRes.text();
-  if (!facReportsHtml.includes("Facility Reports")) {
-    throw new Error("Facility reports page missing 'Facility Reports' header");
-  }
-  if (!facReportsHtml.includes("/reports/")) {
-    throw new Error("Facility reports page missing link to statutory report dossier (/reports/)");
-  }
-  if (!facReportsHtml.includes("+ Compile Official Report")) {
-    throw new Error("Facility reports page missing '+ Compile Official Report' button");
-  }
-  console.log(
-    `✓ /projects/${targetProject.id}/reports rendered successfully (${facReportsHtml.length} bytes, contains dossier deep-links and compile button)`,
-  );
 
   // 2. SSR GET /projects/:id/actions
   const caTargetProjectId = caProjectId || targetProject.id;
@@ -1526,121 +1385,6 @@ async function main() {
   }
   console.log(
     `✓ /projects/${targetProject.id}/complaints rendered successfully (${facComplaintsHtml.length} bytes, contains complaint & citizen links)`,
-  );
-
-  // -------------------------------------------------------------------------
-  // Step 22: Authority Analytics & Statutory SLA Compliance Integration
-  // -------------------------------------------------------------------------
-  console.log("\n22. Testing Authority Analytics & Statutory SLA Compliance Integration...");
-
-  // 1. SSR GET /analytics
-  console.log("Testing SSR GET /analytics...");
-  const analyticsPageRes = await fetch(`${WEB_BASE}/analytics`, {
-    headers: { Cookie: officer.cookie },
-  });
-  if (!analyticsPageRes.ok) {
-    throw new Error(`GET /analytics failed with ${analyticsPageRes.status}`);
-  }
-  const analyticsHtml = await analyticsPageRes.text();
-  if (
-    !analyticsHtml.includes("Statutory Analytics &amp; SLA Intelligence") &&
-    !analyticsHtml.includes("Statutory Analytics & SLA Intelligence")
-  ) {
-    throw new Error("Analytics page missing main heading");
-  }
-  if (
-    !analyticsHtml.includes("Jurisdiction SLA Compliance &amp; Escalation Matrix") &&
-    !analyticsHtml.includes("Jurisdiction SLA Compliance & Escalation Matrix")
-  ) {
-    throw new Error("Analytics page missing SLA compliance matrix heading");
-  }
-  if (!analyticsHtml.includes("Deficiency Recurrence Taxonomy")) {
-    throw new Error("Analytics page missing deficiency recurrence heading");
-  }
-  console.log(
-    `✓ /analytics rendered successfully (${analyticsHtml.length} bytes, contains KPI cards, SLA matrix, and deficiency taxonomy)`,
-  );
-
-  // 2. Proxy GET /api/analytics
-  console.log("Testing Proxy GET /api/analytics...");
-  const proxyAnalyticsRes = await fetch(`${WEB_BASE}/api/analytics`, {
-    headers: { Cookie: officer.cookie },
-  });
-  if (!proxyAnalyticsRes.ok) {
-    throw new Error(
-      `Proxy GET /api/analytics failed with ${proxyAnalyticsRes.status}: ${await proxyAnalyticsRes.text()}`,
-    );
-  }
-  const analyticsData = (await proxyAnalyticsRes.json()) as {
-    summary: {
-      totalProjects: number;
-      activeProjects: number;
-      totalInspections: number;
-      overallSlaComplianceRate: number;
-      totalCorrectiveActions: number;
-      totalFindings: number;
-    };
-    slaComplianceByJurisdiction: Array<{
-      districtId: string;
-      districtName: string;
-      slaComplianceRate: number;
-    }>;
-    deficiencyRecurrence: Array<{ category: string; totalOccurrences: number }>;
-    inspectionClosureVelocity: { averageClosureDays: number };
-  };
-
-  if (typeof analyticsData.summary?.overallSlaComplianceRate !== "number") {
-    throw new Error("Expected overallSlaComplianceRate number in analytics summary");
-  }
-  if (!Array.isArray(analyticsData.slaComplianceByJurisdiction)) {
-    throw new Error("Expected slaComplianceByJurisdiction array");
-  }
-  if (!Array.isArray(analyticsData.deficiencyRecurrence)) {
-    throw new Error("Expected deficiencyRecurrence array");
-  }
-  console.log(
-    `✓ Proxy GET /api/analytics verified: SLA compliance=${analyticsData.summary.overallSlaComplianceRate}%, totalProjects=${analyticsData.summary.totalProjects}, totalInspections=${analyticsData.summary.totalInspections}`,
-  );
-
-  // 3. Direct Backend GET /api/v1/analytics/overview with Admin token
-  console.log("Testing Backend GET /api/v1/analytics/overview with Admin session...");
-  const backendAnalyticsRes = await fetch(`${API_BASE}/api/v1/analytics/overview`, {
-    headers: { Authorization: `Bearer ${admin.token}` },
-  });
-  if (!backendAnalyticsRes.ok) {
-    throw new Error(
-      `Backend GET /api/v1/analytics/overview failed with ${backendAnalyticsRes.status}`,
-    );
-  }
-  const backendAnalytics = (await backendAnalyticsRes.json()) as {
-    slaComplianceByJurisdiction: Array<{ districtId: string; districtName: string }>;
-  };
-  console.log(
-    `✓ Backend analytics overview returned ${backendAnalytics.slaComplianceByJurisdiction.length} jurisdiction(s) for State Admin`,
-  );
-
-  // 4. Test Out-of-Jurisdiction Rejection for Scoped Officer
-  console.log("Testing out-of-jurisdiction query rejection (403 Forbidden)...");
-  const outsideDistrict = backendAnalytics.slaComplianceByJurisdiction.find(
-    (d) => !d.districtName.toLowerCase().includes("khordha"),
-  );
-  if (!outsideDistrict) {
-    throw new Error("Expected at least one non-Khordha district in seed data");
-  }
-  const forbiddenDistrictId = outsideDistrict.districtId;
-  const forbiddenAnalyticsRes = await fetch(
-    `${API_BASE}/api/v1/analytics/overview?districtId=${forbiddenDistrictId}`,
-    {
-      headers: { Authorization: `Bearer ${officer.token}` },
-    },
-  );
-  if (forbiddenAnalyticsRes.status !== 403) {
-    throw new Error(
-      `Expected 403 Forbidden for out-of-jurisdiction query (${outsideDistrict.districtName}), got ${forbiddenAnalyticsRes.status}`,
-    );
-  }
-  console.log(
-    `✓ Out-of-jurisdiction analytics request for ${outsideDistrict.districtName} correctly rejected with 403 Forbidden (§16, §17)`,
   );
 
   console.log("\n==================================================================");

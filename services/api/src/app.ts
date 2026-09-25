@@ -18,7 +18,6 @@ import { InvalidObservationStageError } from "./modules/observations/domain/obse
 import { InvalidEvidenceTransitionError } from "./modules/evidence/domain/evidence.js";
 import { InvalidComplaintTransitionError } from "./modules/complaints/domain/complaint.js";
 import { InvalidAiAnomalyTransitionError } from "./modules/ai-anomalies/domain/ai-anomaly.js";
-import { InvalidReportTransitionError } from "./modules/reports/domain/report.js";
 import { InvalidAttendanceAnomalyTransitionError } from "./modules/attendance/domain/attendance-anomaly.js";
 import { registerHealthRoutes } from "./modules/health/http/routes.js";
 import { registerAuthRoutes } from "./modules/auth/http/routes.js";
@@ -33,14 +32,12 @@ import { registerAuditRoutes } from "./modules/audit/http/routes.js";
 import { registerAiAnomalyRoutes } from "./modules/ai-anomalies/http/routes.js";
 import { registerAssignmentRoutes } from "./modules/assignments/http/routes.js";
 import { registerNotificationRoutes } from "./modules/notifications/http/routes.js";
-import { registerReportRoutes } from "./modules/reports/http/routes.js";
 import { registerUserAdminRoutes } from "./modules/user-admin/http/routes.js";
 import { registerRegistryRoutes } from "./modules/registry/http/routes.js";
 import { registerRealtimeAuthorizeRoutes } from "./modules/realtime/http/routes.js";
-import { registerCctvRoutes } from "./modules/cctv/http/routes.js";
+import { registerCctvRoutes, registerMediaAuthHookRoute } from "./modules/cctv/http/routes.js";
 import { registerVcRoutes } from "./modules/vc/http/routes.js";
 import { registerAttendanceRoutes } from "./modules/attendance/http/routes.js";
-import { registerAnalyticsRoutes } from "./modules/analytics/http/routes.js";
 import { registerFundRoutes } from "./modules/funds/http/routes.js";
 import { registerFinancialRiskRoutes } from "./modules/financial-risk/http/routes.js";
 import { registerProjectRiskRoutes } from "./modules/project-risk/http/project-risk.routes.js";
@@ -62,11 +59,9 @@ export async function buildApp(container: Container) {
 
   await app.register(cors, { origin: container.config.NETRAM_CORS_ORIGIN });
   await app.register(multipart, {
-<<<<<<< HEAD
-    limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 10 },
-=======
-    limits: { fileSize: 100 * 1024 * 1024, files: 10, fields: 8 },
->>>>>>> origin/website-ui-improvement
+    // Union of both merge sides: multi-file ATR uploads need files: 10,
+    // field-heavy upload forms need fields: 10.
+    limits: { fileSize: 100 * 1024 * 1024, files: 10, fields: 10 },
   });
 
   await app.register(swagger, {
@@ -110,7 +105,6 @@ export async function buildApp(container: Container) {
           description: "Inspector assignments and inspection teams",
         },
         { name: "notifications", description: "In-app notifications" },
-        { name: "reports", description: "Derived inspection reports" },
         { name: "realtime", description: "Realtime authorization" },
         { name: "cctv", description: "CCTV stream abstraction and cameras" },
         { name: "vc", description: "Video conferencing and remote review sessions" },
@@ -172,7 +166,6 @@ export async function buildApp(container: Container) {
       err instanceof InvalidEvidenceTransitionError ||
       err instanceof InvalidComplaintTransitionError ||
       err instanceof InvalidAiAnomalyTransitionError ||
-      err instanceof InvalidReportTransitionError ||
       err instanceof InvalidVcSessionTransitionError ||
       err instanceof InvalidAttendanceAnomalyTransitionError
     ) {
@@ -231,6 +224,10 @@ export async function buildApp(container: Container) {
   // under /api/v1 or behind bearerAuth. (AGENTS.md §54, docs/contracts/README.md)
   await app.register(async (api) => {
     await registerHealthRoutes(api, container);
+    // MediaMTX external auth hook (Phase 4 §13): media-plane authorization
+    // boundary. Lives outside /api/v1 with its own service secret — MediaMTX
+    // authenticates with NETRAM_MEDIAMTX_HOOK_SECRET, not user JWTs.
+    await registerMediaAuthHookRoute(api, container);
   });
 
   await app.register(
@@ -247,14 +244,12 @@ export async function buildApp(container: Container) {
       await registerAiAnomalyRoutes(api, container);
       await registerAssignmentRoutes(api, container);
       await registerNotificationRoutes(api, container);
-      await registerReportRoutes(api, container);
       await registerUserAdminRoutes(api, container);
       await registerRegistryRoutes(api, container);
       await registerRealtimeAuthorizeRoutes(api, container);
       await registerCctvRoutes(api, container);
       await registerVcRoutes(api, container);
       await registerAttendanceRoutes(api, container);
-      await registerAnalyticsRoutes(api, container);
       await registerFundRoutes(api, container);
       await registerFinancialRiskRoutes(api, container);
       await registerProjectRiskRoutes(api, container);

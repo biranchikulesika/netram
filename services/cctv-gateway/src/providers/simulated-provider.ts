@@ -2,7 +2,6 @@ import type { CameraProvider, CameraRef, CameraSnapshotResult } from "./provider
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-
 // Standard 1x1 valid JFIF JPEG buffer
 const MINIMAL_JPEG = Buffer.from([
   0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
@@ -19,124 +18,51 @@ const MINIMAL_JPEG = Buffer.from([
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const samplesDir = path.resolve(__dirname,"../../samples");
+const samplesDir = path.resolve(__dirname, "../../samples");
 
+/**
+ * Simulated camera source (Phase 3 role change).
+ *
+ * NO LONGER a camera catalog and NO LONGER a media delivery mechanism. The
+ * camera catalog lives in the NETRAM database (control plane); media delivery
+ * is MediaMTX's job. This provider's remaining role is to RESOLVE the
+ * simulated facility's ingest source for the dev rig: the gateway provisions
+ * MediaMTX paths against it and MediaMTX pulls the RTSP feed that the
+ * camera-sim container pushes into the facility NVR.
+ */
 export class SimulatedCameraProvider implements CameraProvider {
   readonly name = "simulated";
 
-  private cameras: Map<string, CameraRef> = new Map([
-    [
-      "a8ccb317-76ab-5106-ac47-5bc1dc568967",
-      {
-        id: "cctv:vani-gate",
-        label: "Vani Vihar - Main Gate",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "b488164c-0e08-585a-a5db-3ea2977ee28a",
-      {
-        id: "cctv:cuttack-dinning",
-        label: "Cuttack Girls' Hostel - Dining Hall",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "6a2121e7-bf35-5fb8-aa13-a4a6ad7e2e36",
-      {
-        id: "cctv:vani-dormitory",
-        label: "Vani Vihar - Dormitory Block",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "4e940f8a-2448-5174-a232-2d2712de95a9",
-      {
-        id: "cctv:vani-kitchen",
-        label: "Vani Vihar - Kitchen Entry",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "bc0c4cf0-950b-584e-84e5-e056d7ac9eee",
-      {
-        id: "cctv:cuttack-gate",
-        label: "Cuttack Girls' Hostel - Main Gate",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "e5780131-b007-579f-aa51-4eccc168fe39",
-      {
-        id: "cctv:ganjam-gate",
-        label: "Ganjam Model School - Main Gate",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "18ba6d47-6879-559b-9e8d-e3e6ad783a5b",
-      {
-        id: "cctv:ganjam-kitchen",
-        label: "Ganjam Model School - Kitchen",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "d39dc90f-b150-51cd-9072-d177421f8cad",
-      {
-        id: "cctv:rajdhani-gate",
-        label: "Rajdhani Boys' Hostel - Main Gate",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "c79952b4-8322-5941-8cc4-fb6e3872b1c3",
-      {
-        id: "cctv:rourkela-gate",
-        label: "Rourkela Model Girls' Hostel - Main Gate",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-  ]);
+  /** The dev rig's single simulated facility feed (Phase 1–2 topology). */
+  private readonly rigSource: string;
 
-  private samplePaths: Map<string, string> = new Map([
-    ["a8ccb317-76ab-5106-ac47-5bc1dc568967", path.join(samplesDir,"boys-at-lab.mp4")],
-    ["b488164c-0e08-585a-a5db-3ea2977ee28a", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-    ["6a2121e7-bf35-5fb8-aa13-a4a6ad7e2e36", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-    ["4e940f8a-2448-5174-a232-2d2712de95a9", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-    ["bc0c4cf0-950b-584e-84e5-e056d7ac9eee", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-    ["e5780131-b007-579f-aa51-4eccc168fe39", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-    ["18ba6d47-6879-559b-9e8d-e3e6ad783a5b", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-    ["d39dc90f-b150-51cd-9072-d177421f8cad", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-    ["c79952b4-8322-5941-8cc4-fb6e3872b1c3", path.join(samplesDir,"5977704-hd_1366_586_30fps.mp4")],
-  ]);
+  constructor(rigSource = "rtsp://facility-nvr:8554/facility-vani/cam-gate") {
+    this.rigSource = rigSource;
+  }
 
+  /**
+   * No static catalog: the DB is the camera source of truth. The provider
+   * reports no cameras of its own; cameras are described by camera context
+   * passed from the control plane.
+   */
   async listCameras(): Promise<CameraRef[]> {
-    return Array.from(this.cameras.values());
+    return [];
   }
 
-  async cameraHealth(cameraId: string): Promise<CameraRef["status"]> {
-    if (this.cameras.has(cameraId)) {
-      return this.cameras.get(cameraId)!.status;
-    }
-    return "online";
+  /**
+   * Health is resolved from real media state by the MediaControlService —
+   * a source resolver alone cannot know camera health.
+   */
+  async cameraHealth(_cameraId: string): Promise<CameraRef["status"]> {
+    return "unknown";
   }
 
-  async acquireRawStream(cameraId: string): Promise<string> {
-    const path = this.samplePaths.get(cameraId);
-    if(!path){
-      throw new Error(`No sample video configured for camera: ${cameraId}`);
-    }
-    return path;
+  /**
+   * Resolve the simulated facility's ingest source URI (server-side only).
+   * Any camera routed to the simulated provider pulls from the rig feed.
+   */
+  async acquireRawStream(_cameraId: string): Promise<string> {
+    return this.rigSource;
   }
 
   async acquireSnapshot(_cameraId: string): Promise<CameraSnapshotResult> {
@@ -144,5 +70,10 @@ export class SimulatedCameraProvider implements CameraProvider {
       contentType: "image/jpeg",
       data: MINIMAL_JPEG,
     };
+  }
+
+  /** Sample directory (used by tooling/tests only). */
+  get samplesDir(): string {
+    return samplesDir;
   }
 }

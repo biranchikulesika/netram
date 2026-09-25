@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getFacility, getFacilityFunds } from "../../../../lib/facility";
-import { getSessionUser } from "../../../../lib/api";
+import { getFacility, getFacilityFunds } from "../../../../../lib/facility";
+import { getSessionUser } from "../../../../../lib/api";
 import { ProjectFundsClient } from "./project-funds-client";
 import type { ProjectFundOverview } from "@netram/types";
 
@@ -23,8 +23,6 @@ export default async function FacilityFundsPage({
     permissions.includes("expense:submit") || permissions.includes("*");
   const canVerifyExpense =
     permissions.includes("expense:verify") || permissions.includes("*");
-  const canEvaluateRisk =
-    permissions.includes("financial_risk:read") || permissions.includes("*");
 
   const rawOverview = await getFacilityFunds(project.id);
   const overview: ProjectFundOverview = rawOverview ?? {
@@ -53,7 +51,6 @@ export default async function FacilityFundsPage({
       initialOverview={overview}
       canSubmitExpense={canSubmitExpense}
       canVerifyExpense={canVerifyExpense}
-      canEvaluateRisk={canEvaluateRisk}
     />
   );
 }

@@ -13,6 +13,7 @@ export interface FundAllocation {
   sanctionedById: UUID | null;
   sanctionedAt: ISODateTime | null;
   status: FundAllocationStatus;
+  scheme: string | null;
   description: string | null;
   notes: string | null;
   createdById: UUID | null;

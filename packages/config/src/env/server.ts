@@ -41,6 +41,16 @@ export const serverEnvSchema = z.object({
     .string()
     .min(32)
     .default("replace-me-with-a-32-char-plus-cctv-stream-secret"),
+  /** Shared secret the NETRAM API presents to the CCTV gateway (§14). */
+  NETRAM_CCTV_SERVICE_SECRET: z
+    .string()
+    .min(32)
+    .default("replace-me-with-a-32-char-plus-cctv-service-secret"),
+  /** Secret the MediaMTX external auth hook must present (Phase 4, §13). */
+  NETRAM_MEDIAMTX_HOOK_SECRET: z
+    .string()
+    .min(32)
+    .default("replace-me-with-a-32-char-plus-mediamtx-hook-secret"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
