@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getSessionUser } from "../lib/api";
 import { redirect } from "next/navigation";
+import TypingHeadline from "./TypingHeadline";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "Netram Monitoring Platform",
@@ -14,104 +16,130 @@ export default async function HomePage() {
   if (session) redirect("/dashboard");
 
   return (
-    <main style={{ minHeight: "100vh", padding: "3rem 1rem" }}>
+    <main style={{ minHeight: "100vh", width: "100%", background: "#f6f8fc" }}>
       <style>{`
-        .launcher-card {
-          transition: transform .12s ease, box-shadow .12s ease;
+        :root {
+          --navy: #1e3a8a;
+          --saffron: #e8590c;
+          --green: #157a3d;
+          --green-hover: #0f5f2f;
+          --muted: #64748b;
         }
-        .launcher-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 24px rgba(30, 58, 138, .12);
+        .nav-btn {
+          background: var(--green);
+          color: #fff;
+          font-weight: 700;
+          font-size: 0.95rem;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          text-decoration: none;
+          transition: background .12s ease;
+        }
+        .nav-btn:hover { background: var(--green-hover); color: #fff; }
+        .plain-link {
+          color: var(--navy);
+          font-weight: 700;
+          font-size: 0.95rem;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          border: 1.5px solid var(--navy);
+          text-decoration: none;
+        }
+        .hero-grid {
+          background-image:
+            linear-gradient(rgba(30, 58, 138, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(30, 58, 138, 0.06) 1px, transparent 1px);
+          background-size: 64px 64px;
+          -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
+          mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
+        }
+        .action-row {
+          display: flex;
+          justify-content: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 720px) {
+          .hero-heading { font-size: 2.6rem !important; }
         }
       `}</style>
 
-      <div style={{ maxWidth: "960px", margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-            <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "var(--color-navy-brand, #1e3a8a)" }} />
-            <span style={{ fontSize: "0.85rem", fontWeight: 700, letterSpacing: "0.08em", color: "var(--color-navy-brand, #1e3a8a)" }}>
-              GOVERNMENT OF INDIA · DoSJE
-            </span>
+      {/* Logo, top-left */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.65rem",
+          padding: "1.5rem 2rem 0",
+        }}
+      >
+        <Image
+          src="/National-Emblem-1.svg"
+          alt="Department of Social Justice & Empowerment logo"
+          width={38}
+          height={38}
+          style={{ borderRadius: "8px", flexShrink: 0, objectFit: "contain" }}
+        />
+        <div>
+          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--navy)", lineHeight: 1.1 }}>
+            DoSJE
           </div>
-          <h1 style={{ margin: "0.25rem 0", fontSize: "2.25rem", fontWeight: 800, color: "var(--color-navy-brand, #1e3a8a)" }}>
-            Netram Monitoring Platform
-          </h1>
-          <p className="muted" style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-muted, #64748b)" }}>
-            Social justice programme oversight, grievance redressal, and public accountability ledger
-          </p>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem" }}>
-          <Link
-            href="/login"
-            style={{ textDecoration: "none", color: "inherit" }}
-          >
-            <div
-              className="launcher-card table-card"
-              style={{ padding: "2rem", borderRadius: "12px", border: "1px solid var(--color-border-strong, #cbd5e1)", height: "100%" }}
-            >
-              <div style={{ fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#475569", marginBottom: "0.6rem" }}>
-                Authorized Portal
-              </div>
-              <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand, #1e3a8a)" }}>
-                Staff &amp; Officer Login
-              </h2>
-              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.5, color: "#64748b" }}>
-                Authority workspaces, control room, inspections, projects, and corrective actions.
-              </p>
-              <div style={{ marginTop: "1.25rem", fontSize: "0.85rem", fontWeight: 700, color: "var(--color-navy-brand, #1e3a8a)" }}>
-                Sign in &rarr;
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/register-complaint"
-            style={{ textDecoration: "none", color: "inherit" }}
-          >
-            <div
-              className="launcher-card table-card"
-              style={{ padding: "2rem", borderRadius: "12px", border: "1px solid var(--color-border-strong, #cbd5e1)", height: "100%" }}
-            >
-              <div style={{ fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#475569", marginBottom: "0.6rem" }}>
-                Citizen Grievance
-              </div>
-              <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand, #1e3a8a)" }}>
-                Register a Complaint
-              </h2>
-              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.5, color: "#64748b" }}>
-                File a public grievance against a monitored social justice facility or programme.
-              </p>
-              <div style={{ marginTop: "1.25rem", fontSize: "0.85rem", fontWeight: 700, color: "var(--color-navy-brand, #1e3a8a)" }}>
-                File grievance &rarr;
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/track-complaint"
-            style={{ textDecoration: "none", color: "inherit" }}
-          >
-            <div
-              className="launcher-card table-card"
-              style={{ padding: "2rem", borderRadius: "12px", border: "1px solid var(--color-border-strong, #cbd5e1)", height: "100%" }}
-            >
-              <div style={{ fontSize: "0.78rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#475569", marginBottom: "0.6rem" }}>
-                Public Ledger
-              </div>
-              <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand, #1e3a8a)" }}>
-                Track a Grievance
-              </h2>
-              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.5, color: "#64748b" }}>
-                Check the official dispute status using the tracking code from your filing acknowledgment.
-              </p>
-              <div style={{ marginTop: "1.25rem", fontSize: "0.85rem", fontWeight: 700, color: "var(--color-navy-brand, #1e3a8a)" }}>
-                Track status &rarr;
-              </div>
-            </div>
-          </Link>
+          <div style={{ fontSize: "0.7rem", color: "var(--muted)", lineHeight: 1.1 }}>
+            Govt. of India
+          </div>
         </div>
       </div>
+
+      {/* Hero */}
+      <section
+        className="hero-grid"
+        style={{
+          width: "100%",
+          padding: "4rem 1.5rem 6rem",
+          textAlign: "center",
+        }}
+      >
+        <div
+          className="hero-heading"
+          style={{
+            fontSize: "4.5rem",
+            fontWeight: 800,
+            lineHeight: 1.05,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          <TypingHeadline /> <span style={{ color: "var(--navy)" }}>: सत्य · दृष्टि · दायित्व</span>
+        </div>
+
+        <p
+          style={{
+            maxWidth: "560px",
+            margin: "1.25rem auto 0",
+            color: "var(--muted)",
+            fontSize: "1.05rem",
+            lineHeight: 1.6,
+          }}
+        >
+          Real-time monitoring and inspection for institutions under the
+          Department of Social Justice &amp; Empowerment.
+        </p>
+
+        <div className="action-row" style={{ marginTop: "2.5rem" }}>
+          <Link href="/login" className="nav-btn">
+            Staff Login
+          </Link>
+          <Link href="/register-complaint" className="nav-btn">
+            File a Complaint
+          </Link>
+          <Link href="/track-complaint" className="nav-btn">
+            Track a Complaint
+          </Link>
+        </div>
+      </section>
+
+      <footer style={{ textAlign: "center", padding: "2rem", color: "var(--muted)", fontSize: "0.82rem" }}>
+        © 2026 Netram · Department of Social Justice &amp; Empowerment
+      </footer>
     </main>
   );
 }
