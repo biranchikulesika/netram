@@ -62,8 +62,8 @@ async function main() {
   console.log("--- Starting Netram Web Dashboard Runtime Verification ---");
 
   // Step 1: Officer Session
-  console.log("\n1. Establishing Officer session (officer.khordha@dev.netram.in)...");
-  const officer = await loginAndGetCookie("officer.khordha@dev.netram.in");
+  console.log("\n1. Establishing Officer session (officer@netram.dev)...");
+  const officer = await loginAndGetCookie("officer@netram.dev");
   console.log(`✓ Officer authenticated: id=${officer.user.id}`);
 
   // Step 2: SSR /projects
@@ -75,7 +75,7 @@ async function main() {
   const projectsHtml = await projectsRes.text();
   if (
     !projectsHtml.includes("Projects") ||
-    !projectsHtml.includes("officer.khordha@dev.netram.in")
+    !projectsHtml.includes("officer@netram.dev")
   ) {
     throw new Error("Projects page HTML missing expected content");
   }
@@ -715,19 +715,7 @@ async function main() {
   }
   console.log(`✓ Public tracking endpoint verified: trackingCode=${trackData.trackingCode}, status=${trackData.status}, PII omitted`);
 
-  // Test Public Citizen Portal SSR (GET /track-complaint)
-  const trackPortalRes = await fetch(`${WEB_BASE}/track-complaint?code=${encodeURIComponent(createdCmp.trackingCode)}`);
-  if (!trackPortalRes.ok) {
-    throw new Error(`GET /track-complaint returned ${trackPortalRes.status}`);
-  }
-  const trackPortalHtml = await trackPortalRes.text();
-  if (!trackPortalHtml.includes("Netram Citizen Grievance Portal")) {
-    throw new Error("Citizen tracking portal missing expected title");
-  }
-  if (!trackPortalHtml.includes("Track Status")) {
-    throw new Error("Citizen tracking portal missing tracking lookup action");
-  }
-  console.log(`✓ /track-complaint rendered successfully (${trackPortalHtml.length} bytes, citizen portal OK)`);
+  // The public citizen tracking page was removed; only the public API endpoint remains.
 
   // Step 15: Corrective Actions Workflow (WEB + API)
   console.log("\n15. Testing Corrective Actions Lifecycle & Proxy Integration...");
@@ -920,9 +908,9 @@ async function main() {
   // Step 16: User Admin & Scoped Role Assignment (WEB + API)
   console.log("\n16. Testing User Administration & Scoped Role Assignment Integration...");
 
-  // Establish Admin Session (admin.example-social@dev.netram.in)
-  console.log("Establishing Department Admin session (admin.example-social@dev.netram.in)...");
-  const admin = await loginAndGetCookie("admin.example-social@dev.netram.in");
+  // Establish Admin Session (admin@netram.dev)
+  console.log("Establishing Department Admin session (admin@netram.dev)...");
+  const admin = await loginAndGetCookie("admin@netram.dev");
   console.log(`✓ Admin authenticated: id=${admin.user.id}`);
 
   // Test SSR GET /admin
@@ -1380,8 +1368,8 @@ async function main() {
   if (!facComplaintsHtml.includes("/complaints/")) {
     throw new Error("Facility complaints page missing link to complaint grievance dossier (/complaints/)");
   }
-  if (!facComplaintsHtml.includes("/track-complaint?code=")) {
-    throw new Error("Facility complaints page missing citizen portal tracking link");
+  if (facComplaintsHtml.includes("/track-complaint")) {
+    throw new Error("Facility complaints page still links to the removed citizen tracking page");
   }
   console.log(
     `✓ /projects/${targetProject.id}/complaints rendered successfully (${facComplaintsHtml.length} bytes, contains complaint & citizen links)`,

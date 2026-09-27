@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 
 const WORDS = ["Netram", "नेत्रम्"];
-const TYPE_SPEED = 130;
-const DELETE_SPEED = 80;
-const HOLD_TIME = 1400;
+const TYPE_SPEED = 200;
+const DELETE_SPEED = 120;
+const HOLD_TIME = 1800;
+const RESTART_DELAY = 500;
 
 export default function TypingHeadline() {
   const [wordIndex, setWordIndex] = useState(0);
@@ -34,8 +35,12 @@ export default function TypingHeadline() {
         const t = setTimeout(() => setText(text.slice(0, -1)), DELETE_SPEED);
         return () => clearTimeout(t);
       }
-      setWordIndex((i) => (i + 1) % WORDS.length);
-      setPhase("typing");
+      // Pause on the empty line before the next word starts.
+      const t = setTimeout(() => {
+        setWordIndex((i) => (i + 1) % WORDS.length);
+        setPhase("typing");
+      }, RESTART_DELAY);
+      return () => clearTimeout(t);
     }
   }, [text, phase, wordIndex]);
 

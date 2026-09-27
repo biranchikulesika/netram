@@ -51,7 +51,7 @@ export default function LoginScreen() {
         trimmed.toLowerCase().includes("insp-001") ||
         trimmed.toLowerCase().includes("inspector.one")
       ) {
-        targetUser = "inspector.one@dev.netram.in";
+        targetUser = "inspector@netram.dev";
       } else if (
         trimmed.toLowerCase().includes("insp-002") ||
         trimmed.toLowerCase().includes("inspector.two")

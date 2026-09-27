@@ -10,6 +10,7 @@ import type {
 } from "@netram/types";
 import { AnomalyReviewPanel } from "./anomaly-review";
 import { IconSearch, IconAlertTriangle, IconBarChart } from "../../components/icons";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 interface AttendanceOverviewProps {
   calculations: AttendanceCalculation[];
@@ -97,6 +98,8 @@ export function AttendanceOverviewSection({
       );
     });
   }, [calculations, searchQuery]);
+
+  const pagination = useClientPagination(filteredCalculations, 20, [selectedDate, searchQuery]);
 
   /** Review an anomaly via the server-side API route, then resync. */
   const handleReview = async (id: string, action: AttendanceReviewAction) => {
@@ -409,86 +412,66 @@ export function AttendanceOverviewSection({
           <div className="table-card attendance-table-card" style={{ marginTop: "1.5rem" }}>
             <table className="attendance-table">
               <thead>
-                <tr
-                  style={{
-                    background: "#f8fafc",
-                    borderBottom: "1px solid #e2e8f0",
-                  }}
-                >
-                  <th style={thStyle}>Project</th>
-                  <th style={thStyle}>Op Day</th>
-                  <th style={thStyle}>Expected</th>
-                  <th style={thStyle}>Present</th>
-                  <th style={thStyle}>Absent</th>
-                  <th style={thStyle}>Unknown</th>
-                  <th style={thStyle}>Data Quality</th>
-                  <th style={thStyle}>Track Record</th>
+                <tr>
+                  <th>Project</th>
+                  <th>Op Day</th>
+                  <th className="table-align-right">Expected</th>
+                  <th className="table-align-right">Present</th>
+                  <th className="table-align-right">Absent</th>
+                  <th className="table-align-right">Unknown</th>
+                  <th>Data Quality</th>
+                  <th>Track Record</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCalculations.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={8}
-                      style={{
-                        textAlign: "center",
-                        padding: "3rem 1rem",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      <IconSearch
-                        width={22}
-                        height={22}
-                        style={{ opacity: 0.5, margin: "0 auto 0.5rem", display: "block" }}
-                      />
-                      <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                        No attendance rows found
+                    <td colSpan={8} className="table-empty-state">
+                      <IconSearch width={22} height={22} className="table-empty-icon" />
+                      <div className="table-empty-title">
+                        No attendance records found
                       </div>
-                      <div style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
+                      <div className="table-empty-desc">
                         Adjust the search query or pick another date to see more.
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredCalculations.map((calc) => {
+                  pagination.paginatedItems.map((calc) => {
                     return (
                       <tr
                         key={`${calc.projectId}:${calc.operationalDate}`}
                         className="table-row"
-                        style={{ borderBottom: "1px solid #f1f5f9" }}
+                        onClick={() => router.push(`/dashboard/projects/${calc.projectId}`)}
+                        title={`Open project details for ${calc.projectName ?? calc.projectCode ?? "facility"}`}
                       >
-                        <td style={tdStyle}>
+                        <td>
                           <Link
                             href={`/dashboard/projects/${calc.projectId}`}
-                            style={{ textDecoration: "none", color: "inherit" }}
+                            className="table-name-link"
+                            onClick={(e) => e.stopPropagation()}
                             title={`Open project details for ${calc.projectName ?? calc.projectCode ?? "facility"}`}
                           >
-                            <strong
-                              style={{
-                                color: "#1d4ed8",
-                                fontWeight: 600,
-                                fontSize: "0.85rem",
-                              }}
-                            >
-                              {calc.projectName ?? "Sanctioned facility"}
-                            </strong>
-                            <div
-                              style={{
-                                fontSize: "0.72rem",
-                                color: "#64748b",
-                                marginTop: "2px",
-                                fontFamily: "var(--font-mono)",
-                              }}
-                            >
-                              {calc.projectCode ?? "—"}
-                            </div>
+                            {calc.projectName ?? "Sanctioned facility"}
                           </Link>
+                          {calc.projectCode && (
+                            <div className="table-subtext">
+                              <Link
+                                href={`/dashboard/projects/${calc.projectId}`}
+                                className="table-code-link"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Project code: ${calc.projectCode}`}
+                              >
+                                {calc.projectCode}
+                              </Link>
+                            </div>
+                          )}
                         </td>
-                        <td style={tdStyle}>{calc.operationalDate}</td>
-                        <td style={tdStyle}>{calc.expected !== null ? calc.expected : "—"}</td>
+                        <td className="table-date">{calc.operationalDate}</td>
+                        <td className="table-align-right">{calc.expected !== null ? calc.expected : "—"}</td>
                         <td
+                          className="table-align-right"
                           style={{
-                            ...tdStyle,
                             fontWeight: 600,
                             color:
                               calc.coverage === "COMPLETE"
@@ -500,16 +483,16 @@ export function AttendanceOverviewSection({
                         >
                           {calc.present}
                         </td>
-                        <td style={tdStyle}>{calc.absent !== null ? calc.absent : "—"}</td>
+                        <td className="table-align-right">{calc.absent !== null ? calc.absent : "—"}</td>
                         <td
+                          className="table-align-right"
                           style={{
-                            ...tdStyle,
-                            color: calc.unknown > 0 ? "#dc2626" : "#94a3b8",
+                            color: calc.unknown > 0 ? "#dc2626" : "var(--text-subtle)",
                           }}
                         >
                           {calc.unknown}
                         </td>
-                        <td style={tdStyle}>
+                        <td>
                           <span
                             style={{
                               fontSize: "0.72rem",
@@ -521,25 +504,12 @@ export function AttendanceOverviewSection({
                             {calc.dataQuality}
                           </span>
                         </td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            fontSize: "0.75rem",
-                            color: "#64748b",
-                          }}
-                        >
+                        <td style={{ textAlign: "right" }}>
                           <Link
                             href={`/dashboard/attendance/records/${calc.projectId}?year=${calc.operationalDate.slice(0, 4)}`}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.35rem",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              color: "#2563eb",
-                              textDecoration: "none",
-                              whiteSpace: "nowrap",
-                            }}
+                            className="btn-secondary"
+                            style={{ fontSize: "0.74rem", padding: "0.22rem 0.55rem", whiteSpace: "nowrap" }}
+                            onClick={(e) => e.stopPropagation()}
                             title={`View yearly attendance record for ${calc.projectName ?? "Sanctioned facility"}`}
                           >
                             View Record
@@ -551,23 +521,20 @@ export function AttendanceOverviewSection({
                 )}
               </tbody>
             </table>
+
+            <PaginationBar
+              from={pagination.from}
+              to={pagination.to}
+              total={pagination.total}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              pageSize={pagination.pageSize}
+              itemName="attendance records"
+              onPageClick={pagination.onPageClick}
+              onPageSizeChange={pagination.onPageSizeChange}
+            />
           </div>
         ))}
     </section>
   );
 }
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "0.6rem 0.75rem",
-  fontWeight: 600,
-  color: "#475569",
-  fontSize: "0.75rem",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "0.5rem 0.75rem",
-  verticalAlign: "middle",
-};

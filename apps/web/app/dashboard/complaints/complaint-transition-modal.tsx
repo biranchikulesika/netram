@@ -147,7 +147,6 @@ export function ComplaintTransitionModal({
               <span
                 style={{
                   fontSize: "0.72rem",
-                  fontFamily: "var(--font-mono)",
                   background: "#f1f5f9",
                   padding: "0.15rem 0.4rem",
                   borderRadius: "4px",

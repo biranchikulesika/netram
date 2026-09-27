@@ -26,165 +26,7 @@ interface ProjectsViewProps {
   apiUrl: string;
 }
 
-function getPaginationRange(current: number, total: number): (number | "...")[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  if (current <= 4) {
-    return [1, 2, 3, 4, 5, "...", total];
-  }
-  if (current >= total - 3) {
-    return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
-  }
-  return [1, "...", current - 1, current, current + 1, "...", total];
-}
-
-interface PaginationBarProps {
-  from: number;
-  to: number;
-  total: number;
-  currentPage: number;
-  totalPages: number;
-  pageSize: number;
-  jumpPage: string;
-  onJumpChange: (val: string) => void;
-  onJumpSubmit: (e: React.FormEvent) => void;
-  onPageClick: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
-}
-
-function PaginationBar({
-  from,
-  to,
-  total,
-  currentPage,
-  totalPages,
-  pageSize,
-  jumpPage,
-  onJumpChange,
-  onJumpSubmit,
-  onPageClick,
-  onPageSizeChange,
-}: PaginationBarProps) {
-  const pages = getPaginationRange(currentPage, totalPages);
-
-  return (
-    <div className="pagination-bar">
-      <div>
-        Showing <strong>{from.toLocaleString()}</strong>–<strong>{to.toLocaleString()}</strong> of{" "}
-        <strong>{total.toLocaleString()}</strong> registered facilities
-      </div>
-
-      <div className="pagination-controls">
-        {/* Page Size Selector */}
-        <div className="pagination-pagesize">
-          <label htmlFor="pageSizeSelect">Rows:</label>
-          <select
-            id="pageSizeSelect"
-            className="pagination-select"
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
-            aria-label="Rows per page"
-          >
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-        </div>
-
-        {/* Page Nav Buttons */}
-        <div className="pagination-nav" role="navigation" aria-label="Pagination Navigation">
-          <button
-            type="button"
-            className="pagination-btn"
-            onClick={() => onPageClick(1)}
-            disabled={currentPage <= 1}
-            title="First page"
-            aria-label="First page"
-          >
-            «
-          </button>
-
-          <button
-            type="button"
-            className="pagination-btn"
-            onClick={() => onPageClick(currentPage - 1)}
-            disabled={currentPage <= 1}
-            title="Previous page"
-            aria-label="Previous page"
-          >
-            ‹
-          </button>
-
-          {pages.map((p, idx) => {
-            if (p === "...") {
-              return (
-                <span key={`ellipsis-${idx}`} className="pagination-ellipsis">
-                  &hellip;
-                </span>
-              );
-            }
-            const pageNum = p as number;
-            const isActive = pageNum === currentPage;
-            return (
-              <button
-                key={pageNum}
-                type="button"
-                className={`pagination-btn ${isActive ? "active" : ""}`}
-                onClick={() => onPageClick(pageNum)}
-                aria-current={isActive ? "page" : undefined}
-                aria-label={`Page ${pageNum}`}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
-
-          <button
-            type="button"
-            className="pagination-btn"
-            onClick={() => onPageClick(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            title="Next page"
-            aria-label="Next page"
-          >
-            ›
-          </button>
-
-          <button
-            type="button"
-            className="pagination-btn"
-            onClick={() => onPageClick(totalPages)}
-            disabled={currentPage >= totalPages}
-            title="Last page"
-            aria-label="Last page"
-          >
-            »
-          </button>
-        </div>
-
-        {/* Jump To Page */}
-        {totalPages > 5 && (
-          <form onSubmit={onJumpSubmit} className="pagination-jump">
-            <label htmlFor="jumpPageInput">Go to:</label>
-            <input
-              id="jumpPageInput"
-              type="number"
-              min={1}
-              max={totalPages}
-              value={jumpPage}
-              onChange={(e) => onJumpChange(e.target.value)}
-              placeholder={String(currentPage)}
-              className="pagination-jump-input"
-              aria-label={`Go to page between 1 and ${totalPages}`}
-            />
-          </form>
-        )}
-      </div>
-    </div>
-  );
-}
+import { PaginationBar } from "../../components/pagination-bar";
 
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 
@@ -435,10 +277,10 @@ export function ProjectsView({
             <tbody>
               {filteredProjects.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
-                    <IconSearch width={22} height={22} style={{ opacity: 0.5, margin: "0 auto 0.5rem", display: "block" }} />
-                    <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>No projects found</div>
-                    <div style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
+                  <td colSpan={6} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No projects found</div>
+                    <div className="table-empty-desc">
                       Adjust the status filter or search query to see more of the registry.
                     </div>
                   </td>
@@ -506,6 +348,7 @@ export function ProjectsView({
             currentPage={serverPage}
             totalPages={totalPages}
             pageSize={serverPageSize}
+            itemName="registered facilities"
             jumpPage={jumpPage}
             onJumpChange={setJumpPage}
             onJumpSubmit={handleJumpSubmit}
@@ -547,6 +390,7 @@ export function ProjectsView({
               currentPage={serverPage}
               totalPages={totalPages}
               pageSize={serverPageSize}
+              itemName="registered facilities"
               jumpPage={jumpPage}
               onJumpChange={setJumpPage}
               onJumpSubmit={handleJumpSubmit}

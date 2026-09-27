@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { Complaint } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
@@ -13,6 +14,7 @@ import {
   IconGrid,
   IconMapPin,
 } from "../../components/icons";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 const ComplaintsMap = dynamic(() => import("./complaints-map"), {
   ssr: false,
@@ -67,11 +69,11 @@ function matchesSearch(c: Complaint, q: string): boolean {
 
 export function ComplaintsLayout({
   initialComplaints,
-  totalComplaints: _totalComplaints,
   showMap = true,
   showProjectInfo = true,
   searchPlaceholder,
 }: ComplaintsLayoutProps) {
+  const router = useRouter();
   const [filter, setFilter] = useState<StatusFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
@@ -110,13 +112,15 @@ export function ComplaintsLayout({
       ? "No grievances match the selected filter criteria."
       : "No grievances recorded.";
 
+  const pagination = useClientPagination(filtered, 20, [filter, searchQuery]);
+
   const isXl = useMediaQuery("(min-width: 1401px)");
   const isLg = useMediaQuery("(min-width: 1101px) and (max-width: 1400px)");
   const isMd = useMediaQuery("(min-width: 641px) and (max-width: 1100px)");
   const columnCount = isXl ? 4 : isLg ? 3 : isMd ? 2 : 1;
   const cardColumns = useMemo(
-    () => distributeIntoColumns(filtered, columnCount),
-    [filtered, columnCount],
+    () => distributeIntoColumns(pagination.paginatedItems, columnCount),
+    [pagination.paginatedItems, columnCount],
   );
 
   return (
@@ -215,28 +219,34 @@ export function ComplaintsLayout({
                 <tr>
                   <td
                     colSpan={showProjectInfo ? 6 : 5}
-                    className="muted"
-                    style={{ textAlign: "center", padding: "2.5rem" }}
+                    className="table-empty-state"
                   >
-                    {emptyState}
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No complaints found</div>
+                    <div className="table-empty-desc">
+                      {filter !== "ALL" || searchQuery
+                        ? "Try adjusting your filter or search criteria."
+                        : "Grievances regarding facilities will appear here once submitted."}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filtered.map((c) => {
+                pagination.paginatedItems.map((c) => {
                   const statusMeta = getComplaintStatusBadge(c.status);
 
                   return (
-                    <tr key={c.id}>
+                    <tr
+                      key={c.id}
+                      className="table-row"
+                      onClick={() => router.push(`/dashboard/complaints/${c.id}`)}
+                      title="View complaint details"
+                    >
                       <td>
                         <Link
                           href={`/dashboard/complaints/${c.id}`}
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            fontWeight: 700,
-                            fontSize: "0.82rem",
-                            color: "var(--color-navy-brand)",
-                            textDecoration: "none",
-                          }}
+                          className="table-code-link"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Tracking code: ${c.trackingCode}`}
                         >
                           {c.trackingCode}
                         </Link>
@@ -244,15 +254,23 @@ export function ComplaintsLayout({
 
                       {showProjectInfo && (
                         <td>
-                          <Link
-                            href={`/dashboard/projects/${c.projectId}`}
-                            style={{ textDecoration: "none", color: "inherit" }}
-                          >
-                            <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{c.projectName}</div>
-                            <div className="muted" style={{ fontSize: "0.75rem" }}>
-                              {c.projectCode}
-                            </div>
-                          </Link>
+                          {c.projectId ? (
+                            <Link
+                              href={`/dashboard/projects/${c.projectId}`}
+                              className="table-name-link"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Open facility dossier for ${c.projectName}`}
+                            >
+                              <div>{c.projectName}</div>
+                              {c.projectCode && (
+                                <div className="table-subtext">{c.projectCode}</div>
+                              )}
+                            </Link>
+                          ) : (
+                            <span className="table-name-link" style={{ cursor: "default" }}>
+                              {c.projectName}
+                            </span>
+                          )}
                         </td>
                       )}
 
@@ -263,7 +281,7 @@ export function ComplaintsLayout({
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
-                            fontSize: "0.82rem",
+                            fontSize: "0.85rem",
                           }}
                           title={c.description}
                         >
@@ -274,7 +292,7 @@ export function ComplaintsLayout({
                       <td>
                         <span
                           style={{
-                            fontSize: "0.68rem",
+                            fontSize: "0.72rem",
                             fontWeight: 700,
                             color: statusMeta.color,
                           }}
@@ -283,7 +301,7 @@ export function ComplaintsLayout({
                         </span>
                       </td>
 
-                      <td className="muted" style={{ fontSize: "0.8rem" }}>
+                      <td className="table-date">
                         {formatDate(c.receivedAt)}
                       </td>
 
@@ -298,15 +316,11 @@ export function ComplaintsLayout({
                         >
                           <Link
                             href={`/dashboard/complaints/${c.id}`}
-                            style={{
-                              fontSize: "0.78rem",
-                              textDecoration: "none",
-                              whiteSpace: "nowrap",
-                              fontWeight: 600,
-                              color: "var(--color-navy-brand)",
-                            }}
+                            className="btn-secondary"
+                            style={{ fontSize: "0.74rem", padding: "0.22rem 0.55rem" }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            View Complaint
+                            View
                           </Link>
                         </div>
                       </td>
@@ -316,6 +330,17 @@ export function ComplaintsLayout({
               )}
             </tbody>
           </table>
+          <PaginationBar
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            pageSize={pagination.pageSize}
+            itemName="grievances"
+            onPageClick={pagination.onPageClick}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -339,6 +364,20 @@ export function ComplaintsLayout({
                 </div>
               ))}
             </div>
+          )}
+
+          {filtered.length > 0 && (
+            <PaginationBar
+              from={pagination.from}
+              to={pagination.to}
+              total={pagination.total}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              pageSize={pagination.pageSize}
+              itemName="grievances"
+              onPageClick={pagination.onPageClick}
+              onPageSizeChange={pagination.onPageSizeChange}
+            />
           )}
         </div>
       )}

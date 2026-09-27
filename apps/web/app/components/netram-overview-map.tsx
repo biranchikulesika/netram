@@ -1095,9 +1095,7 @@ const NetramOverviewMap = function NetramOverviewMap({
                       >
                         <span
                           style={{
-                            fontFamily: "var(--font-mono)",
                             fontWeight: 600,
-                            letterSpacing: "0.04em",
                             flexShrink: 0,
                           }}
                           title={`Identifier: ${f.code}`}

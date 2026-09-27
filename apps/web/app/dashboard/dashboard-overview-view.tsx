@@ -624,7 +624,6 @@ export function DashboardOverviewView({
                         style={{
                           fontWeight: 600,
                           color: "var(--color-navy-brand)",
-                          fontFamily: "var(--font-mono)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",

@@ -48,7 +48,7 @@ export function ComplaintCard({
         aria-label={`Open complaint ${complaint.trackingCode}`}
       >
         <h3 className="facility-card-title">
-          <span style={{ fontFamily: "var(--font-mono)" }}>{complaint.trackingCode}</span>
+          <span>{complaint.trackingCode}</span>
         </h3>
 
         <p className="facility-card-desc">{complaint.description}</p>

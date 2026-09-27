@@ -31,6 +31,7 @@ import {
   formatCurrency,
   formatDate,
 } from "../../components/funds-ui";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 export interface ProjectOption {
   id: string;
@@ -534,6 +535,17 @@ export function FundsDashboardClient({
       return true;
     });
   }, [flags, fyFilter]);
+
+  const expensesPagination = useClientPagination(filteredExpenses, 20, [
+    selectedStatuses,
+    fyFilter,
+    search,
+  ]);
+  const allocationsPagination = useClientPagination(filteredAllocations, 20, [
+    fyFilter,
+    search,
+  ]);
+  const flagsPagination = useClientPagination(filteredFlags, 20, [fyFilter]);
 
   const fyOptions = useMemo(() => {
     const present: number[] = [];
@@ -1217,41 +1229,53 @@ export function FundsDashboardClient({
                 <th>Scheme</th>
                 <th>Description</th>
                 <th>FY</th>
-                <th style={{ textAlign: "right" }}>Sanctioned Amount</th>
+                <th className="table-align-right">Sanctioned Amount</th>
               </tr>
             </thead>
             <tbody>
               {filteredAllocations.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
-                    No fund allocations found matching filters.
+                  <td colSpan={5} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No fund allocations found</div>
+                    <div className="table-empty-desc">No allocations match the current filter criteria.</div>
                   </td>
                 </tr>
               ) : (
-                filteredAllocations.map((a) => {
+                allocationsPagination.paginatedItems.map((a) => {
                   const p = projectMap.get(a.projectId);
 
                   return (
                     <tr
                       key={a.id}
+                      className="table-row"
                       onClick={() => setDetail({ kind: "allocation", id: a.id })}
                       title="View allocation details"
-                      style={{ cursor: "pointer" }}
                     >
                       <td>
                         <Link
-                          href={`/projects/${a.projectId}/funds`}
+                          href={`/dashboard/projects/${a.projectId}`}
+                          className="table-name-link"
                           onClick={(e) => e.stopPropagation()}
-                          style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}
+                          title={`Open facility dossier for ${p?.name ?? "facility"}`}
                         >
                           {p?.name ?? a.projectId.slice(0, 8)}
                         </Link>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
-                          {p?.code ?? "—"}
-                        </div>
+                        {p?.code && (
+                          <div className="table-subtext">
+                            <Link
+                              href={`/dashboard/projects/${a.projectId}`}
+                              className="table-code-link"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Project code: ${p.code}`}
+                            >
+                              {p.code}
+                            </Link>
+                          </div>
+                        )}
                       </td>
                       <td>
-                        <div style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                        <div style={{ fontWeight: 600, color: "var(--color-navy-dark)" }}>
                           {a.scheme ?? "Government Scheme Allocation"}
                         </div>
                       </td>
@@ -1263,7 +1287,7 @@ export function FundsDashboardClient({
                           {a.fiscalYear}
                         </span>
                       </td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                      <td className="table-align-right" style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}>
                         {formatCurrency(a.allocatedAmount)}
                       </td>
                     </tr>
@@ -1272,6 +1296,18 @@ export function FundsDashboardClient({
               )}
             </tbody>
           </table>
+
+          <PaginationBar
+            from={allocationsPagination.from}
+            to={allocationsPagination.to}
+            total={allocationsPagination.total}
+            currentPage={allocationsPagination.currentPage}
+            totalPages={allocationsPagination.totalPages}
+            pageSize={allocationsPagination.pageSize}
+            itemName="allocations"
+            onPageClick={allocationsPagination.onPageClick}
+            onPageSizeChange={allocationsPagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -1285,38 +1321,50 @@ export function FundsDashboardClient({
                 <th>Description</th>
                 <th>Vendor</th>
                 <th>Date</th>
-                <th style={{ textAlign: "right" }}>Expenditure Amount</th>
-                <th style={{ textAlign: "center" }}>Status</th>
+                <th className="table-align-right">Expenditure Amount</th>
+                <th className="table-align-center">Status</th>
               </tr>
             </thead>
             <tbody>
-{filteredExpenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
-                      No expenditures found matching current filter criteria.
-                    </td>
-                  </tr>
-                ) : (
-                filteredExpenses.map((e) => {
+              {filteredExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No expenditures found</div>
+                    <div className="table-empty-desc">No expenditures match current filter criteria.</div>
+                  </td>
+                </tr>
+              ) : (
+                expensesPagination.paginatedItems.map((e) => {
                   const p = projectMap.get(e.projectId);
                   return (
                     <tr
                       key={e.id}
+                      className="table-row"
                       onClick={() => setDetail({ kind: "expense", id: e.id })}
                       title="View expenditure details & actions"
-                      style={{ cursor: "pointer" }}
                     >
                       <td>
                         <Link
-                          href={`/projects/${e.projectId}/funds`}
+                          href={`/dashboard/projects/${e.projectId}`}
+                          className="table-name-link"
                           onClick={(e) => e.stopPropagation()}
-                          style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}
+                          title={`Open facility dossier for ${p?.name ?? "facility"}`}
                         >
                           {p?.name ?? e.projectId.slice(0, 8)}
                         </Link>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
-                          {p?.code ?? "—"}
-                        </div>
+                        {p?.code && (
+                          <div className="table-subtext">
+                            <Link
+                              href={`/dashboard/projects/${e.projectId}`}
+                              className="table-code-link"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Project code: ${p.code}`}
+                            >
+                              {p.code}
+                            </Link>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div style={{ fontWeight: 500, maxWidth: "250px" }}>{e.description}</div>
@@ -1324,24 +1372,14 @@ export function FundsDashboardClient({
                       <td>
                         <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>{e.vendorName}</div>
                       </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      <td className="table-date">
                         {formatDate(e.transactionDate)}
                       </td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                      <td className="table-align-right" style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}>
                         {formatCurrency(e.amount)}
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            color:
-                              e.status === "verified"
-                                ? "#16a34a"
-                                : e.status === "rejected"
-                                  ? "#dc2626"
-                                  : "#d97706",
-                          }}
-                        >
+                      <td className="table-align-center">
+                        <span className={`status status-${e.status}`}>
                           {e.status.replace(/_/g, " ").toUpperCase()}
                         </span>
                       </td>
@@ -1351,6 +1389,18 @@ export function FundsDashboardClient({
               )}
             </tbody>
           </table>
+
+          <PaginationBar
+            from={expensesPagination.from}
+            to={expensesPagination.to}
+            total={expensesPagination.total}
+            currentPage={expensesPagination.currentPage}
+            totalPages={expensesPagination.totalPages}
+            pageSize={expensesPagination.pageSize}
+            itemName="expenditures"
+            onPageClick={expensesPagination.onPageClick}
+            onPageSizeChange={expensesPagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -1361,7 +1411,7 @@ export function FundsDashboardClient({
             <table>
               <thead>
                 <tr>
-                  <th>Facility</th>
+                  <th>Facility / Project</th>
                   <th>Severity</th>
                   <th>Reason</th>
                   <th>Flagged On</th>
@@ -1370,28 +1420,43 @@ export function FundsDashboardClient({
               <tbody>
                 {filteredFlags.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
-                      No active financial alerts recorded.
+                    <td colSpan={4} className="table-empty-state">
+                      <IconSearch width={22} height={22} className="table-empty-icon" />
+                      <div className="table-empty-title">No financial alerts found</div>
+                      <div className="table-empty-desc">No active financial alerts currently recorded.</div>
                     </td>
                   </tr>
                 ) : (
-                  filteredFlags.map((f) => {
+                  flagsPagination.paginatedItems.map((f) => {
                     const p = projectMap.get(f.projectId);
                     return (
                       <tr
                         key={f.id}
+                        className="table-row"
                         onClick={() => setDetail({ kind: "flag", id: f.id })}
                         title="View alert details & actions"
-                        style={{ cursor: "pointer" }}
                       >
                         <td>
                           <Link
-                            href={`/projects/${f.projectId}/funds`}
+                            href={`/dashboard/projects/${f.projectId}`}
+                            className="table-name-link"
                             onClick={(e) => e.stopPropagation()}
-                            style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}
+                            title={`Open facility dossier for ${p?.name ?? "facility"}`}
                           >
                             {p?.name ?? f.projectId.slice(0, 8)}
                           </Link>
+                          {p?.code && (
+                            <div className="table-subtext">
+                              <Link
+                                href={`/dashboard/projects/${f.projectId}`}
+                                className="table-code-link"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Project code: ${p.code}`}
+                              >
+                                {p.code}
+                              </Link>
+                            </div>
+                          )}
                         </td>
                         <td style={{ whiteSpace: "nowrap" }}>
                           <span
@@ -1420,14 +1485,19 @@ export function FundsDashboardClient({
                         <td>
                           <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{f.explanation}</div>
                           {f.linkedInspectionId && (
-                            <div style={{ fontSize: "0.7rem", marginTop: "0.2rem", color: "#2563eb" }}>
-                              <Link href={`/inspections/${f.linkedInspectionId}`} onClick={(e) => e.stopPropagation()}>
+                            <div className="table-subtext">
+                              <Link
+                                href={`/dashboard/inspections/${f.linkedInspectionId}`}
+                                className="table-code-link"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Linked inspection ${f.linkedInspectionId}`}
+                              >
                                 Inspection #{f.linkedInspectionId.slice(0, 8)}
                               </Link>
                             </div>
                           )}
                         </td>
-                        <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        <td className="table-date">
                           {formatDate(f.createdAt)}
                         </td>
                       </tr>
@@ -1436,6 +1506,18 @@ export function FundsDashboardClient({
                 )}
               </tbody>
             </table>
+
+            <PaginationBar
+              from={flagsPagination.from}
+              to={flagsPagination.to}
+              total={flagsPagination.total}
+              currentPage={flagsPagination.currentPage}
+              totalPages={flagsPagination.totalPages}
+              pageSize={flagsPagination.pageSize}
+              itemName="financial alerts"
+              onPageClick={flagsPagination.onPageClick}
+              onPageSizeChange={flagsPagination.onPageSizeChange}
+            />
           </div>
         </div>
       )}

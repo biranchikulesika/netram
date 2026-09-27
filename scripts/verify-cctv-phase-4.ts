@@ -62,7 +62,7 @@ async function main(): Promise<void> {
   const loginRes = await jsonFetch(`${API}/api/v1/auth/dev-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "controlroom@dev.netram.in" }),
+    body: JSON.stringify({ email: "controlroom@netram.dev" }),
   });
   if (!loginRes.ok) {
     console.error(`dev-login failed (${loginRes.status}); cannot continue.`);

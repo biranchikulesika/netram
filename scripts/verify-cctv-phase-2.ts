@@ -227,7 +227,7 @@ async function main(): Promise<void> {
     const login = await fetch(`${apiBase}/api/v1/auth/dev-login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "controlroom@dev.netram.in" }),
+      body: JSON.stringify({ email: "controlroom@netram.dev" }),
     });
     const { token: jwt } = (await login.json()) as { token: string };
     const cams = await fetch(`${apiBase}/api/v1/cctv/cameras?pageSize=100`, {

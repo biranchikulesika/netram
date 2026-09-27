@@ -160,7 +160,7 @@ export function ComplaintDetailClient({
           <span className="card-label">
             <IconClipboard width={13} height={13} /> Tracking Code
           </span>
-          <span className="card-val" style={{ fontFamily: "var(--font-mono)" }}>
+          <span className="card-val">
             {complaint.trackingCode}
           </span>
         </div>

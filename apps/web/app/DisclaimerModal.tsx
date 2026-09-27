@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function DisclaimerModal() {
   const [visible, setVisible] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
-    const alreadySeen = sessionStorage.getItem("netram-disclaimer-seen");
-    if (!alreadySeen) {
+    // Authority workspaces are behind authentication; the public demonstration
+    // disclosure belongs to the public-facing pages only.
+    if (pathname?.startsWith("/dashboard")) return;
+    if (!sessionStorage.getItem("netram-disclaimer-seen")) {
       setVisible(true);
     }
-  }, []);
+  }, [pathname]);
 
   const dismiss = () => {
     sessionStorage.setItem("netram-disclaimer-seen", "true");
@@ -40,15 +44,13 @@ export default function DisclaimerModal() {
         style={{
           background: "#fff",
           borderRadius: "12px",
-          maxWidth: "440px",
+          maxWidth: "340px",
           width: "100%",
           padding: "1.75rem",
           border: "1px solid #cbd5e1",
           boxShadow: "0 20px 50px rgba(15, 23, 42, 0.25)",
         }}
       >
-        
-
         <h2
           id="disclaimer-title"
           style={{ margin: "0 0 0.6rem", fontSize: "1.15rem", fontWeight: 700, color: "#1e3a8a" }}

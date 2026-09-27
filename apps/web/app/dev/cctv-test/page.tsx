@@ -229,7 +229,7 @@ export default function DevCctvTestPage() {
         </span>
       </section>
 
-      <section className="rounded border border-neutral-800 bg-neutral-900 p-3 font-mono text-xs text-neutral-300">
+      <section className="rounded border border-neutral-800 bg-neutral-900 p-3 text-xs text-neutral-300">
         <div id="cctv-stats">
           currentTime={stats.currentTime}s framesDecoded={stats.framesDecoded}
           {stats.latencyMs !== null ? ` jitterBufferLatencyMs=${stats.latencyMs}` : ""}

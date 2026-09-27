@@ -2,12 +2,14 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { CorrectiveAction } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 import { CorrectiveActionCard, getStatusBadge, getSeverityStyle } from "./corrective-action-card";
 import { IconSearch, IconList, IconGrid, IconMapPin } from "../../components/icons";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 const CorrectiveActionsMap = dynamic(() => import("./corrective-actions-map"), {
   ssr: false,
@@ -53,11 +55,11 @@ function matchesFilter(a: CorrectiveAction, filter: StatusFilter): boolean {
 
 export function CorrectiveActionsLayout({
   initialActions,
-  totalActions: _totalActions,
   showMap = true,
   showProjectInfo = true,
   searchPlaceholder,
 }: CorrectiveActionsLayoutProps) {
+  const router = useRouter();
   const [actionsList, setActionsList] = useState<CorrectiveAction[]>(initialActions);
   const [filter, setFilter] = useState<StatusFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,13 +113,15 @@ export function CorrectiveActionsLayout({
       ? "No corrective actions match the selected filter criteria."
       : "No corrective actions recorded.";
 
+  const pagination = useClientPagination(filtered, 20, [filter, searchQuery]);
+
   const isXl = useMediaQuery("(min-width: 1401px)");
   const isLg = useMediaQuery("(min-width: 1101px) and (max-width: 1400px)");
   const isMd = useMediaQuery("(min-width: 641px) and (max-width: 1100px)");
   const columnCount = isXl ? 4 : isLg ? 3 : isMd ? 2 : 1;
   const cardColumns = useMemo(
-    () => distributeIntoColumns(filtered, columnCount),
-    [filtered, columnCount],
+    () => distributeIntoColumns(pagination.paginatedItems, columnCount),
+    [pagination.paginatedItems, columnCount],
   );
 
   return (
@@ -213,12 +217,18 @@ export function CorrectiveActionsLayout({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="muted" style={{ textAlign: "center", padding: "2.5rem" }}>
-                    {emptyState}
+                  <td colSpan={5} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No corrective actions found</div>
+                    <div className="table-empty-desc">
+                      {filter !== "ALL" || searchQuery
+                        ? "Try adjusting your filter or search criteria."
+                        : "Remediation items for this facility will appear here once findings are issued."}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filtered.map((ca) => {
+                pagination.paginatedItems.map((ca) => {
                   const statusMeta = getStatusBadge(ca.status);
                   const findingMeta = getSeverityStyle(ca.finding?.severity ?? "low");
                   const findingLabel =
@@ -231,24 +241,37 @@ export function CorrectiveActionsLayout({
                     new Date(ca.deadline) < new Date();
 
                   return (
-                    <tr key={ca.id}>
+                    <tr
+                      key={ca.id}
+                      className="table-row"
+                      onClick={() => router.push(`/dashboard/corrective-actions/${ca.id}`)}
+                      title="View corrective action details"
+                    >
                       <td>
                         <div>
                           <Link
                             href={`/dashboard/corrective-actions/${ca.id}`}
-                            style={{
-                              fontSize: "0.82rem",
-                              fontWeight: 600,
-                              color: "var(--color-navy-brand)",
-                              textDecoration: "none",
-                            }}
+                            className="table-name-link"
+                            onClick={(e) => e.stopPropagation()}
                             title={ca.finding?.description ?? undefined}
                           >
                             {findingLabel}
                           </Link>
                           {showProjectInfo && (
-                            <div className="muted" style={{ fontSize: "0.72rem" }}>
-                              {ca.project ? `${ca.project.name} (${ca.project.code})` : `Inspection: ${ca.inspectionId.slice(0, 8)}...`}
+                            <div className="table-subtext">
+                              {ca.project ? (
+                                <Link
+                                  href={`/dashboard/projects/${ca.project.id}`}
+                                  className="table-name-link"
+                                  style={{ fontSize: "0.75rem" }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title={`Open facility dossier for ${ca.project.name}`}
+                                >
+                                  {ca.project.name} {ca.project.code && `(${ca.project.code})`}
+                                </Link>
+                              ) : (
+                                <span>Inspection: {ca.inspectionId.slice(0, 8)}...</span>
+                              )}
                             </div>
                           )}
                         </div>
@@ -273,7 +296,7 @@ export function CorrectiveActionsLayout({
                         </span>
                       </td>
 
-                      <td className="muted" style={{ fontSize: "0.8rem" }}>
+                      <td className="table-date">
                         {ca.deadline ? (
                           <span style={{ color: isOverdue ? "#dc2626" : "inherit", fontWeight: isOverdue ? 700 : 400 }}>
                             {formatDate(ca.deadline)}
@@ -284,7 +307,7 @@ export function CorrectiveActionsLayout({
                         )}
                       </td>
 
-                      <td className="muted" style={{ fontSize: "0.8rem" }}>
+                      <td className="table-date">
                         {formatDate(ca.createdAt)}
                       </td>
                     </tr>
@@ -293,6 +316,17 @@ export function CorrectiveActionsLayout({
               )}
             </tbody>
           </table>
+          <PaginationBar
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            pageSize={pagination.pageSize}
+            itemName="corrective actions"
+            onPageClick={pagination.onPageClick}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -316,6 +350,20 @@ export function CorrectiveActionsLayout({
                 </div>
               ))}
             </div>
+          )}
+
+          {filtered.length > 0 && (
+            <PaginationBar
+              from={pagination.from}
+              to={pagination.to}
+              total={pagination.total}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              pageSize={pagination.pageSize}
+              itemName="corrective actions"
+              onPageClick={pagination.onPageClick}
+              onPageSizeChange={pagination.onPageSizeChange}
+            />
           )}
         </div>
       )}

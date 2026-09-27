@@ -25,6 +25,7 @@ import {
   formatDate,
   type FlagAction,
 } from "../../../../components/funds-ui";
+import { PaginationBar, useClientPagination } from "../../../../components/pagination-bar";
 
 interface ProjectFundsClientProps {
   project: Project;
@@ -508,6 +509,18 @@ export function ProjectFundsClient({
       matchesStatusFilter(a.status, allocationStatuses, ALLOCATION_STATUS_FILTERS) &&
       (matches(a.scheme) || matches(a.description) || matches(a.notes) || matches(a.fiscalYear)),
   );
+
+  const expensesPagination = useClientPagination(filteredExpenses, 20, [
+    fyFilter,
+    expenseStatuses,
+    search,
+  ]);
+  const flagsPagination = useClientPagination(filteredFlags, 20, [fyFilter]);
+  const allocationsPagination = useClientPagination(filteredAllocations, 20, [
+    fyFilter,
+    allocationStatuses,
+    search,
+  ]);
   // FY strip options — same derivation as the funds dashboard (current-year capped).
   const fyOptions = useMemo(() => {
     const present: number[] = [];
@@ -755,33 +768,30 @@ export function ProjectFundsClient({
                 <th>Description</th>
                 <th>Vendor</th>
                 <th>Date</th>
-                <th style={{ textAlign: "right" }}>Expenditure Amount</th>
-                <th style={{ textAlign: "center" }}>Status</th>
+                <th className="table-align-right">Expenditure Amount</th>
+                <th className="table-align-center">Status</th>
               </tr>
             </thead>
             <tbody>
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    style={{
-                      textAlign: "center",
-                      padding: "2.5rem 1rem",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    {recentExpenses.length === 0
-                      ? "No expenditures submitted yet for this facility."
-                      : "No expenditures match the current search."}
+                  <td colSpan={5} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No expenditures found</div>
+                    <div className="table-empty-desc">
+                      {recentExpenses.length === 0
+                        ? "No expenditures submitted yet for this facility."
+                        : "No expenditures match the current search."}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredExpenses.map((exp) => (
+                expensesPagination.paginatedItems.map((exp) => (
                   <tr
                     key={exp.id}
+                    className="table-row"
                     onClick={() => setDetailExpenseId(exp.id)}
                     title="View expenditure details & actions"
-                    style={{ cursor: "pointer" }}
                   >
                     <td>
                       <div style={{ fontWeight: 500, maxWidth: "250px" }}>{exp.description}</div>
@@ -789,30 +799,20 @@ export function ProjectFundsClient({
                     <td>
                       <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>{exp.vendorName}</div>
                     </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    <td className="table-date">
                       {formatDate(exp.transactionDate)}
                     </td>
                     <td
+                      className="table-align-right"
                       style={{
-                        textAlign: "right",
                         fontWeight: 700,
                         color: "var(--color-navy-dark)",
                       }}
                     >
                       {formatCurrency(exp.amount)}
                     </td>
-                    <td style={{ textAlign: "center" }}>
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          color:
-                            exp.status === "verified"
-                              ? "#16a34a"
-                              : exp.status === "rejected"
-                                ? "#dc2626"
-                                : "#d97706",
-                        }}
-                      >
+                    <td className="table-align-center">
+                      <span className={`status status-${exp.status}`}>
                         {exp.status.replace(/_/g, " ").toUpperCase()}
                       </span>
                     </td>
@@ -821,6 +821,18 @@ export function ProjectFundsClient({
               )}
             </tbody>
           </table>
+
+          <PaginationBar
+            from={expensesPagination.from}
+            to={expensesPagination.to}
+            total={expensesPagination.total}
+            currentPage={expensesPagination.currentPage}
+            totalPages={expensesPagination.totalPages}
+            pageSize={expensesPagination.pageSize}
+            itemName="expenditures"
+            onPageClick={expensesPagination.onPageClick}
+            onPageSizeChange={expensesPagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -838,17 +850,19 @@ export function ProjectFundsClient({
             <tbody>
               {filteredFlags.length === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
-                    No active financial alerts recorded.
+                  <td colSpan={3} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No financial alerts found</div>
+                    <div className="table-empty-desc">No active financial alerts recorded for this facility.</div>
                   </td>
                 </tr>
               ) : (
-                filteredFlags.map((f) => (
+                flagsPagination.paginatedItems.map((f) => (
                   <tr
                     key={f.id}
+                    className="table-row"
                     onClick={() => setFlagDetailId(f.id)}
                     title="View alert details & actions"
-                    style={{ cursor: "pointer" }}
                   >
                     <td style={{ whiteSpace: "nowrap" }}>
                       <span
@@ -877,17 +891,19 @@ export function ProjectFundsClient({
                     <td>
                       <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{f.explanation}</div>
                       {f.linkedInspectionId && (
-                        <div style={{ fontSize: "0.7rem", marginTop: "0.2rem", color: "#2563eb" }}>
+                        <div className="table-subtext">
                           <Link
-                            href={`/inspections/${f.linkedInspectionId}`}
+                            href={`/dashboard/inspections/${f.linkedInspectionId}`}
+                            className="table-code-link"
                             onClick={(e) => e.stopPropagation()}
+                            title={`Linked inspection ${f.linkedInspectionId}`}
                           >
                             Inspection #{f.linkedInspectionId.slice(0, 8)}
                           </Link>
                         </div>
                       )}
                     </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    <td className="table-date">
                       {formatDate(f.createdAt)}
                     </td>
                   </tr>
@@ -895,9 +911,20 @@ export function ProjectFundsClient({
               )}
             </tbody>
           </table>
+
+          <PaginationBar
+            from={flagsPagination.from}
+            to={flagsPagination.to}
+            total={flagsPagination.total}
+            currentPage={flagsPagination.currentPage}
+            totalPages={flagsPagination.totalPages}
+            pageSize={flagsPagination.pageSize}
+            itemName="financial alerts"
+            onPageClick={flagsPagination.onPageClick}
+            onPageSizeChange={flagsPagination.onPageSizeChange}
+          />
         </div>
       )}
-
 
       {/* Tab: Allocations */}
       {activeTab === "allocations" && (
@@ -909,34 +936,29 @@ export function ProjectFundsClient({
                   <th>Scheme</th>
                   <th>Description</th>
                   <th>FY</th>
-                  <th style={{ textAlign: "right" }}>Sanctioned Amount</th>
+                  <th className="table-align-right">Sanctioned Amount</th>
                   <th>Actioned On</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAllocations.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      style={{
-                        textAlign: "center",
-                        padding: "2.5rem 1rem",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      No fund allocations found matching filters.
+                    <td colSpan={5} className="table-empty-state">
+                      <IconSearch width={22} height={22} className="table-empty-icon" />
+                      <div className="table-empty-title">No fund allocations found</div>
+                      <div className="table-empty-desc">No allocations match current filter criteria.</div>
                     </td>
                   </tr>
                 ) : (
-                  filteredAllocations.map((a) => (
+                  allocationsPagination.paginatedItems.map((a) => (
                     <tr
                       key={a.id}
+                      className="table-row"
                       onClick={() => setAllocationDetailId(a.id)}
                       title="View allocation details"
-                      style={{ cursor: "pointer" }}
                     >
                       <td>
-                        <div style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                        <div style={{ fontWeight: 600, color: "var(--color-navy-dark)" }}>
                           {a.scheme ?? "Government Scheme Allocation"}
                         </div>
                       </td>
@@ -949,15 +971,15 @@ export function ProjectFundsClient({
                         </span>
                       </td>
                       <td
+                        className="table-align-right"
                         style={{
-                          textAlign: "right",
                           fontWeight: 700,
                           color: "var(--color-navy-dark)",
                         }}
                       >
                         {formatCurrency(a.allocatedAmount)}
                       </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                      <td className="table-date">
                         {formatDate(a.updatedAt)}
                       </td>
                     </tr>
@@ -965,8 +987,19 @@ export function ProjectFundsClient({
                 )}
               </tbody>
             </table>
-          </div>
 
+            <PaginationBar
+              from={allocationsPagination.from}
+              to={allocationsPagination.to}
+              total={allocationsPagination.total}
+              currentPage={allocationsPagination.currentPage}
+              totalPages={allocationsPagination.totalPages}
+              pageSize={allocationsPagination.pageSize}
+              itemName="allocations"
+              onPageClick={allocationsPagination.onPageClick}
+              onPageSizeChange={allocationsPagination.onPageSizeChange}
+            />
+          </div>
         </div>
       )}
 

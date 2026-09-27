@@ -46,7 +46,7 @@ describe("Phase 15: End-to-End Workflow Verification", () => {
         token: "jwt-inspector-token-2026",
         user: {
           id: "usr-insp-001",
-          email: "inspector.one@dev.netram.in",
+          email: "inspector@netram.dev",
           displayName: "Inspector One",
           type: "inspector",
         },
@@ -64,7 +64,7 @@ describe("Phase 15: End-to-End Workflow Verification", () => {
       const restoredSession = await getStoredSession();
       expect(restoredSession).not.toBeNull();
       expect(restoredSession?.token).toBe("jwt-inspector-token-2026");
-      expect(restoredSession?.user.email).toBe("inspector.one@dev.netram.in");
+      expect(restoredSession?.user.email).toBe("inspector@netram.dev");
 
       // 4. Logout: SecureStore cleared
       await clearSession();

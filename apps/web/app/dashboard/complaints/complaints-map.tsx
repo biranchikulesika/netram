@@ -178,7 +178,7 @@ export default function ComplaintsMap({ complaints }: ComplaintsMapProps) {
                 minWidth: 0,
               }}
             >
-              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, letterSpacing: "0.04em", flexShrink: 0 }} title={`Facility Code: ${f.code}`}>
+              <span style={{ fontWeight: 600, flexShrink: 0 }} title={`Facility Code: ${f.code}`}>
                 {f.code}
               </span>
               <span style={{ flexShrink: 0, opacity: 0.6 }}>·</span>
@@ -203,7 +203,7 @@ export default function ComplaintsMap({ complaints }: ComplaintsMapProps) {
               <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
                 {c.complaints[0]!.projectName}
               </h3>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", marginTop: "0.15rem" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
                 {c.complaints[0]!.projectCode} · {c.complaints.length} grievance{c.complaints.length === 1 ? "" : "s"}
               </div>
             </div>

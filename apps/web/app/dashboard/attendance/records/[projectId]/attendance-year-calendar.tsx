@@ -129,12 +129,10 @@ export function AttendanceYearCalendar({
               {projectCode && (
                 <span
                   style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "0.75rem",
+                    fontSize: "0.825rem",
                     fontWeight: 600,
                     color: "var(--text-subtle)",
                     marginLeft: "0.6rem",
-                    letterSpacing: "0.03em",
                   }}
                 >
                   {projectCode}

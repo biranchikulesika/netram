@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { Inspection } from "@netram/types";
 import { IconSearch, IconList, IconGrid, IconMapPin } from "../../components/icons";
@@ -9,6 +10,7 @@ import { formatDate } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 import { InspectionCard } from "./inspection-card";
 import { ScheduleInspectionModal, type ProjectOption } from "./schedule-inspection-modal";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 const InspectionsMap = dynamic(() => import("./inspections-map"), {
   ssr: false,
@@ -48,6 +50,7 @@ export function InspectionsView({
   availableProjects = [],
   canCreate = false,
 }: InspectionsViewProps) {
+  const router = useRouter();
   const [inspections, setInspections] = useState<Inspection[]>(initialInspections);
   const [total, setTotal] = useState(initialTotal);
   const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "REVIEW" | "SCHEDULED" | "COMPLETED">("ALL");
@@ -128,13 +131,15 @@ export function InspectionsView({
     });
   }, [inspections, filter, search]);
 
+  const pagination = useClientPagination(filtered, 20, [filter, search]);
+
   const isXl = useMediaQuery("(min-width: 1401px)");
   const isLg = useMediaQuery("(min-width: 1101px) and (max-width: 1400px)");
   const isMd = useMediaQuery("(min-width: 641px) and (max-width: 1100px)");
   const columnCount = isXl ? 4 : isLg ? 3 : isMd ? 2 : 1;
   const cardColumns = useMemo(
-    () => distributeIntoColumns(filtered, columnCount),
-    [filtered, columnCount],
+    () => distributeIntoColumns(pagination.paginatedItems, columnCount),
+    [pagination.paginatedItems, columnCount],
   );
 
   return (
@@ -289,16 +294,22 @@ export function InspectionsView({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                  <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                <td colSpan={7} className="table-empty-state">
+                  <IconSearch width={22} height={22} className="table-empty-icon" />
+                  <div className="table-empty-title">
                     {search || filter !== "ALL"
-                      ? "No inspections match the selected filter criteria."
-                      : "No inspections currently recorded."}
+                      ? "No inspections found"
+                      : "No inspections currently recorded"}
+                  </div>
+                  <div className="table-empty-desc">
+                    {search || filter !== "ALL"
+                      ? "Adjust the status filter or search query to see more of the registry."
+                      : "Scheduled and surprise inspections will appear here once created."}
                   </div>
                 </td>
               </tr>
             ) : (
-              filtered.map((i) => {
+              pagination.paginatedItems.map((i) => {
                 const isSurprise = i.type === "surprise";
                 const dateStr = i.startedAt
                   ? `Started: ${formatDate(i.startedAt)}`
@@ -309,27 +320,65 @@ export function InspectionsView({
                 const assignedCount = Array.isArray(i.assignedUserIds) ? i.assignedUserIds.length : 0;
 
                 return (
-                  <tr key={i.id}>
-                    <td className="table-row-anchor-cell" style={{ cursor: "pointer" }}>
-                      <Link
-                        href={`/dashboard/inspections/${i.id}`}
-                        className="table-row-anchor-link"
-                        aria-label={`Open inspection ${i.id}`}
-                      />
-                      <span style={{ fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", color: isSurprise ? "#b45309" : "var(--text-primary)" }}>
+                  <tr
+                    key={i.id}
+                    className="table-row"
+                    onClick={() => router.push(`/dashboard/inspections/${i.id}`)}
+                    title={`Open inspection dossier ${i.id}`}
+                  >
+                    <td>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: "0.8rem",
+                          textTransform: "uppercase",
+                          color: isSurprise ? "#b45309" : "var(--text-primary)",
+                        }}
+                      >
                         {i.type}
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
-                        {i.projectName || "Sanctioned facility"}
-                      </div>
-                      <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", color: "var(--text-subtle)", marginTop: "2px" }}>
-                        {i.projectCode || "—"}
-                      </div>
+                      {i.projectId ? (
+                        <Link
+                          href={`/dashboard/projects/${i.projectId}`}
+                          className="table-name-link"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Open facility dossier for ${i.projectName || "facility"}`}
+                        >
+                          {i.projectName || "Sanctioned facility"}
+                        </Link>
+                      ) : (
+                        <span className="table-name-link" style={{ cursor: "default" }}>
+                          {i.projectName || "Sanctioned facility"}
+                        </span>
+                      )}
+                      {i.projectCode && (
+                        <div className="table-subtext">
+                          {i.projectId ? (
+                            <Link
+                              href={`/dashboard/projects/${i.projectId}`}
+                              className="table-code-link"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Project code: ${i.projectCode}`}
+                            >
+                              {i.projectCode}
+                            </Link>
+                          ) : (
+                            <span>{i.projectCode}</span>
+                          )}
+                        </div>
+                      )}
                     </td>
-                    <td title={i.id} style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--text-subtle)" }}>
-                      {i.id.slice(0, 12)}
+                    <td title={i.id}>
+                      <Link
+                        href={`/dashboard/inspections/${i.id}`}
+                        className="table-code-link"
+                        onClick={(e) => e.stopPropagation()}
+                        title={`Inspection identifier: ${i.id}`}
+                      >
+                        {i.id.slice(0, 12)}
+                      </Link>
                     </td>
                     <td>
                       <span className="trigger-text">{i.trigger.replace(/_/g, " ")}</span>
@@ -350,9 +399,7 @@ export function InspectionsView({
                         </span>
                       )}
                     </td>
-                    <td className="muted" style={{ fontSize: "0.8rem" }}>
-                      {dateStr}
-                    </td>
+                    <td className="table-date">{dateStr}</td>
                   </tr>
                 );
               })
@@ -360,9 +407,17 @@ export function InspectionsView({
           </tbody>
         </table>
 
-        <div className="table-footer-info">
-          <span>Showing {filtered.length} of {total} inspections</span>
-        </div>
+        <PaginationBar
+          from={pagination.from}
+          to={pagination.to}
+          total={pagination.total}
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          itemName="inspections"
+          onPageClick={pagination.onPageClick}
+          onPageSizeChange={pagination.onPageSizeChange}
+        />
         </div>
       )}
 
@@ -390,6 +445,20 @@ export function InspectionsView({
                 </div>
               ))}
             </div>
+          )}
+
+          {filtered.length > 0 && (
+            <PaginationBar
+              from={pagination.from}
+              to={pagination.to}
+              total={pagination.total}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              pageSize={pagination.pageSize}
+              itemName="inspections"
+              onPageClick={pagination.onPageClick}
+              onPageSizeChange={pagination.onPageSizeChange}
+            />
           )}
         </div>
       )}

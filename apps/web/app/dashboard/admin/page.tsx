@@ -77,7 +77,7 @@ export default async function AdminPage() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--text-muted)" }}>Scopes:</span>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-accent-blue)" }}>
+              <span style={{ fontWeight: 600, color: "var(--color-accent-blue)" }}>
                 {permissions.length} active
               </span>
             </div>

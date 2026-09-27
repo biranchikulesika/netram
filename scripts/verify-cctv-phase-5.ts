@@ -195,7 +195,7 @@ async function main(): Promise<void> {
   const login = await jsonFetch(`${API}/api/v1/auth/dev-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "controlroom@dev.netram.in" }),
+    body: JSON.stringify({ email: "controlroom@netram.dev" }),
   });
   if (!login.ok) {
     console.error("dev-login failed; is the API running?");
@@ -283,7 +283,7 @@ async function main(): Promise<void> {
         desc.set.call(el, v);
         el.dispatchEvent(new Event('input', { bubbles: true }));
       };
-      set(email, 'controlroom@dev.netram.in');
+      set(email, 'controlroom@netram.dev');
       set(pw, 'devpassword');
       const form = email.closest('form');
       form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));

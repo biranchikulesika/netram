@@ -25,27 +25,41 @@ export default async function LoginPage() {
 
   return (
     <div className={styles.pageWrapper}>
-      {/* ADDED: thin tricolor accent strip, common on Indian govt portals */}
-      <div className={styles.govStrip} />
-
-      {/* Top Institutional Header */}
-      <header className={styles.topBar}>
-        {/* CHANGED: replaced the "DoSJE" pill + written affiliation text with the actual logo */}
-        <Image
-          src="National-Emblem-1.svg"
-          alt="Netram"
-          width={90}
-          height={90}
-          style={{ objectFit: "contain" }}
-        />
-        <Image
-          src="/netram2.png"
-          alt="Netram"
-          width={90}
-          height={90}
-          style={{ objectFit: "contain" }}
-        />
-      </header>
+      {/* Masthead */}
+      <div className={styles.masthead}>
+        <a
+          href="https://socialjustice.gov.in"
+          target="_blank"
+          rel="noreferrer noopener"
+          className={styles.mastheadLink}
+        >
+          <Image
+            src="/National-Emblem-1.svg"
+            alt="Department of Social Justice & Empowerment logo"
+            width={72}
+            height={72}
+            className={styles.emblem}
+          />
+          <div className={styles.mastheadName}>
+            <strong>Department of Social Justice and Empowerment</strong>
+            <span>Government of India</span>
+          </div>
+        </a>
+        <a
+          href="https://sih.gov.in"
+          target="_blank"
+          rel="noreferrer noopener"
+          className={styles.mastheadEnd}
+        >
+          <Image
+            src="/sih-logo.png"
+            alt="Smart India Hackathon"
+            width={208}
+            height={96}
+            className={styles.sihLogo}
+          />
+        </a>
+      </div>
 
       {/* Main Login Card */}
       <main className={styles.mainContainer}>

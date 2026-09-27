@@ -59,7 +59,7 @@ export function AccountView({ user, permissions }: AccountViewProps) {
             </div>
             <div className="dossier-row">
               <dt className="dossier-dt">Operator ID</dt>
-              <dd className="dossier-dd" style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}>
+              <dd className="dossier-dd" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
                 {user.id}
               </dd>
             </div>
@@ -107,7 +107,7 @@ export function AccountView({ user, permissions }: AccountViewProps) {
             </div>
             <div className="dossier-row">
               <dt className="dossier-dt">Permission Total</dt>
-              <dd className="dossier-dd" style={{ fontFamily: "var(--font-mono)" }}>
+              <dd className="dossier-dd">
                 {permissions.length} grants
               </dd>
             </div>

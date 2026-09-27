@@ -54,7 +54,7 @@ async function main(): Promise<void> {
   const login = await fetch(`${API_BASE}/api/v1/auth/dev-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "controlroom@dev.netram.in" }),
+    body: JSON.stringify({ email: "controlroom@netram.dev" }),
   });
   if (!login.ok) throw new Error(`dev-login failed: ${login.status}`);
   const { token: jwt } = (await login.json()) as { token: string };
