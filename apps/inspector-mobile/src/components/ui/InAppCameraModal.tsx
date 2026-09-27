@@ -42,7 +42,7 @@ export function InAppCameraModal({
   onCapturePhoto,
   onCaptureVideo,
 }: InAppCameraModalProps) {
-  const [mode, setMode] = useState<"photo" | "video">(initialMode);
+  // Mode is fixed to what was selected (photo only or video only)
   const [facing, setFacing] = useState<CameraType>("back");
   const [torch, setTorch] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -60,15 +60,15 @@ export function InAppCameraModal({
   const webMediaRecorderRef = useRef<MediaRecorder | null>(null);
   const webRecordedChunksRef = useRef<Blob[]>([]);
 
-  // Sync mode with initialMode whenever modal opens
+  // Reset state when modal opens
   useEffect(() => {
     if (visible) {
-      setMode(initialMode);
       setIsRecording(false);
       setRecordSeconds(0);
       setIsProcessing(false);
+      setTorch(false);
     }
-  }, [visible, initialMode]);
+  }, [visible]);
 
   // Request permissions when modal opens
   useEffect(() => {
@@ -76,13 +76,13 @@ export function InAppCameraModal({
       if (!cameraPermission?.granted) {
         requestCameraPermission().catch(() => {});
       }
-      if (!micPermission?.granted) {
+      if (initialMode === "video" && !micPermission?.granted) {
         requestMicPermission().catch(() => {});
       }
     }
-  }, [visible, cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
+  }, [visible, initialMode, cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
 
-  // Web camera initialization fallback
+  // Web camera stream fallback
   useEffect(() => {
     if (Platform.OS !== "web" || !visible) return;
 
@@ -92,7 +92,7 @@ export function InAppCameraModal({
         if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: facing === "back" ? "environment" : "user" },
-            audio: true,
+            audio: initialMode === "video",
           });
           webMediaStreamRef.current = stream;
           if (webVideoRef.current) {
@@ -116,9 +116,9 @@ export function InAppCameraModal({
         webMediaStreamRef.current = null;
       }
     };
-  }, [visible, facing]);
+  }, [visible, facing, initialMode]);
 
-  // Clean up recording timer on unmount/close
+  // Clean up recording timer on unmount
   useEffect(() => {
     return () => {
       if (recordIntervalRef.current) {
@@ -134,7 +134,6 @@ export function InAppCameraModal({
 
     try {
       if (Platform.OS === "web") {
-        // Web canvas snapshot
         if (webVideoRef.current) {
           const video = webVideoRef.current;
           const canvas = document.createElement("canvas");
@@ -144,9 +143,8 @@ export function InAppCameraModal({
           if (ctx) {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-            const fileName = `inspection-photo-${Date.now()}.jpg`;
+            const fileName = `photo-${Date.now()}.jpg`;
 
-            // Convert dataUrl to bytes
             const base64Data = dataUrl.split(",")[1] ?? "";
             const binaryString = atob(base64Data);
             const bytes = new Uint8Array(binaryString.length);
@@ -167,7 +165,6 @@ export function InAppCameraModal({
         }
       }
 
-      // Native CameraView capture
       if (!cameraRef.current) {
         throw new Error("In-app camera not ready");
       }
@@ -178,7 +175,7 @@ export function InAppCameraModal({
       });
 
       if (photo && photo.uri) {
-        const fileName = `inspection-photo-${Date.now()}.jpg`;
+        const fileName = `photo-${Date.now()}.jpg`;
         let fileBytes: Uint8Array | undefined;
         try {
           const resp = await fetch(photo.uri);
@@ -212,11 +209,9 @@ export function InAppCameraModal({
       setIsRecording(true);
       setRecordSeconds(0);
 
-      // Start elapsed timer
       recordIntervalRef.current = setInterval(() => {
         setRecordSeconds((prev) => {
           if (prev >= 59) {
-            // Auto stop at 60 seconds
             handleStopRecording();
             return 60;
           }
@@ -242,17 +237,15 @@ export function InAppCameraModal({
         return;
       }
 
-      // Native CameraView recording
       if (cameraRef.current) {
         const videoPromise = cameraRef.current.recordAsync({
           maxDuration: 60,
         });
 
-        // The promise resolves when stopRecording() is called or maxDuration is hit
         videoPromise
           .then(async (recorded) => {
             if (recorded && recorded.uri) {
-              const fileName = `inspection-video-${Date.now()}.mp4`;
+              const fileName = `video-${Date.now()}.mp4`;
               let fileBytes: Uint8Array | undefined;
               try {
                 const resp = await fetch(recorded.uri);
@@ -304,7 +297,7 @@ export function InAppCameraModal({
           webMediaRecorderRef.current.onstop = async () => {
             const blob = new Blob(webRecordedChunksRef.current, { type: "video/mp4" });
             const uri = URL.createObjectURL(blob);
-            const fileName = `inspection-video-${Date.now()}.mp4`;
+            const fileName = `video-${Date.now()}.mp4`;
             const arrayBuffer = await blob.arrayBuffer();
             const fileBytes = new Uint8Array(arrayBuffer);
 
@@ -323,7 +316,6 @@ export function InAppCameraModal({
         }
       }
 
-      // Native CameraView stop
       if (cameraRef.current) {
         cameraRef.current.stopRecording();
       }
@@ -334,17 +326,15 @@ export function InAppCameraModal({
     }
   }, [isRecording, recordSeconds, onCaptureVideo, onClose]);
 
-  // Flip Camera Facing
   const toggleFacing = () => {
     setFacing((prev) => (prev === "back" ? "front" : "back"));
   };
 
-  // Toggle Torch
   const toggleTorch = () => {
     setTorch((prev) => !prev);
   };
 
-  const hasPermissions = cameraPermission?.granted && (mode === "photo" || micPermission?.granted);
+  const hasPermissions = cameraPermission?.granted && (initialMode === "photo" || micPermission?.granted);
 
   return (
     <Modal
@@ -360,8 +350,9 @@ export function InAppCameraModal({
       }}
     >
       <View style={styles.container}>
-        {/* Top Header Controls Overlay */}
+        {/* Top Header — Clean White with Premium Icons */}
         <View style={styles.topHeader}>
+          {/* Close Button */}
           <Pressable
             onPress={() => {
               if (isRecording) {
@@ -373,31 +364,23 @@ export function InAppCameraModal({
             style={styles.headerIconButton}
             hitSlop={10}
           >
-            <Icon name="close" size={24} color="#FFFFFF" />
+            <Icon name="close" size={22} color={colors.navyDark} />
           </Pressable>
 
-          {/* Title & Live Status */}
-          <View style={styles.headerTitleWrap}>
-            <View style={styles.secureDot} />
-            <Text style={styles.headerTitle}>
-              NETRAM LIVE {mode.toUpperCase()} VIEW
-            </Text>
-          </View>
-
-          {/* Action Tools: Torch & Flip */}
+          {/* Action Row: Torch & Flip Lens with Premium Styling */}
           <View style={styles.headerActionRow}>
             <Pressable
               onPress={toggleTorch}
               style={[
                 styles.headerIconButton,
-                torch ? styles.headerIconButtonActive : null,
+                torch ? styles.headerIconButtonTorchActive : null,
               ]}
               hitSlop={10}
             >
               <Icon
-                name={torch ? "flashlight" : "flashlight-outline"}
-                size={20}
-                color={torch ? "#F59E0B" : "#FFFFFF"}
+                name={torch ? "flash" : "flash-outline"}
+                size={21}
+                color={torch ? "#D97706" : colors.navyDark}
               />
             </Pressable>
 
@@ -406,7 +389,7 @@ export function InAppCameraModal({
               style={styles.headerIconButton}
               hitSlop={10}
             >
-              <Icon name="camera-reverse-outline" size={22} color="#FFFFFF" />
+              <Icon name="camera-reverse-outline" size={22} color={colors.navyDark} />
             </Pressable>
           </View>
         </View>
@@ -415,12 +398,7 @@ export function InAppCameraModal({
         <View style={styles.viewfinderContainer}>
           {!hasPermissions ? (
             <View style={styles.permissionCard}>
-              <Icon name="camera" size={48} color="#FFFFFF" />
-              <Text style={styles.permissionTitle}>In-App Camera Authorization</Text>
-              <Text style={styles.permissionBody}>
-                Netram captures tamper-evident photo and video evidence directly
-                inside the application without opening third-party camera apps.
-              </Text>
+              <Icon name="camera" size={44} color={colors.navyDark} />
               <Pressable
                 onPress={() => {
                   requestCameraPermission();
@@ -428,7 +406,7 @@ export function InAppCameraModal({
                 }}
                 style={styles.permissionBtn}
               >
-                <Text style={styles.permissionBtnText}>Authorize Camera & Mic</Text>
+                <Icon name="checkmark" size={18} color="#FFFFFF" />
               </Pressable>
             </View>
           ) : Platform.OS === "web" ? (
@@ -462,19 +440,12 @@ export function InAppCameraModal({
               ref={cameraRef}
               style={StyleSheet.absoluteFillObject}
               facing={facing}
-              mode={mode === "video" ? "video" : "picture"}
+              mode={initialMode === "video" ? "video" : "picture"}
               enableTorch={torch}
             />
           )}
 
-          {/* Subheader Government Watermark */}
-          <View style={styles.watermarkBanner}>
-            <Text style={styles.watermarkText}>
-              GOVERNMENT OF INDIA • NETRAM INSPECTION AUDIT STREAM
-            </Text>
-          </View>
-
-          {/* Framing Alignment Crosshairs / Grid */}
+          {/* Alignment Grid Overlay */}
           <View style={styles.gridOverlay} pointerEvents="none">
             <View style={styles.gridRow}>
               <View style={styles.gridCell} />
@@ -493,12 +464,12 @@ export function InAppCameraModal({
             </View>
           </View>
 
-          {/* Recording Timer Pill Indicator */}
+          {/* Recording Timer Pill (Video Mode only when active) */}
           {isRecording && (
             <View style={styles.recordingPill}>
               <View style={styles.recordingDot} />
               <Text style={styles.recordingText}>
-                REC 00:{recordSeconds < 10 ? `0${recordSeconds}` : recordSeconds} / 01:00
+                00:{recordSeconds < 10 ? `0${recordSeconds}` : recordSeconds} / 01:00
               </Text>
             </View>
           )}
@@ -507,61 +478,20 @@ export function InAppCameraModal({
           {isProcessing && (
             <View style={styles.processingOverlay}>
               <ActivityIndicator size="large" color="#FFFFFF" />
-              <Text style={styles.processingText}>Processing Tamper-Proof Evidence...</Text>
             </View>
           )}
         </View>
 
-        {/* Bottom In-App Control Bar */}
+        {/* Bottom Bar — Clean White with Shutter Only */}
         <View style={styles.bottomBar}>
-          {/* Mode Switcher Tabs */}
-          {!isRecording && (
-            <View style={styles.modeTabs}>
-              <Pressable
-                onPress={() => setMode("photo")}
-                style={[
-                  styles.modeTab,
-                  mode === "photo" ? styles.modeTabActive : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.modeTabText,
-                    mode === "photo" ? styles.modeTabTextActive : null,
-                  ]}
-                >
-                  PHOTO
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setMode("video")}
-                style={[
-                  styles.modeTab,
-                  mode === "video" ? styles.modeTabActive : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.modeTabText,
-                    mode === "video" ? styles.modeTabTextActive : null,
-                  ]}
-                >
-                  VIDEO
-                </Text>
-              </Pressable>
-            </View>
-          )}
-
-          {/* Shutter / Record Trigger Row */}
           <View style={styles.shutterRow}>
-            {mode === "photo" ? (
+            {initialMode === "photo" ? (
               <Pressable
                 onPress={handleTakePhoto}
                 disabled={isProcessing}
                 style={({ pressed }) => [
                   styles.photoShutterOuter,
-                  pressed ? { transform: [{ scale: 0.94 }] } : null,
+                  pressed ? { transform: [{ scale: 0.93 }] } : null,
                 ]}
               >
                 <View style={styles.photoShutterInner} />
@@ -574,7 +504,7 @@ export function InAppCameraModal({
                     disabled={isProcessing}
                     style={({ pressed }) => [
                       styles.videoShutterOuter,
-                      pressed ? { transform: [{ scale: 0.94 }] } : null,
+                      pressed ? { transform: [{ scale: 0.93 }] } : null,
                     ]}
                   >
                     <View style={styles.videoShutterInner} />
@@ -588,9 +518,6 @@ export function InAppCameraModal({
                     <View style={styles.stopButtonSquare} />
                   </Pressable>
                 )}
-                <Text style={styles.shutterSubtext}>
-                  {isRecording ? "Tap to Stop" : "Tap to Record (Max 60s)"}
-                </Text>
               </View>
             )}
           </View>
@@ -603,82 +530,46 @@ export function InAppCameraModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
     display: "flex",
     flexDirection: "column",
   },
   topHeader: {
     height: Platform.OS === "ios" ? 88 : 64,
     paddingTop: Platform.OS === "ios" ? 44 : 12,
-    backgroundColor: "rgba(0, 24, 52, 0.95)",
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#1E293B",
+    borderBottomColor: colors.borderSubtle,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     zIndex: 30,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
-  headerIconButtonActive: {
-    backgroundColor: "rgba(245, 158, 11, 0.25)",
-    borderWidth: 1,
+  headerIconButtonTorchActive: {
+    backgroundColor: "#FEF3C7",
     borderColor: "#F59E0B",
-  },
-  headerTitleWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  secureDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#10B981",
-  },
-  headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
   },
   headerActionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   viewfinderContainer: {
     flex: 1,
     position: "relative",
     backgroundColor: "#000000",
     overflow: "hidden",
-  },
-  watermarkBanner: {
-    position: "absolute",
-    top: 10,
-    left: 12,
-    right: 12,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 4,
-    backgroundColor: "rgba(0, 15, 30, 0.75)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  watermarkText: {
-    color: "#94A3B8",
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.5,
   },
   gridOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -696,9 +587,9 @@ const styles = StyleSheet.create({
   },
   recordingPill: {
     position: "absolute",
-    bottom: 20,
+    top: 16,
     alignSelf: "center",
-    backgroundColor: "rgba(220, 38, 38, 0.9)",
+    backgroundColor: "rgba(220, 38, 38, 0.95)",
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 20,
@@ -706,13 +597,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     zIndex: 20,
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
   },
   recordingDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: "#FFFFFF",
   },
   recordingText: {
@@ -723,146 +612,88 @@ const styles = StyleSheet.create({
   },
   processingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 50,
-    gap: 12,
-  },
-  processingText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
   },
   permissionCard: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    backgroundColor: "#001326",
-    gap: 14,
-  },
-  permissionTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  permissionBody: {
-    color: "#94A3B8",
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
+    backgroundColor: "#FFFFFF",
+    gap: 16,
   },
   permissionBtn: {
-    marginTop: 10,
-    backgroundColor: "#0284C7",
+    backgroundColor: colors.navyDark,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-  },
-  permissionBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 14,
+    paddingHorizontal: 28,
+    borderRadius: 8,
   },
   bottomBar: {
-    height: 140,
-    backgroundColor: "#001326",
+    height: 120,
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "#1E293B",
-    flexDirection: "column",
+    borderTopColor: colors.borderSubtle,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
+    justifyContent: "center",
     zIndex: 30,
   },
-  modeTabs: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 20,
-  },
-  modeTab: {
-    paddingVertical: 4,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-  },
-  modeTabActive: {
-    backgroundColor: "#0284C7",
-  },
-  modeTabText: {
-    color: "#94A3B8",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  modeTabTextActive: {
-    color: "#FFFFFF",
-  },
   shutterRow: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
   photoShutterOuter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     borderWidth: 4,
-    borderColor: "#FFFFFF",
+    borderColor: colors.navyDark,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "transparent",
+    backgroundColor: "#FFFFFF",
   },
   photoShutterInner: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.navyDark,
   },
   videoShutterContainer: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
   },
   videoShutterOuter: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     borderWidth: 4,
-    borderColor: "#FFFFFF",
+    borderColor: colors.error,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "transparent",
+    backgroundColor: "#FFFFFF",
   },
   videoShutterInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: colors.error,
   },
   stopButtonOuter: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     borderWidth: 4,
     borderColor: "#EF4444",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(239, 68, 68, 0.2)",
+    backgroundColor: "#FEE2E2",
   },
   stopButtonSquare: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: 6,
     backgroundColor: "#EF4444",
-  },
-  shutterSubtext: {
-    color: "#94A3B8",
-    fontSize: 11,
-    fontWeight: "500",
   },
 });
