@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Complaint } from "@netram/types";
 
 interface FacilityRef {
@@ -35,6 +36,12 @@ function assertAllowedAttachment(file: File): string | null {
 }
 
 const MAX_ATTACHMENTS = 5;
+
+// ADDED: shared color tokens matching the landing page / login page palette
+const NAVY = "#1e3a8a";
+const SAFFRON = "#e8590c";
+const GREEN = "#157a3d";
+const GREEN_DARK = "#0f5f2f";
 
 function RegisterComplaintContent() {
   const [facilities, setFacilities] = useState<FacilityRef[]>([]);
@@ -123,16 +130,41 @@ function RegisterComplaintContent() {
 
   return (
     <div style={{ maxWidth: "780px", margin: "2rem auto", padding: "0 1rem" }}>
-      {/* Top Brand Banner */}
-      <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-          <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "var(--color-navy-brand, #1e3a8a)" }} />
-          <span style={{ fontSize: "0.85rem", fontWeight: 700, letterSpacing: "0.08em", color: "var(--color-navy-brand, #1e3a8a)" }}>
-            GOVERNMENT OF INDIA · DoSJE
-          </span>
+      {/* ADDED: institutional tricolor strip, matches login page */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "4px",
+          background:
+            "linear-gradient(to right, #ff9933 0%, #ff9933 33.33%, #ffffff 33.33%, #ffffff 66.66%, #138808 66.66%, #138808 100%)",
+          zIndex: 50,
+        }}
+      />
+
+      {/* Top Brand Banner — CHANGED: logo replaces the written "GOVERNMENT OF INDIA · DoSJE" pill+text */}
+      <div style={{ textAlign: "center", marginBottom: "2rem", paddingTop: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.75rem" }}>
+          <Image
+            src="/National-Emblem-1.svg"
+            alt="Department of Social Justice & Empowerment, Government of Odisha"
+            width={90}
+            height={90}
+            style={{ objectFit: "contain" }}
+          />
+          <Image
+            src="/netram2.png"
+            alt="Department of Social Justice & Empowerment, Government of Odisha"
+            width={90}
+            height={90}
+            style={{ objectFit: "contain" }}
+          />
         </div>
-        <h1 style={{ margin: "0.25rem 0", fontSize: "1.85rem", fontWeight: 800, color: "var(--color-navy-brand, #1e3a8a)" }}>
-          Netram Citizen Grievance Portal
+        <h1 style={{ margin: "0.25rem 0", fontSize: "1.85rem", fontWeight: 800 }}>
+          <span style={{ color: SAFFRON }}>Netram</span>{" "}
+          <span style={{ color: NAVY }}>Citizen Grievance Portal</span>
         </h1>
         <p className="muted" style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-muted, #64748b)" }}>
           File a public grievance regarding a monitored facility for statutory review and redressal (§35)
@@ -140,7 +172,7 @@ function RegisterComplaintContent() {
       </div>
 
       {/* Registration Form */}
-      <div className="table-card" style={{ padding: "1.75rem", marginBottom: "2rem", borderRadius: "10px" }}>
+      <div className="table-card" style={{ padding: "1.75rem", marginBottom: "2rem", borderRadius: "12px", background: "#fff", border: "1px solid #e2e8f0" }}>
         {facilitiesError ? (
           <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "1.1rem 1.25rem", color: "#991b1b", fontSize: "0.9rem", textAlign: "center" }}>
             Unable to load the facility registry. Please retry shortly or contact the district authority.
@@ -158,8 +190,9 @@ function RegisterComplaintContent() {
                 disabled={facilities.length === 0}
                 style={{
                   width: "100%",
+                  boxSizing: "border-box",  // ADD THIS
                   padding: "0.75rem 0.9rem",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   border: "1.5px solid #cbd5e1",
                   fontSize: "0.95rem",
                   color: "#0f172a",
@@ -191,8 +224,9 @@ function RegisterComplaintContent() {
                 placeholder="Describe the concern observed at the facility (minimum 10 characters)."
                 style={{
                   width: "100%",
+                  boxSizing: "border-box",
                   padding: "0.75rem 0.9rem",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   border: "1.5px solid #cbd5e1",
                   fontSize: "0.95rem",
                   color: "#0f172a",
@@ -216,8 +250,9 @@ function RegisterComplaintContent() {
                   placeholder="For acknowledgment"
                   style={{
                     width: "100%",
+                    boxSizing: "border-box", 
                     padding: "0.75rem 0.9rem",
-                    borderRadius: "6px",
+                    borderRadius: "8px",
                     border: "1.5px solid #cbd5e1",
                     fontSize: "0.95rem",
                     color: "#0f172a",
@@ -237,8 +272,9 @@ function RegisterComplaintContent() {
                   placeholder="Phone or email"
                   style={{
                     width: "100%",
+                    boxSizing: "border-box",
                     padding: "0.75rem 0.9rem",
-                    borderRadius: "6px",
+                    borderRadius: "8px",
                     border: "1.5px solid #cbd5e1",
                     fontSize: "0.95rem",
                     color: "#0f172a",
@@ -260,8 +296,9 @@ function RegisterComplaintContent() {
                 onChange={(e) => handleFiles(e.target.files)}
                 style={{
                   width: "100%",
+                  boxSizing: "border-box", 
                   padding: "0.6rem 0.9rem",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   border: "1.5px dashed #cbd5e1",
                   fontSize: "0.9rem",
                   color: "#0f172a",
@@ -283,7 +320,7 @@ function RegisterComplaintContent() {
                         gap: "0.5rem",
                         background: "#f8fafc",
                         border: "1px solid #e2e8f0",
-                        borderRadius: "6px",
+                        borderRadius: "8px",
                         padding: "0.4rem 0.55rem",
                         fontSize: "0.8rem",
                         color: "#0f172a",
@@ -323,18 +360,18 @@ function RegisterComplaintContent() {
               </div>
             )}
 
+            {/* CHANGED: navy -> institutional green, matching the primary action color used site-wide */}
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-primary"
               style={{
                 padding: "0.85rem 1.75rem",
                 fontSize: "0.95rem",
-                background: "var(--color-navy-brand, #1e3a8a)",
+                background: `linear-gradient(to right, ${GREEN}, ${GREEN_DARK})`,
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "6px",
-                fontWeight: 600,
+                borderRadius: "8px",
+                fontWeight: 700,
                 cursor: isLoading ? "not-allowed" : "pointer",
                 opacity: isLoading ? 0.7 : 1,
               }}
@@ -358,18 +395,18 @@ function RegisterComplaintContent() {
             padding: "2rem",
             marginBottom: "2rem",
             borderRadius: "12px",
-            border: "1px solid var(--color-border-strong, #cbd5e1)",
-            borderLeft: "6px solid #15803d",
+            border: "1px solid #cbd5e1",
+            borderLeft: `6px solid ${GREEN}`,
             background: "#ffffff",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1.5rem", marginBottom: "1.5rem" }}>
             <div>
-              <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#15803d", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 800, color: GREEN, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
                 Grievance Filed Successfully
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "1rem", fontWeight: 800, color: "var(--color-navy-brand, #1e3a8a)", background: "#f1f5f9", padding: "0.3rem 0.65rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "1rem", fontWeight: 800, color: NAVY, background: "#f1f5f9", padding: "0.3rem 0.65rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
                   {result.trackingCode}
                 </span>
                 <button
@@ -381,7 +418,7 @@ function RegisterComplaintContent() {
                 </button>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.5rem 0.9rem", fontSize: "0.8rem", fontWeight: 700, color: "#15803d" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.5rem 0.9rem", fontSize: "0.8rem", fontWeight: 700, color: GREEN }}>
               ✓ Registered in Public Ledger
             </div>
           </div>
@@ -395,8 +432,7 @@ function RegisterComplaintContent() {
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
             <Link
               href={`/track-complaint?code=${encodeURIComponent(result.trackingCode)}`}
-              className="btn-primary"
-              style={{ display: "inline-flex", alignItems: "center", padding: "0.7rem 1.25rem", fontSize: "0.88rem", fontWeight: 600, background: "var(--color-navy-brand, #1e3a8a)", color: "#ffffff", borderRadius: "6px", textDecoration: "none" }}
+              style={{ display: "inline-flex", alignItems: "center", padding: "0.7rem 1.25rem", fontSize: "0.88rem", fontWeight: 700, background: `linear-gradient(to right, ${GREEN}, ${GREEN_DARK})`, color: "#ffffff", borderRadius: "8px", textDecoration: "none" }}
             >
               Track Grievance Status &rarr;
             </Link>
@@ -411,10 +447,10 @@ function RegisterComplaintContent() {
 
       {/* Cross Links */}
       <div style={{ textAlign: "center", marginTop: "2.5rem", display: "flex", justifyContent: "center", gap: "1.25rem", flexWrap: "wrap" }}>
-        <Link href="/track-complaint" style={{ color: "var(--color-navy-brand, #1e3a8a)", fontSize: "0.85rem", textDecoration: "none", fontWeight: 600 }}>
+        <Link href="/track-complaint" style={{ color: NAVY, fontSize: "0.85rem", textDecoration: "none", fontWeight: 600 }}>
           Track Existing Grievance
         </Link>
-        <Link href="/login" style={{ color: "var(--color-navy-brand, #1e3a8a)", fontSize: "0.85rem", textDecoration: "none", fontWeight: 600 }}>
+        <Link href="/login" style={{ color: NAVY, fontSize: "0.85rem", textDecoration: "none", fontWeight: 600 }}>
           Staff & Authorized Officer Portal Login &rarr;
         </Link>
       </div>

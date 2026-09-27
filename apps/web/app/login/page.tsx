@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { loadClientEnv } from "@netram/config";
 import { getSessionUser } from "../../lib/api";
@@ -24,12 +25,26 @@ export default async function LoginPage() {
 
   return (
     <div className={styles.pageWrapper}>
+      {/* ADDED: thin tricolor accent strip, common on Indian govt portals */}
+      <div className={styles.govStrip} />
+
       {/* Top Institutional Header */}
       <header className={styles.topBar}>
-        <div className={styles.deptAffiliation}>
-          <span className={styles.ashokaPill}>DoSJE</span>
-          <span>Dept. of Social Justice &amp; Empowerment</span>
-        </div>
+        {/* CHANGED: replaced the "DoSJE" pill + written affiliation text with the actual logo */}
+        <Image
+          src="National-Emblem-1.svg"
+          alt="Netram"
+          width={90}
+          height={90}
+          style={{ objectFit: "contain" }}
+        />
+        <Image
+          src="/netram2.png"
+          alt="Netram"
+          width={90}
+          height={90}
+          style={{ objectFit: "contain" }}
+        />
       </header>
 
       {/* Main Login Card */}

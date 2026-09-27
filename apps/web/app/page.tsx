@@ -76,13 +76,13 @@ export default async function HomePage() {
         <Image
           src="/National-Emblem-1.svg"
           alt="Department of Social Justice & Empowerment logo"
-          width={38}
-          height={38}
+          width={80}
+          height={80}
           style={{ borderRadius: "8px", flexShrink: 0, objectFit: "contain" }}
         />
         <div>
           <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--navy)", lineHeight: 1.1 }}>
-            DoSJE
+            Department of Social Justice and Empowerment
           </div>
           <div style={{ fontSize: "0.7rem", color: "var(--muted)", lineHeight: 1.1 }}>
             Govt. of India

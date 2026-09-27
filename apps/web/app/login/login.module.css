@@ -15,6 +15,25 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ADDED: institutional tricolor strip — subtle nod to official Indian govt sites */
+.govStrip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    #ff9933 0%,
+    #ff9933 33.33%,
+    #ffffff 33.33%,
+    #ffffff 66.66%,
+    #138808 66.66%,
+    #138808 100%
+  );
+  z-index: 50;
+}
+
 /* Institutional Top Header */
 .topBar {
   width: 100%;
