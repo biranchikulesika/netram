@@ -188,7 +188,7 @@ export function CorrectiveActionDetailClient({
       <header className="inspection-hero">
         <div className="inspection-hero-main">
           <h1 className="inspection-hero-title">
-            {project ? project.name : "Remediation Order Dossier"}
+            {project ? project.name : "Remediation Order Record"}
           </h1>
           <div className="inspection-hero-meta">
             {project && (

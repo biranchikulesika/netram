@@ -32,9 +32,7 @@ const RealLeafletMap = dynamic(() => import("./real-leaflet-map"), {
           animation: "spin 1s linear infinite",
         }}
       />
-      <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-        Loading map…
-      </div>
+      <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>Loading map…</div>
     </div>
   ),
 });
@@ -50,11 +48,5 @@ export function ProjectsMapView({
   userRole = "authority_officer",
   isAuthority = true,
 }: ProjectsMapViewProps) {
-  return (
-    <RealLeafletMap
-      projects={projects}
-      userRole={userRole}
-      isAuthority={isAuthority}
-    />
-  );
+  return <RealLeafletMap projects={projects} userRole={userRole} isAuthority={isAuthority} />;
 }

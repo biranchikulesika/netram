@@ -265,7 +265,7 @@ export function AllocationDetailModal({
               fontSize: "0.85rem",
             }}
           >
-            Open Facility Fund Dossier
+            Open Facility Fund Record
           </Link>
         </div>
       </div>
@@ -669,7 +669,7 @@ export function FlagDetailModal({
           <Link
             href={`/dashboard/projects/${flag.projectId}`}
             className="table-name-link"
-            title={`Open facility dossier for ${projectName}`}
+            title={`Open facility record for ${projectName}`}
           >
             {projectName}
           </Link>

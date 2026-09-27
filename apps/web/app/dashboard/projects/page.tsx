@@ -25,13 +25,10 @@ export default async function ProjectsPage({
   const pageNumber = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const pageSize = Math.min(100, Math.max(10, parseInt(params.pageSize ?? "20", 10) || 20));
   const validStatus =
-    params.status && params.status !== "ALL"
-      ? (params.status as ProjectStatus)
-      : undefined;
-  const validView =
-    params.view === "cards" || params.view === "map"
-      ? (params.view as "table" | "cards" | "map")
-      : ("table" as "table" | "cards" | "map");
+    params.status && params.status !== "ALL" ? (params.status as ProjectStatus) : undefined;
+  const validView = ["table", "cards", "map"].includes(params.view ?? "")
+    ? (params.view as "table" | "cards" | "map")
+    : ("map" as "table" | "cards" | "map");
   const searchQuery = params.q?.trim() ?? "";
 
   const client = await getClient();

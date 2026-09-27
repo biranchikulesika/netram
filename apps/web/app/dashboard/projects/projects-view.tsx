@@ -5,15 +5,14 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import type { Project } from "@netram/types";
 import { StatusBadge } from "./[id]/status-badge";
-import {
-  IconSearch,
-  IconGrid,
-  IconList,
-  IconMapPin,
-} from "../../components/icons";
+import { IconSearch, IconGrid, IconList, IconMapPin } from "../../components/icons";
 import { formatDistrict } from "../../../lib/presentation";
 import { ProjectsMapView } from "./projects-map-view";
 import { ProjectOverviewCard, formatRegisteredDate } from "./project-overview-card";
+
+type ProjectView = "table" | "cards" | "map";
+/** Section default; any other view is recorded in the URL. */
+const DEFAULT_PROJECT_VIEW: ProjectView = "map";
 
 interface ProjectsViewProps {
   initialProjects: Project[];
@@ -21,7 +20,7 @@ interface ProjectsViewProps {
   serverPage?: number;
   serverPageSize?: number;
   initialStatus?: string;
-  initialView?: "table" | "cards" | "map";
+  initialView?: ProjectView;
   initialSearch?: string;
   apiUrl: string;
 }
@@ -36,7 +35,7 @@ export function ProjectsView({
   serverPage = 1,
   serverPageSize = 20,
   initialStatus = "ALL",
-  initialView = "table",
+  initialView = DEFAULT_PROJECT_VIEW,
   initialSearch = "",
   apiUrl: _apiUrl,
 }: ProjectsViewProps) {
@@ -45,7 +44,7 @@ export function ProjectsView({
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [viewMode, setViewMode] = useState<"table" | "cards" | "map">(initialView);
+  const [viewMode, setViewMode] = useState<ProjectView>(initialView);
   const [jumpPage, setJumpPage] = useState("");
 
   useEffect(() => {
@@ -60,9 +59,9 @@ export function ProjectsView({
   const navigate = (
     overrides: {
       page?: number;
-       pageSize?: number;
+      pageSize?: number;
       status?: string;
-      view?: "table" | "cards" | "map";
+      view?: ProjectView;
       q?: string;
     } = {},
   ) => {
@@ -76,7 +75,7 @@ export function ProjectsView({
     if (page > 1) params.set("page", String(page));
     if (size !== 20) params.set("pageSize", String(size));
     if (status && status !== "ALL") params.set("status", status);
-    if (view !== "table") params.set("view", view);
+    if (view !== DEFAULT_PROJECT_VIEW) params.set("view", view);
     if (q.trim()) params.set("q", q.trim());
 
     const qs = params.toString();
@@ -122,9 +121,9 @@ export function ProjectsView({
     }
   };
 
-  const handleViewModeChange = (mode: "table" | "cards" | "map") => {
+  const handleViewModeChange = (mode: ProjectView) => {
     setViewMode(mode);
-    patchUrl({ view: mode === "table" ? null : mode });
+    patchUrl({ view: mode === DEFAULT_PROJECT_VIEW ? null : mode });
   };
 
   const handleSearchChange = (value: string) => {
@@ -160,7 +159,10 @@ export function ProjectsView({
   return (
     <div>
       {/* Toolbar: Search, Filters & View Toggle */}
-      <div className="registry-toolbar" style={{ marginBottom: viewMode === "map" ? "0.6rem" : "1.25rem" }}>
+      <div
+        className="registry-toolbar"
+        style={{ marginBottom: viewMode === "map" ? "0.6rem" : "1.25rem" }}
+      >
         <div className="search-filter-group">
           <div className="search-input-wrap">
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
@@ -299,7 +301,7 @@ export function ProjectsView({
                       key={p.id}
                       className="table-row"
                       onClick={() => router.push(`/dashboard/projects/${p.id}`)}
-                      title={`Open dossier for ${p.name}`}
+                      title={`Open record for ${p.name}`}
                     >
                       <td>
                         <Link
@@ -363,7 +365,14 @@ export function ProjectsView({
         <div>
           {filteredProjects.length === 0 ? (
             <div className="empty-box" style={{ padding: "3rem 1rem", marginBottom: "2rem" }}>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  marginBottom: "0.25rem",
+                  color: "var(--text-primary)",
+                }}
+              >
                 No matching facilities found
               </div>
               <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
@@ -375,7 +384,11 @@ export function ProjectsView({
               {cardColumns.map((column, colIdx) => (
                 <div className="facility-cards-column" key={colIdx}>
                   {column.map((p) => (
-                    <ProjectOverviewCard key={p.id} project={p} href={`/dashboard/projects/${p.id}`} />
+                    <ProjectOverviewCard
+                      key={p.id}
+                      project={p}
+                      href={`/dashboard/projects/${p.id}`}
+                    />
                   ))}
                 </div>
               ))}
@@ -403,7 +416,10 @@ export function ProjectsView({
 
       {/* View Mode C: Map */}
       {viewMode === "map" && (
-        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+        <div
+          className="map-view-wrapper"
+          style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}
+        >
           <ProjectsMapView projects={filteredProjects} />
         </div>
       )}

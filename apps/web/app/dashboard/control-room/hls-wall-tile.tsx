@@ -33,10 +33,9 @@ export interface HlsWallTileProps {
   /** Explicit user intent — never enabled merely because the tile is visible. */
   enabled: boolean;
   onToggle: (cameraId: string) => void;
-  projectHref?: string;
 }
 
-export function HlsWallTile({ camera, enabled, onToggle, projectHref }: HlsWallTileProps) {
+export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [contract, setContract] = useState<HlsContract | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "error">("idle");
@@ -166,14 +165,27 @@ export function HlsWallTile({ camera, enabled, onToggle, projectHref }: HlsWallT
       <div className="cc-viewport">
         <video ref={videoRef} autoPlay playsInline muted className="cc-video" />
         <div className="cc-vp-osd cc-vp-osd-tl">
-          {projectHref ? (
-            <a href={projectHref} className="cc-osd-facility cc-osd-facility-link">
-              {facility}
-            </a>
-          ) : (
-            <span className="cc-osd-facility">{facility}</span>
+          <span
+            style={{
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              color: "#ffffff",
+              textShadow: "0 1px 2px rgba(2, 6, 23, 0.9)",
+            }}
+          >
+            {facility}
+          </span>
+          {place && (
+            <span
+              style={{
+                fontSize: "0.68rem",
+                color: "#cbd5e1",
+                textShadow: "0 1px 2px rgba(2, 6, 23, 0.9)",
+              }}
+            >
+              {place}
+            </span>
           )}
-          {place && <span className="cc-osd-place">{place}</span>}
         </div>
         {!enabled && (
           <div className="cc-idle-placeholder" aria-hidden="true">
@@ -207,6 +219,7 @@ export function HlsWallTile({ camera, enabled, onToggle, projectHref }: HlsWallT
 }
 
 // "Vani Vihar - Dormitory Block" -> ["Vani Vihar", "Dormitory Block"]
+// "Main Gate" -> ["Main Gate", ""]
 function splitFacilityPlace(name: string): [string, string] {
   const idx = name.indexOf(" - ");
   if (idx === -1) return [name, ""];

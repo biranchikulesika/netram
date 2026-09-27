@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useUrlState } from "../../../lib/url-state";
 import dynamic from "next/dynamic";
 import type { Inspection } from "@netram/types";
 import { IconSearch, IconList, IconGrid, IconMapPin } from "../../components/icons";
@@ -40,6 +41,10 @@ interface InspectionsViewProps {
   total: number;
   availableProjects?: ProjectOption[];
   canCreate?: boolean;
+  /** Filters and view live in the URL so a refresh or shared link restores them. */
+  initialStatus?: "ALL" | "ACTIVE" | "REVIEW" | "SCHEDULED" | "COMPLETED";
+  initialView?: ViewMode;
+  initialSearch?: string;
 }
 
 type ViewMode = "table" | "cards" | "map";
@@ -49,14 +54,27 @@ export function InspectionsView({
   total: initialTotal,
   availableProjects = [],
   canCreate = false,
+  initialStatus = "ALL",
+  initialView = "cards",
+  initialSearch = "",
 }: InspectionsViewProps) {
   const router = useRouter();
+  const setUrlState = useUrlState();
   const [inspections, setInspections] = useState<Inspection[]>(initialInspections);
   const [total, setTotal] = useState(initialTotal);
-  const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "REVIEW" | "SCHEDULED" | "COMPLETED">("ALL");
-  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState(initialStatus);
+  const [search, setSearch] = useState(initialSearch);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
+
+  const applyFilter = (next: typeof filter) => {
+    setFilter(next);
+    setUrlState({ status: next === "ALL" ? null : next });
+  };
+  const applyView = (next: ViewMode) => {
+    setViewMode(next);
+    setUrlState({ view: next === "cards" ? null : next });
+  };
 
   const handleCreated = (newInspection: Inspection) => {
     setInspections((prev) => [newInspection, ...prev]);
@@ -65,9 +83,8 @@ export function InspectionsView({
 
   const activeCount = useMemo(
     () =>
-      inspections.filter(
-        (i) => i.status === "in_progress" || i.status === "evidence_collection",
-      ).length,
+      inspections.filter((i) => i.status === "in_progress" || i.status === "evidence_collection")
+        .length,
     [inspections],
   );
 
@@ -85,10 +102,7 @@ export function InspectionsView({
   );
 
   const scheduledCount = useMemo(
-    () =>
-      inspections.filter(
-        (i) => i.status === "scheduled" || i.status === "assigned",
-      ).length,
+    () => inspections.filter((i) => i.status === "scheduled" || i.status === "assigned").length,
     [inspections],
   );
 
@@ -156,7 +170,10 @@ export function InspectionsView({
               type="search"
               placeholder="Search by project code, facility name, or trigger…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setUrlState({ q: e.target.value.trim() || null });
+              }}
               className="search-input-with-icon"
               aria-label="Filter inspections"
             />
@@ -166,7 +183,7 @@ export function InspectionsView({
             <button
               type="button"
               className={`filter-tab-btn ${filter === "ALL" ? "active" : ""}`}
-              onClick={() => setFilter("ALL")}
+              onClick={() => applyFilter("ALL")}
               role="tab"
               aria-selected={filter === "ALL"}
             >
@@ -177,7 +194,7 @@ export function InspectionsView({
             <button
               type="button"
               className={`filter-tab-btn ${filter === "ACTIVE" ? "active" : ""}`}
-              onClick={() => setFilter("ACTIVE")}
+              onClick={() => applyFilter("ACTIVE")}
               role="tab"
               aria-selected={filter === "ACTIVE"}
             >
@@ -188,7 +205,7 @@ export function InspectionsView({
             <button
               type="button"
               className={`filter-tab-btn ${filter === "REVIEW" ? "active" : ""}`}
-              onClick={() => setFilter("REVIEW")}
+              onClick={() => applyFilter("REVIEW")}
               role="tab"
               aria-selected={filter === "REVIEW"}
             >
@@ -199,23 +216,27 @@ export function InspectionsView({
             <button
               type="button"
               className={`filter-tab-btn ${filter === "SCHEDULED" ? "active" : ""}`}
-              onClick={() => setFilter("SCHEDULED")}
+              onClick={() => applyFilter("SCHEDULED")}
               role="tab"
               aria-selected={filter === "SCHEDULED"}
             >
               <span>Scheduled</span>
-              {filter === "SCHEDULED" && <span className="filter-count-badge">{scheduledCount}</span>}
+              {filter === "SCHEDULED" && (
+                <span className="filter-count-badge">{scheduledCount}</span>
+              )}
             </button>
 
             <button
               type="button"
               className={`filter-tab-btn ${filter === "COMPLETED" ? "active" : ""}`}
-              onClick={() => setFilter("COMPLETED")}
+              onClick={() => applyFilter("COMPLETED")}
               role="tab"
               aria-selected={filter === "COMPLETED"}
             >
               <span>Completed</span>
-              {filter === "COMPLETED" && <span className="filter-count-badge">{completedCount}</span>}
+              {filter === "COMPLETED" && (
+                <span className="filter-count-badge">{completedCount}</span>
+              )}
             </button>
           </div>
         </div>
@@ -225,7 +246,7 @@ export function InspectionsView({
             <button
               type="button"
               className={`view-btn ${viewMode === "table" ? "active" : ""}`}
-              onClick={() => setViewMode("table")}
+              onClick={() => applyView("table")}
               title="Table View"
             >
               <IconList style={{ width: 14, height: 14 }} />
@@ -234,7 +255,7 @@ export function InspectionsView({
             <button
               type="button"
               className={`view-btn ${viewMode === "cards" ? "active" : ""}`}
-              onClick={() => setViewMode("cards")}
+              onClick={() => applyView("cards")}
               title="Cards View"
             >
               <IconGrid style={{ width: 14, height: 14 }} />
@@ -243,7 +264,7 @@ export function InspectionsView({
             <button
               type="button"
               className={`view-btn ${viewMode === "map" ? "active" : ""}`}
-              onClick={() => setViewMode("map")}
+              onClick={() => applyView("map")}
               title="Map"
             >
               <IconMapPin style={{ width: 14, height: 14 }} />
@@ -279,145 +300,153 @@ export function InspectionsView({
       {/* Inspections Table */}
       {viewMode === "table" && (
         <div className="table-card">
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: "130px" }}>Type</th>
-              <th>Facility / Project</th>
-              <th>Inspection ID</th>
-              <th>Trigger</th>
-              <th style={{ width: "140px" }}>Status</th>
-              <th>Assignment</th>
-              <th>Timing</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
+          <table>
+            <thead>
               <tr>
-                <td colSpan={7} className="table-empty-state">
-                  <IconSearch width={22} height={22} className="table-empty-icon" />
-                  <div className="table-empty-title">
-                    {search || filter !== "ALL"
-                      ? "No inspections found"
-                      : "No inspections currently recorded"}
-                  </div>
-                  <div className="table-empty-desc">
-                    {search || filter !== "ALL"
-                      ? "Adjust the status filter or search query to see more of the registry."
-                      : "Scheduled and surprise inspections will appear here once created."}
-                  </div>
-                </td>
+                <th style={{ width: "130px" }}>Type</th>
+                <th>Facility / Project</th>
+                <th>Inspection ID</th>
+                <th>Trigger</th>
+                <th style={{ width: "140px" }}>Status</th>
+                <th>Assignment</th>
+                <th>Timing</th>
               </tr>
-            ) : (
-              pagination.paginatedItems.map((i) => {
-                const isSurprise = i.type === "surprise";
-                const dateStr = i.startedAt
-                  ? `Started: ${formatDate(i.startedAt)}`
-                  : i.scheduledStart
-                    ? `Sched: ${formatDate(i.scheduledStart)}`
-                    : "—";
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">
+                      {search || filter !== "ALL"
+                        ? "No inspections found"
+                        : "No inspections currently recorded"}
+                    </div>
+                    <div className="table-empty-desc">
+                      {search || filter !== "ALL"
+                        ? "Adjust the status filter or search query to see more of the registry."
+                        : "Scheduled and surprise inspections will appear here once created."}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                pagination.paginatedItems.map((i) => {
+                  const isSurprise = i.type === "surprise";
+                  const dateStr = i.startedAt
+                    ? `Started: ${formatDate(i.startedAt)}`
+                    : i.scheduledStart
+                      ? `Sched: ${formatDate(i.scheduledStart)}`
+                      : "—";
 
-                const assignedCount = Array.isArray(i.assignedUserIds) ? i.assignedUserIds.length : 0;
+                  const assignedCount = Array.isArray(i.assignedUserIds)
+                    ? i.assignedUserIds.length
+                    : 0;
 
-                return (
-                  <tr
-                    key={i.id}
-                    className="table-row"
-                    onClick={() => router.push(`/dashboard/inspections/${i.id}`)}
-                    title={`Open inspection dossier ${i.id}`}
-                  >
-                    <td>
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          fontSize: "0.8rem",
-                          textTransform: "uppercase",
-                          color: isSurprise ? "#b45309" : "var(--text-primary)",
-                        }}
-                      >
-                        {i.type}
-                      </span>
-                    </td>
-                    <td>
-                      {i.projectId ? (
-                        <Link
-                          href={`/dashboard/projects/${i.projectId}`}
-                          className="table-name-link"
-                          onClick={(e) => e.stopPropagation()}
-                          title={`Open facility dossier for ${i.projectName || "facility"}`}
+                  return (
+                    <tr
+                      key={i.id}
+                      className="table-row"
+                      onClick={() => router.push(`/dashboard/inspections/${i.id}`)}
+                      title={`Open inspection record ${i.id}`}
+                    >
+                      <td>
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            fontSize: "0.8rem",
+                            textTransform: "uppercase",
+                            color: isSurprise ? "#b45309" : "var(--text-primary)",
+                          }}
                         >
-                          {i.projectName || "Sanctioned facility"}
+                          {i.type}
+                        </span>
+                      </td>
+                      <td>
+                        {i.projectId ? (
+                          <Link
+                            href={`/dashboard/projects/${i.projectId}`}
+                            className="table-name-link"
+                            onClick={(e) => e.stopPropagation()}
+                            title={`Open facility record for ${i.projectName || "facility"}`}
+                          >
+                            {i.projectName || "Sanctioned facility"}
+                          </Link>
+                        ) : (
+                          <span className="table-name-link" style={{ cursor: "default" }}>
+                            {i.projectName || "Sanctioned facility"}
+                          </span>
+                        )}
+                        {i.projectCode && (
+                          <div className="table-subtext">
+                            {i.projectId ? (
+                              <Link
+                                href={`/dashboard/projects/${i.projectId}`}
+                                className="table-code-link"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Project code: ${i.projectCode}`}
+                              >
+                                {i.projectCode}
+                              </Link>
+                            ) : (
+                              <span>{i.projectCode}</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td title={i.id}>
+                        <Link
+                          href={`/dashboard/inspections/${i.id}`}
+                          className="table-code-link"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Inspection identifier: ${i.id}`}
+                        >
+                          {i.id.slice(0, 12)}
                         </Link>
-                      ) : (
-                        <span className="table-name-link" style={{ cursor: "default" }}>
-                          {i.projectName || "Sanctioned facility"}
+                      </td>
+                      <td>
+                        <span className="trigger-text">{i.trigger.replace(/_/g, " ")}</span>
+                      </td>
+                      <td>
+                        <span className={`status status-${i.status}`}>
+                          {i.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                         </span>
-                      )}
-                      {i.projectCode && (
-                        <div className="table-subtext">
-                          {i.projectId ? (
-                            <Link
-                              href={`/dashboard/projects/${i.projectId}`}
-                              className="table-code-link"
-                              onClick={(e) => e.stopPropagation()}
-                              title={`Project code: ${i.projectCode}`}
-                            >
-                              {i.projectCode}
-                            </Link>
-                          ) : (
-                            <span>{i.projectCode}</span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td title={i.id}>
-                      <Link
-                        href={`/dashboard/inspections/${i.id}`}
-                        className="table-code-link"
-                        onClick={(e) => e.stopPropagation()}
-                        title={`Inspection identifier: ${i.id}`}
-                      >
-                        {i.id.slice(0, 12)}
-                      </Link>
-                    </td>
-                    <td>
-                      <span className="trigger-text">{i.trigger.replace(/_/g, " ")}</span>
-                    </td>
-                    <td>
-                      <span className={`status status-${i.status}`}>
-                        {i.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                      </span>
-                    </td>
-                    <td>
-                      {assignedCount > 0 ? (
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-primary)" }}>
-                          {assignedCount} {assignedCount === 1 ? "Officer" : "Officers"}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)", fontStyle: "italic" }}>
-                          Unassigned
-                        </span>
-                      )}
-                    </td>
-                    <td className="table-date">{dateStr}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      </td>
+                      <td>
+                        {assignedCount > 0 ? (
+                          <span style={{ fontSize: "0.8rem", color: "var(--text-primary)" }}>
+                            {assignedCount} {assignedCount === 1 ? "Officer" : "Officers"}
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: "0.8rem",
+                              color: "var(--text-subtle)",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            Unassigned
+                          </span>
+                        )}
+                      </td>
+                      <td className="table-date">{dateStr}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
 
-        <PaginationBar
-          from={pagination.from}
-          to={pagination.to}
-          total={pagination.total}
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          pageSize={pagination.pageSize}
-          itemName="inspections"
-          onPageClick={pagination.onPageClick}
-          onPageSizeChange={pagination.onPageSizeChange}
-        />
+          <PaginationBar
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            pageSize={pagination.pageSize}
+            itemName="inspections"
+            onPageClick={pagination.onPageClick}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -426,7 +455,14 @@ export function InspectionsView({
         <div>
           {filtered.length === 0 ? (
             <div className="empty-box" style={{ padding: "3rem 1rem", marginBottom: "2rem" }}>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  marginBottom: "0.25rem",
+                  color: "var(--text-primary)",
+                }}
+              >
                 No inspections found
               </div>
               <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
@@ -465,7 +501,10 @@ export function InspectionsView({
 
       {/* Inspections Map */}
       {viewMode === "map" && (
-        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+        <div
+          className="map-view-wrapper"
+          style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}
+        >
           <InspectionsMap inspections={filtered} />
         </div>
       )}

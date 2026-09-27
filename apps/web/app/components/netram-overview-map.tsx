@@ -190,7 +190,7 @@ const NetramOverviewMap = function NetramOverviewMap({
         if (facility) handleSelectFacility(facility);
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__netram_open_dossier = (id: string) => {
+      (window as any).__netram_open_record = (id: string) => {
         const facility = facilities.find((f) => f.id === id);
         if (facility) handleSelectFacility(facility);
       };
@@ -198,7 +198,7 @@ const NetramOverviewMap = function NetramOverviewMap({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (window as any).__netram_select_facility;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (window as any).__netram_open_dossier;
+        delete (window as any).__netram_open_record;
       };
     }, [facilities, handleSelectFacility]);
 

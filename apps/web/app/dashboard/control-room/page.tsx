@@ -1,13 +1,41 @@
 import { redirect } from "next/navigation";
 import { getClient, getSessionUser } from "../../../lib/api";
 import { NavHeader } from "../../components/nav-header";
-import { ControlRoomLayout } from "./control-room-layout";
+import {
+  ControlRoomLayout,
+  type ControlRoomTab,
+  type FeedColumns,
+  type StatusFilter,
+} from "./control-room-layout";
 
 export const dynamic = "force-dynamic";
 
-export default async function ControlRoomPage() {
+export default async function ControlRoomPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    tab?: string;
+    cols?: string;
+    q?: string;
+    alerts?: string;
+    status?: string;
+  }>;
+}) {
   const session = await getSessionUser();
   if (!session) redirect("/login");
+
+  const params = await searchParams;
+  const initialTab = ["feeds", "alerts", "status"].includes(params.tab ?? "")
+    ? (params.tab as ControlRoomTab)
+    : "feeds";
+  const initialColumns = (["4", "3", "2"] as string[]).includes(params.cols ?? "")
+    ? (Number(params.cols) as FeedColumns)
+    : 3;
+  const initialQuery = params.q?.trim() ?? "";
+  const initialAlertView = params.alerts === "resolved" ? "resolved" : "active";
+  const initialStatusFilter = ["all", "online", "offline"].includes(params.status ?? "")
+    ? (params.status as StatusFilter)
+    : "all";
 
   const client = await getClient();
 
@@ -27,10 +55,6 @@ export default async function ControlRoomPage() {
   const canTransition = session.permissions.includes("ai:anomaly:transition");
 
   // Exact camera → project links from the camera's own projectId (migration 0012).
-  const cameraProjectLinks: Record<string, string> = {};
-  for (const cam of camerasPage.items) {
-    if (cam.projectId) cameraProjectLinks[cam.id] = `/dashboard/projects/${cam.projectId}`;
-  }
 
   return (
     <main>
@@ -46,10 +70,13 @@ export default async function ControlRoomPage() {
         anomalies={anomaliesPage.items}
         anomaliesTotal={anomaliesPage.total}
         canTransition={canTransition}
-        cameraProjectLinks={cameraProjectLinks}
         districtNames={districtNames}
+        initialTab={initialTab}
+        initialColumns={initialColumns}
+        initialQuery={initialQuery}
+        initialAlertView={initialAlertView}
+        initialStatusFilter={initialStatusFilter}
       />
     </main>
   );
 }
-

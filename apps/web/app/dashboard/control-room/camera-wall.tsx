@@ -8,7 +8,6 @@ import { IconVideo } from "../../components/icons";
 
 interface CameraWallProps {
   cameras: PublicCctvCamera[];
-  cameraProjectLinks?: Record<string, string>;
   query: string;
   columns?: 4 | 3 | 2;
   /** Camera ids switched to HLS wall playback by the user (PART 8). */
@@ -20,9 +19,8 @@ interface CameraWallProps {
 
 export function CameraWall({
   cameras,
-  cameraProjectLinks = {},
   query,
-  columns = 4,
+  columns = 3,
   hlsEnabled,
   onToggleHls,
   onOpenCamera,
@@ -36,8 +34,24 @@ export function CameraWall({
   return (
     <>
       {filtered.length === 0 ? (
-        <div className="empty-state" style={{ padding: "3rem", textAlign: "center", background: "#ffffff", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <IconVideo style={{ width: 36, height: 36, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
+        <div
+          className="empty-state"
+          style={{
+            padding: "3rem",
+            textAlign: "center",
+            background: "#ffffff",
+            borderRadius: "8px",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <IconVideo
+            style={{
+              width: 36,
+              height: 36,
+              color: "var(--text-subtle)",
+              margin: "0 auto 0.75rem auto",
+            }}
+          />
           <h3>{query ? "No matching cameras" : "No Cameras Available"}</h3>
           <p className="muted">
             {query
@@ -49,18 +63,11 @@ export function CameraWall({
         <div className={`camera-wall camera-wall-${columns}`}>
           {filtered.map((cam) =>
             hlsEnabled.has(cam.id) ? (
-              <HlsWallTile
-                key={cam.id}
-                camera={cam}
-                enabled
-                onToggle={onToggleHls}
-                projectHref={cameraProjectLinks[cam.id]}
-              />
+              <HlsWallTile key={cam.id} camera={cam} enabled onToggle={onToggleHls} />
             ) : (
               <CameraCard
                 key={cam.id}
                 camera={cam}
-                projectHref={cameraProjectLinks[cam.id]}
                 onOpen={onOpenCamera}
                 onToggleHls={onToggleHls}
               />

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useUrlState } from "../../../lib/url-state";
 import dynamic from "next/dynamic";
 import type { CorrectiveAction } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
@@ -36,6 +37,9 @@ const CorrectiveActionsMap = dynamic(() => import("./corrective-actions-map"), {
 
 export interface CorrectiveActionsLayoutProps {
   initialActions: CorrectiveAction[];
+  initialStatus?: StatusFilter;
+  initialView?: ViewMode;
+  initialSearch?: string;
   totalActions: number;
   showMap?: boolean;
   showProjectInfo?: boolean;
@@ -44,6 +48,8 @@ export interface CorrectiveActionsLayoutProps {
 
 type StatusFilter = "ALL" | "PENDING" | "IN_REVIEW" | "OVERDUE" | "ACCEPTED";
 type ViewMode = "table" | "cards" | "map";
+/** The section default; other views go in the URL. */
+const DEFAULT_VIEW: ViewMode = "table";
 
 function matchesFilter(a: CorrectiveAction, filter: StatusFilter): boolean {
   if (filter === "ALL") return true;
@@ -55,15 +61,33 @@ function matchesFilter(a: CorrectiveAction, filter: StatusFilter): boolean {
 
 export function CorrectiveActionsLayout({
   initialActions,
+  initialStatus = "ALL",
+  initialView = "table",
+  initialSearch = "",
   showMap = true,
   showProjectInfo = true,
   searchPlaceholder,
 }: CorrectiveActionsLayoutProps) {
   const router = useRouter();
+  const setUrlState = useUrlState();
+
   const [actionsList, setActionsList] = useState<CorrectiveAction[]>(initialActions);
-  const [filter, setFilter] = useState<StatusFilter>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [filter, setFilter] = useState<StatusFilter>(initialStatus);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
+
+  const applyFilter = (next: StatusFilter) => {
+    setFilter(next);
+    setUrlState({ status: next === "ALL" ? null : next });
+  };
+  const applyView = (next: ViewMode) => {
+    setViewMode(next);
+    setUrlState({ view: next === DEFAULT_VIEW ? null : next });
+  };
+  const applySearch = (value: string) => {
+    setSearchQuery(value);
+    setUrlState({ q: value.trim() || null });
+  };
 
   React.useEffect(() => {
     setActionsList(initialActions);
@@ -72,9 +96,15 @@ export function CorrectiveActionsLayout({
   // Metrics
   const metrics = useMemo(() => {
     const total = actionsList.length;
-    const pending = actionsList.filter((a) => a.status === "pending" || a.status === "rejected").length;
-    const inReview = actionsList.filter((a) => a.status === "submitted" || a.status === "under_review").length;
-    const overdue = actionsList.filter((a) => a.status === "overdue" || a.status === "escalated").length;
+    const pending = actionsList.filter(
+      (a) => a.status === "pending" || a.status === "rejected",
+    ).length;
+    const inReview = actionsList.filter(
+      (a) => a.status === "submitted" || a.status === "under_review",
+    ).length;
+    const overdue = actionsList.filter(
+      (a) => a.status === "overdue" || a.status === "escalated",
+    ).length;
     const accepted = actionsList.filter((a) => a.status === "accepted").length;
     return { total, pending, inReview, overdue, accepted };
   }, [actionsList]);
@@ -143,7 +173,7 @@ export function CorrectiveActionsLayout({
                   : "Search by action ID, finding ID, ATR code…")
               }
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => applySearch(e.target.value)}
               className="search-input-with-icon"
               aria-label="Filter corrective actions"
             />
@@ -155,7 +185,7 @@ export function CorrectiveActionsLayout({
                 key={tab.key}
                 type="button"
                 className={`filter-tab-btn ${filter === tab.key ? "active" : ""}`}
-                onClick={() => setFilter(tab.key)}
+                onClick={() => applyFilter(tab.key)}
                 role="tab"
                 aria-selected={filter === tab.key}
               >
@@ -171,7 +201,7 @@ export function CorrectiveActionsLayout({
             <button
               type="button"
               className={`view-btn ${viewMode === "table" ? "active" : ""}`}
-              onClick={() => setViewMode("table")}
+              onClick={() => applyView("table")}
               title="Table View"
             >
               <IconList style={{ width: 14, height: 14 }} />
@@ -180,7 +210,7 @@ export function CorrectiveActionsLayout({
             <button
               type="button"
               className={`view-btn ${viewMode === "cards" ? "active" : ""}`}
-              onClick={() => setViewMode("cards")}
+              onClick={() => applyView("cards")}
               title="Cards View"
             >
               <IconGrid style={{ width: 14, height: 14 }} />
@@ -190,7 +220,7 @@ export function CorrectiveActionsLayout({
               <button
                 type="button"
                 className={`view-btn ${viewMode === "map" ? "active" : ""}`}
-                onClick={() => setViewMode("map")}
+                onClick={() => applyView("map")}
                 title="Map"
               >
                 <IconMapPin style={{ width: 14, height: 14 }} />
@@ -236,9 +266,7 @@ export function CorrectiveActionsLayout({
                     (ca.finding ? ca.finding.description : `Finding ${ca.findingId.slice(0, 8)}`);
 
                   const isOverdue =
-                    ca.deadline &&
-                    ca.status !== "accepted" &&
-                    new Date(ca.deadline) < new Date();
+                    ca.deadline && ca.status !== "accepted" && new Date(ca.deadline) < new Date();
 
                   return (
                     <tr
@@ -265,7 +293,7 @@ export function CorrectiveActionsLayout({
                                   className="table-name-link"
                                   style={{ fontSize: "0.75rem" }}
                                   onClick={(e) => e.stopPropagation()}
-                                  title={`Open facility dossier for ${ca.project.name}`}
+                                  title={`Open facility record for ${ca.project.name}`}
                                 >
                                   {ca.project.name} {ca.project.code && `(${ca.project.code})`}
                                 </Link>
@@ -281,24 +309,37 @@ export function CorrectiveActionsLayout({
                         {ca.finding ? (
                           <span
                             title={ca.finding.description}
-                            style={{ fontSize: "0.72rem", fontWeight: 700, color: findingMeta.color }}
+                            style={{
+                              fontSize: "0.72rem",
+                              fontWeight: 700,
+                              color: findingMeta.color,
+                            }}
                           >
                             {findingMeta.label}
                           </span>
                         ) : (
-                          <span className="muted" style={{ fontSize: "0.8rem" }}>—</span>
+                          <span className="muted" style={{ fontSize: "0.8rem" }}>
+                            —
+                          </span>
                         )}
                       </td>
 
                       <td>
-                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: statusMeta.color }}>
+                        <span
+                          style={{ fontSize: "0.72rem", fontWeight: 700, color: statusMeta.color }}
+                        >
                           {statusMeta.label}
                         </span>
                       </td>
 
                       <td className="table-date">
                         {ca.deadline ? (
-                          <span style={{ color: isOverdue ? "#dc2626" : "inherit", fontWeight: isOverdue ? 700 : 400 }}>
+                          <span
+                            style={{
+                              color: isOverdue ? "#dc2626" : "inherit",
+                              fontWeight: isOverdue ? 700 : 400,
+                            }}
+                          >
                             {formatDate(ca.deadline)}
                             {isOverdue && " (Overdue)"}
                           </span>
@@ -307,9 +348,7 @@ export function CorrectiveActionsLayout({
                         )}
                       </td>
 
-                      <td className="table-date">
-                        {formatDate(ca.createdAt)}
-                      </td>
+                      <td className="table-date">{formatDate(ca.createdAt)}</td>
                     </tr>
                   );
                 })
@@ -335,7 +374,14 @@ export function CorrectiveActionsLayout({
         <div>
           {filtered.length === 0 ? (
             <div className="empty-box" style={{ padding: "3rem 1rem", marginBottom: "2rem" }}>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  marginBottom: "0.25rem",
+                  color: "var(--text-primary)",
+                }}
+              >
                 No corrective actions found
               </div>
               <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>{emptyState}</div>
@@ -370,7 +416,10 @@ export function CorrectiveActionsLayout({
 
       {/* View: Map */}
       {showMap && viewMode === "map" && (
-        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+        <div
+          className="map-view-wrapper"
+          style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}
+        >
           <CorrectiveActionsMap actions={filtered} />
         </div>
       )}

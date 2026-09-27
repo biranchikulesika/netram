@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
-import { getDistrictCameras, getFacility, getFacilityAiAnomalies } from "../../../../../lib/facility";
+import {
+  getDistrictCameras,
+  getFacility,
+  getFacilityAiAnomalies,
+} from "../../../../../lib/facility";
 import { getClient, getSessionUser } from "../../../../../lib/api";
 import { canAny } from "../../../../../lib/permissions";
 import { ControlRoomLayout } from "../../../control-room/control-room-layout";
@@ -37,15 +41,7 @@ export default async function FacilityMonitoringPage({
   const cameras = facilityCameras.length > 0 ? facilityCameras : districtCameras;
 
   const canTransition =
-    session.permissions.includes("ai:anomaly:transition") ||
-    session.permissions.includes("*");
-
-  const cameraProjectLinks: Record<string, string> = {};
-  for (const cam of cameras) {
-    if (cam.projectId && cam.projectId !== project.id) {
-      cameraProjectLinks[cam.id] = `/dashboard/projects/${cam.projectId}`;
-    }
-  }
+    session.permissions.includes("ai:anomaly:transition") || session.permissions.includes("*");
 
   return (
     <section>
@@ -54,7 +50,6 @@ export default async function FacilityMonitoringPage({
         anomalies={anomalies}
         anomaliesTotal={anomalies.length}
         canTransition={canTransition}
-        cameraProjectLinks={cameraProjectLinks}
         districtNames={districtNames}
       />
     </section>

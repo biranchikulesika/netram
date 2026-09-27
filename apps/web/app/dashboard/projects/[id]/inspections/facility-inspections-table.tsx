@@ -176,7 +176,7 @@ export function FacilityInspectionsTable({
                     key={i.id}
                     className="table-row"
                     onClick={() => router.push(`/dashboard/inspections/${i.id}`)}
-                    title={`Open inspection dossier ${i.id}`}
+                    title={`Open inspection record ${i.id}`}
                   >
                     <td>
                       <span

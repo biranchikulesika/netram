@@ -39,6 +39,29 @@ describe("formatAuditActivity", () => {
     expect(a.category).toBe("facilities");
   });
 
+  it("names the finding a corrective action addresses", () => {
+    // Regression: `corrective_action.escalated` had no case in the summary
+    // switch, so the dashboard rendered a bare "Escalated" with no context.
+    const a = formatAuditActivity(
+      evt({
+        action: "corrective_action.escalated" as AuditEvent["action"],
+        metadata: { code: "PRJ-VANI-001", finding: "Kitchen hygiene" },
+      }),
+    );
+    expect(a.summary).toBe("Corrective action escalated — Kitchen hygiene");
+    expect(a.category).toBe("remediations");
+  });
+
+  it("keeps corrective action summaries readable without a finding", () => {
+    const a = formatAuditActivity(
+      evt({
+        action: "corrective_action.overdue" as AuditEvent["action"],
+        metadata: { code: "PRJ-GANJ-005" },
+      }),
+    );
+    expect(a.summary).toBe("Corrective action overdue");
+  });
+
   it("renders inspection summaries with the facility", () => {
     const a = formatAuditActivity(
       evt({
