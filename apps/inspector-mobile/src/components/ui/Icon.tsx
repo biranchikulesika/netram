@@ -93,27 +93,16 @@ export function Icon({
 }: IconProps) {
   const iconUrl = getCdnIconUrl(name, size, color);
 
-  // On Web: Always use the CDN SVG image for vector fidelity and fast loading
-  if (Platform.OS === "web") {
+  if (name.startsWith("http://") || name.startsWith("https://")) {
     return (
       <Image
         source={{ uri: iconUrl }}
-        style={[
-          {
-            width: size,
-            height: size,
-          },
-          styles.webIcon as unknown as ImageStyle,
-          style as ImageStyle,
-        ]}
+        style={[{ width: size, height: size }, style as ImageStyle]}
         resizeMode="contain"
-        accessibilityRole="image"
       />
     );
   }
 
-  // On Native (iOS/Android): Render using vector icons if standard Ionicons name,
-  // or SVG if remote URL.
   try {
     const { iconName } = normalizeIconName(name);
     return (
@@ -128,8 +117,16 @@ export function Icon({
     return (
       <Image
         source={{ uri: iconUrl }}
-        style={[{ width: size, height: size }, style as ImageStyle]}
+        style={[
+          {
+            width: size,
+            height: size,
+          },
+          styles.webIcon as unknown as ImageStyle,
+          style as ImageStyle,
+        ]}
         resizeMode="contain"
+        accessibilityRole="image"
       />
     );
   }

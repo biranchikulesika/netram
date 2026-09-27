@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "netram-inspector",
+    "newArchEnabled": true,
     "web": {
       "bundler": "metro"
     },
