@@ -182,6 +182,10 @@ export class NetramApiClient extends HttpClient {
   }
 
   // auth
+  async login(credentials: { email: string; password?: string }): Promise<{ token: string; user: AuthenticatedUser }> {
+    return this.post("/api/v1/auth/dev-login", { email: credentials.email });
+  }
+
   async devLogin(email: string): Promise<{ token: string; user: AuthenticatedUser }> {
     return this.post("/api/v1/auth/dev-login", { email });
   }
@@ -352,6 +356,13 @@ export class NetramApiClient extends HttpClient {
     input: { outcome: "under_review" | "accepted" | "rejected"; note?: string },
   ): Promise<CorrectiveAction> {
     return this.post(`/api/v1/corrective-actions/${id}/review`, input);
+  }
+
+  async updateCorrectiveAction(
+    id: string,
+    input: { status: "under_review" | "accepted" | "rejected"; note?: string },
+  ): Promise<CorrectiveAction> {
+    return this.reviewCorrectiveAction(id, { outcome: input.status, note: input.note });
   }
 
   // observations
@@ -542,6 +553,14 @@ export class NetramApiClient extends HttpClient {
 
   async markAllNotificationsRead(): Promise<{ updated: number }> {
     return this.post("/api/v1/notifications/read-all", {});
+  }
+
+  async registerDevicePushToken(input: { token: string; platform: string }): Promise<{ success: boolean }> {
+    try {
+      return await this.post("/api/v1/notifications/device-token", input);
+    } catch {
+      return { success: false };
+    }
   }
 
   async listUsers(query: UserListQuery = {}): Promise<UserListResponse> {

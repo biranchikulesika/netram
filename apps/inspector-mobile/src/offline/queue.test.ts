@@ -185,4 +185,344 @@ describe("OfflineInspectionQueue", () => {
     expect(evRecords[0]?.upload_state).toBe("pending");
     expect(evRecords[0]?.integrity_state).toBe("pending_verification");
   });
+
+  it("uploads media file when evidence capture operation is accepted during sync", async () => {
+    const fileBytes = new TextEncoder().encode("Classroom Construction Proof");
+    const evResult = await captureEvidenceOffline(queue, {
+      inspectionId,
+      evidenceType: "photo",
+      fileName: "classroom-progress.jpg",
+      fileBytes,
+    });
+
+    const uploadEvidenceMock = vi.fn().mockResolvedValue({
+      id: evResult.evidenceId,
+      inspectionId,
+      contentHash: evResult.contentHash,
+      evidenceType: "photo",
+    });
+
+    const mockApiClient = {
+      syncOfflineOperations: vi.fn().mockResolvedValue({
+        results: [
+          {
+            operationId: evResult.operation.operationId,
+            inspectionId,
+            type: "capture_evidence",
+            status: "accepted",
+            syncedAt: new Date().toISOString(),
+          },
+        ],
+        processedAt: new Date().toISOString(),
+      }),
+      uploadEvidence: uploadEvidenceMock,
+    } as unknown as NetramApiClient;
+
+    const summary = await queue.sync(mockApiClient);
+
+    expect(summary.synced).toBe(1);
+    expect(summary.mediaUploaded).toBe(1);
+    expect(uploadEvidenceMock).toHaveBeenCalledWith(
+      evResult.evidenceId,
+      expect.any(Blob),
+      "classroom-progress.jpg",
+    );
+
+    const evRecords = await queue.getCachedEvidence(inspectionId);
+    expect(evRecords[0]?.upload_state).toBe("uploaded");
+
+    const failedMedia = await queue.getFailedMediaUploads();
+    expect(failedMedia).toHaveLength(0);
+  });
+
+  it("handles media upload failure and supports retry mechanisms", async () => {
+    const fileBytes = new TextEncoder().encode("Drainage Inspection Photo");
+    const evResult = await captureEvidenceOffline(queue, {
+      inspectionId,
+      evidenceType: "photo",
+      fileName: "drainage-trench.jpg",
+      fileBytes,
+    });
+
+    const failingApiClient = {
+      syncOfflineOperations: vi.fn().mockResolvedValue({
+        results: [
+          {
+            operationId: evResult.operation.operationId,
+            inspectionId,
+            type: "capture_evidence",
+            status: "accepted",
+            syncedAt: new Date().toISOString(),
+          },
+        ],
+        processedAt: new Date().toISOString(),
+      }),
+      uploadEvidence: vi.fn().mockRejectedValue(new Error("Network timeout: gateway down")),
+    } as unknown as NetramApiClient;
+
+    const summary = await queue.sync(failingApiClient);
+    expect(summary.synced).toBe(1);
+    expect(summary.mediaUploaded).toBe(0);
+
+    const failedMedia = await queue.getFailedMediaUploads();
+    expect(failedMedia).toHaveLength(1);
+    expect(failedMedia[0]?.file_name).toBe("drainage-trench.jpg");
+    expect(failedMedia[0]?.error_message).toBe("Network timeout: gateway down");
+
+    const evRecords = await queue.getCachedEvidence(inspectionId);
+    expect(evRecords[0]?.upload_state).toBe("failed");
+
+    // Test single retry
+    await queue.retryMediaUpload(failedMedia[0]!.id);
+    const failedAfterRetry = await queue.getFailedMediaUploads();
+    expect(failedAfterRetry).toHaveLength(0);
+
+    const evAfterRetry = await queue.getCachedEvidence(inspectionId);
+    expect(evAfterRetry[0]?.upload_state).toBe("pending");
+
+    // Re-fail it via sync to test bulk retry
+    await queue.sync(failingApiClient);
+    const failedAgain = await queue.getFailedMediaUploads();
+    expect(failedAgain).toHaveLength(1);
+
+    // Test bulk retry
+    await queue.retryAllMediaUploads();
+    const failedAfterBulkRetry = await queue.getFailedMediaUploads();
+    expect(failedAfterBulkRetry).toHaveLength(0);
+
+    const evAfterBulk = await queue.getCachedEvidence(inspectionId);
+    expect(evAfterBulk[0]?.upload_state).toBe("pending");
+  });
+
+  it("acknowledges and dismisses a conflict or rejected operation without deleting its audit record", async () => {
+    const op = await queue.enqueueOperation(inspectionId, "submit_inspection");
+
+    const mockApiClient = {
+      syncOfflineOperations: vi.fn().mockResolvedValue({
+        results: [
+          {
+            operationId: op.operationId,
+            inspectionId,
+            type: "submit_inspection",
+            status: "conflict",
+            code: "INSPECTION_ALREADY_SUBMITTED",
+            message: "Inspection already submitted by another team member",
+            syncedAt: new Date().toISOString(),
+          },
+        ],
+        processedAt: new Date().toISOString(),
+      }),
+    } as unknown as NetramApiClient;
+
+    await queue.sync(mockApiClient);
+
+    const allOpsBefore = await queue.getAllOperations(inspectionId);
+    expect(allOpsBefore).toHaveLength(1);
+    expect(allOpsBefore[0]?.status).toBe("conflict");
+
+    // Acknowledge operation
+    await queue.acknowledgeOperation(op.operationId);
+
+    const allOpsAfter = await queue.getAllOperations(inspectionId);
+    expect(allOpsAfter).toHaveLength(1); // Record preserved for audit
+    const parsedResult = JSON.parse(allOpsAfter[0]?.result_data || "{}");
+    expect(parsedResult.acknowledged).toBe(true);
+    expect(parsedResult.acknowledgedAt).toBeDefined();
+  });
+
+  it("enqueues and synchronizes check_in field arrival operation", async () => {
+    const op = await queue.checkIn(inspectionId, 28.6139, 77.209, 12.5);
+
+    expect(op.type).toBe("check_in");
+    expect(op.inspectionId).toBe(inspectionId);
+    expect(op.payload.latitude).toBe(28.6139);
+    expect(op.payload.longitude).toBe(77.209);
+    expect(op.payload.accuracy).toBe(12.5);
+    expect(op.payload.clientTimestamp).toBeDefined();
+
+    const pending = await queue.getPendingOperations();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.type).toBe("check_in");
+
+    const mockApiClient = {
+      syncOfflineOperations: vi.fn().mockResolvedValue({
+        results: [
+          {
+            operationId: op.operationId,
+            inspectionId,
+            type: "check_in",
+            status: "accepted",
+            message: "Field check-in recorded. Server validates jurisdiction against project geofence boundary.",
+            syncedAt: new Date().toISOString(),
+          },
+        ],
+        processedAt: new Date().toISOString(),
+      }),
+      uploadEvidence: vi.fn(),
+    } as unknown as NetramApiClient;
+
+    const summary = await queue.sync(mockApiClient);
+    expect(summary.synced).toBe(1);
+
+    const pendingAfter = await queue.getPendingOperations();
+    expect(pendingAfter).toHaveLength(0);
+
+    const allOps = await queue.getAllOperations(inspectionId);
+    expect(allOps[0]?.status).toBe("accepted");
+  });
+
+  it("clears cached inspections while strictly preserving pending operations", async () => {
+    // 1. Cache inspection
+    await queue.cacheInspections([
+      {
+        id: "insp-clear-test",
+        projectId: "proj-1",
+        projectCode: "PRJ-01",
+        projectName: "Test Project",
+        type: "routine",
+        status: "assigned",
+        districtId: "dist-1",
+        scheduledStart: "2026-03-01T06:00:00Z",
+        scheduledEnd: "2026-03-01T12:00:00Z",
+        startedAt: null,
+        submittedAt: null,
+        assignedUserIds: [],
+        createdAt: "2026-03-01T00:00:00Z",
+        updatedAt: "2026-03-01T00:00:00Z",
+        templateId: null,
+        trigger: "officer",
+        disclosurePolicyId: null,
+        disclosureRuleType: null,
+      },
+    ]);
+
+    const cachedBefore = await queue.getCachedInspections();
+    expect(cachedBefore).toHaveLength(1);
+
+    // 2. Enqueue pending operation
+    await queue.enqueueOperation("insp-clear-test", "record_observation", { text: "Keep this" });
+    const pendingBefore = await queue.getPendingOperations();
+    expect(pendingBefore).toHaveLength(1);
+
+    // 3. Clear cache
+    await queue.clearCachedInspections();
+
+    // 4. Verify cached inspections are gone but pending operations remain intact
+    const cachedAfter = await queue.getCachedInspections();
+    expect(cachedAfter).toHaveLength(0);
+
+    const pendingAfter = await queue.getPendingOperations();
+    expect(pendingAfter).toHaveLength(1);
+    expect(pendingAfter[0]?.payload.text).toBe("Keep this");
+  });
+
+  it("enqueues and synchronizes record_attendance offline operation", async () => {
+    const op = await queue.recordAttendance(inspectionId, 35, "Morning site check");
+    expect(op.type).toBe("record_attendance");
+    expect(op.inspectionId).toBe(inspectionId);
+    expect(op.payload.workerCount).toBe(35);
+    expect(op.payload.note).toBe("Morning site check");
+
+    const pending = await queue.getPendingOperations();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.type).toBe("record_attendance");
+
+    const mockApiClient = {
+      syncOfflineOperations: vi.fn().mockResolvedValue({
+        results: [
+          {
+            operationId: op.operationId,
+            inspectionId,
+            type: "record_attendance",
+            status: "accepted",
+            message: "Attendance headcount record verified and saved.",
+            syncedAt: new Date().toISOString(),
+          },
+        ],
+        processedAt: new Date().toISOString(),
+      }),
+      uploadEvidence: vi.fn(),
+    } as unknown as NetramApiClient;
+
+    const summary = await queue.sync(mockApiClient);
+    expect(summary.synced).toBe(1);
+
+    const pendingAfter = await queue.getPendingOperations();
+    expect(pendingAfter).toHaveLength(0);
+  });
+
+  it("applies optimistic local state updates when starting and submitting inspections", async () => {
+    // Seed cached inspection in assigned state
+    await queue.cacheInspections([
+      {
+        id: inspectionId,
+        projectId: "proj-optimistic",
+        projectCode: "PRJ-OPT",
+        projectName: "Optimistic Update Project",
+        type: "routine",
+        status: "assigned",
+        districtId: "dist-1",
+        scheduledStart: "2026-03-01T08:00:00Z",
+        scheduledEnd: "2026-03-01T16:00:00Z",
+        startedAt: null,
+        submittedAt: null,
+        assignedUserIds: [],
+        createdAt: "2026-03-01T00:00:00Z",
+        updatedAt: "2026-03-01T00:00:00Z",
+        templateId: null,
+        trigger: "officer",
+        disclosurePolicyId: null,
+        disclosureRuleType: null,
+      },
+    ]);
+
+    const initial = await queue.getCachedInspection(inspectionId);
+    expect(initial?.status).toBe("assigned");
+    expect(initial?.started_at).toBeNull();
+
+    // 1. Start inspection -> optimistic in_progress
+    await queue.startInspection(inspectionId);
+    const afterStart = await queue.getCachedInspection(inspectionId);
+    expect(afterStart?.status).toBe("in_progress");
+    expect(afterStart?.started_at).toBeDefined();
+
+    // 2. Submit inspection -> optimistic submitted
+    await queue.submitInspection(inspectionId);
+    const afterSubmit = await queue.getCachedInspection(inspectionId);
+    expect(afterSubmit?.status).toBe("submitted");
+    expect(afterSubmit?.submitted_at).toBeDefined();
+  });
+
+  it("handles rejected sync outcome properly and updates operation error details", async () => {
+    const op = await queue.recordAttendance(inspectionId, 999999, "Unreasonable headcount");
+
+    const mockApiClient = {
+      syncOfflineOperations: vi.fn().mockResolvedValue({
+        results: [
+          {
+            operationId: op.operationId,
+            inspectionId,
+            type: "record_attendance",
+            status: "rejected",
+            code: "HEADCOUNT_EXCEEDS_LIMIT",
+            message: "Headcount exceeds maximum plausible site workers (5000)",
+            syncedAt: new Date().toISOString(),
+          },
+        ],
+        processedAt: new Date().toISOString(),
+      }),
+      uploadEvidence: vi.fn(),
+    } as unknown as NetramApiClient;
+
+    const summary = await queue.sync(mockApiClient);
+    expect(summary.synced).toBe(0);
+    expect(summary.rejected).toBe(1);
+    expect(summary.conflicts).toBe(0);
+
+    const allOps = await queue.getAllOperations(inspectionId);
+    const rejectedOp = allOps.find((o) => o.operation_id === op.operationId);
+    expect(rejectedOp?.status).toBe("rejected");
+    expect(rejectedOp?.code).toBe("HEADCOUNT_EXCEEDS_LIMIT");
+    expect(rejectedOp?.error_message).toBe("Headcount exceeds maximum plausible site workers (5000)");
+  });
 });

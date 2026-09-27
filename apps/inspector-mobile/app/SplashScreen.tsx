@@ -5,8 +5,10 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSettings } from "../src/theme/settings-context";
 
 export default function SplashScreen() {
+  const { theme, isPureDark } = useSettings();
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.92)).current;
 
@@ -27,7 +29,7 @@ export default function SplashScreen() {
   }, [opacity, scale]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bgCanvas }]}>
       <Animated.View
         style={[
           styles.content,
@@ -37,27 +39,34 @@ export default function SplashScreen() {
           },
         ]}
       >
-        <View style={styles.logo}>
+        <View style={[styles.logo, isPureDark && { backgroundColor: "#18181B", borderColor: "#27272A", borderWidth: 1 }]}>
           <Text style={styles.logoN}>N</Text>
-          <View style={styles.check} />
         </View>
 
-        <Text style={styles.brand}>NETRAM</Text>
+        <Text style={[styles.brand, { color: theme.navyDark }]}>NETRAM</Text>
 
-        <Text style={styles.subtitle}>
-          FIELD OPERATIONS
+        <Text style={[styles.subtitle, { color: theme.actionGreen }]}>
+          DEPARTMENT OF SOCIAL JUSTICE & EMPOWERMENT
         </Text>
 
-        <View style={styles.status}>
-          <View style={styles.statusDot} />
-          <Text style={styles.statusText}>
-            SECURE INSPECTION SYSTEM
+        <View
+          style={[
+            styles.status,
+            {
+              backgroundColor: theme.bgSubtle,
+              borderColor: theme.borderSubtle,
+            },
+          ]}
+        >
+          <View style={[styles.statusDot, { backgroundColor: theme.actionGreen }]} />
+          <Text style={[styles.statusText, { color: theme.textMuted }]}>
+            OFFICIAL INSPECTION SYSTEM
           </Text>
         </View>
       </Animated.View>
 
-      <Text style={styles.footer}>
-        SMART MONITORING • EVIDENCE • FIELD OPERATIONS
+      <Text style={[styles.footer, { color: theme.textMuted }]}>
+        GOVERNMENT OF INDIA • STATUTORY FIELD MONITORING
       </Text>
     </View>
   );
@@ -66,7 +75,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#071A2B",
+    backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -76,91 +85,72 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    width: 108,
-    height: 108,
-    borderRadius: 26,
-    backgroundColor: "#2563EB",
+    width: 96,
+    height: 96,
+    borderRadius: 20,
+    backgroundColor: "#002449",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
-    shadowColor: "#2563EB",
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
+    marginBottom: 20,
   },
 
   logoN: {
     color: "#FFFFFF",
-    fontSize: 64,
+    fontSize: 54,
     fontWeight: "800",
-    lineHeight: 72,
-  },
-
-  check: {
-    position: "absolute",
-    width: 15,
-    height: 8,
-    borderLeftWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: "#14B8A6",
-    transform: [
-      { rotate: "-45deg" },
-      { translateX: 25 },
-      { translateY: 27 },
-    ],
+    lineHeight: 62,
   },
 
   brand: {
-    color: "#F8FAFC",
-    fontSize: 32,
-    fontWeight: "800",
-    letterSpacing: 4,
+    color: "#002449",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: 3,
   },
 
   subtitle: {
-    color: "#14B8A6",
-    fontSize: 11,
+    color: "#15803d",
+    fontSize: 10,
     fontWeight: "700",
-    letterSpacing: 3,
-    marginTop: 7,
+    letterSpacing: 1.5,
+    marginTop: 8,
+    textAlign: "center",
   },
 
   status: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 32,
-    paddingHorizontal: 15,
-    paddingVertical: 9,
+    marginTop: 24,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#23415A",
-    backgroundColor: "#0D263D",
+    borderColor: "#e2e8f0",
+    backgroundColor: "#f3f6fb",
   },
 
   statusDot: {
     width: 7,
     height: 7,
-    borderRadius: 4,
-    backgroundColor: "#14B8A6",
-    marginRight: 9,
+    borderRadius: 3.5,
+    backgroundColor: "#15803d",
+    marginRight: 8,
   },
 
   statusText: {
-    color: "#94A3B8",
-    fontSize: 9,
+    color: "#475569",
+    fontSize: 10,
     fontWeight: "700",
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
   },
 
   footer: {
     position: "absolute",
     bottom: 30,
-    color: "#526B80",
-    fontSize: 8,
+    color: "#64748b",
+    fontSize: 9,
     fontWeight: "600",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
+    textAlign: "center",
   },
 });

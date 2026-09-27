@@ -301,6 +301,15 @@ export class InspectionSyncService {
         resultData = { inspectionId: op.inspectionId, status: "submitted" };
         break;
       }
+
+      case "update_checklist_item": {
+        resultData = {
+          checklistItemId: op.payload.checklistItemId,
+          response: op.payload.response,
+          inspectionId: op.inspectionId,
+        };
+        break;
+      }
     }
 
     return this.syncRepo.recordResultWithAuditAndEvent({

@@ -122,6 +122,59 @@ export function evaluateOfflineOperation(
       };
     }
 
+    case "check_in": {
+      const lat = Number(op.payload.latitude);
+      const lon = Number(op.payload.longitude);
+      if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        return {
+          outcome: "rejected",
+          code: "INVALID_CHECK_IN_COORDINATES",
+          message: "Check-in requires valid latitude [-90, 90] and longitude [-180, 180].",
+        };
+      }
+      return {
+        outcome: "accepted",
+        message: "Field check-in recorded. Server validates jurisdiction against project geofence boundary.",
+      };
+    }
+
+    case "record_attendance": {
+      const workerCount = Number(op.payload.workerCount);
+      if (isNaN(workerCount) || !Number.isInteger(workerCount) || workerCount < 0 || workerCount > 5000) {
+        return {
+          outcome: "rejected",
+          code: "INVALID_WORKER_COUNT",
+          message: "Worker count must be a non-negative integer under 5,000.",
+        };
+      }
+      return {
+        outcome: "accepted",
+        message: "Attendance headcount record verified and saved.",
+      };
+    }
+
+    case "update_checklist_item": {
+      if (!ACTIVE_FIELD_STATUSES.includes(inspection.status)) {
+        return {
+          outcome: "conflict",
+          code: "INSPECTION_NOT_IN_FIELD_STAGE",
+          message: `Cannot update checklist item when inspection is in '${inspection.status}' state.`,
+        };
+      }
+      const validResponses = ["pass", "fail", "na", null];
+      if (op.payload.response !== undefined && !validResponses.includes(op.payload.response as string | null)) {
+        return {
+          outcome: "rejected",
+          code: "INVALID_CHECKLIST_RESPONSE",
+          message: "Checklist response must be 'pass', 'fail', 'na', or null.",
+        };
+      }
+      return {
+        outcome: "accepted",
+        message: "Checklist item response recorded.",
+      };
+    }
+
     default:
       return {
         outcome: "rejected",

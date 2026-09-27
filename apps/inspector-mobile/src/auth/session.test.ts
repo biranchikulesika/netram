@@ -1,25 +1,43 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as SecureStore from "expo-secure-store";
 import {
   clearSession,
   getStoredSession,
-  loginOfflineDemo,
   saveSession,
+  SECURE_STORE_KEY,
+  type InspectorSession,
 } from "./session";
 
-describe("InspectorSession", () => {
-  beforeEach(() => {
-    clearSession();
+const mockStore = new Map<string, string>();
+
+vi.mock("expo-secure-store", () => {
+  return {
+    getItemAsync: vi.fn(async (key: string) => mockStore.get(key) ?? null),
+    setItemAsync: vi.fn(async (key: string, value: string) => {
+      mockStore.set(key, value);
+    }),
+    deleteItemAsync: vi.fn(async (key: string) => {
+      mockStore.delete(key);
+    }),
+  };
+});
+
+describe("InspectorSession (SecureStore)", () => {
+  beforeEach(async () => {
+    mockStore.clear();
+    vi.clearAllMocks();
   });
 
-  it("returns null when no session is saved", () => {
-    expect(getStoredSession()).toBeNull();
+  it("returns null when no session is saved", async () => {
+    const session = await getStoredSession();
+    expect(session).toBeNull();
   });
 
-  it("saves and retrieves session in memory", () => {
-    const mockSession = {
-      token: "test-token",
+  it("saves and retrieves session through SecureStore", async () => {
+    const mockSession: InspectorSession = {
+      token: "secure-test-token-123",
       user: {
-        id: "test-id",
+        id: "usr-001",
         email: "inspector.one@dev.netram.in",
         displayName: "Inspector One",
         type: "inspector",
@@ -27,28 +45,45 @@ describe("InspectorSession", () => {
       apiUrl: "http://localhost:3001",
     };
 
-    saveSession(mockSession);
-    const stored = getStoredSession();
+    await saveSession(mockSession);
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+      SECURE_STORE_KEY,
+      JSON.stringify(mockSession),
+    );
+
+    const stored = await getStoredSession();
     expect(stored).toEqual(mockSession);
   });
 
-  it("clears session cleanly", () => {
-    saveSession({
-      token: "test-token",
-      user: { id: "test-id", email: "test@example.com" },
+  it("clears session cleanly from SecureStore", async () => {
+    const mockSession: InspectorSession = {
+      token: "secure-test-token-123",
+      user: {
+        id: "usr-001",
+        email: "inspector.one@dev.netram.in",
+      },
       apiUrl: "http://localhost:3001",
-    });
+    };
 
-    clearSession();
-    expect(getStoredSession()).toBeNull();
+    await saveSession(mockSession);
+    expect(await getStoredSession()).toEqual(mockSession);
+
+    await clearSession();
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(SECURE_STORE_KEY);
+    expect(await getStoredSession()).toBeNull();
   });
 
-  it("creates valid offline demo session with formatted display name", () => {
-    const session = loginOfflineDemo("inspector.one@dev.netram.in");
-    expect(session.token).toBe("dev-offline-inspector-token");
-    expect(session.user.email).toBe("inspector.one@dev.netram.in");
-    expect(session.user.displayName).toBe("Inspector One");
-    expect(getStoredSession()).toEqual(session);
+  it("returns null gracefully when stored JSON is malformed", async () => {
+    mockStore.set(SECURE_STORE_KEY, "{ invalid json structure");
+
+    const session = await getStoredSession();
+    expect(session).toBeNull();
+  });
+
+  it("returns null when stored object is missing token or user", async () => {
+    mockStore.set(SECURE_STORE_KEY, JSON.stringify({ apiUrl: "http://localhost:3001" }));
+
+    const session = await getStoredSession();
+    expect(session).toBeNull();
   });
 });
-

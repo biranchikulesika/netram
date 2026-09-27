@@ -1,8 +1,4 @@
-/**
- * SQLite local persistence for Inspector Mobile application (§5, §31).
- * Supports offline queuing, inspection caching, and media upload tracking.
- */
-
+import { Platform } from "react-native";
 
 export interface ISqliteDatabase {
   execAsync(sql: string): Promise<void>;
@@ -36,7 +32,7 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
     sql: string,
     params: unknown[] = [],
   ): Promise<{ lastInsertRowId?: number; changes?: number }> {
-    const trimmed = sql.trim();
+    const trimmed = sql.replace(/\s+/g, " ").trim();
     const insertMatch = trimmed.match(
       /^INSERT(?:\s+OR\s+REPLACE)?\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i,
     );
@@ -94,6 +90,8 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
             if (col) {
               if (valExpr === "?") {
                 row[col] = params[paramIdx++];
+              } else if (valExpr === "null") {
+                row[col] = null;
               } else if (valExpr?.startsWith("'") && valExpr.endsWith("'")) {
                 row[col] = valExpr.slice(1, -1);
               }
@@ -104,10 +102,23 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
       return { changes: rows.length };
     }
 
-    const deleteMatch = trimmed.match(/^DELETE\s+FROM\s+(\w+)/i);
+    const deleteMatch = trimmed.match(/^DELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?$/i);
     if (deleteMatch) {
       const table = deleteMatch[1]?.toLowerCase();
-      if (table) this.tables.set(table, []);
+      const whereClause = deleteMatch[2];
+      if (table) {
+        if (!whereClause) {
+          this.tables.set(table, []);
+        } else {
+          const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
+          if (whereMatch && whereMatch[1]) {
+            const whereCol = whereMatch[1].toLowerCase();
+            const whereVal = whereMatch[2] !== undefined ? whereMatch[2] : params[0];
+            const rows = (this.tables.get(table) ?? []).filter((r) => r[whereCol] !== whereVal);
+            this.tables.set(table, rows);
+          }
+        }
+      }
       return { changes: 1 };
     }
 
@@ -115,7 +126,8 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
   }
 
   async getAllAsync<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-    const fromMatch = sql.match(/FROM\s+(\w+)(?:\s+WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s*$))?/i);
+    const trimmed = sql.replace(/\s+/g, " ").trim();
+    const fromMatch = trimmed.match(/FROM\s+(\w+)(?:\s+WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s*$))?/i);
     if (!fromMatch) return [];
     const table = fromMatch[1]?.toLowerCase();
     const whereClause = fromMatch[2]?.trim() ?? "";
@@ -219,6 +231,17 @@ CREATE TABLE IF NOT EXISTS media_upload_queue (
   created_at TEXT NOT NULL,
   uploaded_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS cached_checklist_items (
+  id TEXT PRIMARY KEY,
+  inspection_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  question TEXT NOT NULL,
+  is_required INTEGER NOT NULL DEFAULT 1,
+  response TEXT,
+  note TEXT,
+  updated_at TEXT
+);
 `;
 
 interface ExpoSQLiteLike {
@@ -260,11 +283,13 @@ let currentDb: ISqliteDatabase | null = null;
 export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
   if (currentDb) return currentDb;
 
-  if (typeof window === "undefined") {
+  const isNativeMobile = Platform.OS === "android" || Platform.OS === "ios";
+
+  if (isNativeMobile && !(typeof process !== "undefined" && process.env?.VITEST)) {
     try {
-      // Attempt dynamic import of expo-sqlite
-      const SQLite = await import("expo-sqlite");
-      if (typeof SQLite.openDatabaseAsync === "function") {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const SQLite = require("expo-sqlite");
+      if (SQLite && typeof SQLite.openDatabaseAsync === "function") {
         const nativeDb = await SQLite.openDatabaseAsync("netram_inspector.db");
         await nativeDb.execAsync(DDL_SCHEMA);
         const adapter = new ExpoSqliteAdapter(nativeDb);
@@ -272,7 +297,7 @@ export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
         return adapter;
       }
     } catch {
-      // Fall back to in-memory database in non-Expo or test environments
+      // Fall back to in-memory database in case native module is unavailable
     }
   }
 
