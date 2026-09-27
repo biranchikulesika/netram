@@ -26,4 +26,38 @@ vi.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
 
+vi.mock("expo-av", () => ({
+  Audio: {
+    Recording: vi.fn().mockImplementation(() => ({
+      prepareToRecordAsync: vi.fn().mockResolvedValue({}),
+      startAsync: vi.fn().mockResolvedValue({}),
+      stopAndUnloadAsync: vi.fn().mockResolvedValue({}),
+      getURI: vi.fn().mockReturnValue("file:///data/recording.m4a"),
+    })),
+    Sound: {
+      createAsync: vi.fn().mockResolvedValue({
+        sound: {
+          playAsync: vi.fn().mockResolvedValue({}),
+          pauseAsync: vi.fn().mockResolvedValue({}),
+          stopAsync: vi.fn().mockResolvedValue({}),
+          unloadAsync: vi.fn().mockResolvedValue({}),
+          setPositionAsync: vi.fn().mockResolvedValue({}),
+          setRateAsync: vi.fn().mockResolvedValue({}),
+          setIsMutedAsync: vi.fn().mockResolvedValue({}),
+          setOnPlaybackStatusUpdate: vi.fn(),
+        },
+      }),
+    },
+    requestPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+    setAudioModeAsync: vi.fn().mockResolvedValue({}),
+    RecordingOptionsPresets: { HIGH_QUALITY: {} },
+  },
+  Video: () => null,
+  ResizeMode: {
+    CONTAIN: "contain",
+    COVER: "cover",
+    STRETCH: "stretch",
+  },
+}));
+
 

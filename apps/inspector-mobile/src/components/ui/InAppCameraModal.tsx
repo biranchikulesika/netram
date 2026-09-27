@@ -55,6 +55,7 @@ export function InAppCameraModal({
 
   const cameraRef = useRef<CameraView | null>(null);
   const recordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordStartTimeRef = useRef<number>(0);
   const webVideoRef = useRef<HTMLVideoElement | null>(null);
   const webMediaStreamRef = useRef<MediaStream | null>(null);
   const webMediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -206,18 +207,21 @@ export function InAppCameraModal({
     if (isRecording || isProcessing) return;
 
     try {
-      setIsRecording(true);
+      if (recordIntervalRef.current) {
+        clearInterval(recordIntervalRef.current);
+        recordIntervalRef.current = null;
+      }
+      recordStartTimeRef.current = Date.now();
       setRecordSeconds(0);
+      setIsRecording(true);
 
       recordIntervalRef.current = setInterval(() => {
-        setRecordSeconds((prev) => {
-          if (prev >= 59) {
-            handleStopRecording();
-            return 60;
-          }
-          return prev + 1;
-        });
-      }, 1000);
+        const elapsed = Math.floor((Date.now() - recordStartTimeRef.current) / 1000);
+        setRecordSeconds(elapsed);
+        if (elapsed >= 60) {
+          handleStopRecording();
+        }
+      }, 250);
 
       if (Platform.OS === "web") {
         if (!webMediaStreamRef.current) {

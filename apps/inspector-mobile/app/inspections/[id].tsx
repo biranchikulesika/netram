@@ -17,6 +17,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import * as Location from "expo-location";
+import { Audio as ExpoAudio } from "expo-av";
 import { colors, typography } from "../../src/theme/colors";
 import { useSettings } from "../../src/theme/settings-context";
 import { requestInspectionPermissions } from "../../src/utils/permissions";
@@ -172,7 +173,10 @@ export default function InspectionDetailScreen() {
   const voiceMediaRecorderRef = useRef<MediaRecorder | null>(null);
   const voiceAudioChunksRef = useRef<Blob[]>([]);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceStartTimeRef = useRef<number>(0);
   const activeAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const mobileRecordingRef = useRef<ExpoAudio.Recording | null>(null);
+  const mobileSoundRef = useRef<ExpoAudio.Sound | null>(null);
 
   // Request Android runtime permissions on screen entry
   useEffect(() => {
@@ -507,48 +511,73 @@ export default function InspectionDetailScreen() {
       setIsRecordingVoice(true);
       setVoiceDuration(0);
 
-      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const mediaRecorder = new MediaRecorder(stream);
-          voiceMediaRecorderRef.current = mediaRecorder;
-          voiceAudioChunksRef.current = [];
+      if (Platform.OS === "web") {
+        if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            voiceMediaRecorderRef.current = mediaRecorder;
+            voiceAudioChunksRef.current = [];
 
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              voiceAudioChunksRef.current.push(e.data);
-            }
-          };
-
-          mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(voiceAudioChunksRef.current, { type: "audio/webm" });
-            const directUrl = URL.createObjectURL(audioBlob);
-            setPendingVoiceUri(directUrl);
-
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const uint8 = new Uint8Array(arrayBuffer);
-            setPendingVoiceBytes(uint8);
-
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              if (typeof reader.result === "string") {
-                setPendingVoiceUri(reader.result);
+            mediaRecorder.ondataavailable = (e) => {
+              if (e.data && e.data.size > 0) {
+                voiceAudioChunksRef.current.push(e.data);
               }
             };
-            reader.readAsDataURL(audioBlob);
 
-            stream.getTracks().forEach((track) => track.stop());
-          };
+            mediaRecorder.onstop = async () => {
+              const audioBlob = new Blob(voiceAudioChunksRef.current, { type: "audio/webm" });
+              const directUrl = URL.createObjectURL(audioBlob);
+              setPendingVoiceUri(directUrl);
 
-          mediaRecorder.start(250);
-        } catch (mediaErr) {
-          console.warn("Web audio recording error:", mediaErr);
+              const arrayBuffer = await audioBlob.arrayBuffer();
+              const uint8 = new Uint8Array(arrayBuffer);
+              setPendingVoiceBytes(uint8);
+
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                if (typeof reader.result === "string") {
+                  setPendingVoiceUri(reader.result);
+                }
+              };
+              reader.readAsDataURL(audioBlob);
+
+              stream.getTracks().forEach((track) => track.stop());
+            };
+
+            mediaRecorder.start(250);
+          } catch (mediaErr) {
+            console.warn("Web audio recording error:", mediaErr);
+          }
+        }
+      } else {
+        // Native mobile audio recording via expo-av
+        try {
+          await ExpoAudio.requestPermissionsAsync();
+          await ExpoAudio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+          });
+          const recording = new ExpoAudio.Recording();
+          await recording.prepareToRecordAsync(ExpoAudio.RecordingOptionsPresets.HIGH_QUALITY);
+          await recording.startAsync();
+          mobileRecordingRef.current = recording;
+        } catch (mobileErr) {
+          console.warn("Mobile audio recording error:", mobileErr);
         }
       }
 
+      if (voiceTimerRef.current) {
+        clearInterval(voiceTimerRef.current);
+        voiceTimerRef.current = null;
+      }
+      voiceStartTimeRef.current = Date.now();
+      setVoiceDuration(0);
+
       voiceTimerRef.current = setInterval(() => {
-        setVoiceDuration((d) => d + 1);
-      }, 1000);
+        const elapsed = Math.floor((Date.now() - voiceStartTimeRef.current) / 1000);
+        setVoiceDuration(elapsed);
+      }, 250);
     } catch (err: unknown) {
       setIsRecordingVoice(false);
       Alert.alert("Microphone Error", err instanceof Error ? err.message : String(err));
@@ -562,12 +591,37 @@ export default function InspectionDetailScreen() {
     }
     setIsRecordingVoice(false);
 
-    if (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") {
-      voiceMediaRecorderRef.current.stop();
+    if (Platform.OS === "web") {
+      if (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") {
+        voiceMediaRecorderRef.current.stop();
+      } else {
+        const fallbackBytes = new TextEncoder().encode(`voice-note-${Date.now()}`);
+        setPendingVoiceBytes(fallbackBytes);
+        setPendingVoiceUri(`voice://local-${Date.now()}`);
+      }
     } else {
-      const fallbackBytes = new TextEncoder().encode(`voice-note-${Date.now()}`);
-      setPendingVoiceBytes(fallbackBytes);
-      setPendingVoiceUri(`voice://local-${Date.now()}`);
+      if (mobileRecordingRef.current) {
+        const rec = mobileRecordingRef.current;
+        mobileRecordingRef.current = null;
+        void (async () => {
+          try {
+            await rec.stopAndUnloadAsync();
+            const uri = rec.getURI();
+            if (uri) {
+              setPendingVoiceUri(uri);
+              try {
+                const resp = await fetch(uri);
+                const buf = await resp.arrayBuffer();
+                setPendingVoiceBytes(new Uint8Array(buf));
+              } catch {
+                setPendingVoiceBytes(new TextEncoder().encode(`voice-note-${Date.now()}`));
+              }
+            }
+          } catch (err) {
+            console.warn("Error stopping mobile audio recording:", err);
+          }
+        })();
+      }
     }
   };
 
@@ -583,6 +637,14 @@ export default function InspectionDetailScreen() {
       activeAudioPlayerRef.current.pause();
       activeAudioPlayerRef.current = null;
     }
+    if (mobileRecordingRef.current) {
+      mobileRecordingRef.current.stopAndUnloadAsync().catch(() => {});
+      mobileRecordingRef.current = null;
+    }
+    if (mobileSoundRef.current) {
+      mobileSoundRef.current.unloadAsync().catch(() => {});
+      mobileSoundRef.current = null;
+    }
     setIsRecordingVoice(false);
     setIsPlayingVoice(false);
     setPendingVoiceUri(null);
@@ -597,36 +659,72 @@ export default function InspectionDetailScreen() {
   ) => {
     onStart();
 
-    if (Platform.OS === "web" && typeof Audio !== "undefined" && uri) {
-      try {
-        const audio = new Audio(uri);
-        activeAudioPlayerRef.current = audio;
-        audio.onended = () => {
-          activeAudioPlayerRef.current = null;
-          onEnd();
-        };
-        audio.onerror = () => {
-          playSyntheticTone(() => {
+    if (Platform.OS === "web") {
+      if (typeof Audio !== "undefined" && uri) {
+        try {
+          const audio = new Audio(uri);
+          activeAudioPlayerRef.current = audio;
+          audio.onended = () => {
             activeAudioPlayerRef.current = null;
             onEnd();
+          };
+          audio.onerror = () => {
+            playSyntheticTone(() => {
+              activeAudioPlayerRef.current = null;
+              onEnd();
+            });
+          };
+          audio.play().catch(() => {
+            playSyntheticTone(() => {
+              activeAudioPlayerRef.current = null;
+              onEnd();
+            });
           });
-        };
-        audio.play().catch(() => {
-          playSyntheticTone(() => {
-            activeAudioPlayerRef.current = null;
-            onEnd();
-          });
-        });
-        return;
-      } catch {
-        // Fallback tone below
+          return;
+        } catch {
+          // Fallback tone below
+        }
       }
+      playSyntheticTone(() => {
+        activeAudioPlayerRef.current = null;
+        onEnd();
+      });
+      return;
     }
 
-    playSyntheticTone(() => {
-      activeAudioPlayerRef.current = null;
+    // Native mobile audio playback via expo-av
+    if (uri) {
+      void (async () => {
+        try {
+          if (mobileSoundRef.current) {
+            await mobileSoundRef.current.unloadAsync().catch(() => {});
+            mobileSoundRef.current = null;
+          }
+          await ExpoAudio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            playsInSilentModeIOS: true,
+          });
+          const { sound } = await ExpoAudio.Sound.createAsync(
+            { uri },
+            { shouldPlay: true }
+          );
+          mobileSoundRef.current = sound;
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              onEnd();
+              sound.unloadAsync().catch(() => {});
+              mobileSoundRef.current = null;
+            }
+          });
+          await sound.playAsync();
+        } catch (err) {
+          console.warn("Mobile audio playback error:", err);
+          onEnd();
+        }
+      })();
+    } else {
       onEnd();
-    });
+    }
   };
 
   const togglePlayPreviewVoice = () => {
@@ -634,6 +732,11 @@ export default function InspectionDetailScreen() {
       if (activeAudioPlayerRef.current) {
         activeAudioPlayerRef.current.pause();
         activeAudioPlayerRef.current = null;
+      }
+      if (mobileSoundRef.current) {
+        mobileSoundRef.current.pauseAsync().catch(() => {});
+        mobileSoundRef.current.unloadAsync().catch(() => {});
+        mobileSoundRef.current = null;
       }
       setIsPlayingVoice(false);
     } else {
@@ -651,11 +754,21 @@ export default function InspectionDetailScreen() {
         activeAudioPlayerRef.current.pause();
         activeAudioPlayerRef.current = null;
       }
+      if (mobileSoundRef.current) {
+        mobileSoundRef.current.pauseAsync().catch(() => {});
+        mobileSoundRef.current.unloadAsync().catch(() => {});
+        mobileSoundRef.current = null;
+      }
       setPlayingObsVoiceId(null);
     } else {
       if (activeAudioPlayerRef.current) {
         activeAudioPlayerRef.current.pause();
         activeAudioPlayerRef.current = null;
+      }
+      if (mobileSoundRef.current) {
+        mobileSoundRef.current.pauseAsync().catch(() => {});
+        mobileSoundRef.current.unloadAsync().catch(() => {});
+        mobileSoundRef.current = null;
       }
       playAudioUri(
         uri,
