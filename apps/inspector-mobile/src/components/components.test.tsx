@@ -4,6 +4,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NetramBadge } from "./ui/NetramBadge";
 import { NetramButton } from "./ui/NetramButton";
+import { InteractiveVideoPlayer } from "./ui/InteractiveVideoPlayer";
+import { InAppCameraModal } from "./ui/InAppCameraModal";
 import { InspectionCard } from "./InspectionCard";
 import type { CachedInspectionRecord } from "../offline/queue";
 
@@ -110,6 +112,32 @@ describe("UI Components Render Tests (P14-04)", () => {
       expect(html).not.toContain("Community Sanitation Center");
       expect(html).toContain("Assigned Facility (Locked)");
       expect(html).toContain("CHECK IN ON MAP TO UNLOCK");
+    });
+  });
+
+  describe("InteractiveVideoPlayer", () => {
+    it("renders with custom watermark and controls markup", () => {
+      const html = renderToStaticMarkup(
+        <InteractiveVideoPlayer
+          src="https://example.com/test-inspection.mp4"
+          title="SITE RECORDING #01"
+        />,
+      );
+      expect(html).toContain("SITE RECORDING #01");
+      expect(html).toContain("test-inspection.mp4");
+    });
+
+    it("renders with default watermark when title is omitted", () => {
+      const html = renderToStaticMarkup(
+        <InteractiveVideoPlayer src="https://example.com/evidence.mp4" />,
+      );
+      expect(html).toContain("NETRAM VERIFIED EVIDENCE");
+    });
+  });
+
+  describe("InAppCameraModal", () => {
+    it("is defined as a secure in-app evidence capture component", () => {
+      expect(InAppCameraModal).toBeDefined();
     });
   });
 });

@@ -16,8 +16,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { WebView } from "react-native-webview";
-import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { colors, typography } from "../../src/theme/colors";
 import { useSettings } from "../../src/theme/settings-context";
@@ -26,6 +24,9 @@ import {
   Icon,
   NetramBadge,
   NetramButton,
+  InteractiveVideoPlayer,
+  InAppCameraModal,
+  type CapturedEvidenceResult,
 } from "../../src/components/ui";
 import {
   OfflineInspectionQueue,
@@ -52,70 +53,21 @@ function PlayableVideo({
   src,
   style,
   autoPlay = false,
+  title,
 }: {
   src: string;
   style?: StyleProp<ViewStyle>;
   autoPlay?: boolean;
+  title?: string;
 }) {
-  const flattened = StyleSheet.flatten(style);
-  if (Platform.OS === "web") {
-    return React.createElement("video", {
-      src,
-      controls: true,
-      playsInline: true,
-      autoPlay,
-      preload: "metadata",
-      style: {
-        width: "100%",
-        height: flattened?.height || 220,
-        backgroundColor: "#000000",
-        borderRadius: flattened?.borderRadius || 8,
-        objectFit: "contain",
-        display: "block",
-        outline: "none",
-        ...flattened,
-      },
-    });
-  }
-
-  try {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-          <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { background-color: #000000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-            video { width: 100%; height: 100%; object-fit: contain; }
-          </style>
-        </head>
-        <body>
-          <video src="${src}" controls playsinline ${autoPlay ? "autoplay" : ""}></video>
-        </body>
-      </html>
-    `;
-    return (
-      <View style={[{ overflow: "hidden", backgroundColor: "#000000" }, style]}>
-        <WebView
-          originWhitelist={["*"]}
-          source={{ html }}
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={!autoPlay}
-          style={{ width: "100%", height: "100%", backgroundColor: "#000000" }}
-        />
-      </View>
-    );
-  } catch {
-    return (
-      <View style={[{ backgroundColor: "#000000", alignItems: "center", justifyContent: "center" }, style]}>
-        <Icon name="videocam" size={44} color="#FFFFFF" />
-        <Text style={{ color: "#FFFFFF", fontSize: 12, marginTop: 6, fontWeight: "600" }}>
-          Video Recording
-        </Text>
-      </View>
-    );
-  }
+  return (
+    <InteractiveVideoPlayer
+      src={src}
+      style={style}
+      autoPlay={autoPlay}
+      title={title}
+    />
+  );
 }
 
 function playSyntheticTone(onEnd?: () => void) {
@@ -204,6 +156,10 @@ export default function InspectionDetailScreen() {
     longitude?: number;
   } | null>(null);
   const [pendingCaption, setPendingCaption] = useState("");
+
+  // In-App Camera and Video Modal state (No external mobile apps)
+  const [cameraModalVisible, setCameraModalVisible] = useState(false);
+  const [cameraModalMode, setCameraModalMode] = useState<"photo" | "video">("photo");
 
   // Voice note capture state (attached alongside photo/video)
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -476,7 +432,7 @@ export default function InspectionDetailScreen() {
     return {};
   };
 
-  // Evidence Action: Camera Photo (§2.5, §30)
+  // Evidence Action: In-App Camera Photo (§2.5, §30 - No external apps)
   const handleCaptureCameraPhoto = async () => {
     if (!id) return;
     try {
@@ -485,47 +441,14 @@ export default function InspectionDetailScreen() {
         Alert.alert("Permission Needed", "Camera access is required to capture site photos.");
         return;
       }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
-        quality: 0.85,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        if (!asset) return;
-        const uri = asset.uri;
-        const fileName = asset.fileName || `photo-${Date.now()}.jpg`;
-
-        let fileBytes: Uint8Array | undefined;
-        try {
-          const resp = await fetch(uri);
-          const buf = await resp.arrayBuffer();
-          fileBytes = new Uint8Array(buf);
-        } catch {
-          fileBytes = new TextEncoder().encode(`photo-bytes-${fileName}-${Date.now()}`);
-        }
-
-        const loc = await getCaptureLocation();
-
-        setPendingMedia({
-          uri,
-          fileName,
-          evidenceType: "photo",
-          mimeType: "image/jpeg",
-          fileBytes,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-        });
-        setPendingCaption("");
-        deleteVoiceRecording();
-      }
+      setCameraModalMode("photo");
+      setCameraModalVisible(true);
     } catch (err: unknown) {
       Alert.alert("Capture Error", err instanceof Error ? err.message : String(err));
     }
   };
 
-  // Evidence Action: Camera Video (§2.5, §30)
+  // Evidence Action: In-App Camera Video (§2.5, §30 - No external apps)
   const handleCaptureCameraVideo = async () => {
     if (!id) return;
     try {
@@ -534,45 +457,41 @@ export default function InspectionDetailScreen() {
         Alert.alert("Permission Needed", "Camera and microphone access are required to record site video.");
         return;
       }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["videos"],
-        videoMaxDuration: 60,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        if (!asset) return;
-        const uri = asset.uri;
-        const fileName = asset.fileName || `video-${Date.now()}.mp4`;
-
-        let fileBytes: Uint8Array | undefined;
-        try {
-          const resp = await fetch(uri);
-          const buf = await resp.arrayBuffer();
-          fileBytes = new Uint8Array(buf);
-        } catch {
-          fileBytes = new TextEncoder().encode(`video-bytes-${fileName}-${Date.now()}`);
-        }
-
-        const loc = await getCaptureLocation();
-
-        setPendingMedia({
-          uri,
-          fileName,
-          evidenceType: "video",
-          mimeType: "video/mp4",
-          fileBytes,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-        });
-        setPendingCaption("");
-        deleteVoiceRecording();
-      }
+      setCameraModalMode("video");
+      setCameraModalVisible(true);
     } catch (err: unknown) {
       Alert.alert("Video Capture Error", err instanceof Error ? err.message : String(err));
     }
+  };
+
+  const handleInAppPhotoCaptured = async (result: CapturedEvidenceResult) => {
+    const loc = await getCaptureLocation();
+    setPendingMedia({
+      uri: result.uri,
+      fileName: result.fileName,
+      evidenceType: "photo",
+      mimeType: "image/jpeg",
+      fileBytes: result.fileBytes,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+    });
+    setPendingCaption("");
+    deleteVoiceRecording();
+  };
+
+  const handleInAppVideoCaptured = async (result: CapturedEvidenceResult) => {
+    const loc = await getCaptureLocation();
+    setPendingMedia({
+      uri: result.uri,
+      fileName: result.fileName,
+      evidenceType: "video",
+      mimeType: "video/mp4",
+      fileBytes: result.fileBytes,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+    });
+    setPendingCaption("");
+    deleteVoiceRecording();
   };
 
   // Voice Note Recording Handlers
@@ -1824,6 +1743,15 @@ export default function InspectionDetailScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* ── MODAL: In-App Camera & Video Recorder (No External Apps) ── */}
+        <InAppCameraModal
+          visible={cameraModalVisible}
+          initialMode={cameraModalMode}
+          onClose={() => setCameraModalVisible(false)}
+          onCapturePhoto={handleInAppPhotoCaptured}
+          onCaptureVideo={handleInAppVideoCaptured}
+        />
       </View>
     </SafeAreaView>
   );

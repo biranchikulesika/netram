@@ -11,3 +11,19 @@ vi.mock("expo-secure-store", () => ({
     mockStore.delete(key);
   }),
 }));
+
+vi.mock("expo-camera", () => ({
+  CameraView: () => null,
+  useCameraPermissions: () => [{ granted: true }, vi.fn()],
+  useMicrophonePermissions: () => [{ granted: true }, vi.fn()],
+}));
+
+vi.mock("react-native-webview", () => ({
+  WebView: () => null,
+}));
+
+vi.mock("@expo/vector-icons", () => ({
+  Ionicons: () => null,
+}));
+
+
