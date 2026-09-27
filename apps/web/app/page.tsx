@@ -4,6 +4,7 @@ import { getSessionUser } from "../lib/api";
 import { redirect } from "next/navigation";
 import TypingHeadline from "./TypingHeadline";
 import Image from "next/image";
+import DisclaimerModal from "./DisclaimerModal";
 
 export const metadata: Metadata = {
   title: "Netram Monitoring Platform",
@@ -63,6 +64,7 @@ export default async function HomePage() {
           .hero-heading { font-size: 2.6rem !important; }
         }
       `}</style>
+      <DisclaimerModal />
 
       {/* Logo, top-left */}
       <div
