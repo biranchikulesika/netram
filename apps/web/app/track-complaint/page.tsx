@@ -2,9 +2,16 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import type { PublicComplaintTracking, ComplaintStatus } from "@netram/types";
 import { formatDate, formatDateTime } from "../../lib/presentation";
+
+// ADDED: shared color tokens matching the rest of the site
+const NAVY = "#1e3a8a";
+const SAFFRON = "#e8590c";
+const GREEN = "#157a3d";
+const GREEN_DARK = "#0f5f2f";
 
 function getStatusBadge(status: ComplaintStatus): { bg: string; color: string; label: string } {
   switch (status) {
@@ -103,8 +110,11 @@ function TrackComplaintContent() {
 
   return (
     <div style={{ maxWidth: "780px", margin: "2rem auto", padding: "0 1rem" }}>
-      {/* Print-specific style adjustments */}
+      {/* ADDED: global box-sizing fix so inputs don't overflow their container */}
       <style>{`
+        input, select, textarea {
+          box-sizing: border-box;
+        }
         @media print {
           body {
             background: #ffffff !important;
@@ -121,23 +131,42 @@ function TrackComplaintContent() {
         }
       `}</style>
 
-      {/* Top Brand Banner */}
-      <div className="no-print" style={{ textAlign: "center", marginBottom: "2rem" }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-          <div
-            style={{
-              width: "12px",
-              height: "12px",
-              borderRadius: "50%",
-              background: "var(--color-navy-brand, #1e3a8a)",
-            }}
+      {/* ADDED: institutional tricolor strip — no-print so it never shows on the printed receipt */}
+      <div
+        className="no-print"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "4px",
+          background:
+            "linear-gradient(to right, #ff9933 0%, #ff9933 33.33%, #ffffff 33.33%, #ffffff 66.66%, #138808 66.66%, #138808 100%)",
+          zIndex: 50,
+        }}
+      />
+
+      {/* Top Brand Banner — CHANGED: logo replaces written affiliation text */}
+      <div className="no-print" style={{ textAlign: "center", marginBottom: "2rem", paddingTop: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.75rem" }}>
+          <Image
+            src="/National-Emblem-1.svg"
+            alt="Department of Social Justice & Empowerment, Government of India"
+            width={90}
+            height={90}
+            style={{ objectFit: "contain" }}
           />
-          <span style={{ fontSize: "0.85rem", fontWeight: 700, letterSpacing: "0.08em", color: "var(--color-navy-brand, #1e3a8a)" }}>
-            GOVERNMENT OF INDIA · DoSJE
-          </span>
+          <Image
+            src="/netram2.png"
+            alt="Netram"
+            width={90}
+            height={90}
+            style={{ objectFit: "contain" }}
+          />
         </div>
-        <h1 style={{ margin: "0.25rem 0", fontSize: "1.85rem", fontWeight: 800, color: "var(--color-navy-brand, #1e3a8a)" }}>
-          Netram Citizen Grievance Portal
+        <h1 style={{ margin: "0.25rem 0", fontSize: "1.85rem", fontWeight: 800 }}>
+          <span style={{ color: SAFFRON }}>Netram</span>{" "}
+          <span style={{ color: NAVY }}>Citizen Grievance Portal</span>
         </h1>
         <p className="muted" style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-muted, #64748b)" }}>
           Public accountability ledger for citizen inquiries, project monitoring, and statutory redressal (§35)
@@ -145,7 +174,7 @@ function TrackComplaintContent() {
       </div>
 
       {/* Lookup Form */}
-      <div className="table-card no-print" style={{ padding: "1.75rem", marginBottom: "2rem", borderRadius: "10px" }}>
+      <div className="table-card no-print" style={{ padding: "1.75rem", marginBottom: "2rem", borderRadius: "12px", background: "#fff", border: "1px solid #e2e8f0" }}>
         <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <input
             type="text"
@@ -156,7 +185,7 @@ function TrackComplaintContent() {
             style={{
               flex: "1 1 300px",
               padding: "0.75rem 0.9rem",
-              borderRadius: "6px",
+              borderRadius: "8px",
               border: "1.5px solid #cbd5e1",
               fontSize: "0.95rem",
               fontFamily: "var(--font-mono, monospace)",
@@ -166,18 +195,18 @@ function TrackComplaintContent() {
               background: "#ffffff",
             }}
           />
+          {/* CHANGED: navy -> institutional green, matching the primary action color used site-wide */}
           <button
             type="submit"
             disabled={isLoading}
-            className="btn-primary"
             style={{
               padding: "0.75rem 1.75rem",
               fontSize: "0.95rem",
-              background: "var(--color-navy-brand, #1e3a8a)",
+              background: `linear-gradient(to right, ${GREEN}, ${GREEN_DARK})`,
               color: "#ffffff",
               border: "none",
-              borderRadius: "6px",
-              fontWeight: 600,
+              borderRadius: "8px",
+              fontWeight: 700,
               cursor: isLoading ? "not-allowed" : "pointer",
               opacity: isLoading ? 0.7 : 1,
             }}
@@ -222,7 +251,6 @@ function TrackComplaintContent() {
             background: "#ffffff",
           }}
         >
-          {/* Official Receipt Header (Always visible, prominent in print) */}
           <div
             style={{
               display: "flex",
@@ -242,7 +270,7 @@ function TrackComplaintContent() {
                     fontFamily: "var(--font-mono, monospace)",
                     fontSize: "1rem",
                     fontWeight: 800,
-                    color: "var(--color-navy-brand, #1e3a8a)",
+                    color: NAVY,
                     background: "#f1f5f9",
                     padding: "0.3rem 0.65rem",
                     borderRadius: "6px",
@@ -270,7 +298,7 @@ function TrackComplaintContent() {
                 </button>
               </div>
 
-              <h2 style={{ margin: "0.75rem 0 0.25rem", fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand, #1e3a8a)" }}>
+              <h2 style={{ margin: "0.75rem 0 0.25rem", fontSize: "1.35rem", fontWeight: 700, color: NAVY }}>
                 {result.projectName}
               </h2>
               <div className="muted" style={{ fontSize: "0.85rem", color: "#64748b" }}>
@@ -454,7 +482,6 @@ function TrackComplaintContent() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="btn-secondary"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -463,7 +490,7 @@ function TrackComplaintContent() {
                   padding: "0.45rem 0.9rem",
                   fontWeight: 600,
                   cursor: "pointer",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   background: "#ffffff",
                   border: "1px solid #cbd5e1",
                   color: "#0f172a",
@@ -497,7 +524,7 @@ function TrackComplaintContent() {
         <Link
           href="/login"
           style={{
-            color: "var(--color-navy-brand, #1e3a8a)",
+            color: NAVY,
             fontSize: "0.85rem",
             textDecoration: "none",
             fontWeight: 600,
