@@ -37,6 +37,7 @@ function sampleComplaint(overrides: Partial<Complaint> = {}): Complaint {
     projectCode: "OD-KHD-001",
     projectName: "Vani Vihar Water Works",
     districtId: "district-khordha",
+    districtName: "Khordha",
     complainantName: "Deepak Dash",
     contactInfo: "deepak@example.com",
     trackingCode: "CMP-2026-A1B2",

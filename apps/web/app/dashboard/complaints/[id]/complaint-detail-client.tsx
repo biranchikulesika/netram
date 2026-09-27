@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import type { Complaint, ComplaintStatus } from "@netram/types";
-import { formatDate, formatDateTime, getDistrictName } from "../../../../lib/presentation";
+import { formatDate, formatDateTime, formatDistrict } from "../../../../lib/presentation";
 import { getComplaintStatusBadge } from "../complaint-card";
 import { ComplaintTransitionModal } from "../complaint-transition-modal";
 import {
@@ -63,7 +63,7 @@ export function ComplaintDetailClient({
     stage.statuses.includes(complaint.status),
   );
 
-  const districtLabel = getDistrictName(complaint.districtId, complaint.projectCode);
+  const districtLabel = formatDistrict(complaint.districtName);
   const statusLabel = complaint.status.replace(/_/g, " ").toUpperCase();
 
   return (

@@ -187,10 +187,15 @@ function toObservation(row: ObservationRow): AttendanceSourceObservation {
   };
 }
 
-function toCalculation(row: CalculationRow): AttendanceCalculation {
+function toCalculation(
+  row: CalculationRow,
+  project: { code: string; name: string },
+): AttendanceCalculation {
   return {
     id: row.id,
     projectId: row.projectId,
+    projectCode: project.code,
+    projectName: project.name,
     windowId: row.windowId,
     operationalDate: row.operationalDate,
     expected: row.expected,
@@ -204,6 +209,12 @@ function toCalculation(row: CalculationRow): AttendanceCalculation {
     policy: row.policy ?? {},
     computedAt: row.computedAt.toISOString(),
   };
+}
+
+/** Facility identity attached to a calculation row, so the API discloses it. */
+interface CalculationProjectRef {
+  code: string;
+  name: string;
 }
 
 function toDq(row: DqRow): AttendanceDataQuality {
@@ -809,7 +820,17 @@ export class AttendanceRepository {
         },
       })
       .returning();
-    return toCalculation(rows[0]!);
+    return toCalculation(rows[0]!, await this.projectRef(rows[0]!.projectId));
+  }
+
+  /** Facility identity for calculations whose query has no projects join. */
+  private async projectRef(projectId: string): Promise<CalculationProjectRef> {
+    const rows = await this.db
+      .select({ code: projectsTable.code, name: projectsTable.name })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+    return rows[0] ?? { code: "—", name: "Unknown facility" };
   }
 
   async listCalculations(filter: AttendanceCalculationListFilter): Promise<{
@@ -829,7 +850,11 @@ export class AttendanceRepository {
 
     const [rows, count] = await Promise.all([
       this.db
-        .select({ calc: calculationsTable })
+        .select({
+          calc: calculationsTable,
+          projectCode: projectsTable.code,
+          projectName: projectsTable.name,
+        })
         .from(calculationsTable)
         .innerJoin(projectsTable, eq(calculationsTable.projectId, projectsTable.id))
         .where(and(where, scope))
@@ -843,7 +868,12 @@ export class AttendanceRepository {
         .where(and(where, scope)),
     ]);
     return {
-      items: rows.map((r) => toCalculation(r.calc as unknown as CalculationRow)),
+      items: rows.map((r) =>
+        toCalculation(r.calc as unknown as CalculationRow, {
+          code: r.projectCode,
+          name: r.projectName,
+        }),
+      ),
       total: count[0]?.count ?? 0,
     };
   }
@@ -854,7 +884,7 @@ export class AttendanceRepository {
       .from(calculationsTable)
       .where(eq(calculationsTable.id, id))
       .limit(1);
-    return rows[0] ? toCalculation(rows[0]) : null;
+    return rows[0] ? toCalculation(rows[0], await this.projectRef(rows[0].projectId)) : null;
   }
 
   async updateCalculationDerived(
@@ -866,7 +896,7 @@ export class AttendanceRepository {
       .set({ ...update, computedAt: new Date() })
       .where(eq(calculationsTable.id, id))
       .returning();
-    return rows[0] ? toCalculation(rows[0]) : null;
+    return rows[0] ? toCalculation(rows[0], await this.projectRef(rows[0].projectId)) : null;
   }
 
   /** All calculations matching scope/filters (unpaginated) — for CSV exports. */
@@ -884,12 +914,21 @@ export class AttendanceRepository {
       ? inArray(projectsTable.districtId, filter.jurisdictionIds)
       : undefined;
     const rows = await this.db
-      .select({ calc: calculationsTable })
+      .select({
+        calc: calculationsTable,
+        projectCode: projectsTable.code,
+        projectName: projectsTable.name,
+      })
       .from(calculationsTable)
       .innerJoin(projectsTable, eq(calculationsTable.projectId, projectsTable.id))
       .where(and(and(...conditions), scope))
       .orderBy(desc(calculationsTable.operationalDate));
-    return rows.map((r) => toCalculation(r.calc as unknown as CalculationRow));
+    return rows.map((r) =>
+      toCalculation(r.calc as unknown as CalculationRow, {
+        code: r.projectCode,
+        name: r.projectName,
+      }),
+    );
   }
 
   /** Aggregate-first overview rows: latest calculations + project context. */
@@ -939,9 +978,10 @@ export class AttendanceRepository {
     ]);
     return {
       items: rows.map((r) => ({
-        ...toCalculation(r.calc as unknown as CalculationRow),
-        projectCode: r.projectCode,
-        projectName: r.projectName,
+        ...toCalculation(r.calc as unknown as CalculationRow, {
+          code: r.projectCode,
+          name: r.projectName,
+        }),
         districtId: r.districtId,
       })),
       total: count[0]?.count ?? 0,
@@ -979,7 +1019,7 @@ export class AttendanceRepository {
       .where(eq(calculationsTable.projectId, projectId))
       .orderBy(desc(calculationsTable.computedAt))
       .limit(1);
-    return rows[0] ? toCalculation(rows[0]) : null;
+    return rows[0] ? toCalculation(rows[0], await this.projectRef(rows[0].projectId)) : null;
   }
 
   async listHistoricalPresent(

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import type { ActionInboxItem } from "@netram/types";
+import type { ActionInboxItem, FindingSeverity, OrganisationView } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
+import { OrderCorrectiveActionButton } from "../../components/order-corrective-action-button";
 import {
   IconBuilding,
   IconCheck,
@@ -43,48 +44,81 @@ function AiSpinner() {
 
 /**
  * Quick decision CTAs per kind — every endpoint is the workflow's own canonical
- * write path. Labels are short (≤8 chars) so Verify + Reject + Open fit on one
- * line inside a grid card.
+ * write path. Only self-contained decisions may be taken from the card: the
+ * whole change is visible in the summary (attendance correction before/after),
+ * or the decision popup itself carries the full dossier (expenditure payment
+ * verification, see ExpenseVerifyPopup). Anything whose wider dossier
+ * materially informs the decision (facility registration, ATR review, finding
+ * review) offers no inline options and routes into its page instead.
  */
 export function quickActionsFor(item: ActionInboxItem): InboxAction[] {
   switch (item.kind) {
-    case "project_verification":
-      return [
-        { label: "Verify", kind: "approve", endpoint: `/api/projects/${item.id}/transition`, body: { to: "Approved" } },
-        { label: "Reject", kind: "reject", endpoint: `/api/projects/${item.id}/transition`, body: { to: "Draft" } },
-      ];
-    case "corrective_action_review":
-      return [
-        { label: "Accept", kind: "approve", endpoint: `/api/corrective-actions/${item.id}/review`, body: { outcome: "accepted" } },
-        { label: "Reject", kind: "reject", endpoint: `/api/corrective-actions/${item.id}/review`, body: { outcome: "rejected" } },
-      ];
-    case "expense_verification":
-      return [
-        { label: "Verify", kind: "approve", endpoint: `/api/v1/funds/expenses/${item.id}/verify`, body: {} },
-        { label: "Reject", kind: "reject", endpoint: `/api/v1/funds/expenses/${item.id}/reject`, body: { reason: "Rejected from Action Inbox" } },
-      ];
     case "attendance_correction_approval":
       return [
         { label: "Verify", kind: "approve", endpoint: `/api/v1/attendance/corrections/${item.id}/decide`, body: { decision: "approve" } },
         { label: "Reject", kind: "reject", endpoint: `/api/v1/attendance/corrections/${item.id}/decide`, body: { decision: "reject" } },
       ];
     default:
+      // Dossier-required kinds and expense_verification (popup-decided): no
+      // inline write CTAs.
       return [];
   }
+}
+
+/** Verify-payment action for an expenditure, staged through the confirm modal. */
+export function expenseVerifyAction(item: ActionInboxItem): InboxAction {
+  return {
+    label: "Verify",
+    kind: "approve",
+    endpoint: `/api/v1/funds/expenses/${item.id}/verify`,
+    body: {},
+  };
+}
+
+/** Reject-payment action for an expenditure, with the stated reason. */
+export function expenseRejectAction(item: ActionInboxItem, reason: string): InboxAction {
+  return {
+    label: "Reject",
+    kind: "reject",
+    endpoint: `/api/v1/funds/expenses/${item.id}/reject`,
+    body: { reason },
+  };
 }
 
 export interface ActionInboxCardProps {
   item: ActionInboxItem;
   state: ActionInboxCardState;
+  /** Opens the type-to-confirm modal; execution happens after confirmation. */
   onAction: (item: ActionInboxItem, action: InboxAction) => void;
+  /** Opens the verify-payment popup for expenditure items. */
+  onVerifyPayment?: (item: ActionInboxItem) => void;
+  /** Responsible-organisation options for the remediation-order dialog. */
+  organisations?: OrganisationView[];
+}
+
+/** Reads a context value the server may legitimately omit (§34). */
+function ctxString(item: ActionInboxItem, key: string): string | null {
+  const v = item.context[key];
+  return typeof v === "string" && v.length > 0 ? v : null;
 }
 
 /**
  * One pending-decision item rendered in the shared facility-card language
  * (same card family as the complaints grid), with per-kind decision CTAs.
  */
-export function ActionInboxCard({ item, state, onAction }: ActionInboxCardProps) {
+export function ActionInboxCard({
+  item,
+  state,
+  onAction,
+  onVerifyPayment,
+  organisations = [],
+}: ActionInboxCardProps) {
   const actions = quickActionsFor(item);
+  // Confirmed findings awaiting remediation expose the order itself, so the
+  // authority does not have to leave the inbox to act (§32).
+  const inspectionId = item.kind === "finding_review" ? ctxString(item, "inspectionId") : null;
+  const remediation = item.kind === "finding_review" ? ctxString(item, "remediation") : null;
+  const canOrderFinding = Boolean(inspectionId) && !state.done;
 
   return (
     <article
@@ -92,10 +126,21 @@ export function ActionInboxCard({ item, state, onAction }: ActionInboxCardProps)
       style={state.done ? { opacity: 0.45, pointerEvents: "none" } : undefined}
       aria-label={item.title}
     >
-      <Link href={item.link.href} className="facility-card-link" aria-label={`Open ${item.link.label}`}>
+      <Link
+        href={item.link.href}
+        className="facility-card-link"
+        aria-label={item.link.label}
+      >
         <h3 className="facility-card-title">{item.title}</h3>
 
         <p className="facility-card-desc">{item.summary}</p>
+
+        {remediation && (
+          <p className="facility-card-desc" style={{ marginTop: "-0.35rem" }}>
+            <span style={{ fontWeight: 600, color: "#334155" }}>Required remediation:</span>{" "}
+            {remediation}
+          </p>
+        )}
 
         <dl className="facility-card-meta">
           <div className="facility-card-meta-item">
@@ -120,11 +165,11 @@ export function ActionInboxCard({ item, state, onAction }: ActionInboxCardProps)
 
           {item.amountInr !== null && (
             <div className="facility-card-meta-item">
-              <dt title="Amount" aria-label="Amount">
+              <dt title="Amount (INR)" aria-label="Amount in Indian rupees">
                 <IconIndianRupee className="meta-label-icon" style={{ color: "#15803d" }} />
               </dt>
               <dd style={{ fontWeight: 700, color: "#15803d" }}>
-                ₹{item.amountInr.toLocaleString("en-IN")}
+                {item.amountInr.toLocaleString("en-IN")}
               </dd>
             </div>
           )}
@@ -165,12 +210,46 @@ export function ActionInboxCard({ item, state, onAction }: ActionInboxCardProps)
             </button>
           );
         })}
+        {item.kind === "expense_verification" && onVerifyPayment && (
+          <button
+            type="button"
+            className="ai-btn ai-btn-approve"
+            disabled={state.done}
+            onClick={() => onVerifyPayment(item)}
+          >
+            {state.busy ? (
+              <AiSpinner />
+            ) : (
+              <IconIndianRupee width={14} height={14} />
+            )}
+            Verify payment
+          </button>
+        )}
+        {canOrderFinding && inspectionId && (
+          <OrderCorrectiveActionButton
+            finding={{
+              id: item.id,
+              // The inbox widens severity to `string` across kinds; for
+              // finding_review it is always a FindingSeverity.
+              severity: (item.severity ?? "low") as FindingSeverity,
+              description: item.summary,
+              remediation,
+            }}
+            inspectionId={inspectionId}
+            project={{
+              name: item.project.name ?? "",
+              code: item.project.code ?? "",
+              organisationId: ctxString(item, "organisationId"),
+            }}
+            organisations={organisations}
+          />
+        )}
         <Link
           href={item.link.href}
           className="ai-open-btn"
           title={`Open the full dossier before deciding`}
         >
-          Open
+          {item.link.label}
           <IconChevronRight width={13} height={13} />
         </Link>
       </div>

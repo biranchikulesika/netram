@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PROJECT_TRANSITIONS } from "@netram/types";
 import type { ProjectStatus } from "@netram/types";
+import { IconChevronRight, IconSettings } from "../../../components/icons";
 
 interface TransitionButtonProps {
   projectId: string;
@@ -11,14 +12,36 @@ interface TransitionButtonProps {
 }
 
 /**
- * Compact lifecycle transition control for the facility header.
- * The regulatory lifecycle is a small administrative action, not a separate
- * facility section — the caller (project header) owns the placement.
- * Requests are proxied through the Next.js route handler so the httpOnly
- * session token authorizes the call.
+ * Plain-language explanation for each lifecycle state (§33). Shown under the
+ * state name in the transition options so the administrative consequence of
+ * each choice is explicit before the caller commits to it.
+ */
+const STATUS_NOTES: Record<ProjectStatus, string> = {
+  Draft: "Still being prepared; not yet submitted for verification.",
+  "Pending Verification": "Submitted; awaiting authority verification.",
+  Approved: "Verified by authority; ready to be activated.",
+  Active: "Operational; inspections and monitoring are live.",
+  Suspended: "Temporarily halted by an authority decision.",
+  Closed: "Concluded; no further field activity.",
+  Archived: "Read-only historical record.",
+};
+
+/** Forward-progress states get emphasised styling in the option list. */
+const FORWARD_STATUSES = new Set<ProjectStatus>(["Approved", "Active"]);
+
+/**
+ * Lifecycle transition control for the facility status strip. Deliberately
+ * unobtrusive (a "⋯" overflow control): a lifecycle transition happens once
+ * in the facility's lifetime, so it must not compete with day-to-day readouts.
+ * Discoverable via tooltip + aria-label; opens a popover listing only the
+ * states the regulatory lifecycle permits from here (§33). Requests are
+ * proxied through the Next.js route handler so the httpOnly session token
+ * authorizes the call, and the API re-enforces the transition rule
+ * server-side.
  */
 export function TransitionButton({ projectId, currentStatus }: TransitionButtonProps) {
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +49,28 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
 
   const allowedNext = PROJECT_TRANSITIONS[currentStatus] || [];
 
+  // Close on outside click or Escape — the previous version only closed via
+  // the trigger, leaving the popover stuck open over page content.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   async function handleTransition(to: ProjectStatus) {
-    if (!window.confirm(`Are you sure you want to transition this project to '${to}'?`)) {
+    if (!window.confirm(`Transition this facility to '${to}'? This action is audited.`)) {
       return;
     }
     setBusy(true);
@@ -62,15 +105,17 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
   }
 
   return (
-    <div className="transition-pop" style={{ position: "relative" }}>
+    <div className="transition-pop" ref={rootRef} style={{ position: "relative" }}>
       <button
         type="button"
         className="transition-trigger"
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label="Lifecycle transition (administrative action)"
+        title="Lifecycle transition — rare administrative action"
         onClick={() => setOpen((v) => !v)}
       >
-        {busy ? "Updating…" : "Transition"}
+        <IconSettings width={14} height={14} />
       </button>
 
       {open && (
@@ -80,37 +125,44 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
           className="transition-pop-panel"
         >
           <div className="transition-pop-title">Lifecycle transition</div>
-          <div className="transition-pop-sub">
-            Current: {currentStatus.replace(/_/g, " ")} — advance the facility through the authorized
-            regulatory lifecycle.
+
+          <div className="transition-current-row">
+            <span className="transition-current">{currentStatus}</span>
+            <IconChevronRight width={12} height={12} style={{ flex: "none" }} />
+            <span className="transition-current-hint">
+              {allowedNext.length} permitted state{allowedNext.length === 1 ? "" : "s"}
+            </span>
           </div>
 
-          {error && <div className="error-banner">{error}</div>}
+          <div className="transition-options">
+            {allowedNext.map((nextStatus) => (
+              <button
+                key={nextStatus}
+                type="button"
+                disabled={busy}
+                onClick={() => handleTransition(nextStatus)}
+                className={`transition-option ${FORWARD_STATUSES.has(nextStatus) ? "forward" : ""}`}
+              >
+                <span className="transition-option-name">{nextStatus}</span>
+                <span className="transition-option-desc">{STATUS_NOTES[nextStatus]}</span>
+              </button>
+            ))}
+          </div>
 
           <input
             type="text"
-            placeholder="Optional administrative note / reference..."
+            placeholder="Optional note / reference (e.g. file number)…"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
+            aria-label="Optional administrative note"
           />
 
-          <div className="transition-pop-actions">
-            {allowedNext.map((nextStatus) => {
-              const primary = nextStatus === "Approved" || nextStatus === "Active";
-              return (
-                <button
-                  key={nextStatus}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => handleTransition(nextStatus)}
-                  className={primary ? "" : "btn-secondary"}
-                >
-                  {nextStatus}
-                </button>
-              );
-            })}
-          </div>
+          {error && (
+            <div role="alert" className="error-banner">
+              {error}
+            </div>
+          )}
         </div>
       )}
     </div>

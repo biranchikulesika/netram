@@ -1,30 +1,49 @@
 import Link from "next/link";
-import type { Project } from "@netram/types";
+import type { Project, ProjectRiskSnapshot } from "@netram/types";
 import {
+  formatDistrict,
   getAuthorityName,
-  getDistrictName,
   getOrganisationName,
 } from "../../../../lib/presentation";
 import {
   IconBuilding,
-  IconChevronLeft,
+  IconMail,
   IconMapPin,
+  IconPhone,
   IconShieldCheck,
+  IconUser,
 } from "../../../components/icons";
 import { FacilityNav } from "./facility-nav";
+import { HealthGauge } from "./health-gauge";
 import { StatusBadge } from "./status-badge";
-import { TransitionButton } from "./transition-button";
 
-const TYPE_LABELS: Record<string, string> = {
-  institution: "Institution / NGO Facility",
-  authority_project: "Authority Infrastructure Project",
-};
+/**
+ * Status is part of the permanent identity (district/org/authority) and stays
+ * in the meta row for most lifecycle states. Abnormal states — suspended or
+ * archived — are promoted next to the facility name instead, so they read as
+ * an urgent condition on the title rather than routine metadata.
+ */
+const PROMINENT_STATUSES = new Set(["Suspended", "Archived"]);
+
+/**
+ * `Active` is the expected steady state for a sanctioned facility, so its
+ * badge carries no information. Rendering it would spend a whole row of the
+ * masthead restating the absence of a problem.
+ */
+const SILENT_STATUSES = new Set(["Active"]);
 
 const EDITABLE_STATUSES = new Set(["Draft", "Pending Verification"]);
+
+/** Same muted empty-state wording the Facility Facts card uses. */
+const NOT_RECORDED = "Not recorded";
 
 interface FacilityShellProps {
   project: Project;
   permissions: string[];
+  /** Present only for viewers holding project_risk:read (layout-gated). */
+  riskSnapshot: ProjectRiskSnapshot | null;
+  /** Whether this viewer may see risk information at all (§34). */
+  canViewRisk: boolean;
 }
 
 /**
@@ -32,61 +51,97 @@ interface FacilityShellProps {
  * Replaces the separate breadcrumb, header card and nav bar that previously
  * consumed vertical space above shared facility pages.
  */
-export function FacilityShell({ project, permissions }: FacilityShellProps) {
-  const typeLabel =
-    TYPE_LABELS[project.type] ??
-    "General Sanctioned Initiative";
+export function FacilityShell({
+  project,
+  permissions,
+  riskSnapshot,
+  canViewRisk,
+}: FacilityShellProps) {
+  const prominentStatus = PROMINENT_STATUSES.has(project.status);
+  // The badge's own row is rendered only when it actually holds a badge, so a
+  // silent or already-prominent status costs no vertical space at all.
+  const showStatusRow = !prominentStatus && !SILENT_STATUSES.has(project.status);
 
-  const districtLabel = getDistrictName(project.districtId, project.code);
-  const orgLabel = getOrganisationName(project.organisationId, project.name);
-  const authorityLabel = getAuthorityName(project.authorityId);
+  const districtLabel = formatDistrict(project.districtName, project.stateName);
+  const orgLabel = getOrganisationName(project.organisationName);
+  const authorityLabel = getAuthorityName(project.authorityId, project.authorityName);
+  const contactName = project.contactName ?? NOT_RECORDED;
+  const contactPhone = project.contactPhone ?? NOT_RECORDED;
+  const contactEmail = project.contactEmail ?? NOT_RECORDED;
 
   return (
     <header className="facility-header">
-      <Link className="facility-back" href="/dashboard/projects">
-        <IconChevronLeft width={12} height={12} /> Projects Registry
-      </Link>
-
       <div className="facility-header-main">
-        <div style={{ minWidth: 0 }}>
-          <div className="facility-code-line">
-            <span className="code-badge">{project.code}</span>
-            <span className="facility-type-label">{typeLabel}</span>
+        <div className="facility-identity">
+          <div className="facility-name-line">
+            <div className="facility-name-main">
+              <div className="facility-name-block">
+                <h1 className="facility-name">{project.name}</h1>
+                <span className="code-badge facility-code-badge">{project.code}</span>
+              </div>
+              {prominentStatus && <StatusBadge status={project.status} />}
+            </div>
+            <div className="facility-name-side">
+              <div className="facility-ownership-meta">
+                <span>
+                  <IconMapPin width={13} height={13} />
+                  {districtLabel}
+                </span>
+                <span>
+                  <IconBuilding width={13} height={13} />
+                  {orgLabel}
+                </span>
+                <span>
+                  <IconShieldCheck width={13} height={13} />
+                  {authorityLabel}
+                </span>
+              </div>
+              <div className="facility-contact-meta">
+                <span>
+                  <IconUser width={13} height={13} />
+                  {contactName}
+                </span>
+                <span>
+                  <IconPhone width={13} height={13} />
+                  {contactPhone}
+                </span>
+                <span>
+                  <IconMail width={13} height={13} />
+                  {contactEmail}
+                </span>
+              </div>
+            </div>
           </div>
-          <h1 className="facility-name">{project.name}</h1>
-          <div className="facility-identity-meta">
-            <span>
-              <IconMapPin width={13} height={13} />
-              {districtLabel}
-            </span>
-            <span>
-              <IconBuilding width={13} height={13} />
-              {orgLabel}
-            </span>
-            <span>
-              <IconShieldCheck width={13} height={13} />
-              {authorityLabel}
-            </span>
-          </div>
+          {showStatusRow && (
+            <div className="facility-identity-meta">
+              <StatusBadge status={project.status} />
+            </div>
+          )}
         </div>
 
         <div className="facility-header-side">
-          <StatusBadge status={project.status} />
-          {permissions.includes("project:create") && EDITABLE_STATUSES.has(project.status) && (
-            <Link
-              href={`/dashboard/projects/${project.id}/edit`}
-              className="btn-secondary"
-              style={{
-                textDecoration: "none",
-                padding: "0.45rem 0.9rem",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-              }}
-            >
-              Edit
-            </Link>
+          <div className="facility-header-actions">
+            {permissions.includes("project:create") && EDITABLE_STATUSES.has(project.status) && (
+              <Link
+                href={`/dashboard/projects/${project.id}/edit`}
+                className="btn-secondary facility-edit-btn"
+              >
+                Edit
+              </Link>
+            )}
+          </div>
+          {riskSnapshot ? (
+            <div className="facility-gauge-slot">
+              <HealthGauge snapshot={riskSnapshot} />
+            </div>
+          ) : (
+            canViewRisk && (
+              <div className="facility-gauge-slot facility-gauge-empty">
+                <span className="facility-gauge-empty-label">Risk score</span>
+                <span className="facility-gauge-empty-value">Not scored</span>
+              </div>
+            )
           )}
-          <TransitionButton projectId={project.id} currentStatus={project.status} />
         </div>
       </div>
 

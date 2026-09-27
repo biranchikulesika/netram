@@ -4,6 +4,7 @@ import { toJsonSchema } from "../../../infrastructure/schema-helper.js";
 import {
   createProjectSchema,
   updateProjectSchema,
+  updateProjectContactSchema,
   idParamsSchema,
   projectListQuerySchema,
   projectPageSchema,
@@ -191,6 +192,24 @@ export async function registerProjectRoutes(
       const { id } = request.params as { id: string };
       const body = request.body as z.infer<typeof updateProjectSchema>;
       return projectService.updateProject(request.netram!, id, body);
+    },
+  );
+
+  app.patch(
+    "/projects/:id/contact",
+    {
+      schema: {
+        tags: ["projects"],
+        security: [{ bearerAuth: [] }],
+        params: paramsSchema,
+        body: toJsonSchema("UpdateProjectContactBody", updateProjectContactSchema),
+        response: { 200: toJsonSchema("Project", projectSchema) },
+      },
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as z.infer<typeof updateProjectContactSchema>;
+      return projectService.updateContact(request.netram!, id, body);
     },
   );
 

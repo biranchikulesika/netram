@@ -1,27 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCachedSessionUser } from "../../../../lib/api";
+import { canAny } from "../../../../lib/permissions";
 import {
   getFacility,
   getFacilityAttendance,
-  getFacilityAudit,
   getFacilityComplaints,
   getFacilityCorrectiveActions,
   getFacilityInspections,
-  getFacilityAiAnomalies,
-  getFacilityRiskSnapshot,
+  getFacilityPhotos,
+  getUserNames,
 } from "../../../../lib/facility";
-import {
-  getAuthorityName,
-  getDistrictName,
-  getOrganisationName,
-  getProgrammeName,
-  getUserDisplayName,
-  formatDate,
-  formatDateTime,
-  formatShortDate,
-} from "../../../../lib/presentation";
-import { CompositeRiskCard } from "./composite-risk-card";
+import { formatDate, formatShortDate } from "../../../../lib/presentation";
 import { IconChevronRight } from "../../../components/icons";
+import { PhotoGallery } from "./photo-gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +37,14 @@ interface AttentionRow {
   href: string;
 }
 
+/**
+ * Facility overview — the minimal, permission-aware hub.
+ *
+ * Every fetch below is gated on the caller's permissions BEFORE the request is
+ * made: data the caller cannot see is never fetched, never serialized, never
+ * sent (§34 — omission, not hiding). Sections with no visible data simply do
+ * not exist for that viewer.
+ */
 export default async function FacilityOverviewPage({
   params,
 }: {
@@ -54,221 +54,164 @@ export default async function FacilityOverviewPage({
   const project = await getFacility(id);
   if (!project) notFound();
 
-  const [riskSnapshot, inspections, complaints, attendance, aiAnomalies, audit] =
+  const session = await getCachedSessionUser();
+  const permissions = session?.permissions ?? [];
+  const canSee = (required: readonly string[]) => canAny(permissions, required);
+
+  const [canSeeInspections, canSeeComplaints, canSeeAttendance, canSeeActions] = [
+    canSee(["inspection:read"]),
+    canSee(["complaint:read"]),
+    canSee(["attendance:monitor:read"]),
+    canSee(["corrective_action:read"]),
+  ] as const;
+
+  const [inspections, complaints, attendance, correctiveActions, photos, userNames] =
     await Promise.all([
-      getFacilityRiskSnapshot(project.id),
-      getFacilityInspections(project.id),
-      getFacilityComplaints(project.id),
-      getFacilityAttendance(project.id),
-      getFacilityAiAnomalies(project.id, project.code, project.name),
-      getFacilityAudit(project.id),
+      canSeeInspections ? getFacilityInspections(project.id) : Promise.resolve([]),
+      canSeeComplaints ? getFacilityComplaints(project.id) : Promise.resolve([]),
+      canSeeAttendance
+        ? getFacilityAttendance(project.id)
+        : Promise.resolve({ overview: [], anomalies: [] }),
+      canSeeActions ? getFacilityCorrectiveActions(project.id) : Promise.resolve([]),
+      getFacilityPhotos(project.id),
+      getUserNames(),
     ]);
-  const correctiveActions = await getFacilityCorrectiveActions(project.id, inspections);
-  const facilityTab = (section: string) => `/dashboard/projects/${project.id}/${section}`;
 
   const activeInspections = inspections.filter((i) => ACTIVE_STATUSES.has(i.status));
   const reviewInspections = inspections.filter((i) => REVIEW_STATUSES.has(i.status));
-  const attentionInspections = activeInspections.length + reviewInspections.length;
 
-  const openComplaints = complaints.filter(
-    (c) => c.status !== "resolved" && c.status !== "closed",
-  );
-  const openAiAnomalies = aiAnomalies.filter(
-    (a) => a.status !== "dismissed" && a.status !== "acted_upon",
-  );
+  const openComplaints = complaints.filter((c) => c.status !== "resolved" && c.status !== "closed");
   const openAttendanceAnomalies = attendance.anomalies.filter(
     (a) => !["DISMISSED", "FALSE_POSITIVE", "ACTIONED"].includes(a.state),
   );
   const outstandingActions = correctiveActions.filter((ca) => ca.status !== "accepted");
-  const overdueActions = outstandingActions.filter((ca) => CA_ALERT_STATUSES.has(ca.status));
-
-  const attendanceToday = attendance.overview[0] ?? null;
-
-  const kpis = [
-    {
-      label: "Inspections",
-      value: String(inspections.length),
-      sub: attentionInspections > 0 ? `${attentionInspections} need attention` : "Nothing pending",
-      href: facilityTab("inspections"),
-      alert: attentionInspections > 0,
-    },
-    {
-      label: "Complaints",
-      value: String(complaints.length),
-      sub:
-        openComplaints.length > 0
-          ? `${openComplaints.length} open`
-          : "No open grievances",
-      href: facilityTab("complaints"),
-      alert: openComplaints.length > 0,
-    },
-    {
-      label: "AI Signals",
-      value: String(aiAnomalies.length),
-      sub:
-        openAiAnomalies.length > 0
-          ? `${openAiAnomalies.length} to review`
-          : "Cleared",
-      href: facilityTab("monitoring"),
-      alert: openAiAnomalies.length > 0,
-    },
-    {
-      label: "Attendance",
-      value:
-        attendanceToday !== null
-          ? `${attendanceToday.present} / ${attendanceToday.expected ?? "—"}`
-          : "—",
-      sub:
-        openAttendanceAnomalies.length > 0
-          ? `${openAttendanceAnomalies.length} anomaly${openAttendanceAnomalies.length === 1 ? "" : "ies"}`
-          : "Nominal",
-      href: facilityTab("attendance"),
-      alert: openAttendanceAnomalies.length > 0,
-    },
-    {
-      label: "Corrective Actions",
-      value: String(correctiveActions.length),
-      sub:
-        outstandingActions.length > 0
-          ? `${outstandingActions.length} outstanding${overdueActions.length > 0 ? ` · ${overdueActions.length} overdue` : ""}`
-          : "All closed",
-      href: facilityTab("actions"),
-      alert: outstandingActions.length > 0,
-    },
-  ];
 
   const rows: AttentionRow[] = [];
 
-  for (const ca of outstandingActions
-    .filter((ca) => CA_ALERT_STATUSES.has(ca.status))
-    .slice(0, 3)) {
-    rows.push({
-      key: `ca-${ca.id}`,
-      tone: "#dc2626",
-      title: `Corrective action ${ca.status.replace("_", " ")}`,
-      sub: `Deadline ${formatShortDate(ca.deadline)} · linked to inspection findings`,
-      pill: ca.status === "overdue" ? "Overdue" : ca.status.replace("_", " "),
-      pillSerious: ca.status === "overdue" || ca.status === "escalated",
-      href: facilityTab("actions"),
-    });
+  if (canSeeActions) {
+    for (const ca of outstandingActions
+      .filter((ca) => CA_ALERT_STATUSES.has(ca.status))
+      .slice(0, 3)) {
+      rows.push({
+        key: `ca-${ca.id}`,
+        tone: "#dc2626",
+        title: `Corrective action ${ca.status.replace("_", " ")}`,
+        sub: `Deadline ${formatShortDate(ca.deadline)} · linked to inspection findings`,
+        pill: ca.status === "overdue" ? "Overdue" : ca.status.replace("_", " "),
+        pillSerious: ca.status === "overdue" || ca.status === "escalated",
+        href: `/dashboard/projects/${project.id}/actions`,
+      });
+    }
   }
 
-  for (const a of openAiAnomalies.slice(0, 3)) {
-    const isHigh = a.severity === "critical" || a.severity === "high";
-    rows.push({
-      key: `anom-${a.id}`,
-      tone: isHigh ? "#dc2626" : "#ea580c",
-      title: `Anomaly: ${a.type.replace(/_/g, " ")} (${a.severity})`,
-      sub: a.explanation ?? "AI advisory signal awaiting review",
-      pill: `${Math.round(a.confidence * 100)}% signal`,
-      pillSerious: isHigh,
-      href: facilityTab("monitoring"),
-    });
+  if (canSeeInspections) {
+    for (const i of activeInspections.slice(0, 3)) {
+      rows.push({
+        key: `inspect-${i.id}`,
+        tone: "#2563eb",
+        title: `${i.type === "surprise" ? "Surprise" : "Routine"} inspection in the field`,
+        sub: `Started ${formatShortDate(i.startedAt ?? i.scheduledStart)} · ${i.trigger.replace(/_/g, " ")}`,
+        pill: "In the field",
+        pillSerious: false,
+        href: `/dashboard/projects/${project.id}/inspections`,
+      });
+    }
+
+    for (const i of reviewInspections.slice(0, 2)) {
+      rows.push({
+        key: `review-${i.id}`,
+        tone: "#d97706",
+        title: `${i.type === "surprise" ? "Surprise" : "Routine"} inspection awaiting review`,
+        sub: `Submitted ${formatShortDate(i.submittedAt ?? i.updatedAt)}`,
+        pill: "Awaiting review",
+        pillSerious: false,
+        href: `/dashboard/projects/${project.id}/inspections`,
+      });
+    }
   }
 
-  for (const i of activeInspections.slice(0, 3)) {
-    rows.push({
-      key: `inspect-${i.id}`,
-      tone: "#2563eb",
-      title: `${i.type === "surprise" ? "Surprise" : "Routine"} inspection in the field`,
-      sub: `Started ${formatShortDate(i.startedAt ?? i.scheduledStart)} · ${i.trigger.replace(/_/g, " ")}`,
-      pill: "In the field",
-      pillSerious: false,
-      href: facilityTab("inspections"),
-    });
+  if (canSeeComplaints) {
+    for (const c of openComplaints.slice(0, 3)) {
+      rows.push({
+        key: `comp-${c.id}`,
+        tone: "#b91c1c",
+        title: `Complaint ${c.trackingCode}`,
+        sub: `${c.description}`,
+        pill: c.status.replace(/_/g, " "),
+        pillSerious: false,
+        href: `/dashboard/projects/${project.id}/complaints`,
+      });
+    }
   }
 
-  for (const c of openComplaints.slice(0, 3)) {
-    rows.push({
-      key: `comp-${c.id}`,
-      tone: "#b91c1c",
-      title: `Complaint ${c.trackingCode}`,
-      sub: `${c.description}`,
-      pill: c.status.replace(/_/g, " "),
-      pillSerious: false,
-      href: facilityTab("complaints"),
-    });
+  if (canSeeAttendance) {
+    for (const a of openAttendanceAnomalies.slice(0, 3)) {
+      rows.push({
+        key: `att-${a.id}`,
+        tone: "#ea580c",
+        title: `Attendance signal: ${a.anomalyType.replace(/_/g, " ").toLowerCase()}`,
+        sub: `Observed ${formatShortDate(a.observationStart)} · ${Math.round(a.score * 100)}% score`,
+        pill: a.state.replace(/_/g, " "),
+        pillSerious: false,
+        href: `/dashboard/projects/${project.id}/attendance`,
+      });
+    }
   }
 
-  for (const i of reviewInspections.slice(0, 2)) {
-    rows.push({
-      key: `review-${i.id}`,
-      tone: "#d97706",
-      title: `${i.type === "surprise" ? "Surprise" : "Routine"} inspection awaiting review`,
-      sub: `Submitted ${formatShortDate(i.submittedAt ?? i.updatedAt)}`,
-      pill: "Awaiting review",
-      pillSerious: false,
-      href: facilityTab("inspections"),
-    });
-  }
+  /**
+   * Facility facts the masthead does not already show, grouped in reading
+   * order: what the facility runs under (programme) → where it stands in its
+   * lifecycle (approval, registration, freshness). Empty states are muted,
+   * not absent.
+   */
+  // Deduped: programmeIds may repeat a scheme, and React keys must be unique.
+  const schemeNames = [...new Set(project.programmeNames ?? [])];
 
-  for (const a of openAttendanceAnomalies.slice(0, 3)) {
-    rows.push({
-      key: `att-${a.id}`,
-      tone: "#ea580c",
-      title: `Attendance signal: ${a.anomalyType.replace(/_/g, " ").toLowerCase()}`,
-      sub: `Observed ${formatShortDate(a.observationStart)} · ${Math.round(a.score * 100)}% score`,
-      pill: a.state.replace(/_/g, " "),
-      pillSerious: false,
-      href: facilityTab("attendance"),
-    });
-  }
-
-  const factItems: { label: string; value: string; full?: boolean }[] = [
+  const factSections: {
+    title: string;
+    items: {
+      label: string;
+      value?: string;
+      /** Rendered as a bulleted list instead of a single sentence. */
+      list?: string[];
+      muted?: boolean;
+      full?: boolean;
+    }[];
+  }[] = [
     {
-      label: "Facility Type",
-      value:
-        project.type === "institution"
-          ? "Institution / NGO Facility"
-          : project.type === "authority_project"
-            ? "Authority Infrastructure Project"
-            : "General Sanctioned Initiative",
+      title: "Programme",
+      items: [
+        {
+          label: "Enrolled Schemes",
+          list: schemeNames,
+          muted: schemeNames.length === 0,
+          full: true,
+        },
+      ],
     },
-    { label: "District Jurisdiction", value: getDistrictName(project.districtId, project.code) },
     {
-      label: "Managing Organisation",
-      value: getOrganisationName(project.organisationId, project.name),
+      title: "Lifecycle",
+      items: [
+        {
+          label: "Approved",
+          value: project.approvedAt
+            ? `${formatDate(project.approvedAt)} · ${((project.approvedById && userNames[project.approvedById]) || "Approving authority")}`
+            : "Awaiting verification",
+          muted: !project.approvedAt,
+        },
+        { label: "Registered", value: formatDate(project.createdAt) },
+        { label: "Last Update", value: formatShortDate(project.updatedAt) },
+      ],
     },
-    { label: "Sanctioning Authority", value: getAuthorityName(project.authorityId) },
-
-    { label: "Enrolled Schemes", value: project.programmeIds.map(getProgrammeName).join(", ") || "None linked", full: true },
-    { label: "Registered", value: formatDate(project.createdAt) },
-    { label: "Last Update", value: formatShortDate(project.updatedAt) },
   ];
-
-  const recentAudit = audit.slice(0, 8);
 
   return (
     <>
-      {/* KPI metric strip */}
-      <div className="facility-kpis">
-        {kpis.map((kpi) => (
-          <Link
-            key={kpi.label}
-            href={kpi.href}
-            className={`facility-kpi ${kpi.alert ? "facility-kpi-alert" : ""}`}
-            style={{ textDecoration: "none" }}
-          >
-            <span className="facility-kpi-label">{kpi.label}</span>
-            <span className="facility-kpi-value">
-              {kpi.value}
-              {kpi.alert && <span className="facility-kpi-alert-dot" aria-hidden="true" />}
-            </span>
-            <span className="facility-kpi-sub">{kpi.sub}</span>
-          </Link>
-        ))}
-      </div>
-
-      {/* Composite Risk Score Engine Widget */}
-      <CompositeRiskCard
-        initialSnapshot={riskSnapshot}
-      />
-
       <div className="facility-grid">
         {/* Attention queue */}
         <div className="facility-panel">
           <div className="facility-panel-head">
-            <span className="facility-panel-title">Operational Attention</span>
+            <span className="facility-panel-title">Attention</span>
             {rows.length > 0 && (
               <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                 {rows.length} item{rows.length === 1 ? "" : "s"}
@@ -276,13 +219,16 @@ export default async function FacilityOverviewPage({
             )}
           </div>
           {rows.length === 0 ? (
-            <div className="attention-empty">
-              No open items require attention at this facility.
-            </div>
+            <div className="attention-empty">Nothing needs attention.</div>
           ) : (
             <div className="attention-list">
               {rows.map((row) => (
-                <Link key={row.key} href={row.href} className="attention-row" style={{ textDecoration: "none" }}>
+                <Link
+                  key={row.key}
+                  href={row.href}
+                  className="attention-row"
+                  style={{ textDecoration: "none" }}
+                >
                   <span
                     className="attention-dot"
                     style={{ background: row.tone }}
@@ -304,56 +250,42 @@ export default async function FacilityOverviewPage({
           )}
         </div>
 
-        {/* Facility facts */}
-        <div className="facility-panel">
-          <div className="facility-panel-head">
-            <span className="facility-panel-title">Facility Facts</span>
-          </div>
-          <div className="facility-facts">
-            {factItems.map((item) => (
-              <div key={item.label} className={`ff-item ${item.full ? "ff-full" : ""}`}>
-                <span className="ff-label">{item.label}</span>
-                <span className="ff-value">{item.value}</span>
+        {/* Facility facts + photos, stacked in one column so the gallery
+            matches the facts card width */}
+        <div className="facility-facts-column">
+          <div className="facility-panel">
+            <div className="facility-panel-head">
+              <span className="facility-panel-title">Facility Facts</span>
+            </div>
+            {factSections.map((section) => (
+              <div key={section.title} className="ff-section">
+                <div className="ff-section-title">{section.title}</div>
+                <div className="facility-facts facility-facts-tight">
+                  {section.items.map((item) => (
+                    <div key={item.label} className={`ff-item ${item.full ? "ff-full" : ""}`}>
+                      <span className="ff-label">{item.label}</span>
+                      {item.list ? (
+                        item.list.length > 0 ? (
+                          <ul className="ff-list">
+                            {item.list.map((name) => (
+                              <li key={name}>{name}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="ff-value ff-empty">None linked</span>
+                        )
+                      ) : (
+                        <span className={`ff-value ${item.muted ? "ff-empty" : ""}`}>{item.value}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Recent facility activity */}
-      <div className="facility-panel" style={{ marginBottom: "1.25rem" }}>
-        <div className="facility-panel-head">
-          <span className="facility-panel-title">Recent Facility Activity</span>
-          <Link className="facility-panel-link" href="/dashboard/audit">
-            Full audit log →
-          </Link>
+          <PhotoGallery photos={photos} />
         </div>
-        {recentAudit.length === 0 ? (
-          <div className="attention-empty">No recorded activity for this facility yet.</div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: "220px" }}>Action</th>
-                <th>Actor</th>
-                <th style={{ width: "220px" }}>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentAudit.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <span className="badge badge-routine">{e.action}</span>
-                  </td>
-                  <td style={{ fontWeight: 500 }}>
-                    {getUserDisplayName(e.actorUserId, "Automated System")}
-                  </td>
-                  <td className="muted">{formatDateTime(e.occurredAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
       </div>
     </>
   );

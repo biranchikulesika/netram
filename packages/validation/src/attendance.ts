@@ -77,6 +77,8 @@ const sourceCountsSchema = z.record(z.enum(ATTENDANCE_SOURCES), z.number().int()
 const calculationSchema = z.object({
   id: uuidSchema,
   projectId: uuidSchema,
+  projectCode: z.string(),
+  projectName: z.string(),
   windowId: uuidSchema,
   operationalDate: z.string(),
   expected: z.number().int().nonnegative().nullable(),

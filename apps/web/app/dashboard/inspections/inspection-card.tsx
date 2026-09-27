@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Inspection, InspectionStatus } from "@netram/types";
-import { formatDate, getDistrictName, getProjectName } from "../../../lib/presentation";
+import { formatDate, formatDistrict } from "../../../lib/presentation";
 import {
   IconBuilding,
   IconClipboard,
@@ -60,7 +60,7 @@ export function InspectionCard({ inspection }: { inspection: Inspection }) {
         aria-label={`Open inspection ${inspection.id}`}
       >
         <h3 className="facility-card-title">
-          {inspection.projectName || getProjectName(inspection.projectId)}
+          {inspection.projectName || "Sanctioned facility"}
         </h3>
 
         <p className="facility-card-desc">
@@ -110,8 +110,8 @@ export function InspectionCard({ inspection }: { inspection: Inspection }) {
             <dt title="District" aria-label="District">
               <IconMapPin className="meta-label-icon" />
             </dt>
-            {inspection.districtId ? (
-              <dd>{getDistrictName(inspection.districtId, inspection.projectCode)}</dd>
+            {inspection.districtName ? (
+              <dd>{formatDistrict(inspection.districtName)}</dd>
             ) : (
               <dd className="meta-placeholder">Not assigned</dd>
             )}

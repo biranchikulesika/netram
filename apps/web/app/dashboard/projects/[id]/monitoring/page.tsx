@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getDistrictCameras, getFacility, getFacilityAiAnomalies } from "../../../../../lib/facility";
-import { getDistrictShortName, formatDateTime } from "../../../../../lib/presentation";
+import { getSessionUser } from "../../../../../lib/api";
+import { canAny } from "../../../../../lib/permissions";
+import { formatDateTime } from "../../../../../lib/presentation";
 import { IconChevronRight } from "../../../../components/icons";
 
 export const dynamic = "force-dynamic";
@@ -18,19 +21,24 @@ export default async function FacilityMonitoringPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // AI signals and CCTV coverage are oversight-side intelligence: institutions
+  // are never shown them, on any entry path (§34 — omission, not hiding).
+  const session = await getSessionUser();
+  if (!session || !canAny(session.permissions, ["cctv:read", "ai:anomaly:read"])) notFound();
+
   const { id } = await params;
   const project = await getFacility(id);
   if (!project) return null;
 
   const [anomalies, cameras] = await Promise.all([
-    getFacilityAiAnomalies(project.id, project.code, project.name),
+    getFacilityAiAnomalies(project.id),
     getDistrictCameras(project.districtId),
   ]);
 
   const openAnomalies = anomalies.filter(
     (a) => a.status !== "dismissed" && a.status !== "acted_upon",
   ).length;
-  const districtLabel = getDistrictShortName(project.districtId, project.code);
+  const districtLabel = project.districtName ?? "Unknown district";
 
   return (
     <section>

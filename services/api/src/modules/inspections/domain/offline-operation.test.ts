@@ -9,6 +9,7 @@ function makeInspection(status: Inspection["status"]): Inspection {
     projectCode: "PRJ-001",
     projectName: "Hostel A",
     districtId: "33333333-3333-4333-8333-333333333333",
+    districtName: "Khordha",
     templateId: null,
     type: "routine",
     trigger: "risk_engine",

@@ -14,7 +14,6 @@
  */
 
 import type { AuditEvent } from "@netram/types";
-import { getProjectName, getUserDisplayName } from "./presentation";
 
 /**
  * The audit `action` column stores the writer's event vocabulary. Several
@@ -119,7 +118,8 @@ export function resolveActor(
 ): AuditActor | null {
   if (!event.actorUserId) return null; // system/sweeper-driven
   const roleCode = roleCodeForUser(event.actorUserId);
-  const name = getUserDisplayName(event.actorUserId, ctx.userNames?.[event.actorUserId] ?? "Officer");
+  // Resolved from the injected user directory; a viewer without it sees the role.
+  const name = ctx.userNames?.[event.actorUserId] ?? "Officer";
   const isInstitution = roleCode === "institution_admin";
   return {
     role: roleCode ? (ROLE_LABELS[roleCode] ?? roleCode) : "Officer",
@@ -268,10 +268,17 @@ function str(v: unknown): string | null {
 
 /** subject: the project/facility a summary should attach to, when known. */
 function projectSubject(event: AuditEvent): string | null {
-  const projectId =
-    str(event.metadata?.projectId) ??
-    (event.resourceType === "project" ? event.resourceId : null);
-  return projectId ? getProjectName(projectId, null as unknown as string) : null;
+  // Project audit events carry the project's own name/code. Never guess a name
+  // from the UUID: an unknown subject stays absent rather than becoming fiction.
+  // Bare `name`/`code` are only read on project events — on inspection events
+  // `code` is the inspection reference (e.g. "INS-1"), not a facility.
+  return (
+    str(event.metadata?.projectName) ??
+    str(event.metadata?.projectCode) ??
+    (event.resourceType === "project"
+      ? (str(event.metadata?.name) ?? str(event.metadata?.code))
+      : null)
+  );
 }
 
 interface SummaryInput {
@@ -592,11 +599,11 @@ function buildContext(input: SummaryInput, actor: AuditActor | null): AuditActiv
   if (inspector) ctx.push({ label: "Assigned inspector", value: inspector });
 
   const cameraId = str(event.metadata?.cameraId);
-  const cameraName = cameraId ? getProjectName(cameraId, null as unknown as string) : null;
+  const cameraName = str(event.metadata?.cameraName);
   if (cameraId) {
     ctx.push({
       label: "Camera",
-      value: cameraName && cameraName !== cameraId ? `${cameraName} (${cameraId.slice(0, 8)}…)` : cameraId.slice(0, 8) + "…",
+      value: cameraName ? `${cameraName} (${cameraId.slice(0, 8)}…)` : cameraId.slice(0, 8) + "…",
     });
   }
 

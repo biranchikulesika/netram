@@ -186,7 +186,6 @@ export interface FundSummary {
 export interface ProjectFundOverview {
   summary: FundSummary;
   allocations: FundAllocation[];
-  releases: FundRelease[];
   recentExpenses: Expense[];
   recentRiskEvents: FinancialRiskEvent[];
   activeFlags: InspectionFlag[];

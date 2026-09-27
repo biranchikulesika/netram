@@ -13,6 +13,7 @@ export const inspectionSchema = z.object({
   projectCode: z.string(),
   projectName: z.string(),
   districtId: z.string().uuid().nullable(),
+  districtName: z.string().max(200).nullable(),
   templateId: z.string().uuid().nullable(),
   type: z.enum(INSPECTION_TYPES),
   trigger: z.enum(INSPECTION_TRIGGERS),

@@ -37,6 +37,9 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     status: "Pending Verification",
     approvedById: null,
     approvedAt: null,
+    contactName: null,
+    contactPhone: null,
+    contactEmail: null,
     programmeIds: [],
     createdAt: new Date("2026-09-20T10:00:00Z").toISOString(),
     updatedAt: new Date("2026-09-20T10:00:00Z").toISOString(),
@@ -99,6 +102,7 @@ function makeComplaint(overrides: Partial<Complaint> = {}): Complaint {
     projectCode: "PRJ-001",
     projectName: "Vani Vihar SC/ST Hostel",
     districtId: "dist-khordha",
+    districtName: "Khordha",
     complainantName: "A. Citizen",
     contactInfo: null,
     trackingCode: "CMP-2026-AB12",
@@ -223,6 +227,50 @@ describe("ActionInboxService", () => {
     expect(section!.items[0]!.link.href).toBe("/dashboard/inspections/insp-1");
   });
 
+  it("carries the responsible organisation so the order dialog preselects it", async () => {
+    const deps = makeDeps({
+      findingService: {
+        listFindingsAwaitingOrder: vi.fn(async () => [
+          makeFinding({
+            project: {
+              id: "proj-1",
+              code: "PRJ-001",
+              name: "Vani Vihar SC/ST Hostel",
+              districtId: "dist-khordha",
+              organisationId: "org-9",
+            },
+          }),
+        ]),
+      },
+    });
+    (deps.authz.hasPermission as ReturnType<typeof vi.fn>).mockImplementation(
+      (_ctx, permission: string) => permission === "inspection:review",
+    );
+
+    const service = new ActionInboxService(deps);
+    const res = await service.list(mockCtx());
+
+    const section = res.sections.find((s) => s.kind === "finding_review");
+    expect(section!.items[0]!.context.organisationId).toBe("org-9");
+    expect(section!.items[0]!.context.inspectionId).toBe("insp-1");
+  });
+
+  it("omits the responsible organisation key when the facility has no operator", async () => {
+    const deps = makeDeps({
+      findingService: { listFindingsAwaitingOrder: vi.fn(async () => [makeFinding()]) },
+    });
+    (deps.authz.hasPermission as ReturnType<typeof vi.fn>).mockImplementation(
+      (_ctx, permission: string) => permission === "inspection:review",
+    );
+
+    const service = new ActionInboxService(deps);
+    const res = await service.list(mockCtx());
+
+    const section = res.sections.find((s) => s.kind === "finding_review");
+    // null, not a fabricated id — the client falls back to its own selection.
+    expect(section!.items[0]!.context.organisationId).toBeNull();
+  });
+
   it("surfaces only reviewable ATR statuses (submitted, under_review, overdue)", async () => {
     const deps = makeDeps({
       correctiveActionService: {
@@ -331,6 +379,65 @@ describe("ActionInboxService", () => {
 
     expect(res.sections).toHaveLength(2);
     expect(res.total).toBe(3);
+  });
+
+  it("discloses vendor/payment context for expense verification items (popup dossier)", async () => {
+    const listExpenses = vi.fn(async () => ({
+      items: [
+        {
+          id: "exp-1",
+          projectId: "proj-1",
+          organisationId: null,
+          allocationId: null,
+          category: "Works",
+          description: "Boundary wall repair",
+          amount: "25000",
+          transactionDate: "2026-09-01T00:00:00.000Z",
+          vendorName: "Acme Traders",
+          vendorGstin: null,
+          invoiceNumber: "INV-7",
+          invoiceDate: null,
+          paymentReference: null,
+          paymentMethod: null,
+          status: "submitted" as const,
+          submittedById: null,
+          submittedAt: null,
+          verifiedById: null,
+          verifiedAt: null,
+          voidReason: null,
+          voidedById: null,
+          voidedAt: null,
+          createdById: null,
+          createdAt: "2026-09-02T00:00:00.000Z",
+          updatedAt: "2026-09-02T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 100,
+    }));
+    const deps = makeDeps({ expenseService: { listExpenses } });
+    (deps.authz.hasPermission as ReturnType<typeof vi.fn>).mockImplementation(
+      (_ctx, permission: string) => permission === "expense:verify",
+    );
+
+    const service = new ActionInboxService(deps);
+    const res = await service.list(mockCtx());
+
+    const section = res.sections.find((s) => s.kind === "expense_verification");
+    expect(section).toBeDefined();
+    const item = section!.items[0]!;
+    expect(item.amountInr).toBe(25000);
+    // The verify-payment popup renders from context: the full vendor/payment
+    // field set the funds workspace shows must ride with the item (§34).
+    expect(item.context.vendorName).toBe("Acme Traders");
+    expect(item.context.invoiceNumber).toBe("INV-7");
+    expect(item.context.category).toBe("Works");
+    expect(item.context.description).toBe("Boundary wall repair");
+    expect(item.context.transactionDate).toBe("2026-09-01T00:00:00.000Z");
+    // Nulls are still sent ("Not provided" in the popup), not dropped.
+    expect(item.context.vendorGstin).toBeNull();
+    expect(item.context.paymentMethod).toBeNull();
   });
 
   it("returns an empty-but-valid inbox when every fetcher resolves empty", async () => {

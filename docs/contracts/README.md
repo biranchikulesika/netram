@@ -217,6 +217,62 @@ implemented Phase 3–5 behaviour.
 - `GET /attendance/exports/:id`
 - `GET /attendance/exports/:id/download`
 
+### Funds & Allocations
+
+- `GET /funds/allocations`
+- `POST /funds/allocations`
+- `GET /funds/allocations/:id`
+- `PATCH /funds/allocations/:id`
+- `GET /funds/allocations/:id/releases`
+- `POST /funds/releases`
+- `POST /funds/releases/:id/reverse`
+- `GET /funds/projects/:id/summary`
+- `GET /funds/projects/:id/overview`
+
+### Expenses
+
+- `GET /funds/expenses`
+- `POST /funds/expenses`
+- `GET /funds/expenses/:id`
+- `PATCH /funds/expenses/:id`
+- `POST /funds/expenses/:id/submit`
+- `POST /funds/expenses/:id/verify` (maker-checker: the submitter cannot verify)
+- `POST /funds/expenses/:id/reject`
+- `POST /funds/expenses/:id/void`
+
+### Financial Documents
+
+- `POST /funds/documents/upload` (multipart/form-data)
+- `GET /funds/documents/:id`
+- `GET /funds/documents/:id/download`
+- `GET /funds/expenses/:id/documents`
+- `POST /funds/documents/:id/verify` (verified / rejected / flagged)
+
+### Financial Risk (rule engine)
+
+- `POST /financial-risk/evaluate/:projectId`
+- `GET /financial-risk/rules` · `POST /financial-risk/rules`
+- `GET /financial-risk/rules/:id` · `PATCH /financial-risk/rules/:id`
+- `GET /financial-risk/events`
+
+### Inspection Flags
+
+- `GET /inspection-flags`
+- `GET /inspection-flags/:id`
+- `POST /inspection-flags/:id/assign`
+- `POST /inspection-flags/:id/create-inspection`
+- `POST /inspection-flags/:id/review`
+- `POST /inspection-flags/:id/resolve`
+- `POST /inspection-flags/:id/dismiss`
+
+### Project Risk (composite scoring & scheduling)
+
+- `GET /project-risk/rankings`
+- `GET /project-risk/projects/:id/snapshots`
+- `GET /project-risk/projects/:id/latest`
+- `POST /project-risk/evaluate/:projectId`
+- `POST /project-risk/sweep` (scheduled scoring sweep)
+
 ### Health
 
 - `GET /health` (public)

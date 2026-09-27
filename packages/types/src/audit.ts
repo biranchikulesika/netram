@@ -5,6 +5,7 @@ export const AUDIT_ACTIONS = [
   "auth.authorization_failed",
   "project.created",
   "project.updated",
+  "project.contact_updated",
   "project.transitioned",
   "project.approved",
   "project.geofence_sealed",

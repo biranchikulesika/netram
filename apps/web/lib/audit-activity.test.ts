@@ -11,6 +11,9 @@ import {
 const OFFICER = "dce6caae-1730-5259-8331-8232d33c6030"; // authority_officer (Khordha)
 const INSTITUTION = "07806a3a-4951-5ee7-a56b-905ef915de9f"; // institution_admin (Vani Vihar)
 const VANI = "f2e4fac4-8505-5877-b483-5c6acf76dcc0"; // Vani Vihar SC/ST Hostel
+const VANI_NAME = "Vani Vihar SC/ST Hostel";
+// The API discloses the facility name on the event; nothing is derived from the UUID.
+const AT_VANI = { projectName: VANI_NAME } as const;
 
 function evt(partial: Partial<AuditEvent>): AuditEvent {
   return {
@@ -29,21 +32,29 @@ function evt(partial: Partial<AuditEvent>): AuditEvent {
 
 describe("formatAuditActivity", () => {
   it("renders a contextual project creation summary", () => {
-    const a = formatAuditActivity(evt({ action: "project.created" }));
+    const a = formatAuditActivity(
+      evt({ action: "project.created", metadata: { name: VANI_NAME, code: "PRJ-VANI-001" } }),
+    );
     expect(a.summary).toBe("New project registered for Vani Vihar SC/ST Hostel");
     expect(a.category).toBe("facilities");
   });
 
   it("renders inspection summaries with the facility", () => {
     const a = formatAuditActivity(
-      evt({ action: "inspection.started" as AuditEvent["action"], metadata: { surprise: true } }),
+      evt({
+        action: "inspection.started" as AuditEvent["action"],
+        metadata: { surprise: true, ...AT_VANI },
+      }),
     );
     expect(a.summary).toBe("Inspection started at Vani Vihar SC/ST Hostel");
   });
 
   it("renders report submission naturally", () => {
     const a = formatAuditActivity(
-      evt({ action: "inspection.submitted" as AuditEvent["action"], metadata: { code: "INS-1" } }),
+      evt({
+        action: "inspection.submitted" as AuditEvent["action"],
+        metadata: { code: "INS-1", ...AT_VANI },
+      }),
     );
     expect(a.summary).toBe("Inspection report submitted for Vani Vihar SC/ST Hostel");
     expect(a.context.some((c) => c.label === "Reference" && c.value === "INS-1")).toBe(true);
@@ -92,7 +103,10 @@ describe("formatAuditActivity", () => {
 
   it("renders complaint activity with tracking code", () => {
     const a = formatAuditActivity(
-      evt({ action: "complaint.submitted", metadata: { trackingCode: "CMP-7", attachmentCount: 2 } }),
+      evt({
+        action: "complaint.submitted",
+        metadata: { trackingCode: "CMP-7", attachmentCount: 2, ...AT_VANI },
+      }),
     );
     expect(a.summary).toBe("Complaint submitted for Vani Vihar SC/ST Hostel");
     expect(a.detail).toContain("2 attachments");
@@ -117,10 +131,12 @@ describe("resolveActor / actorSide", () => {
   });
 
   it("treats an officer account as authority personnel", () => {
-    const actor = resolveActor(evt({ actorUserId: OFFICER }));
+    const actor = resolveActor(evt({ actorUserId: OFFICER }), {
+      userNames: { [OFFICER]: "Sruti (Welfare Officer)" },
+    });
     expect(actor?.isInstitution).toBe(false);
     expect(actor?.role).toBe("Authority Officer");
-    expect(actor?.account).toContain("Sruti");
+    expect(actor?.account).toBe("Sruti (Welfare Officer)");
     expect(actorSide(evt({ actorUserId: OFFICER }))).toBe("Authority");
   });
 

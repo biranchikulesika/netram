@@ -3,8 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import type { AttendanceAnomaly, AttendanceCalculation, AttendanceReviewAction } from "@netram/types";
-import { getProjectName, getProjectCode } from "../../../lib/presentation";
+import type {
+  AttendanceAnomaly,
+  AttendanceCalculation,
+  AttendanceReviewAction,
+} from "@netram/types";
 import { AnomalyReviewPanel } from "./anomaly-review";
 import { IconSearch, IconAlertTriangle, IconBarChart } from "../../components/icons";
 
@@ -16,12 +19,14 @@ interface AttendanceOverviewProps {
 }
 
 function severityColor(severity: string): string {
-  return {
-    LOW: "#22c55e",
-    MEDIUM: "#eab308",
-    HIGH: "#f97316",
-    CRITICAL: "#ef4444",
-  }[severity] ?? "#6b7280";
+  return (
+    {
+      LOW: "#22c55e",
+      MEDIUM: "#eab308",
+      HIGH: "#f97316",
+      CRITICAL: "#ef4444",
+    }[severity] ?? "#6b7280"
+  );
 }
 
 /** Status pill colors per attendance anomaly state (control-room parity). */
@@ -86,8 +91,8 @@ export function AttendanceOverviewSection({
     if (!q) return calculations;
     return calculations.filter((calc) => {
       return (
-        getProjectName(calc.projectId).toLowerCase().includes(q) ||
-        getProjectCode(calc.projectId).toLowerCase().includes(q) ||
+        (calc.projectName ?? "").toLowerCase().includes(q) ||
+        (calc.projectCode ?? "").toLowerCase().includes(q) ||
         calc.operationalDate.includes(q)
       );
     });
@@ -165,11 +170,11 @@ export function AttendanceOverviewSection({
             >
               <IconAlertTriangle style={{ width: 13, height: 13 }} />
               <span>Alerts</span>
-              <span
-                className={`filter-count-badge ${activeAnomalyCount > 0 ? "danger" : ""}`}
-              >
-                {anomalies.length}
-              </span>
+              {view === "alerts" && (
+                <span className={`filter-count-badge ${activeAnomalyCount > 0 ? "danger" : ""}`}>
+                  {anomalies.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -193,7 +198,9 @@ export function AttendanceOverviewSection({
               className={`filter-tab-btn ${alertView === "active" ? "active" : ""}`}
             >
               <span>Active</span>
-              <span className="filter-count-badge">{activeAnomalyCount}</span>
+              {alertView === "active" && (
+                <span className="filter-count-badge">{activeAnomalyCount}</span>
+              )}
             </button>
             <button
               type="button"
@@ -203,7 +210,9 @@ export function AttendanceOverviewSection({
               className={`filter-tab-btn ${alertView === "resolved" ? "active" : ""}`}
             >
               <span>Resolved</span>
-              <span className="filter-count-badge">{resolvedAnomalyCount}</span>
+              {alertView === "resolved" && (
+                <span className="filter-count-badge">{resolvedAnomalyCount}</span>
+              )}
             </button>
           </div>
         )}
@@ -224,12 +233,16 @@ export function AttendanceOverviewSection({
               }}
             >
               <IconAlertTriangle
-                style={{ width: 30, height: 30, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto", display: "block" }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  color: "var(--text-subtle)",
+                  margin: "0 auto 0.75rem auto",
+                  display: "block",
+                }}
               />
               <h3>
-                {searchQuery
-                  ? "No matching anomalies"
-                  : `No ${alertView} attendance anomalies`}
+                {searchQuery ? "No matching anomalies" : `No ${alertView} attendance anomalies`}
               </h3>
               <p className="muted">
                 {searchQuery
@@ -310,9 +323,14 @@ export function AttendanceOverviewSection({
                       {anomaly.projectName && <>{` · ${anomaly.projectName}`}</>}
                       {anomaly.projectCode && <>{` (${anomaly.projectCode})`}</>}
                       {anomaly.operationalDate && <>{` · Op day ${anomaly.operationalDate}`}</>}
-                      {anomaly.anomalyType === "PERSISTENT_LOW_ATTENDANCE"
-                        && typeof anomaly.supportingSignals?.streakDays === "number"
-                        && (<> · Below expected for {anomaly.supportingSignals.streakDays} consecutive days</>)}
+                      {anomaly.anomalyType === "PERSISTENT_LOW_ATTENDANCE" &&
+                        typeof anomaly.supportingSignals?.streakDays === "number" && (
+                          <>
+                            {" "}
+                            · Below expected for {anomaly.supportingSignals.streakDays} consecutive
+                            days
+                          </>
+                        )}
                     </span>
                   </span>
 
@@ -372,174 +390,169 @@ export function AttendanceOverviewSection({
       {/* Project attendance table (Stats view) */}
       {view === "stats" &&
         (calculations.length === 0 ? (
-        <div
-          className="empty-state"
-          style={{
-            padding: "3rem",
-            textAlign: "center",
-            background: "#ffffff",
-            borderRadius: "8px",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <h3>No Attendance Data</h3>
-          <p className="muted">
-            No attendance calculations available for your authorized jurisdiction.
-          </p>
-        </div>
-      ) : (
-        <div className="table-card attendance-table-card" style={{ marginTop: "1.5rem" }}>
-          <table className="attendance-table">
-            <thead>
-              <tr
-                style={{
-                  background: "#f8fafc",
-                  borderBottom: "1px solid #e2e8f0",
-                }}
-              >
-                <th style={thStyle}>Project</th>
-                <th style={thStyle}>Op Day</th>
-                <th style={thStyle}>Expected</th>
-                <th style={thStyle}>Present</th>
-                <th style={thStyle}>Absent</th>
-                <th style={thStyle}>Unknown</th>
-                <th style={thStyle}>Data Quality</th>
-                <th style={thStyle}>Track Record</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCalculations.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    style={{
-                      textAlign: "center",
-                      padding: "3rem 1rem",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    <IconSearch
-                      width={22}
-                      height={22}
-                      style={{ opacity: 0.5, margin: "0 auto 0.5rem", display: "block" }}
-                    />
-                    <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                      No attendance rows found
-                    </div>
-                    <div style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
-                      Adjust the search query or pick another date to see more.
-                    </div>
-                  </td>
+          <div
+            className="empty-state"
+            style={{
+              padding: "3rem",
+              textAlign: "center",
+              background: "#ffffff",
+              borderRadius: "8px",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <h3>No Attendance Data</h3>
+            <p className="muted">
+              No attendance calculations available for your authorized jurisdiction.
+            </p>
+          </div>
+        ) : (
+          <div className="table-card attendance-table-card" style={{ marginTop: "1.5rem" }}>
+            <table className="attendance-table">
+              <thead>
+                <tr
+                  style={{
+                    background: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                  }}
+                >
+                  <th style={thStyle}>Project</th>
+                  <th style={thStyle}>Op Day</th>
+                  <th style={thStyle}>Expected</th>
+                  <th style={thStyle}>Present</th>
+                  <th style={thStyle}>Absent</th>
+                  <th style={thStyle}>Unknown</th>
+                  <th style={thStyle}>Data Quality</th>
+                  <th style={thStyle}>Track Record</th>
                 </tr>
-              ) : (
-                filteredCalculations.map((calc) => {
-                  return (
-                    <tr
-                      key={`${calc.projectId}:${calc.operationalDate}`}
-                      className="table-row"
-                      style={{ borderBottom: "1px solid #f1f5f9" }}
+              </thead>
+              <tbody>
+                {filteredCalculations.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      style={{
+                        textAlign: "center",
+                        padding: "3rem 1rem",
+                        color: "var(--text-muted)",
+                      }}
                     >
-                      <td style={tdStyle}>
-                        <Link
-                          href={`/dashboard/projects/${calc.projectId}`}
-                          style={{ textDecoration: "none", color: "inherit" }}
-                          title={`Open project details for ${getProjectName(calc.projectId)}`}
-                        >
-                          <strong
-                            style={{
-                              color: "#1d4ed8",
-                              fontWeight: 600,
-                              fontSize: "0.85rem",
-                            }}
+                      <IconSearch
+                        width={22}
+                        height={22}
+                        style={{ opacity: 0.5, margin: "0 auto 0.5rem", display: "block" }}
+                      />
+                      <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                        No attendance rows found
+                      </div>
+                      <div style={{ fontSize: "0.78rem", marginTop: "0.25rem" }}>
+                        Adjust the search query or pick another date to see more.
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCalculations.map((calc) => {
+                    return (
+                      <tr
+                        key={`${calc.projectId}:${calc.operationalDate}`}
+                        className="table-row"
+                        style={{ borderBottom: "1px solid #f1f5f9" }}
+                      >
+                        <td style={tdStyle}>
+                          <Link
+                            href={`/dashboard/projects/${calc.projectId}`}
+                            style={{ textDecoration: "none", color: "inherit" }}
+                            title={`Open project details for ${calc.projectName ?? calc.projectCode ?? "facility"}`}
                           >
-                            {getProjectName(calc.projectId)}
-                          </strong>
-                          <div
+                            <strong
+                              style={{
+                                color: "#1d4ed8",
+                                fontWeight: 600,
+                                fontSize: "0.85rem",
+                              }}
+                            >
+                              {calc.projectName ?? "Sanctioned facility"}
+                            </strong>
+                            <div
+                              style={{
+                                fontSize: "0.72rem",
+                                color: "#64748b",
+                                marginTop: "2px",
+                                fontFamily: "var(--font-mono)",
+                              }}
+                            >
+                              {calc.projectCode ?? "—"}
+                            </div>
+                          </Link>
+                        </td>
+                        <td style={tdStyle}>{calc.operationalDate}</td>
+                        <td style={tdStyle}>{calc.expected !== null ? calc.expected : "—"}</td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            fontWeight: 600,
+                            color:
+                              calc.coverage === "COMPLETE"
+                                ? "#16a34a"
+                                : calc.coverage === "PARTIAL"
+                                  ? "#d97706"
+                                  : "#6b7280",
+                          }}
+                        >
+                          {calc.present}
+                        </td>
+                        <td style={tdStyle}>{calc.absent !== null ? calc.absent : "—"}</td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            color: calc.unknown > 0 ? "#dc2626" : "#94a3b8",
+                          }}
+                        >
+                          {calc.unknown}
+                        </td>
+                        <td style={tdStyle}>
+                          <span
                             style={{
                               fontSize: "0.72rem",
-                              color: "#64748b",
-                              marginTop: "2px",
-                              fontFamily: "var(--font-mono)",
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.03em",
                             }}
                           >
-                            {getProjectCode(calc.projectId)}
-                          </div>
-                        </Link>
-                      </td>
-                      <td style={tdStyle}>{calc.operationalDate}</td>
-                      <td style={tdStyle}>
-                        {calc.expected !== null ? calc.expected : "—"}
-                      </td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          fontWeight: 600,
-                          color:
-                            calc.coverage === "COMPLETE"
-                              ? "#16a34a"
-                              : calc.coverage === "PARTIAL"
-                              ? "#d97706"
-                              : "#6b7280",
-                        }}
-                      >
-                        {calc.present}
-                      </td>
-                      <td style={tdStyle}>
-                        {calc.absent !== null ? calc.absent : "—"}
-                      </td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          color:
-                            calc.unknown > 0 ? "#dc2626" : "#94a3b8",
-                        }}
-                      >
-                        {calc.unknown}
-                      </td>
-                      <td style={tdStyle}>
-                        <span
+                            {calc.dataQuality}
+                          </span>
+                        </td>
+                        <td
                           style={{
-                            fontSize: "0.72rem",
-                            fontWeight: 600,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.03em",
-                          }}
-                        >
-                          {calc.dataQuality}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          fontSize: "0.75rem",
-                          color: "#64748b",
-                        }}
-                      >
-                        <Link
-                          href={`/dashboard/attendance/records/${calc.projectId}?year=${calc.operationalDate.slice(0, 4)}`}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.35rem",
+                            ...tdStyle,
                             fontSize: "0.75rem",
-                            fontWeight: 600,
-                            color: "#2563eb",
-                            textDecoration: "none",
-                            whiteSpace: "nowrap",
+                            color: "#64748b",
                           }}
-                          title={`View yearly attendance record for ${getProjectName(calc.projectId)}`}
                         >
-                          View Record
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      ))}
+                          <Link
+                            href={`/dashboard/attendance/records/${calc.projectId}?year=${calc.operationalDate.slice(0, 4)}`}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.35rem",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              color: "#2563eb",
+                              textDecoration: "none",
+                              whiteSpace: "nowrap",
+                            }}
+                            title={`View yearly attendance record for ${calc.projectName ?? "Sanctioned facility"}`}
+                          >
+                            View Record
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ))}
     </section>
   );
 }

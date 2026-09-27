@@ -43,6 +43,9 @@ export interface CorrectiveActionProject {
   code: string;
   name: string;
   districtId: UUID | null;
+  /** District name resolved at read time. */
+  districtName: string | null;
+  stateName: string | null;
   /** May embed "GPS Coordinates: lat, lng" for map fallback positioning. */
   description: string | null;
 }

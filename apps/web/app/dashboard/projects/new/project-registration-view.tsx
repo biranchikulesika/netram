@@ -387,6 +387,9 @@ export function ProjectRegistrationView({
       organisationId: organisationId || null,
       programmeIds: selectedProgrammes,
       description: compiledDescription || null,
+      contactName: inChargeName.trim() || null,
+      contactPhone: inChargePhone.trim() || null,
+      contactEmail: inChargeEmail.trim() || null,
     };
 
     const res = await fetch(projectId ? `/api/projects/${projectId}` : "/api/projects", {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getClient, getSessionUser } from "../../../../lib/api";
-import { formatDate, formatDateTime, getDistrictName } from "../../../../lib/presentation";
+import { getUserNames } from "../../../../lib/facility";
+import { formatDate, formatDateTime, formatDistrict } from "../../../../lib/presentation";
 import { NavHeader } from "../../../components/nav-header";
 import {
   IconBuilding,
@@ -42,7 +43,7 @@ export default async function InspectionDetailPage({
     // optional
   }
 
-  const [evidenceList, observations, findings, organisations, correctiveActions] =
+  const [evidenceList, observations, findings, organisations, correctiveActions, userNames] =
     await Promise.all([
       client.listEvidence(inspection.id).catch(() => []),
       client.listObservations(inspection.id).catch(() => []),
@@ -51,6 +52,7 @@ export default async function InspectionDetailPage({
       client
         .listCorrectiveActions({ inspectionId: inspection.id, pageSize: 100 })
         .catch(() => ({ items: [], total: 0, page: 1, pageSize: 100 })),
+      getUserNames(),
     ]);
 
   const caByFindingId = Object.fromEntries(
@@ -71,7 +73,7 @@ const canTransitionAuthority =
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
   const districtLabel = project?.districtId
-    ? getDistrictName(project.districtId, project.code)
+    ? formatDistrict(project.districtName, project.stateName)
     : "Odisha State Jurisdiction";
 
   return (
@@ -160,6 +162,7 @@ const canTransitionAuthority =
           inspectionId={inspection.id}
           items={observations}
           canAdd={canAddObs}
+          userNames={userNames}
         />
 
         <FindingsSection

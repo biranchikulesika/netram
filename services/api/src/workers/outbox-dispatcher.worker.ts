@@ -1,7 +1,11 @@
 import { pathToFileURL } from "node:url";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
-import { getDb, OutboxRepository } from "@netram/data";
+import {
+  getDb,
+  OutboxRepository,
+  AuthorizationRepository,
+} from "@netram/data";
 import { loadWorkerEnv } from "@netram/config";
 import type { OutboxRecord, NotificationType } from "@netram/types";
 import type { NotificationJobData } from "./notification.worker.js";
@@ -17,6 +21,8 @@ export interface OutboxDispatcherOptions {
 export const DISPATCHER_HANDLED_EVENT_TYPES = [
   "inspection.assigned",
   "corrective_action.overdue",
+  "corrective_action.created",
+  "complaint.escalated",
   "ai.anomaly_detected",
 ] as const;
 
@@ -31,6 +37,7 @@ export class OutboxDispatcher {
 
   constructor(
     private readonly outboxRepo: OutboxRepository,
+    private readonly authzRepo: Pick<AuthorizationRepository, "findUserIdsWithRole">,
     opts: OutboxDispatcherOptions,
   ) {
     this.redisConnection = new Redis(opts.redisUrl, { maxRetriesPerRequest: null });
@@ -165,6 +172,65 @@ export class OutboxDispatcher {
         break;
       }
 
+      /**
+       * Corrective action ordered (from a confirmed inspection finding or an
+       * escalated complaint): pulse every institution administrator so the
+       * order surfaces in their Corrections section (§41 — event-driven,
+       * minimal payload; authoritative details are fetched on open).
+       */
+      case "corrective_action.created": {
+        const recipientIds = await this.authzRepo.findUserIdsWithRole("institution_admin");
+        for (const uid of recipientIds) {
+          await this.notificationQueue.add(
+            "notification.send",
+            {
+              notificationId: `notif-ca-created-${record.id}-${uid}`,
+              userId: uid,
+              title: "Corrective action ordered — action required",
+              channel: "in_app",
+              type: "corrective_action.overdue" satisfies NotificationType,
+            },
+            {
+              jobId: `notif-ca-created-${record.id}-${uid}`,
+              attempts: 3,
+              removeOnComplete: { count: 500 },
+              removeOnFail: { count: 1000 },
+            },
+          );
+        }
+        break;
+      }
+
+      /**
+       * A complaint against an establishment was escalated: the institution
+       * administrator is informed that review is required, without disclosing
+       * complainant identity or attachments (§35 — a complaint is not guilt).
+       */
+      case "complaint.escalated": {
+        const payload = record.payload as { projectId?: string };
+        if (!payload.projectId) break;
+        const recipientIds = await this.authzRepo.findUserIdsWithRole("institution_admin");
+        for (const uid of recipientIds) {
+          await this.notificationQueue.add(
+            "notification.send",
+            {
+              notificationId: `notif-complaint-esc-${record.id}-${uid}`,
+              userId: uid,
+              title: "Complaint escalated — review required",
+              channel: "in_app",
+              type: "corrective_action.overdue" satisfies NotificationType,
+            },
+            {
+              jobId: `notif-complaint-esc-${record.id}-${uid}`,
+              attempts: 3,
+              removeOnComplete: { count: 500 },
+              removeOnFail: { count: 1000 },
+            },
+          );
+        }
+        break;
+      }
+
       case "ai.anomaly_detected": {
         const payload = record.payload as { anomalyId?: string; description?: string };
         await this.notificationQueue.add(
@@ -199,7 +265,8 @@ export async function startOutboxDispatcherWorker(
 ): Promise<{ close: () => Promise<void>; dispatcher: OutboxDispatcher }> {
   const db = getDb(opts.databaseUrl);
   const outboxRepo = new OutboxRepository(db);
-  const dispatcher = new OutboxDispatcher(outboxRepo, opts);
+  const authzRepo = new AuthorizationRepository(db);
+  const dispatcher = new OutboxDispatcher(outboxRepo, authzRepo, opts);
   dispatcher.start();
   return {
     dispatcher,

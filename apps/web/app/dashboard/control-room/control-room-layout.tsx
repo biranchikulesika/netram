@@ -7,12 +7,7 @@ import { CameraStatusView } from "./camera-status";
 import { AlertsScreen } from "./alerts-screen";
 import { AIAnomalyModal } from "./ai-anomaly-modal";
 import { CameraLiveViewer } from "./camera-live-viewer";
-import {
-  IconVideo,
-  IconAlertTriangle,
-  IconBarChart,
-  IconSearch,
-} from "../../components/icons";
+import { IconVideo, IconAlertTriangle, IconBarChart, IconSearch } from "../../components/icons";
 
 export interface ControlRoomLayoutProps {
   cameras: PublicCctvCamera[];
@@ -68,7 +63,9 @@ export function ControlRoomLayout({
       if (next.has(cameraId)) {
         next.delete(cameraId);
       } else if (next.size >= MAX_WALL_TILES) {
-        setWallCapMessage(`Wall mode is limited to ${MAX_WALL_TILES} concurrent streams. Disable a tile to enable another.`);
+        setWallCapMessage(
+          `Wall mode is limited to ${MAX_WALL_TILES} concurrent streams. Disable a tile to enable another.`,
+        );
         return prev;
       } else {
         next.add(cameraId);
@@ -77,10 +74,30 @@ export function ControlRoomLayout({
     });
   };
 
-  const SECTION_TABS: { key: ControlRoomTab; label: string; icon: React.ReactNode; count: number }[] = [
-    { key: "feeds", label: "Live Feeds", icon: <IconVideo style={{ width: 15, height: 15 }} />, count: 0 },
-    { key: "alerts", label: "Alerts", icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />, count: 0 },
-    { key: "status", label: "Status", icon: <IconBarChart style={{ width: 15, height: 15 }} />, count: 0 },
+  const SECTION_TABS: {
+    key: ControlRoomTab;
+    label: string;
+    icon: React.ReactNode;
+    count: number;
+  }[] = [
+    {
+      key: "feeds",
+      label: "Live Feeds",
+      icon: <IconVideo style={{ width: 15, height: 15 }} />,
+      count: 0,
+    },
+    {
+      key: "alerts",
+      label: "Alerts",
+      icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />,
+      count: 0,
+    },
+    {
+      key: "status",
+      label: "Status",
+      icon: <IconBarChart style={{ width: 15, height: 15 }} />,
+      count: 0,
+    },
   ];
 
   return (
@@ -149,9 +166,18 @@ export function ControlRoomLayout({
               className={`filter-tab-btn ${alertView === "active" ? "active" : ""}`}
             >
               <span>Active</span>
-              <span className="filter-count-badge">
-                {anomalyList.filter((a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated").length}
-              </span>
+              {alertView === "active" && (
+                <span className="filter-count-badge">
+                  {
+                    anomalyList.filter(
+                      (a) =>
+                        a.status === "new" ||
+                        a.status === "reviewed" ||
+                        a.status === "investigated",
+                    ).length
+                  }
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -161,9 +187,14 @@ export function ControlRoomLayout({
               className={`filter-tab-btn ${alertView === "resolved" ? "active" : ""}`}
             >
               <span>Resolved</span>
-              <span className="filter-count-badge">
-                {anomalyList.filter((a) => a.status === "acted_upon" || a.status === "dismissed").length}
-              </span>
+              {alertView === "resolved" && (
+                <span className="filter-count-badge">
+                  {
+                    anomalyList.filter((a) => a.status === "acted_upon" || a.status === "dismissed")
+                      .length
+                  }
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -179,7 +210,9 @@ export function ControlRoomLayout({
               className={`filter-tab-btn ${statusFilter === "all" ? "active" : ""}`}
             >
               <span>All</span>
-              <span className="filter-count-badge">{cameras.length}</span>
+              {statusFilter === "all" && (
+                <span className="filter-count-badge">{cameras.length}</span>
+              )}
             </button>
             <button
               type="button"
@@ -189,9 +222,11 @@ export function ControlRoomLayout({
               className={`filter-tab-btn ${statusFilter === "online" ? "active" : ""}`}
             >
               <span>Online</span>
-              <span className="filter-count-badge">
-                {cameras.filter((c) => c.status === "active").length}
-              </span>
+              {statusFilter === "online" && (
+                <span className="filter-count-badge">
+                  {cameras.filter((c) => c.status === "active").length}
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -201,9 +236,11 @@ export function ControlRoomLayout({
               className={`filter-tab-btn ${statusFilter === "offline" ? "active" : ""}`}
             >
               <span>Offline</span>
-              <span className="filter-count-badge">
-                {cameras.filter((c) => c.status !== "active").length}
-              </span>
+              {statusFilter === "offline" && (
+                <span className="filter-count-badge">
+                  {cameras.filter((c) => c.status !== "active").length}
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -234,14 +271,11 @@ export function ControlRoomLayout({
         />
       ) : (
         <AlertsScreen
-          anomalies={
-            anomalyList
-              .filter((a) =>
-                alertView === "active"
-                  ? a.status === "new" || a.status === "reviewed" || a.status === "investigated"
-                  : a.status === "acted_upon" || a.status === "dismissed",
-              )
-          }
+          anomalies={anomalyList.filter((a) =>
+            alertView === "active"
+              ? a.status === "new" || a.status === "reviewed" || a.status === "investigated"
+              : a.status === "acted_upon" || a.status === "dismissed",
+          )}
           cameras={cameras}
           districtNames={districtNames}
           view={alertView}

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { CorrectiveAction, CorrectiveActionStatus } from "@netram/types";
-import { getDistrictName } from "../../../lib/presentation";
+import { formatDistrict } from "../../../lib/presentation";
 import { DISTRICT_COORDINATES, parseGpsCoordinates } from "../projects/real-leaflet-map";
 import NetramOverviewMap, {
   type MapFacility,
@@ -93,7 +93,7 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
       lat: c.lat,
       lng: c.lng,
       color: c.color,
-      districtLabel: getDistrictName(c.project.districtId, c.project.code),
+      districtLabel: formatDistrict(c.project.districtName, c.project.stateName),
     }));
   }, [clusters]);
 

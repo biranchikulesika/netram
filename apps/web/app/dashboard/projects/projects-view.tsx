@@ -10,12 +10,8 @@ import {
   IconGrid,
   IconList,
   IconMapPin,
-  IconCheck,
-  IconX,
-  IconClock,
-  IconShieldCheck,
 } from "../../components/icons";
-import { getDistrictName } from "../../../lib/presentation";
+import { formatDistrict } from "../../../lib/presentation";
 import { ProjectsMapView } from "./projects-map-view";
 import { ProjectOverviewCard, formatRegisteredDate } from "./project-overview-card";
 
@@ -27,8 +23,6 @@ interface ProjectsViewProps {
   initialStatus?: string;
   initialView?: "table" | "cards" | "map";
   initialSearch?: string;
-  /** Registrations awaiting an approve/reject decision (only passed to approvers). */
-  verificationQueue?: Project[];
   apiUrl: string;
 }
 
@@ -202,7 +196,6 @@ export function ProjectsView({
   initialStatus = "ALL",
   initialView = "table",
   initialSearch = "",
-  verificationQueue,
   apiUrl: _apiUrl,
 }: ProjectsViewProps) {
   const router = useRouter();
@@ -324,11 +317,6 @@ export function ProjectsView({
 
   return (
     <div>
-      {/* Verification queue — authority officials decide pending registrations here */}
-      {verificationQueue && verificationQueue.length > 0 && (
-        <VerificationQueueSection projects={verificationQueue} />
-      )}
-
       {/* Toolbar: Search, Filters & View Toggle */}
       <div className="registry-toolbar" style={{ marginBottom: viewMode === "map" ? "0.6rem" : "1.25rem" }}>
         <div className="search-filter-group">
@@ -495,7 +483,7 @@ export function ProjectsView({
                       </td>
                       <td>
                         <span className="table-jurisdiction">
-                          {getDistrictName(p.districtId, p.code)}
+                          {formatDistrict(p.districtName, p.stateName)}
                         </span>
                       </td>
                       <td>
@@ -576,132 +564,5 @@ export function ProjectsView({
         </div>
       )}
     </div>
-  );
-}
-
-/* ---------------- Verification queue ---------------- */
-
-interface QueueRowState {
-  busy: boolean;
-  error: string | null;
-  done: "Approved" | "Rejected" | null;
-}
-
-/**
- * Registrations awaiting an authority verification decision. Visible only to
- * users holding project:approve (server enforces the same rule); actions go
- * through the standard transition endpoint which re-checks permission and
- * jurisdiction server-side.
- */
-function VerificationQueueSection({ projects }: { projects: Project[] }) {
-  const router = useRouter();
-  const [rowState, setRowState] = useState<Record<string, QueueRowState>>({});
-
-  const visible = projects.filter(
-    (p) => rowState[p.id]?.done !== "Approved" && rowState[p.id]?.done !== "Rejected",
-  );
-  if (visible.length === 0) {
-    // All decisions made — nothing to show.
-    return null;
-  }
-
-  async function decide(projectId: string, to: "Approved" | "Draft", kind: "Approved" | "Rejected") {
-    setRowState((s) => ({ ...s, [projectId]: { busy: true, error: null, done: null } }));
-    try {
-      const res = await fetch(`/api/projects/${projectId}/transition`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to }),
-      });
-      const payload = (await res.json().catch(() => null)) as {
-        error?: { code?: string; message?: string };
-      } | null;
-      if (!res.ok || payload?.error) {
-        setRowState((s) => ({
-          ...s,
-          [projectId]: { busy: false, error: payload?.error?.message ?? `Request failed (${res.status})`, done: null },
-        }));
-        return;
-      }
-      setRowState((s) => ({ ...s, [projectId]: { busy: false, error: null, done: kind } }));
-      router.refresh();
-    } catch (err) {
-      setRowState((s) => ({
-        ...s,
-        [projectId]: { busy: false, error: err instanceof Error ? err.message : String(err), done: null },
-      }));
-    }
-  }
-
-  return (
-    <section className="verification-queue" aria-label="Registrations awaiting verification">
-      <div className="vq-head">
-        <span className="vq-head-icon">
-          <IconShieldCheck width={15} height={15} />
-        </span>
-        <div className="vq-head-titles">
-          <h2>Awaiting verification</h2>
-          <p>
-            {visible.length} registration{visible.length === 1 ? "" : "s"} submitted for your decision.
-          </p>
-        </div>
-      </div>
-
-      <div className="vq-list">
-        {visible.map((p) => {
-          const st = rowState[p.id] ?? { busy: false, error: null, done: null };
-          return (
-            <div className={`vq-row ${st.done ? "vq-row-done" : ""}`} key={p.id}>
-              <div className="vq-main">
-                <Link href={`/dashboard/projects/${p.id}`} className="vq-name" title={p.name}>
-                  {p.name}
-                </Link>
-                <div className="vq-meta">
-                  <span className="vq-code">{p.code}</span>
-                  <span className="vq-meta-sep">·</span>
-                  <span>{getDistrictName(p.districtId, p.code)}</span>
-                  <span className="vq-meta-sep">·</span>
-                  <span>Regd. {formatRegisteredDate(p.createdAt)}</span>
-                </div>
-              </div>
-
-              {st.error && <div className="vq-error" role="alert">{st.error}</div>}
-
-              <div className="vq-actions">
-                <button
-                  type="button"
-                  className="vq-btn vq-btn-approve"
-                  disabled={st.busy}
-                  onClick={() => decide(p.id, "Approved", "Approved")}
-                  title="Approve registration"
-                >
-                  <IconCheck width={13} height={13} />
-                  {st.busy ? "…" : "Approve"}
-                </button>
-                <button
-                  type="button"
-                  className="vq-btn vq-btn-reject"
-                  disabled={st.busy}
-                  onClick={() => decide(p.id, "Draft", "Rejected")}
-                  title="Send back to draft for correction"
-                >
-                  <IconX width={13} height={13} />
-                  Reject
-                </button>
-                <Link href={`/dashboard/projects/${p.id}`} className="vq-review-link" title="Review full dossier before deciding">
-                  Review
-                </Link>
-              </div>
-            </div>
-          );
-        })}
-        {visible.length === 0 && (
-          <div className="vq-empty">
-            <IconClock width={14} height={14} />
-            All caught up — no registrations awaiting verification.
-          </div>
-        )}
-      </div>
-    </section>
   );
 }

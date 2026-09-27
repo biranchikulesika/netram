@@ -25,6 +25,7 @@ export interface AiAnomalyListFilter {
   severity?: string;
   status?: AnomalyStatus;
   inspectionId?: UUID;
+  projectId?: UUID;
   jurisdictionIds?: UUID[];
   page: number;
   pageSize: number;

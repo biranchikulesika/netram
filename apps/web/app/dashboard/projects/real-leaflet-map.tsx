@@ -12,7 +12,7 @@ import {
   IconChevronRight,
   IconCheck,
 } from "../../components/icons";
-import { getDistrictName, getAuthorityName } from "../../../lib/presentation";
+import { formatDistrict, getAuthorityName } from "../../../lib/presentation";
 import { ProjectOverviewCard } from "./project-overview-card";
 import NetramOverviewMap, {
   type MapFacility,
@@ -272,7 +272,7 @@ export default function RealLeafletMap({
       lat: p.lat,
       lng: p.lng,
       color: getStatusColor(p.status),
-      districtLabel: getDistrictName(p.districtId, p.code),
+      districtLabel: formatDistrict(p.districtName, p.stateName),
       pinGlyph: p.type === "authority_project" ? ("star" as const) : ("dot" as const),
     }));
   }, [facilities]);
@@ -1175,7 +1175,7 @@ export default function RealLeafletMap({
                     overflowWrap: "anywhere",
                   }}
                 >
-                  {getAuthorityName(proj.authorityId)}
+                  {getAuthorityName(proj.authorityId, proj.authorityName)}
                 </span>
               </div>
             </div>

@@ -11,6 +11,7 @@ import type {
   ProjectListQuery,
   ProjectRegistryItem,
   ProjectType,
+  UpdateProjectContactCommand,
 } from "@netram/types";
 
 export interface CreateProjectInput {
@@ -23,6 +24,10 @@ export interface CreateProjectInput {
   villageId?: string | null;
   /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
   schemeComponentId?: string | null;
+  /** Facility contact details (person in charge + phone/email). */
+  contactName?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
   programmeIds?: string[];
 }
 
@@ -122,6 +127,9 @@ export class ProjectService {
       districtId: input.districtId ?? null,
       villageId: input.villageId ?? null,
       schemeComponentId: input.schemeComponentId ?? null,
+      contactName: input.contactName ?? null,
+      contactPhone: input.contactPhone ?? null,
+      contactEmail: input.contactEmail ?? null,
       programmeIds: input.programmeIds ?? [],
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
@@ -162,6 +170,9 @@ export class ProjectService {
       districtId: input.districtId ?? project.districtId,
       villageId: input.villageId ?? project.villageId,
       schemeComponentId: input.schemeComponentId ?? project.schemeComponentId,
+      contactName: input.contactName ?? project.contactName,
+      contactPhone: input.contactPhone ?? project.contactPhone,
+      contactEmail: input.contactEmail ?? project.contactEmail,
       programmeIds: input.programmeIds ?? project.programmeIds,
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
@@ -170,6 +181,51 @@ export class ProjectService {
       auditMetadata: { name: input.name, code: project.code },
       eventType: "project.updated",
       eventPayload: { name: input.name, code: project.code },
+    });
+  }
+
+  /**
+   * Updates the facility's contact details (person in charge + contacts).
+   * Permitted for anyone who can edit the facility (project:create) within
+   * jurisdiction, regardless of lifecycle status — contact correction is a
+   * routine administrative task, not a workflow decision. Audited atomically.
+   */
+  async updateContact(
+    ctx: RequestUserContext,
+    projectId: string,
+    input: UpdateProjectContactCommand,
+  ): Promise<Project> {
+    const project = await this.repository.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found.");
+    if (!this.authz.canAccessDistrict(ctx, project.districtId)) {
+      throw AppError.notFound("Project not found.");
+    }
+    this.authz.requirePermission(ctx, CREATE, {
+      districtId: project.districtId,
+    });
+
+    const changedFields = (
+      ["contactName", "contactPhone", "contactEmail"] as const
+    ).filter((f) => input[f] !== undefined && input[f] !== project[f]);
+
+    return this.repository.updateContactWithAuditAndEvent({
+      projectId,
+      contactName: input.contactName,
+      contactPhone: input.contactPhone,
+      contactEmail: input.contactEmail,
+      actorUserId: ctx.userId,
+      requestId: ctx.requestId ?? null,
+      ipAddress: ctx.ipAddress ?? null,
+      auditAction: "project.contact_updated",
+      auditMetadata: {
+        code: project.code,
+        changedFields,
+      },
+      eventType: "project.contact_updated",
+      eventPayload: {
+        code: project.code,
+        changedFields,
+      },
     });
   }
 

@@ -46,6 +46,8 @@ export interface Complaint {
   projectCode: string;
   projectName: string;
   districtId: UUID | null;
+  /** District name resolved from `districtId` at read time. */
+  districtName: string | null;
   complainantName: string | null;
   contactInfo: string | null;
   trackingCode: string;

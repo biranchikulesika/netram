@@ -1,4 +1,7 @@
+import { notFound } from "next/navigation";
 import { getFacility, getFacilityAttendance } from "../../../../../lib/facility";
+import { getSessionUser } from "../../../../../lib/api";
+import { can } from "../../../../../lib/permissions";
 import { formatDate } from "../../../../../lib/presentation";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +15,11 @@ export default async function FacilityAttendancePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // Attendance monitoring is authority-side oversight data: institutions are
+  // never shown it, on any entry path (§34 — omission, not hiding).
+  const session = await getSessionUser();
+  if (!session || !can(session.permissions, "attendance:monitor:read")) notFound();
+
   const { id } = await params;
   const project = await getFacility(id);
   if (!project) return null;

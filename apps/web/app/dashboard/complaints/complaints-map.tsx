@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Complaint, ComplaintStatus } from "@netram/types";
-import { getDistrictName } from "../../../lib/presentation";
+import { formatDistrict } from "../../../lib/presentation";
 import { DISTRICT_COORDINATES } from "../projects/real-leaflet-map";
 import NetramOverviewMap, {
   type MapFacility,
@@ -83,7 +83,7 @@ export default function ComplaintsMap({ complaints }: ComplaintsMapProps) {
       lat: c.lat,
       lng: c.lng,
       color: c.color,
-      districtLabel: getDistrictName(c.complaints[0]!.districtId, c.complaints[0]!.projectCode),
+      districtLabel: formatDistrict(c.complaints[0]!.districtName),
     }));
   }, [clusters]);
 

@@ -16,6 +16,21 @@ import {
   IconIndianRupee,
   IconChevronRight,
 } from "../../components/icons";
+import {
+  EXPENSE_STATUS_FILTERS,
+  StatusFilter,
+  matchesStatusFilter,
+} from "../../components/fund-status-filter";
+import {
+  AllocationDetailModal,
+  ExpenseDetailModal,
+  FlagActionModal,
+  FlagDetailModal,
+  ScheduleInspectionModal,
+  expenseStatusMeta,
+  formatCurrency,
+  formatDate,
+} from "../../components/funds-ui";
 
 export interface ProjectOption {
   id: string;
@@ -59,32 +74,6 @@ interface FundsDashboardClientProps {
   permissions: string[];
 }
 
-function formatCurrency(val: string | number | null | undefined): string {
-  if (val === null || val === undefined) return "₹ 0.00";
-  const num = typeof val === "number" ? val : parseFloat(val);
-  if (isNaN(num)) return "₹ 0.00";
-  return (
-    "₹ " +
-    num.toLocaleString("en-IN", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  );
-}
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
-
 function fyOf(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -100,24 +89,6 @@ export function currentAndNextFiscalYears(now = new Date()): string[] {
 
 export function expenseAmountMatches(entered: string, expected: string): boolean {
   return entered.replace(/,/g, "").trim() === expected.replace(/,/g, "").trim();
-}
-
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "150px 1fr",
-        gap: "0.75rem",
-        fontSize: "0.85rem",
-        padding: "0.5rem 0",
-        borderBottom: "1px solid var(--color-border-subtle)",
-      }}
-    >
-      <div style={{ color: "var(--text-muted)", fontWeight: 600 }}>{label}</div>
-      <div style={{ color: "var(--text-primary)" }}>{children}</div>
-    </div>
-  );
 }
 
 const fyArrowStyle: React.CSSProperties = {
@@ -175,42 +146,6 @@ const expenseGroupStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: "0.85rem",
 };
-
-const STATUS_FILTERS: { value: string; label: string; statuses: string[] }[] = [
-  { value: "ALL", label: "All", statuses: [] },
-  { value: "pending", label: "Pending Verification", statuses: ["submitted", "under_review"] },
-  { value: "verified", label: "Verified", statuses: ["verified"] },
-  { value: "rejected", label: "Rejected", statuses: ["rejected"] },
-];
-
-// Selectable buckets exclude the synthetic "ALL" row.
-const SELECTABLE_STATUSES = STATUS_FILTERS.filter((f) => f.value !== "ALL").map((f) => f.value);
-
-function matchesStatusFilter(status: string, selected: string[]) {
-  if (selected.length === 0) return true;
-  return SELECTABLE_STATUSES.some((value) => {
-    if (!selected.includes(value)) return false;
-    const bucket = STATUS_FILTERS.find((f) => f.value === value);
-    return bucket?.statuses.includes(status) ?? false;
-  });
-}
-
-// One current lifecycle state per expense; buckets below are disjoint.
-const expenseStatusMeta = [
-  { value: "submitted", label: "Pending Verification", color: "#f59e0b" },
-  { value: "under_review", label: "Under Review", color: "#0ea5e9" },
-  { value: "verified", label: "Verified", color: "#059669" },
-  { value: "rejected", label: "Rejected", color: "#dc2626" },
-  { value: "voided", label: "Voided", color: "#64748b" },
-  { value: "draft", label: "Draft", color: "#8b5cf6" },
-];
-
-function expenseStatusLabel(status: Expense["status"]): string {
-  return expenseStatusMeta.find((item) => item.value === status)?.label ?? status;
-}
-
-// Disjoint lifecycle buckets (no expense counted twice)
-
 
 function formatCompact(val: number): string {
   if (val >= 1e7) return "₹ " + (val / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + " Cr";
@@ -400,28 +335,9 @@ export function FundsDashboardClient({
 
   // Filters
   const [search, setSearch] = useState("");
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([...SELECTABLE_STATUSES]);
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
-
-  // Multi-select: clicking "All" selects every bucket; unchecking an individual
-  // bucket leaves "All" unchecked while keeping the rest; checking the final
-  // remaining bucket re-checks "All" automatically (allSelected).
-  // Edge case: an empty selection would silently mean "show everything", so the
-  // last checked bucket cannot be unchecked and "All" is a select-only control.
-  const allSelected = selectedStatuses.length === SELECTABLE_STATUSES.length;
-  const toggleStatus = (value: string) => {
-    if (value === "ALL") {
-      setSelectedStatuses([...SELECTABLE_STATUSES]);
-      return;
-    }
-    setSelectedStatuses((prev) =>
-      prev.includes(value)
-        ? prev.length > 1
-          ? prev.filter((v) => v !== value)
-          : prev
-        : [...prev, value],
-    );
-  };
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
+    EXPENSE_STATUS_FILTERS.filter((f) => f.value !== "ALL").map((f) => f.value),
+  );
   const [fyFilter, setFyFilter] = useState<string>("");
 
   // Modals
@@ -575,7 +491,7 @@ export function FundsDashboardClient({
   const filteredExpenses = useMemo(() => {
     return expenses
       .filter((e) => {
-        if (!matchesStatusFilter(e.status, selectedStatuses)) return false;
+        if (!matchesStatusFilter(e.status, selectedStatuses, EXPENSE_STATUS_FILTERS)) return false;
         if (fyFilter && fyOf(e.transactionDate) !== fyFilter) return false;
         if (search) {
           const q = search.toLowerCase();
@@ -1001,84 +917,12 @@ export function FundsDashboardClient({
 
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
           {view === "expenses" && (
-            <div style={{ position: "relative" }}>
-              <button
-                type="button"
-                onClick={() => setShowStatusMenu((s) => !s)}
-                className="filter-tab-btn active"
-                aria-haspopup="menu"
-                aria-expanded={showStatusMenu}
-                title="Filter by status"
-                style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
-              >
-                <span>
-                  {allSelected
-                    ? "All"
-                    : selectedStatuses.length === 1
-                      ? (STATUS_FILTERS.find((o) => o.value === selectedStatuses[0])?.label ?? "All")
-                      : `${selectedStatuses.length} statuses`}
-                </span>
-                <IconChevronRight
-                  width={12}
-                  height={12}
-                  style={{ transform: showStatusMenu ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}
-                />
-              </button>
-              {showStatusMenu && (
-                <>
-                  <div onClick={() => setShowStatusMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: 0,
-                      top: "calc(100% + 0.5rem)",
-                      zIndex: 50,
-                      minWidth: "220px",
-                      background: "#ffffff",
-                      border: "1px solid var(--color-border-subtle)",
-                      borderRadius: "10px",
-                      boxShadow: "0 12px 32px rgba(15, 23, 42, 0.18)",
-                      padding: "0.4rem",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.2rem",
-                    }}
-                  >
-                    {STATUS_FILTERS.map((opt) => {
-                      const checked = opt.value === "ALL" ? allSelected : selectedStatuses.includes(opt.value);
-                      const isLastRemaining = opt.value !== "ALL" && selectedStatuses.length === 1 && checked;
-                      return (
-                        <label
-                          key={opt.value}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.55rem",
-                            padding: opt.value === "ALL" ? "0.45rem 0.6rem" : "0.4rem 0.6rem 0.4rem 1.9rem",
-                            marginLeft: opt.value === "ALL" ? 0 : "0.5rem",
-                            marginBottom: opt.value === "ALL" ? "0.35rem" : 0,
-                            borderLeft: opt.value === "ALL" ? "none" : "1px solid var(--color-border-subtle)",
-                            borderRadius: "7px",
-                            cursor: isLastRemaining ? "not-allowed" : "pointer",
-                            opacity: checked ? 1 : 0.75,
-                            fontSize: "0.85rem",
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={isLastRemaining}
-                            onChange={() => toggleStatus(opt.value)}
-                            style={{ width: 15, height: 15, cursor: isLastRemaining ? "not-allowed" : "pointer", accentColor: "#4338ca" }}
-                          />
-                          <span>{opt.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
+            <StatusFilter
+              filters={EXPENSE_STATUS_FILTERS}
+              selected={selectedStatuses}
+              onChange={setSelectedStatuses}
+              title="Filter by status"
+            />
           )}
 
           {canSubmitExpense && canAllocate ? (
@@ -2467,692 +2311,75 @@ export function FundsDashboardClient({
 
       {/* MODAL: TRIGGER FIELD INSPECTION */}
       {showInspectModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="card"
-            style={{
-              width: "480px",
-              padding: "1.5rem",
-              background: "#ffffff",
-              borderRadius: "8px",
-            }}
-          >
-            <h3 style={{ margin: "0 0 0.5rem 0", color: "var(--color-navy-dark)" }}>
-              Escalate to Special Field Inspection
-            </h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0 0 1rem 0" }}>
-              This will create a new special field inspection with trigger{" "}
-              <strong>risk_engine</strong>, linked to Flag #{showInspectModal.id.slice(0, 8)}.
-            </p>
-            <div
-              style={{
-                background: "var(--bg-subtle)",
-                padding: "0.75rem",
-                borderRadius: "4px",
-                fontSize: "0.85rem",
-                marginBottom: "1.25rem",
-              }}
-            >
-              <div>
-                <strong>Facility:</strong> {projectMap.get(showInspectModal.projectId)?.name}
-              </div>
-              <div style={{ marginTop: "0.25rem" }}>
-                <strong>Risk Level:</strong> {showInspectModal.riskLevel.toUpperCase()} (Score:{" "}
-                {showInspectModal.riskScore}/100)
-              </div>
-              <div style={{ marginTop: "0.25rem", color: "var(--text-muted)" }}>
-                {showInspectModal.explanation}
-              </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-              <button
-                type="button"
-                onClick={() => setShowInspectModal(null)}
-                style={{
-                  background: "var(--bg-subtle)",
-                  border: "1px solid var(--color-border-strong)",
-                  padding: "0.4rem 0.8rem",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTriggerInspection(showInspectModal.id)}
-                style={{
-                  background: "var(--color-navy-brand)",
-                  color: "#ffffff",
-                  border: "none",
-                  padding: "0.4rem 1.1rem",
-                  borderRadius: "4px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Create Field Inspection
-              </button>
-            </div>
-          </div>
-        </div>
+        <ScheduleInspectionModal
+          flag={showInspectModal}
+          projectName={projectMap.get(showInspectModal.projectId)?.name ?? showInspectModal.projectId.slice(0, 8)}
+          onConfirm={() => handleTriggerInspection(showInspectModal.id)}
+          onClose={() => setShowInspectModal(null)}
+        />
       )}
 
       {/* MODAL: FLAG ACTIONS (REVIEW / RESOLVE / DISMISS) */}
       {showFlagActionModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="card"
-            style={{
-              width: "480px",
-              padding: "1.5rem",
-              background: "#ffffff",
-              borderRadius: "8px",
-            }}
-          >
-            <h3 style={{ margin: "0 0 0.5rem 0", color: "var(--color-navy-dark)" }}>
-              {showFlagActionModal.action === "review"
-                ? "Add Review Notes"
-                : showFlagActionModal.action === "resolve"
-                  ? "Resolve This Alert"
-                  : "Dismiss This Alert"}
-            </h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0 0 1rem 0" }}>
-              {showFlagActionModal.action === "review"
-                ? "Record what you checked and what you concluded. These notes are saved to the audit trail."
-                : showFlagActionModal.action === "resolve"
-                  ? "Explain how the discrepancy was settled. This becomes part of the permanent audit record."
-                  : "Dismissal removes this alert from the active list. A written reason is required and permanently audited."}
-            </p>
-            <form onSubmit={handleFlagAction}>
-              <textarea
-                required
-                rows={3}
-                placeholder={
-                  showFlagActionModal.action === "review"
-                    ? "What did you review, and what did you find?"
-                    : showFlagActionModal.action === "resolve"
-                      ? "How was the discrepancy resolved?"
-                      : "Why is this alert not valid?"
-                }
-                value={flagNote}
-                onChange={(e) => setFlagNote(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  borderRadius: "4px",
-                  border: "1px solid var(--color-border-strong)",
-                  fontSize: "0.85rem",
-                  marginBottom: "1rem",
-                }}
-              />
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  onClick={() => setShowFlagActionModal(null)}
-                  style={{
-                    background: "#ffffff",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--color-border-strong)",
-                    padding: "0.45rem 0.95rem",
-                    borderRadius: "6px",
-                    fontSize: "0.85rem",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    background: "var(--color-navy-brand)",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "0.45rem 1.1rem",
-                    borderRadius: "6px",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {showFlagActionModal.action === "review"
-                    ? "Save Notes"
-                    : showFlagActionModal.action === "resolve"
-                      ? "Mark Resolved"
-                      : "Dismiss Alert"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <FlagActionModal
+          action={showFlagActionModal.action}
+          note={flagNote}
+          onNoteChange={setFlagNote}
+          onSubmit={handleFlagAction}
+          onClose={() => setShowFlagActionModal(null)}
+        />
       )}
 
       {/* MODAL: ROW DETAIL (ALLOCATION / EXPENSE / FLAG) */}
-      {detail && (detailAllocation || detailExpense || detailFlag) && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-            zIndex: 1000,
+      {detailAllocation && (
+        <AllocationDetailModal
+          allocation={detailAllocation}
+          projectName={projectMap.get(detailAllocation.projectId)?.name ?? detailAllocation.projectId.slice(0, 8)}
+          onClose={() => setDetail(null)}
+        />
+      )}
+
+      {detail && detailFlag && (
+        <FlagDetailModal
+          flag={detailFlag}
+          projectName={projectMap.get(detailFlag.projectId)?.name ?? detailFlag.projectId.slice(0, 8)}
+          projectCode={projectMap.get(detailFlag.projectId)?.code ?? detailFlag.projectId.slice(0, 8)}
+          canInspect={canInspect}
+          onClose={() => setDetail(null)}
+          onReview={() => {
+            setDetail(null);
+            setShowFlagActionModal({ flag: detailFlag, action: "review" });
           }}
-          onClick={() => setDetail(null)}
-        >
-          <div
-            className="card"
-            style={{
-              width: "min(760px, calc(100vw - 2rem))",
-              maxHeight: "90vh",
-              overflowY: "auto",
-              padding: "1.5rem",
-              background: "#ffffff",
-              borderRadius: "12px",
-              boxSizing: "border-box",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
-                <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 750 }}>
-                  {detailAllocation
-                    ? "Fund Allocation Details"
-                    : detailExpense
-                      ? "Expenditure Details"
-                      : "Financial Alert"}
-                </h2>
-                {detailExpense && (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.4rem",
-                      padding: "0.4rem 0.65rem",
-                      borderRadius: "999px",
-                      fontSize: "0.72rem",
-                      fontWeight: 700,
-                      whiteSpace: "nowrap",
-                      color:
-                        detailExpense.status === "verified"
-                          ? "#166534"
-                          : detailExpense.status === "rejected" || detailExpense.status === "voided"
-                            ? "#991b1b"
-                            : detailExpense.status === "draft"
-                              ? "#6b21a8"
-                              : "#92400e",
-                      background:
-                        detailExpense.status === "verified"
-                          ? "#dcfce7"
-                          : detailExpense.status === "rejected" || detailExpense.status === "voided"
-                            ? "#fee2e2"
-                            : detailExpense.status === "draft"
-                              ? "#f3e8ff"
-                              : "#fef3c7",
-                    }}
-                  >
-                    {expenseStatusLabel(detailExpense.status)}
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetail(null)}
-                aria-label="Close details"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: "0.35rem",
-                  background: "var(--bg-subtle)",
-                  border: "1px solid var(--color-border-subtle)",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  color: "var(--text-muted)",
-                }}
-              >
-                <IconX width={20} height={20} />
-              </button>
-            </div>
-
-            {detailAllocation && (
-              <>
-                <DetailRow label="Facility / Project">
-                  <Link href={`/projects/${detailAllocation.projectId}/funds`} style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
-                    {projectMap.get(detailAllocation.projectId)?.name ?? detailAllocation.projectId.slice(0, 8)}
-                  </Link>
-                </DetailRow>
-                <DetailRow label="Allocation ID">
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{detailAllocation.id}</span>
-                </DetailRow>
-                <DetailRow label="Financial Year">
-                  <span className="badge">{detailAllocation.fiscalYear}</span>
-                </DetailRow>
-                <DetailRow label="Status">
-                  <span className="badge">{detailAllocation.status.toUpperCase()}</span>
-                </DetailRow>
-                <DetailRow label="Sanctioned Amount">
-                  <span style={{ fontWeight: 700 }}>{formatCurrency(detailAllocation.allocatedAmount)}</span>
-                  <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}> {detailAllocation.currency}</span>
-                </DetailRow>
-                <DetailRow label="Scheme">
-                  <span style={{ fontWeight: 700 }}>{detailAllocation.scheme ?? "Government Scheme Allocation"}</span>
-                </DetailRow>
-                {detailAllocation.description && <DetailRow label="Description">{detailAllocation.description}</DetailRow>}
-                <DetailRow label="Sanctioned At">
-                  {detailAllocation.sanctionedAt ? formatDate(detailAllocation.sanctionedAt) : "—"}
-                </DetailRow>
-                <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end" }}>
-                  <Link
-                    href={`/projects/${detailAllocation.projectId}/funds`}
-                    style={{
-                      background: "var(--color-navy-brand)",
-                      color: "#ffffff",
-                      border: "none",
-                      borderRadius: "4px",
-                      padding: "0.4rem 1.1rem",
-                      fontWeight: 600,
-                      textDecoration: "none",
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    Open Facility Fund Dossier
-                  </Link>
-                </div>
-              </>
-            )}
-
-            {detailExpense && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "flex-start",
-                    gap: "1rem",
-                    padding: "1.1rem",
-                    borderRadius: "8px",
-                    background: "linear-gradient(135deg, #f8fafc, #eef2ff)",
-                    border: "1px solid var(--color-border-subtle)",
-                  }}
-                >
-                  <div style={{ flex: "1 1 180px" }}>
-                    <div
-                      style={{
-                        fontSize: "0.7rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.07em",
-                        textTransform: "uppercase",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      Expenditure amount
-                    </div>
-                    <div style={{ marginTop: "0.2rem", fontSize: "1.8rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                      {formatCurrency(detailExpense.amount)}
-                    </div>
-                  </div>
-                  <div style={{ flex: "2 1 320px", paddingLeft: "1rem", borderLeft: "1px solid var(--color-border-subtle)" }}>
-                    <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                      Purpose of expenditure
-                    </div>
-                    <div style={{ marginTop: "0.25rem", fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-primary)" }}>
-                      {detailExpense.description || "—"}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "0.75rem", marginTop: "0.8rem", paddingTop: "0.7rem", borderTop: "1px solid var(--color-border-subtle)", textAlign: "left" }}>
-                      <div>
-                        <div style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          Expenditure type
-                        </div>
-                        <div style={{ marginTop: "0.2rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                          {detailExpense.category}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          Expenditure date
-                        </div>
-                        <div style={{ marginTop: "0.2rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                          {formatDate(detailExpense.transactionDate)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)",
-                    gap: "0.75rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "0.8rem",
-                      borderRadius: "7px",
-                      background: "var(--bg-subtle)",
-                      border: "1px solid var(--color-border-subtle)",
-                    }}
-                  >
-                    <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      Beneficiary establishment
-                    </div>
-                    <Link
-                      href={`/projects/${detailExpense.projectId}/funds`}
-                      style={{ display: "block", marginTop: "0.3rem", fontWeight: 700, color: "var(--color-navy-brand)" }}
-                    >
-                      {detailExpenseProject?.name ?? `Project ${detailExpense.projectId.slice(0, 8)}`}
-                    </Link>
-                    <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                      {detailExpenseProject?.code ?? "Code unavailable"}
-                      {detailExpenseProject?.organisationName ? ` · ${detailExpenseProject.organisationName}` : ""}
-                    </div>
-                    {detailExpenseProject && (
-                      <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {detailExpenseProject.stateName} / {detailExpenseProject.districtName}
-                      </div>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      padding: "0.8rem",
-                      borderRadius: "7px",
-                      background: "var(--bg-subtle)",
-                      border: "1px solid var(--color-border-subtle)",
-                    }}
-                  >
-                    <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      Allocated funds
-                    </div>
-                    <div style={{ marginTop: "0.3rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                      {detailExpenseAllocation?.scheme ?? (detailExpense.allocationId ? "Allocation unavailable" : "Unlinked expenditure")}
-                    </div>
-                    <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                      {detailExpenseAllocation
-                        ? `${detailExpenseAllocation.fiscalYear} · ${formatCurrency(detailExpenseAllocation.allocatedAmount)}`
-                        : "No fund allocation selected"}
-                    </div>
-                  </div>
-                </div>
-
-                <section>
-                  <h3 style={{ margin: "0 0 0.55rem", fontSize: "0.85rem", fontWeight: 700 }}>Vendor and payment information</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "1rem" }}>
-                    <DetailRow label="Vendor / payee">{detailExpense.vendorName}</DetailRow>
-                    <DetailRow label="GSTIN">
-                      {detailExpense.vendorGstin ? (
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{detailExpense.vendorGstin}</span>
-                      ) : (
-                        "Not provided"
-                      )}
-                    </DetailRow>
-                    <DetailRow label="Invoice / voucher number">
-                      {detailExpense.invoiceNumber ? (
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{detailExpense.invoiceNumber}</span>
-                      ) : (
-                        "Not provided"
-                      )}
-                    </DetailRow>
-                    <DetailRow label="Invoice Date">{formatDate(detailExpense.invoiceDate)}</DetailRow>
-                    <DetailRow label="Payment mode">{detailExpense.paymentMethod ?? "Not recorded"}</DetailRow>
-                    <DetailRow label="Payment reference">
-                      {detailExpense.paymentReference ? (
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{detailExpense.paymentReference}</span>
-                      ) : (
-                        "Not recorded"
-                      )}
-                    </DetailRow>
-                  </div>
-                </section>
-
-                {detailExpense.voidReason && (
-                  <div
-                    role="note"
-                    style={{
-                      padding: "0.8rem",
-                      borderRadius: "7px",
-                      background: "#fee2e2",
-                      border: "1px solid #fca5a5",
-                      color: "#991b1b",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    <strong>Reason for voiding:</strong> {detailExpense.voidReason}
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display:
-                      canVerify && (detailExpense.status === "submitted" || detailExpense.status === "under_review")
-                        ? "flex"
-                        : "none",
-                    justifyContent: "flex-end",
-                    alignItems: "center",
-                    gap: "1rem",
-                    paddingTop: "0.85rem",
-                    borderTop: "1px solid var(--color-border-subtle)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "0.55rem", flexWrap: "wrap" }}>
-                    {canVerify && (detailExpense.status === "submitted" || detailExpense.status === "under_review") && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetail(null);
-                            setShowRejectModal(detailExpense.id);
-                          }}
-                          style={{
-                            padding: "0.5rem 0.9rem",
-                            borderRadius: "6px",
-                            background: "#ffffff",
-                            border: "1px solid #fca5a5",
-                            color: "#991b1b",
-                            fontSize: "0.8rem",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Reject
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetail(null);
-                            handleVerifyExpense(detailExpense.id);
-                          }}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.35rem",
-                            padding: "0.5rem 0.9rem",
-                            borderRadius: "6px",
-                            background: "linear-gradient(90deg, var(--action-green), var(--action-green-dark))",
-                            border: "none",
-                            color: "#ffffff",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Verify expenditure
-                          <IconChevronRight width={13} height={13} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {detailFlag && (
-              <>
-                <DetailRow label="Facility / Project">
-                  <Link href={`/projects/${detailFlag.projectId}/funds`} style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
-                    {projectMap.get(detailFlag.projectId)?.name ?? detailFlag.projectId.slice(0, 8)}
-                  </Link>
-                </DetailRow>
-                <DetailRow label="Project Code">
-                  <span style={{ fontFamily: "var(--font-mono)" }}>
-                    {projectMap.get(detailFlag.projectId)?.code ?? detailFlag.projectId.slice(0, 8)}
-                  </span>
-                </DetailRow>
-                <DetailRow label="Severity">
-                  <span className="badge badge-surprise">
-                    {detailFlag.riskLevel.toUpperCase()} · {detailFlag.riskScore}
-                  </span>
-                </DetailRow>
-                <DetailRow label="Trigger Source">{detailFlag.triggerSource.replace(/_/g, " ")}</DetailRow>
-                <DetailRow label="Current State">
-                  <span className="badge">{detailFlag.status.replace(/_/g, " ").toUpperCase()}</span>
-                </DetailRow>
-                <DetailRow label="Reason">{detailFlag.explanation}</DetailRow>
-                {detailFlag.evidenceRefs.length > 0 && (
-                  <DetailRow label="Evidence Refs">
-                    {detailFlag.evidenceRefs.map((r) => (
-                      <div key={r.id} style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>
-                        {r.label}
-                      </div>
-                    ))}
-                  </DetailRow>
-                )}
-                {detailFlag.linkedInspectionId && (
-                  <DetailRow label="Linked Inspection">
-                    <Link href={`/inspections/${detailFlag.linkedInspectionId}`} style={{ color: "#2563eb" }}>
-                      Inspection #{detailFlag.linkedInspectionId.slice(0, 8)}
-                    </Link>
-                  </DetailRow>
-                )}
-                {detailFlag.reviewNotes && <DetailRow label="Review Notes">{detailFlag.reviewNotes}</DetailRow>}
-                {detailFlag.resolution && <DetailRow label="Resolution">{detailFlag.resolution}</DetailRow>}
-                {detailFlag.dismissedReason && (
-                  <DetailRow label="Dismissal Reason">
-                    <span style={{ color: "#991b1b" }}>{detailFlag.dismissedReason}</span>
-                  </DetailRow>
-                )}
-                <DetailRow label="Raised On">{formatDate(detailFlag.createdAt)}</DetailRow>
-
-                {(canInspect ||
-                  detailFlag.status === "open" ||
-                  (detailFlag.status !== "resolved" && detailFlag.status !== "dismissed")) && (
-                  <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                    {detailFlag.status === "open" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDetail(null);
-                          setShowFlagActionModal({ flag: detailFlag, action: "review" });
-                        }}
-                        style={{
-                          background: "#ffffff",
-                          color: "var(--text-primary)",
-                          border: "1px solid var(--color-border-strong)",
-                          borderRadius: "6px",
-                          padding: "0.45rem 1.1rem",
-                          fontSize: "0.85rem",
-                          fontWeight: 500,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Add Notes
-                      </button>
-                    )}
-                    {canInspect && !detailFlag.linkedInspectionId && detailFlag.status !== "resolved" && detailFlag.status !== "dismissed" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDetail(null);
-                          setShowInspectModal(detailFlag);
-                        }}
-                        style={{
-                          background: "#ffffff",
-                          color: "var(--text-primary)",
-                          border: "1px solid var(--color-border-strong)",
-                          borderRadius: "6px",
-                          padding: "0.45rem 1.1rem",
-                          fontSize: "0.85rem",
-                          fontWeight: 500,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Schedule Inspection
-                      </button>
-                    )}
-                    {detailFlag.status !== "resolved" && detailFlag.status !== "dismissed" && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetail(null);
-                            setShowFlagActionModal({ flag: detailFlag, action: "dismiss" });
-                          }}
-                          style={{
-                            background: "#ffffff",
-                            color: "#991b1b",
-                            border: "1px solid #fca5a5",
-                            borderRadius: "6px",
-                            padding: "0.45rem 1.1rem",
-                            marginLeft: "auto",
-                            fontSize: "0.85rem",
-                            fontWeight: 500,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Dismiss
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetail(null);
-                            setShowFlagActionModal({ flag: detailFlag, action: "resolve" });
-                          }}
-                          style={{
-                            background: "var(--color-navy-brand)",
-                            color: "#ffffff",
-                            border: "none",
-                            borderRadius: "6px",
-                            padding: "0.45rem 1.1rem",
-                            fontSize: "0.85rem",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Mark Resolved
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+          onInspect={() => {
+            setDetail(null);
+            setShowInspectModal(detailFlag);
+          }}
+          onDismiss={() => {
+            setDetail(null);
+            setShowFlagActionModal({ flag: detailFlag, action: "dismiss" });
+          }}
+          onResolve={() => {
+            setDetail(null);
+            setShowFlagActionModal({ flag: detailFlag, action: "resolve" });
+          }}
+        />
+      )}
+      {detailExpense && (
+        <ExpenseDetailModal
+          expense={detailExpense}
+          allocation={detailExpenseAllocation}
+          project={detailExpenseProject}
+          canVerify={canVerify}
+          onClose={() => setDetail(null)}
+          onReject={(id) => {
+            setDetail(null);
+            setShowRejectModal(id);
+          }}
+          onVerify={(id) => {
+            setDetail(null);
+            handleVerifyExpense(id);
+          }}
+        />
       )}
     </div>
   );

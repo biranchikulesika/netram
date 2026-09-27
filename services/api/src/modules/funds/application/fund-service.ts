@@ -25,6 +25,17 @@ const FUND_READ = "fund:read" as const;
 const FUND_ALLOCATE = "fund:allocate" as const;
 const FUND_RELEASE = "fund:release" as const;
 
+/**
+ * Inspection flags are oversight instruments against the establishment, not
+ * part of its own financial dossier (§34). They are disclosed only to
+ * oversight holders; the inspected organisation does not see them here.
+ */
+const RISK_READ_PERMISSIONS = ["financial_risk:read", "project_risk:read"] as const;
+
+function canViewRiskFlags(ctx: RequestUserContext): boolean {
+  return RISK_READ_PERMISSIONS.some((p) => ctx.permissions.has(p));
+}
+
 export class FundService {
   constructor(
     private readonly authz: AuthorizationService,
@@ -149,16 +160,15 @@ export class FundService {
     return this.fundRepo.listReleasesByAllocationId(allocationId);
   }
 
-  async createRelease(
-    ctx: RequestUserContext,
-    input: CreateReleaseInput,
-  ): Promise<FundRelease> {
+  async createRelease(ctx: RequestUserContext, input: CreateReleaseInput): Promise<FundRelease> {
     const allocation = await this.getAllocation(ctx, input.allocationId);
     const project = await this.projectRepo.findById(allocation.projectId);
     this.authz.requirePermission(ctx, FUND_RELEASE, { districtId: project?.districtId });
 
     if (allocation.status !== "active") {
-      throw AppError.conflict(`Cannot release funds against allocation in '${allocation.status}' status`);
+      throw AppError.conflict(
+        `Cannot release funds against allocation in '${allocation.status}' status`,
+      );
     }
 
     const existingRef = await this.fundRepo.findReleaseByReference(input.referenceNumber);
@@ -251,11 +261,10 @@ export class FundService {
     if (!project) throw AppError.notFound("Project not found");
     this.authz.requirePermission(ctx, FUND_READ, { districtId: project.districtId });
 
-    const [summary, allocationsResult, releases, expenses, riskEvents, flagsResult] =
+    const [summary, allocationsResult, expenses, riskEvents, flagsResult] =
       await Promise.all([
         this.fundRepo.getProjectFundSummary(projectId),
         this.fundRepo.listAllocations({ projectId, pageSize: 100 }),
-        this.fundRepo.listReleasesByProject(projectId),
         this.expenseRepo.findByProject(projectId),
         this.riskRepo.listEventsByProject(projectId),
         this.flagRepo.list({ projectId, pageSize: 100 }),
@@ -264,12 +273,11 @@ export class FundService {
     return {
       summary,
       allocations: allocationsResult.items,
-      releases,
       recentExpenses: expenses.slice(0, 10),
-      recentRiskEvents: riskEvents.slice(0, 10),
-      activeFlags: flagsResult.items.filter(
-        (f) => f.status !== "resolved" && f.status !== "dismissed",
-      ),
+      recentRiskEvents: canViewRiskFlags(ctx) ? riskEvents.slice(0, 10) : [],
+      activeFlags: canViewRiskFlags(ctx)
+        ? flagsResult.items.filter((f) => f.status !== "resolved" && f.status !== "dismissed")
+        : [],
     };
   }
 }

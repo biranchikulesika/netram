@@ -10,7 +10,7 @@ import type {
   Finding,
   Project,
 } from "@netram/types";
-import { formatDate, formatDateTime, getDistrictName } from "../../../../lib/presentation";
+import { formatDate, formatDateTime, formatDistrict } from "../../../../lib/presentation";
 import { getStatusBadge } from "../corrective-action-card";
 import {
   IconClock,
@@ -116,7 +116,7 @@ export function CorrectiveActionDetailClient({
     new Date(action.deadline) < new Date();
 
   const districtLabel = project?.districtId
-    ? getDistrictName(project.districtId, project.code)
+    ? formatDistrict(project.districtName, project.stateName)
     : "Odisha State Jurisdiction";
 
   const lifecycleRendered = (() => {

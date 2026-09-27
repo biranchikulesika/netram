@@ -2,10 +2,16 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ActionInboxItem, ActionInboxSection } from "@netram/types";
+import type {
+  ActionInboxItem,
+  ActionInboxSection,
+  OrganisationView,
+} from "@netram/types";
 import { formatDateTime } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
-import { ActionInboxCard, type InboxAction } from "./action-inbox-card";
+import { ActionInboxCard, expenseVerifyAction, type InboxAction } from "./action-inbox-card";
+import { DecisionConfirmModal } from "./decision-confirm-modal";
+import { ExpenseVerifyPopup } from "./expense-verify-popup";
 import { IconSearch } from "../../components/icons";
 
 /* ---------- Local inbox icon (not in the shared icon set) ---------- */
@@ -82,14 +88,27 @@ const INITIAL_ROW_STATE: RowState = { busy: false, error: null, done: false };
 export function ActionInboxView({
   sections,
   generatedAt,
+  organisations,
 }: {
   sections: ActionInboxSection[];
   generatedAt: string;
+  organisations: OrganisationView[];
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<ActionFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [rowState, setRowState] = useState<Record<string, RowState>>({});
+  /** Decision awaiting typed confirmation in the modal. */
+  const [pendingDecision, setPendingDecision] = useState<{
+    item: ActionInboxItem;
+    action: InboxAction;
+  } | null>(null);
+  const [decisionBusy, setDecisionBusy] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
+  /** Expenditure currently open in the verify-payment popup (null = closed). */
+  const [expensePopup, setExpensePopup] = useState<ActionInboxItem | null>(null);
+  const [expenseBusy, setExpenseBusy] = useState(false);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
 
   /** Flat item list across all sections for card rendering. */
   const allItems = useMemo(() => sections.flatMap((s) => s.items), [sections]);
@@ -123,8 +142,24 @@ export function ActionInboxView({
     }));
   }
 
-  /** Executes a card CTA through the workflow's own canonical endpoint. */
-  async function handleAction(item: ActionInboxItem, action: InboxAction) {
+  /** Card CTA: stage the decision in the confirm modal (no write yet). */
+  function handleAction(item: ActionInboxItem, action: InboxAction) {
+    setDecisionError(null);
+    setPendingDecision({ item, action });
+  }
+
+  /** Card CTA: open the verify-payment popup for an expenditure item. */
+  function handleVerifyPayment(item: ActionInboxItem) {
+    setExpenseError(null);
+    setExpensePopup(item);
+  }
+
+  /** Executes the confirmed decision through the workflow's canonical endpoint. */
+  async function executeDecision() {
+    if (!pendingDecision) return;
+    const { item, action } = pendingDecision;
+    setDecisionBusy(true);
+    setDecisionError(null);
     mark(item.id, { busy: true, error: null, done: false });
     try {
       const res = await fetch(action.endpoint, {
@@ -136,18 +171,59 @@ export function ActionInboxView({
         error?: { code?: string; message?: string };
       } | null;
       if (!res.ok || payload?.error) {
-        mark(item.id, {
-          busy: false,
-          error: payload?.error?.message ?? `Request failed (${res.status})`,
-        });
+        const message = payload?.error?.message ?? `Request failed (${res.status})`;
+        setDecisionError(message);
+        mark(item.id, { busy: false, error: message });
         return;
       }
       // Completed: the workflow moved past its decision point, so the item
       // leaves the inbox when the server data refreshes.
       mark(item.id, { busy: false, done: true });
+      setPendingDecision(null);
+      // A verify staged from the payment popup closes the popup on success.
+      setExpensePopup(null);
       router.refresh();
     } catch (err) {
-      mark(item.id, { busy: false, error: err instanceof Error ? err.message : String(err) });
+      const message = err instanceof Error ? err.message : String(err);
+      setDecisionError(message);
+      mark(item.id, { busy: false, error: message });
+    } finally {
+      setDecisionBusy(false);
+    }
+  }
+
+  /**
+   * Executes an expenditure rejection from the verify-payment popup with the
+   * stated reason (the funds workspace's canonical reject endpoint).
+   */
+  async function executeExpenseReject(item: ActionInboxItem, reason: string) {
+    setExpenseBusy(true);
+    setExpenseError(null);
+    mark(item.id, { busy: true, error: null, done: false });
+    try {
+      const res = await fetch(`/api/v1/funds/expenses/${item.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const payload = (await res.json().catch(() => null)) as {
+        error?: { code?: string; message?: string };
+      } | null;
+      if (!res.ok || payload?.error) {
+        const message = payload?.error?.message ?? `Request failed (${res.status})`;
+        setExpenseError(message);
+        mark(item.id, { busy: false, error: message });
+        return;
+      }
+      mark(item.id, { busy: false, done: true });
+      setExpensePopup(null);
+      router.refresh();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setExpenseError(message);
+      mark(item.id, { busy: false, error: message });
+    } finally {
+      setExpenseBusy(false);
     }
   }
 
@@ -264,12 +340,43 @@ export function ActionInboxView({
                   key={item.id}
                   state={rowState[item.id] ?? INITIAL_ROW_STATE}
                   onAction={handleAction}
+                  onVerifyPayment={handleVerifyPayment}
+                  organisations={organisations}
                 />
               ))}
             </div>
           ))}
         </div>
       )}
+
+      {/* Verify-payment popup for expenditure items (funds-workspace idiom).
+          Rendered before the confirm modal so the modal stacks above it. */}
+      <ExpenseVerifyPopup
+        item={expensePopup}
+        busy={expenseBusy || decisionBusy}
+        error={expenseError}
+        onVerify={(expenseItem) => {
+          // Stage the verify in the type-to-confirm modal; the popup stays
+          // open underneath until the decision records.
+          handleAction(expenseItem, expenseVerifyAction(expenseItem));
+        }}
+        onReject={executeExpenseReject}
+        onClose={() => {
+          if (!expenseBusy && !decisionBusy) setExpensePopup(null);
+        }}
+      />
+
+      {/* Type-to-confirm guard for card decisions (§73 command-safety in UI). */}
+      <DecisionConfirmModal
+        item={pendingDecision?.item ?? null}
+        action={pendingDecision?.action ?? null}
+        busy={decisionBusy}
+        error={decisionError}
+        onConfirm={executeDecision}
+        onClose={() => {
+          if (!decisionBusy) setPendingDecision(null);
+        }}
+      />
     </div>
   );
 }

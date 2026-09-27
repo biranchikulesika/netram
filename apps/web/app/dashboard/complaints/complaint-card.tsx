@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Complaint, ComplaintStatus } from "@netram/types";
-import { formatDate, getDistrictName } from "../../../lib/presentation";
+import { formatDate, formatDistrict } from "../../../lib/presentation";
 import {
   IconAlertTriangle,
   IconBuilding,
@@ -32,7 +32,7 @@ export function getComplaintStatusBadge(status: ComplaintStatus): {
 
 export function ComplaintCard({ complaint }: { complaint: Complaint }) {
   const statusMeta = getComplaintStatusBadge(complaint.status);
-  const districtLabel = getDistrictName(complaint.districtId, complaint.projectCode);
+  const districtLabel = formatDistrict(complaint.districtName);
 
   return (
     <article className="facility-card">

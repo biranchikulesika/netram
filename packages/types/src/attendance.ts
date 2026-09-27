@@ -255,6 +255,8 @@ export interface AttendanceSourceObservation {
 export interface AttendanceCalculation {
   id: UUID;
   projectId: UUID;
+  projectCode: string;
+  projectName: string;
   windowId: UUID;
   operationalDate: string;
   expected: number | null;

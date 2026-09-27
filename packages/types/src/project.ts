@@ -73,6 +73,19 @@ export interface Project {
   description: string | null;
   organisationId: UUID | null;
   authorityId: UUID | null;
+  /**
+   * Resolved display names for the two foreign keys above, joined in the data
+   * layer on read paths. Absent (undefined) when the project was loaded from a
+   * write path, which does not join. Presentation must prefer these over any
+   * locally fabricated label.
+   */
+  organisationName?: string | null;
+  authorityName?: string | null;
+  /** District and state names, joined in the data layer alongside the two above. */
+  districtName?: string | null;
+  stateName?: string | null;
+  /** Programme names resolved from `programmeIds`; empty when none are linked. */
+  programmeNames?: string[];
   districtId: UUID | null;
   /** Village-level location for village-type targets (PM-AJAY Adarsh Gram). */
   villageId: UUID | null;
@@ -81,6 +94,10 @@ export interface Project {
   status: ProjectStatus;
   approvedById: UUID | null;
   approvedAt: ISODateTime | null;
+  /** Person in charge at the facility (structured contact, §34: disclosable). */
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
   programmeIds: UUID[];
   geofence?: ProjectGeofence | null;
   createdAt: ISODateTime;
@@ -106,6 +123,13 @@ export interface TransitionProjectCommand {
   projectId: UUID;
   to: ProjectStatus;
   note?: string;
+}
+
+/** Payload for updating a facility's contact details. */
+export interface UpdateProjectContactCommand {
+  contactName?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
 }
 
 export interface ProjectTransitionResult {

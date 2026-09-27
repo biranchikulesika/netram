@@ -651,13 +651,20 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       id: did("role:institution_admin"),
       code: "institution_admin",
       name: "Institution / Organisation Admin",
-      // Explicitly lacks project:approve: institutions cannot approve themselves.
+      // The establishment is the oversight SUBJECT, not an oversight reader.
+      // Deliberately lacks:
+      //   project:approve  — institutions cannot approve themselves.
+      //   project:create   — authorities register facilities and link the
+      //                      organisation; institutions do not self-register.
+      //   inspection:read  — they never see inspections against themselves.
+      //   complaint:read / inspection_flag:read / risk reads — oversight
+      //                      instruments against them are not disclosed (§34).
+      // They are PULSED through notifications + their section queues when the
+      // authority orders an action: ATR submission (corrective_action:submit)
+      // and expense claims remain their active duties.
       permissions: [
         "project:read",
-        "project:create",
         "project:transition",
-        "inspection:read",
-        "complaint:read",
         "corrective_action:read",
         "corrective_action:submit",
         "notification:read",
@@ -1125,6 +1132,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2026-01-10T09:30:00Z"),
+      contactName: "Rabindra Mohanty",
+      contactPhone: "+91 94370 11223",
+      contactEmail: "rabindra.mohanty@vanihostel.dev.netram.in",
       programmeIds: [did("programme:pmajay"), did("programme:surprise-audit")],
     },
     {
@@ -1140,6 +1150,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Pending Verification",
       approvedById: null,
       approvedAt: null,
+      contactName: "Sushanta Behera",
+      contactPhone: "+91 94370 44556",
+      contactEmail: "sushanta.behera@rajdhanihostel.dev.netram.in",
       programmeIds: [did("programme:pmajay")],
     },
     {
@@ -1155,6 +1168,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Suspended",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2025-11-02T09:00:00Z"),
+      contactName: "Pranati Das",
+      contactPhone: "+91 94372 77889",
+      contactEmail: "pranati.das@cuttackgirls.dev.netram.in",
       programmeIds: [did("programme:surprise-audit")],
     },
     {
@@ -1169,6 +1185,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Draft",
       approvedById: null,
       approvedAt: null,
+      contactName: null,
+      contactPhone: null,
+      contactEmail: null,
       programmeIds: [],
     },
     {
@@ -1184,6 +1203,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2025-12-01T09:00:00Z"),
+      contactName: "Binod Chandra Panda",
+      contactPhone: "+91 94374 99001",
+      contactEmail: "binod.panda@ganjamschool.dev.netram.in",
       programmeIds: [did("programme:pmajay"), did("programme:surprise-audit")],
     },
     // Real audit targets from the official DoSJE social audit calendar,
@@ -1202,6 +1224,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2025-10-01T09:00:00Z"),
+      contactName: "Krushna Chandra Sahoo",
+      contactPhone: "+91 94375 22334",
+      contactEmail: "krushna.sahoo@nilachalseva.dev.netram.in",
       programmeIds: [did("programme:avyay"), did("programme:surprise-audit")],
     },
     {
@@ -1218,6 +1243,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2025-10-01T09:00:00Z"),
+      contactName: "Anita Routray",
+      contactPhone: "+91 94376 55667",
+      contactEmail: "anita.routray@ircapuri.dev.netram.in",
       programmeIds: [did("programme:napddr")],
     },
     {
@@ -1235,6 +1263,10 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2025-11-15T09:00:00Z"),
+      // Village-type target: no institute contact; the district office coordinates.
+      contactName: "District Welfare Office (Dharmasala)",
+      contactPhone: "+91 94377 88990",
+      contactEmail: null,
       programmeIds: [did("programme:pmajay")],
     },
   ] as const;
@@ -1523,7 +1555,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         inspectionId: did("inspection:jajapur-sa"),
         observationId: did("observation:jajapur-sa-1"),
         severity: "medium",
-        description: "Street lights installed under VDP works remain non-functional (not energised).",
+        description:
+          "Street lights installed under VDP works remain non-functional (not energised).",
         remediation: "Energise the installed poles via the electricity distribution licensee.",
         status: "confirmed",
         categoryId: did("fcat:infra"),
@@ -1682,7 +1715,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         severity: "high",
         confidence: 0.81,
         modelVersion: "conflict-detector-0.1",
-        explanation: "Altercation detected on the dining hall camera feed during the evening window.",
+        explanation:
+          "Altercation detected on the dining hall camera feed during the evening window.",
         status: "new",
       },
     ])
@@ -1854,110 +1888,119 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   // ---------- Attendance: devices, populations, windows, config, identity mappings ----------
   await db
     .insert(s.attendanceConfigs)
-    .values(
-      [
-        {
-          dayStartTime: "05:00",
-          thresholds: { crossSourceDiscrepancy: 0.15, historicalDeviation: 0.25, persistenceWindowDays: 5, materialityThreshold: 0.1 },
-          baseline: { windowDays: 14, minObservations: 5 },
-          retention: { rawTransactionsDays: 365, exportsHours: 24 },
+    .values([
+      {
+        dayStartTime: "05:00",
+        thresholds: {
+          crossSourceDiscrepancy: 0.15,
+          historicalDeviation: 0.25,
+          persistenceWindowDays: 5,
+          materialityThreshold: 0.1,
         },
-        {
-          projectId: did("project:vani"),
-          dayStartTime: "05:00",
-          thresholds: { crossSourceDiscrepancy: 0.15, historicalDeviation: 0.25, persistenceWindowDays: 5, materialityThreshold: 0.1 },
-          baseline: { windowDays: 14, minObservations: 5 },
-          retention: { rawTransactionsDays: 365, exportsHours: 24 },
+        baseline: { windowDays: 14, minObservations: 5 },
+        retention: { rawTransactionsDays: 365, exportsHours: 24 },
+      },
+      {
+        projectId: did("project:vani"),
+        dayStartTime: "05:00",
+        thresholds: {
+          crossSourceDiscrepancy: 0.15,
+          historicalDeviation: 0.25,
+          persistenceWindowDays: 5,
+          materialityThreshold: 0.1,
         },
-        {
-          projectId: did("project:cuttack-girls"),
-          dayStartTime: "05:00",
-          thresholds: { crossSourceDiscrepancy: 0.15, historicalDeviation: 0.25, persistenceWindowDays: 5, materialityThreshold: 0.1 },
-          baseline: { windowDays: 14, minObservations: 5 },
-          retention: { rawTransactionsDays: 365, exportsHours: 24 },
+        baseline: { windowDays: 14, minObservations: 5 },
+        retention: { rawTransactionsDays: 365, exportsHours: 24 },
+      },
+      {
+        projectId: did("project:cuttack-girls"),
+        dayStartTime: "05:00",
+        thresholds: {
+          crossSourceDiscrepancy: 0.15,
+          historicalDeviation: 0.25,
+          persistenceWindowDays: 5,
+          materialityThreshold: 0.1,
         },
-      ]
-    )
+        baseline: { windowDays: 14, minObservations: 5 },
+        retention: { rawTransactionsDays: 365, exportsHours: 24 },
+      },
+    ])
     .onConflictDoNothing();
 
   // Populations (must be inserted before windows that reference them).
   await db
     .insert(s.attendancePopulations)
-    .values(
-      [
-        {
-          id: did("attpop:vani-beneficiaries"),
-          projectId: did("project:vani"),
-          code: "BEN-001",
-          name: "Vani Vihar Beneficiaries",
-          populationType: "BENEFICIARY",
-          expectedStrategy: "ROSTER",
-          expectedCount: null,
-          config: {},
-        },
-        {
-          id: did("attpop:vani-staff"),
-          projectId: did("project:vani"),
-          code: "STF-001",
-          name: "Vani Vihar Staff",
-          populationType: "STAFF",
-          expectedStrategy: "CONFIGURED",
-          expectedCount: 18,
-          config: {},
-        },
-        {
-          id: did("attpop:cuttack-beneficiaries"),
-          projectId: did("project:cuttack-girls"),
-          code: "BEN-002",
-          name: "Cuttack Girls Beneficiaries",
-          populationType: "BENEFICIARY",
-          expectedStrategy: "ROSTER",
-          expectedCount: null,
-          config: {},
-        },
-        {
-          id: did("attpop:generic"),
-          projectId: did("project:vani"),
-          code: "GEN-001",
-          name: "Generic Population",
-          populationType: "GENERIC",
-          expectedStrategy: "CONFIGURED",
-          expectedCount: 100,
-          config: {},
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attpop:vani-beneficiaries"),
+        projectId: did("project:vani"),
+        code: "BEN-001",
+        name: "Vani Vihar Beneficiaries",
+        populationType: "BENEFICIARY",
+        expectedStrategy: "ROSTER",
+        expectedCount: null,
+        config: {},
+      },
+      {
+        id: did("attpop:vani-staff"),
+        projectId: did("project:vani"),
+        code: "STF-001",
+        name: "Vani Vihar Staff",
+        populationType: "STAFF",
+        expectedStrategy: "CONFIGURED",
+        expectedCount: 18,
+        config: {},
+      },
+      {
+        id: did("attpop:cuttack-beneficiaries"),
+        projectId: did("project:cuttack-girls"),
+        code: "BEN-002",
+        name: "Cuttack Girls Beneficiaries",
+        populationType: "BENEFICIARY",
+        expectedStrategy: "ROSTER",
+        expectedCount: null,
+        config: {},
+      },
+      {
+        id: did("attpop:generic"),
+        projectId: did("project:vani"),
+        code: "GEN-001",
+        name: "Generic Population",
+        populationType: "GENERIC",
+        expectedStrategy: "CONFIGURED",
+        expectedCount: 100,
+        config: {},
+      },
+    ])
     .onConflictDoNothing();
 
   // Morning window for Vani Vihar.
   await db
     .insert(s.attendanceWindows)
-    .values(
-      [
-        {
-          id: did("attwindow:vani-morning"),
-          projectId: did("project:vani"),
-          code: "MORNING",
-          name: "Morning Roll Call",
-          startTime: "06:00",
-          endTime: "09:00",
-          populationId: did("attpop:vani-beneficiaries"),
-          minCoverage: 0.5,
-          config: { source: "biometric" },
-        },
-        {
-          id: did("attwindow:cuttack-morning"),
-          projectId: did("project:cuttack-girls"),
-          code: "MORNING",
-          name: "Morning Roll Call",
-          startTime: "06:00",
-          endTime: "09:00",
-          populationId: did("attpop:cuttack-beneficiaries"),
-          minCoverage: 0.5,
-          config: { source: "biometric" },
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attwindow:vani-morning"),
+        projectId: did("project:vani"),
+        code: "MORNING",
+        name: "Morning Roll Call",
+        startTime: "06:00",
+        endTime: "09:00",
+        populationId: did("attpop:vani-beneficiaries"),
+        minCoverage: 0.5,
+        config: { source: "biometric" },
+      },
+      {
+        id: did("attwindow:cuttack-morning"),
+        projectId: did("project:cuttack-girls"),
+        code: "MORNING",
+        name: "Morning Roll Call",
+        startTime: "06:00",
+        endTime: "09:00",
+        populationId: did("attpop:cuttack-beneficiaries"),
+        minCoverage: 0.5,
+        config: { source: "biometric" },
+      },
+    ])
     .onConflictDoNothing();
 
   // Population members (roster for Vani beneficiaries — match simulator range).
@@ -1991,88 +2034,86 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   // Devices.
   await db
     .insert(s.attendanceDevices)
-    .values(
-      [
-        {
-          id: did("attdev:vani-main"),
-          projectId: did("project:vani"),
-          name: "Vani Vihar Main Gate Biometric",
-          provider: "simulated",
-          deviceExternalId: "VN-MAIN-01",
-          status: "ONLINE",
-          lastSeenAt: new Date("2026-03-01T08:00:00Z"),
-          lastEventAt: new Date("2026-03-01T08:00:00Z"),
-          syncCursor: "2026-03-01",
-          config: { scenario: "normal" },
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-        },
-        {
-          id: did("attdev:cuttack-main"),
-          projectId: did("project:cuttack-girls"),
-          name: "Cuttack Girls Main Gate Biometric",
-          provider: "simulated",
-          deviceExternalId: "CT-MAIN-01",
-          status: "ONLINE",
-          lastSeenAt: new Date("2026-03-01T07:30:00Z"),
-          lastEventAt: new Date("2026-03-01T07:30:00Z"),
-          syncCursor: "2026-03-01",
-          config: { scenario: "discrepancy" },
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-        },
-        {
-          id: did("attdev:cuttack-backup"),
-          projectId: did("project:cuttack-girls"),
-          name: "Cuttack Girls Backup Device",
-          provider: "simulated",
-          deviceExternalId: "CT-BACKUP-01",
-          status: "OFFLINE",
-          lastSeenAt: new Date("2026-02-28T18:00:00Z"),
-          lastEventAt: new Date("2026-02-28T18:00:00Z"),
-          syncCursor: "2026-02-28",
-          config: { scenario: "offline_buffered" },
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-        },
-        {
-          id: did("attdev:low-attendance"),
-          projectId: did("project:vani"),
-          name: "Vani Vihar Low Attendance Device (demo)",
-          provider: "simulated",
-          deviceExternalId: "VN-LOW-01",
-          status: "ONLINE",
-          lastSeenAt: new Date("2026-03-01T06:30:00Z"),
-          lastEventAt: new Date("2026-03-01T06:30:00Z"),
-          syncCursor: "2026-03-01",
-          config: { scenario: "low_attendance" },
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-        },
-        {
-          id: did("attdev:duplicates-demo"),
-          projectId: did("project:vani"),
-          name: "Vani Vihar Duplicate Demo Device",
-          provider: "simulated",
-          deviceExternalId: "VN-DUP-01",
-          status: "ONLINE",
-          lastSeenAt: new Date("2026-03-01T06:00:00Z"),
-          lastEventAt: new Date("2026-03-01T06:00:00Z"),
-          syncCursor: "2026-03-01",
-          config: { scenario: "duplicates" },
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-        },
-        {
-          id: did("attdev:unmatched-demo"),
-          projectId: did("project:vani"),
-          name: "Vani Vihar Unmatched Demo Device",
-          provider: "simulated",
-          deviceExternalId: "VN-UNM-01",
-          status: "ONLINE",
-          lastSeenAt: new Date("2026-03-01T06:00:00Z"),
-          lastEventAt: new Date("2026-03-01T06:00:00Z"),
-          syncCursor: "2026-03-01",
-          config: { scenario: "unmatched" },
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attdev:vani-main"),
+        projectId: did("project:vani"),
+        name: "Vani Vihar Main Gate Biometric",
+        provider: "simulated",
+        deviceExternalId: "VN-MAIN-01",
+        status: "ONLINE",
+        lastSeenAt: new Date("2026-03-01T08:00:00Z"),
+        lastEventAt: new Date("2026-03-01T08:00:00Z"),
+        syncCursor: "2026-03-01",
+        config: { scenario: "normal" },
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      {
+        id: did("attdev:cuttack-main"),
+        projectId: did("project:cuttack-girls"),
+        name: "Cuttack Girls Main Gate Biometric",
+        provider: "simulated",
+        deviceExternalId: "CT-MAIN-01",
+        status: "ONLINE",
+        lastSeenAt: new Date("2026-03-01T07:30:00Z"),
+        lastEventAt: new Date("2026-03-01T07:30:00Z"),
+        syncCursor: "2026-03-01",
+        config: { scenario: "discrepancy" },
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      {
+        id: did("attdev:cuttack-backup"),
+        projectId: did("project:cuttack-girls"),
+        name: "Cuttack Girls Backup Device",
+        provider: "simulated",
+        deviceExternalId: "CT-BACKUP-01",
+        status: "OFFLINE",
+        lastSeenAt: new Date("2026-02-28T18:00:00Z"),
+        lastEventAt: new Date("2026-02-28T18:00:00Z"),
+        syncCursor: "2026-02-28",
+        config: { scenario: "offline_buffered" },
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      {
+        id: did("attdev:low-attendance"),
+        projectId: did("project:vani"),
+        name: "Vani Vihar Low Attendance Device (demo)",
+        provider: "simulated",
+        deviceExternalId: "VN-LOW-01",
+        status: "ONLINE",
+        lastSeenAt: new Date("2026-03-01T06:30:00Z"),
+        lastEventAt: new Date("2026-03-01T06:30:00Z"),
+        syncCursor: "2026-03-01",
+        config: { scenario: "low_attendance" },
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      {
+        id: did("attdev:duplicates-demo"),
+        projectId: did("project:vani"),
+        name: "Vani Vihar Duplicate Demo Device",
+        provider: "simulated",
+        deviceExternalId: "VN-DUP-01",
+        status: "ONLINE",
+        lastSeenAt: new Date("2026-03-01T06:00:00Z"),
+        lastEventAt: new Date("2026-03-01T06:00:00Z"),
+        syncCursor: "2026-03-01",
+        config: { scenario: "duplicates" },
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      {
+        id: did("attdev:unmatched-demo"),
+        projectId: did("project:vani"),
+        name: "Vani Vihar Unmatched Demo Device",
+        provider: "simulated",
+        deviceExternalId: "VN-UNM-01",
+        status: "ONLINE",
+        lastSeenAt: new Date("2026-03-01T06:00:00Z"),
+        lastEventAt: new Date("2026-03-01T06:00:00Z"),
+        syncCursor: "2026-03-01",
+        config: { scenario: "unmatched" },
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+    ])
     .onConflictDoNothing();
 
   // Identity mappings: map device external users to person external IDs.
@@ -2145,281 +2186,279 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   // Source observations: institution-reported for Cuttack (168 claimed vs 142 biometric = discrepancy).
   await db
     .insert(s.attendanceSourceObservations)
-    .values(
-      [
-        {
-          id: did("attobs:cuttack-reported-2026-03-01"),
-          projectId: did("project:cuttack-girls"),
-          source: "INSTITUTION_REPORTED",
-          windowId: did("attwindow:cuttack-morning"),
-          operationalDate: "2026-03-01",
-          observedAt: new Date("2026-03-01T10:00:00Z"),
-          observedCount: 168,
-          expectedCount: 150,
-          confidence: 0.9,
-          coverage: "COMPLETE",
-          health: "ONLINE",
-          note: "Institution-reported headcount for morning roll call.",
-        },
-        {
-          id: did("attobs:vani-cctv-2026-03-01"),
-          projectId: did("project:vani"),
-          source: "CCTV",
-          windowId: did("attwindow:vani-morning"),
-          operationalDate: "2026-03-01",
-          observedAt: new Date("2026-03-01T09:00:00Z"),
-          observedCount: 120,
-          expectedCount: 150,
-          confidence: 0.6,
-          coverage: "PARTIAL",
-          health: "ONLINE",
-          note: "CCTV coverage partial — only main gate camera operational.",
-        },
-        {
-          id: did("attobs:cuttack-cctv-2026-03-01"),
-          projectId: did("project:cuttack-girls"),
-          source: "CCTV",
-          windowId: did("attwindow:cuttack-morning"),
-          operationalDate: "2026-03-01",
-          observedAt: new Date("2026-03-01T09:00:00Z"),
-          observedCount: null,
-          expectedCount: null,
-          confidence: null,
-          coverage: "INSUFFICIENT",
-          health: "OFFLINE",
-          note: "CCTV dining hall camera offline during morning roll call.",
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attobs:cuttack-reported-2026-03-01"),
+        projectId: did("project:cuttack-girls"),
+        source: "INSTITUTION_REPORTED",
+        windowId: did("attwindow:cuttack-morning"),
+        operationalDate: "2026-03-01",
+        observedAt: new Date("2026-03-01T10:00:00Z"),
+        observedCount: 168,
+        expectedCount: 150,
+        confidence: 0.9,
+        coverage: "COMPLETE",
+        health: "ONLINE",
+        note: "Institution-reported headcount for morning roll call.",
+      },
+      {
+        id: did("attobs:vani-cctv-2026-03-01"),
+        projectId: did("project:vani"),
+        source: "CCTV",
+        windowId: did("attwindow:vani-morning"),
+        operationalDate: "2026-03-01",
+        observedAt: new Date("2026-03-01T09:00:00Z"),
+        observedCount: 120,
+        expectedCount: 150,
+        confidence: 0.6,
+        coverage: "PARTIAL",
+        health: "ONLINE",
+        note: "CCTV coverage partial — only main gate camera operational.",
+      },
+      {
+        id: did("attobs:cuttack-cctv-2026-03-01"),
+        projectId: did("project:cuttack-girls"),
+        source: "CCTV",
+        windowId: did("attwindow:cuttack-morning"),
+        operationalDate: "2026-03-01",
+        observedAt: new Date("2026-03-01T09:00:00Z"),
+        observedCount: null,
+        expectedCount: null,
+        confidence: null,
+        coverage: "INSUFFICIENT",
+        health: "OFFLINE",
+        note: "CCTV dining hall camera offline during morning roll call.",
+      },
+    ])
     .onConflictDoNothing();
 
   // Attendance calculations: pre-computed for the demo dates.
   await db
     .insert(s.attendanceCalculations)
-    .values(
-      [
-        {
-          id: did("attcalc:vani-2026-03-01"),
-          projectId: did("project:vani"),
-          windowId: did("attwindow:vani-morning"),
-          operationalDate: "2026-03-01",
-          expected: 160,
-          present: 0,
-          absent: null,
-          unknown: 0,
-          sourceCounts: { BIOMETRIC: 0, INSTITUTION_REPORTED: 0, CCTV: 120, MANUAL: 0 },
-          coverage: "COMPLETE",
-          dataQuality: "GOOD",
-          freshness: new Date("2026-03-01T08:00:00Z"),
-          policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
-          computedAt: new Date("2026-03-01T10:00:00Z"),
-        },
-        {
-          id: did("attcalc:cuttack-2026-03-01"),
-          projectId: did("project:cuttack-girls"),
-          windowId: did("attwindow:cuttack-morning"),
-          operationalDate: "2026-03-01",
-          expected: 142,
-          present: 0,
-          absent: null,
-          unknown: 0,
-          sourceCounts: { BIOMETRIC: 0, INSTITUTION_REPORTED: 168, CCTV: 0, MANUAL: 0 },
-          coverage: "PARTIAL",
-          dataQuality: "DEGRADED",
-          freshness: new Date("2026-03-01T10:00:00Z"),
-          policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
-          computedAt: new Date("2026-03-01T10:00:00Z"),
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attcalc:vani-2026-03-01"),
+        projectId: did("project:vani"),
+        windowId: did("attwindow:vani-morning"),
+        operationalDate: "2026-03-01",
+        expected: 160,
+        present: 0,
+        absent: null,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: 0, INSTITUTION_REPORTED: 0, CCTV: 120, MANUAL: 0 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date("2026-03-01T08:00:00Z"),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date("2026-03-01T10:00:00Z"),
+      },
+      {
+        id: did("attcalc:cuttack-2026-03-01"),
+        projectId: did("project:cuttack-girls"),
+        windowId: did("attwindow:cuttack-morning"),
+        operationalDate: "2026-03-01",
+        expected: 142,
+        present: 0,
+        absent: null,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: 0, INSTITUTION_REPORTED: 168, CCTV: 0, MANUAL: 0 },
+        coverage: "PARTIAL",
+        dataQuality: "DEGRADED",
+        freshness: new Date("2026-03-01T10:00:00Z"),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date("2026-03-01T10:00:00Z"),
+      },
+    ])
     .onConflictDoNothing();
 
   // Data quality records.
   await db
     .insert(s.attendanceDataQuality)
-    .values(
-      [
-        {
-          id: did("attdq:vani-biometric-2026-03-01"),
-          projectId: did("project:vani"),
-          source: "BIOMETRIC",
-          periodStart: new Date("2026-03-01T06:00:00Z"),
-          periodEnd: new Date("2026-03-01T09:00:00Z"),
-          coverage: "COMPLETE",
-          freshness: new Date("2026-03-01T08:00:00Z"),
-          duplicateRate: 0,
-          invalidCount: 0,
-          unmatchedCount: 0,
-          health: "ONLINE",
-          assessedAt: new Date("2026-03-01T10:00:00Z"),
-        },
-        {
-          id: did("attdq:cuttack-biometric-2026-03-01"),
-          projectId: did("project:cuttack-girls"),
-          source: "BIOMETRIC",
-          periodStart: new Date("2026-03-01T06:00:00Z"),
-          periodEnd: new Date("2026-03-01T09:00:00Z"),
-          coverage: "COMPLETE",
-          freshness: new Date("2026-03-01T10:00:00Z"),
-          duplicateRate: 0,
-          invalidCount: 0,
-          unmatchedCount: 0,
-          health: "ONLINE",
-          assessedAt: new Date("2026-03-01T10:00:00Z"),
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attdq:vani-biometric-2026-03-01"),
+        projectId: did("project:vani"),
+        source: "BIOMETRIC",
+        periodStart: new Date("2026-03-01T06:00:00Z"),
+        periodEnd: new Date("2026-03-01T09:00:00Z"),
+        coverage: "COMPLETE",
+        freshness: new Date("2026-03-01T08:00:00Z"),
+        duplicateRate: 0,
+        invalidCount: 0,
+        unmatchedCount: 0,
+        health: "ONLINE",
+        assessedAt: new Date("2026-03-01T10:00:00Z"),
+      },
+      {
+        id: did("attdq:cuttack-biometric-2026-03-01"),
+        projectId: did("project:cuttack-girls"),
+        source: "BIOMETRIC",
+        periodStart: new Date("2026-03-01T06:00:00Z"),
+        periodEnd: new Date("2026-03-01T09:00:00Z"),
+        coverage: "COMPLETE",
+        freshness: new Date("2026-03-01T10:00:00Z"),
+        duplicateRate: 0,
+        invalidCount: 0,
+        unmatchedCount: 0,
+        health: "ONLINE",
+        assessedAt: new Date("2026-03-01T10:00:00Z"),
+      },
+    ])
     .onConflictDoNothing();
 
   // Anomaly: cross-source discrepancy for Cuttack (142 biometric vs 168 reported).
   await db
     .insert(s.attendanceAnomalyGroups)
-    .values(
-      [
-        {
-          id: did("attgroup:cuttack-discrepancy"),
-          projectId: did("project:cuttack-girls"),
-          populationId: did("attpop:cuttack-beneficiaries"),
-          anomalyType: "CROSS_SOURCE_DISCREPANCY",
-          state: "NEW",
-          openedAt: new Date("2026-03-01T10:00:00Z"),
-          closedAt: null,
-        },
-        {
-          id: did("attgroup:vani-low-persistent"),
-          projectId: did("project:vani"),
-          populationId: did("attpop:vani-beneficiaries"),
-          anomalyType: "PERSISTENT_LOW_ATTENDANCE",
-          state: "NEW",
-          openedAt: new Date("2026-03-01T10:00:00Z"),
-          closedAt: null,
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attgroup:cuttack-discrepancy"),
+        projectId: did("project:cuttack-girls"),
+        populationId: did("attpop:cuttack-beneficiaries"),
+        anomalyType: "CROSS_SOURCE_DISCREPANCY",
+        state: "NEW",
+        openedAt: new Date("2026-03-01T10:00:00Z"),
+        closedAt: null,
+      },
+      {
+        id: did("attgroup:vani-low-persistent"),
+        projectId: did("project:vani"),
+        populationId: did("attpop:vani-beneficiaries"),
+        anomalyType: "PERSISTENT_LOW_ATTENDANCE",
+        state: "NEW",
+        openedAt: new Date("2026-03-01T10:00:00Z"),
+        closedAt: null,
+      },
+    ])
     .onConflictDoNothing();
 
   await db
     .insert(s.attendanceAnomalies)
-    .values(
-      [
-        {
-          id: did("atanom:cuttack-discrepancy-2026-03-01"),
-          projectId: did("project:cuttack-girls"),
-          populationId: did("attpop:cuttack-beneficiaries"),
-          windowId: did("attwindow:cuttack-morning"),
-          operationalDate: "2026-03-01",
-          observationStart: new Date("2026-03-01T06:00:00Z"),
-          observationEnd: new Date("2026-03-01T09:00:00Z"),
-          anomalyType: "CROSS_SOURCE_DISCREPANCY",
-          score: 0.18,
-          severity: "LOW",
-          confidence: 0.65,
-          dataQuality: "DEGRADED",
-          detectorVersion: "attendance-hybrid-0.1",
-          supportingSignals: { difference: 26, relative: 0.18, biometric: 142, reported: 168, expected: 150 },
-          state: "NEW",
-          reviewedBy: null,
-          reviewedAt: null,
-          reviewNotes: null,
-          groupId: did("attgroup:cuttack-discrepancy"),
-          linkedInspectionId: did("inspection:cuttack-routine"),
-          linkedComplaintId: null,
-          sourceData: { present: 11, expected: 12, biometric: 11, reported: 168, detectorVersion: "attendance-hybrid-0.1" },
-          createdAt: new Date("2026-03-01T10:00:00Z"),
+    .values([
+      {
+        id: did("atanom:cuttack-discrepancy-2026-03-01"),
+        projectId: did("project:cuttack-girls"),
+        populationId: did("attpop:cuttack-beneficiaries"),
+        windowId: did("attwindow:cuttack-morning"),
+        operationalDate: "2026-03-01",
+        observationStart: new Date("2026-03-01T06:00:00Z"),
+        observationEnd: new Date("2026-03-01T09:00:00Z"),
+        anomalyType: "CROSS_SOURCE_DISCREPANCY",
+        score: 0.18,
+        severity: "LOW",
+        confidence: 0.65,
+        dataQuality: "DEGRADED",
+        detectorVersion: "attendance-hybrid-0.1",
+        supportingSignals: {
+          difference: 26,
+          relative: 0.18,
+          biometric: 142,
+          reported: 168,
+          expected: 150,
         },
-        {
-          id: did("atanom:vani-low-2026-03-01"),
-          projectId: did("project:vani"),
-          populationId: did("attpop:vani-beneficiaries"),
-          windowId: did("attwindow:vani-morning"),
-          operationalDate: "2026-03-01",
-          observationStart: new Date("2026-03-01T06:00:00Z"),
-          observationEnd: new Date("2026-03-01T09:00:00Z"),
-          anomalyType: "PERSISTENT_LOW_ATTENDANCE",
-          score: 0.45,
-          severity: "MEDIUM",
-          confidence: 0.7,
-          dataQuality: "GOOD",
+        state: "NEW",
+        reviewedBy: null,
+        reviewedAt: null,
+        reviewNotes: null,
+        groupId: did("attgroup:cuttack-discrepancy"),
+        linkedInspectionId: did("inspection:cuttack-routine"),
+        linkedComplaintId: null,
+        sourceData: {
+          present: 11,
+          expected: 12,
+          biometric: 11,
+          reported: 168,
           detectorVersion: "attendance-hybrid-0.1",
-          supportingSignals: { streakDays: 5, lowRatio: 0.6, expected: 160, present: 0 },
-          state: "NEW",
-          reviewedBy: null,
-          reviewedAt: null,
-          reviewNotes: null,
-          groupId: did("attgroup:vani-low-persistent"),
-          linkedInspectionId: null,
-          linkedComplaintId: null,
-          sourceData: { present: 0, expected: 160, detectorVersion: "attendance-hybrid-0.1" },
-          createdAt: new Date("2026-03-01T10:00:00Z"),
         },
-        {
-          id: did("atanom:vani-low-reviewed"),
-          projectId: did("project:vani"),
-          populationId: did("attpop:vani-beneficiaries"),
-          windowId: did("attwindow:vani-morning"),
-          operationalDate: "2026-02-28",
-          observationStart: new Date("2026-02-28T06:00:00Z"),
-          observationEnd: new Date("2026-02-28T09:00:00Z"),
-          anomalyType: "PERSISTENT_LOW_ATTENDANCE",
-          score: 0.4,
-          severity: "MEDIUM",
-          confidence: 0.68,
-          dataQuality: "GOOD",
-          detectorVersion: "attendance-hybrid-0.1",
-          supportingSignals: { streakDays: 5, lowRatio: 0.6, expected: 160, present: 0 },
-          state: "REVIEWED",
-          reviewedBy: did("user:officer-khordha"),
-          reviewedAt: new Date("2026-03-01T09:00:00Z"),
-          reviewNotes: "Reviewed — attendance within acceptable range; monitoring continued.",
-          groupId: did("attgroup:vani-low-persistent"),
-          linkedInspectionId: null,
-          linkedComplaintId: null,
-          sourceData: { present: 0, expected: 160, detectorVersion: "attendance-hybrid-0.1" },
-          createdAt: new Date("2026-02-28T10:00:00Z"),
-        },
-      ]
-    )
+        createdAt: new Date("2026-03-01T10:00:00Z"),
+      },
+      {
+        id: did("atanom:vani-low-2026-03-01"),
+        projectId: did("project:vani"),
+        populationId: did("attpop:vani-beneficiaries"),
+        windowId: did("attwindow:vani-morning"),
+        operationalDate: "2026-03-01",
+        observationStart: new Date("2026-03-01T06:00:00Z"),
+        observationEnd: new Date("2026-03-01T09:00:00Z"),
+        anomalyType: "PERSISTENT_LOW_ATTENDANCE",
+        score: 0.45,
+        severity: "MEDIUM",
+        confidence: 0.7,
+        dataQuality: "GOOD",
+        detectorVersion: "attendance-hybrid-0.1",
+        supportingSignals: { streakDays: 5, lowRatio: 0.6, expected: 160, present: 0 },
+        state: "NEW",
+        reviewedBy: null,
+        reviewedAt: null,
+        reviewNotes: null,
+        groupId: did("attgroup:vani-low-persistent"),
+        linkedInspectionId: null,
+        linkedComplaintId: null,
+        sourceData: { present: 0, expected: 160, detectorVersion: "attendance-hybrid-0.1" },
+        createdAt: new Date("2026-03-01T10:00:00Z"),
+      },
+      {
+        id: did("atanom:vani-low-reviewed"),
+        projectId: did("project:vani"),
+        populationId: did("attpop:vani-beneficiaries"),
+        windowId: did("attwindow:vani-morning"),
+        operationalDate: "2026-02-28",
+        observationStart: new Date("2026-02-28T06:00:00Z"),
+        observationEnd: new Date("2026-02-28T09:00:00Z"),
+        anomalyType: "PERSISTENT_LOW_ATTENDANCE",
+        score: 0.4,
+        severity: "MEDIUM",
+        confidence: 0.68,
+        dataQuality: "GOOD",
+        detectorVersion: "attendance-hybrid-0.1",
+        supportingSignals: { streakDays: 5, lowRatio: 0.6, expected: 160, present: 0 },
+        state: "REVIEWED",
+        reviewedBy: did("user:officer-khordha"),
+        reviewedAt: new Date("2026-03-01T09:00:00Z"),
+        reviewNotes: "Reviewed — attendance within acceptable range; monitoring continued.",
+        groupId: did("attgroup:vani-low-persistent"),
+        linkedInspectionId: null,
+        linkedComplaintId: null,
+        sourceData: { present: 0, expected: 160, detectorVersion: "attendance-hybrid-0.1" },
+        createdAt: new Date("2026-02-28T10:00:00Z"),
+      },
+    ])
     .onConflictDoNothing();
 
   // Review action for the reviewed anomaly.
   await db
     .insert(s.attendanceReviewActions)
-    .values(
-      [
-        {
-          id: did("attrev:vani-reviewed"),
-          anomalyId: did("atanom:vani-low-reviewed"),
-          actorUserId: did("user:officer-khordha"),
-          action: "acknowledge",
-          note: "Reviewed — attendance within acceptable range; monitoring continued.",
-          createdAt: new Date("2026-03-01T09:00:00Z"),
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attrev:vani-reviewed"),
+        anomalyId: did("atanom:vani-low-reviewed"),
+        actorUserId: did("user:officer-khordha"),
+        action: "acknowledge",
+        note: "Reviewed — attendance within acceptable range; monitoring continued.",
+        createdAt: new Date("2026-03-01T09:00:00Z"),
+      },
+    ])
     .onConflictDoNothing();
 
   // Correction: pending correction on a calculation.
   await db
     .insert(s.attendanceCorrections)
-    .values(
-      [
-        {
-          id: did("attcorr:vani-present-adjust"),
-          projectId: did("project:vani"),
-          targetType: "calculation",
-          targetId: did("attcalc:vani-2026-03-01"),
-          field: "present",
-          originalValue: { present: 14, expected: 15 },
-          newValue: { present: 15 },
-          reason: "Inspector confirmed 15th beneficiary present via manual roll call.",
-          requestedBy: did("user:inspector-1"),
-          status: "PENDING",
-          approvedBy: null,
-          approvedAt: null,
-          createdAt: new Date("2026-03-01T11:00:00Z"),
-        },
-      ]
-    )
+    .values([
+      {
+        id: did("attcorr:vani-present-adjust"),
+        projectId: did("project:vani"),
+        targetType: "calculation",
+        targetId: did("attcalc:vani-2026-03-01"),
+        field: "present",
+        originalValue: { present: 14, expected: 15 },
+        newValue: { present: 15 },
+        reason: "Inspector confirmed 15th beneficiary present via manual roll call.",
+        requestedBy: did("user:inspector-1"),
+        status: "PENDING",
+        approvedBy: null,
+        approvedAt: null,
+        createdAt: new Date("2026-03-01T11:00:00Z"),
+      },
+    ])
     .onConflictDoNothing();
 
   // ==========================================================================
@@ -2886,6 +2925,48 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         remediation: "Complete a pest-control sweep and enforce close-of-day storage protocol.",
         status: "action_required",
       },
+      // Confirmed findings still awaiting a remediation order (§32 queue):
+      // status "confirmed" with no corrective action row, so the Action Inbox
+      // finding_review section and the corrective-actions ordering surface
+      // both have deterministic pending work.
+      {
+        id: did("finding:ganjam-feb-4"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        observationId: did("observation:ganjam-feb-1"),
+        severity: "high",
+        description: "Kitchen exhaust and chimney heavily greased; fire risk during bulk cooking.",
+        remediation:
+          "Degrease exhaust system, commission a pre-monsoon safety audit, and institute a monthly cleaning rota.",
+        status: "confirmed",
+        categoryId: did("fcat:infra"),
+        responsibleOrganisationId: did("org:ganjam-school"),
+      },
+      {
+        id: did("finding:ganjam-feb-5"),
+        inspectionId: did("inspection:ganjam-feb-surprise"),
+        observationId: did("observation:ganjam-feb-2"),
+        severity: "medium",
+        description:
+          "Medicines in the infirmary stored beyond expiry; no disposal register maintained.",
+        remediation:
+          "Segregate and dispose of expired stock per biomedical waste rules; open a disposal register.",
+        status: "confirmed",
+        categoryId: did("fcat:food"),
+        responsibleOrganisationId: did("org:ganjam-school"),
+      },
+      {
+        id: did("finding:cuttack-oct-2"),
+        inspectionId: did("inspection:cuttack-oct-routine"),
+        observationId: did("observation:cuttack-oct-1"),
+        severity: "high",
+        description: "Boundary wall collapsed along the rear lane; resident safety compromised.",
+        remediation:
+          "Emergency barricading, structural assessment by PWD, and reconstruction with third-party quality check.",
+        status: "confirmed",
+        categoryId: did("fcat:infra"),
+        amountInr: 185000,
+        responsibleOrganisationId: did("org:cuttack-girls"),
+      },
     ])
     .onConflictDoNothing();
 
@@ -2986,7 +3067,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         status: "accepted",
         deadline: new Date("2025-11-25T23:59:00Z"),
         submittedAt: new Date("2025-11-18T10:00:00Z"),
-        actionSummary: "Expired first-aid stock replaced; quarterly checklist circulated to wardens.",
+        actionSummary:
+          "Expired first-aid stock replaced; quarterly checklist circulated to wardens.",
         verifiedAt: new Date("2025-11-22T10:00:00Z"),
         verifiedByUserId: did("user:officer-khordha"),
         reviewRemarks: "Verified against replaced stock photographs and the new checklist.",
@@ -3082,7 +3164,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         description: "Repeated complaint about late-night noise from the common room.",
         status: "closed",
         receivedAt: new Date("2025-12-20T09:00:00Z"),
-        resolutionText: "Verified on two night visits — no consistent pattern; closed after review.",
+        resolutionText:
+          "Verified on two night visits — no consistent pattern; closed after review.",
         resolvedAt: new Date("2026-01-10T10:00:00Z"),
       },
       {
@@ -3115,7 +3198,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         complainantName: "Guardian (redacted)",
         contactInfo: "****@dev.netram.in",
         trackingCode: "CMP-2026-0005",
-        description: "Concern that reported resident headcount exceeds actual roll-call attendance.",
+        description:
+          "Concern that reported resident headcount exceeds actual roll-call attendance.",
         status: "escalated",
         receivedAt: new Date("2026-03-03T09:00:00Z"),
         resolutionText: null,
@@ -3172,7 +3256,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         severity: "high",
         confidence: 0.87,
         modelVersion: "conflict-detector-0.1",
-        explanation: "Physical altercation detected near the main gate camera during the evening window.",
+        explanation:
+          "Physical altercation detected near the main gate camera during the evening window.",
         status: "new",
       },
       {
@@ -3183,7 +3268,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         severity: "medium",
         confidence: 0.64,
         modelVersion: "conflict-detector-0.1",
-        explanation: "Raised voices flagged on the dining hall feed; short-lived, reviewed as a verbal dispute.",
+        explanation:
+          "Raised voices flagged on the dining hall feed; short-lived, reviewed as a verbal dispute.",
         status: "dismissed",
         reviewedAt: new Date("2026-02-20T09:00:00Z"),
         reviewedBy: did("user:officer-khordha"),
@@ -3196,7 +3282,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         severity: "critical",
         confidence: 0.92,
         modelVersion: "conflict-detector-0.1",
-        explanation: "Sustained struggle between two individuals at the gate; linked evidence reviewed and acted upon by authority.",
+        explanation:
+          "Sustained struggle between two individuals at the gate; linked evidence reviewed and acted upon by authority.",
         status: "acted_upon",
         reviewedAt: new Date("2026-01-16T09:00:00Z"),
         reviewedBy: did("user:officer-khordha"),
@@ -3220,7 +3307,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         severity: "low",
         confidence: 0.55,
         modelVersion: "conflict-detector-0.1",
-        explanation: "Brief push flagged on the corridor feed; assessed by district admin as a minor incident.",
+        explanation:
+          "Brief push flagged on the corridor feed; assessed by district admin as a minor incident.",
         status: "reviewed",
         reviewedAt: new Date("2026-01-15T09:00:00Z"),
         reviewedBy: did("user:dept-admin"),
@@ -3233,7 +3321,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         severity: "high",
         confidence: 0.85,
         modelVersion: "conflict-detector-0.1",
-        explanation: "Altercation detected on the dining hall feed; escalated for physical inspection verification.",
+        explanation:
+          "Altercation detected on the dining hall feed; escalated for physical inspection verification.",
         status: "investigated",
         reviewedAt: new Date("2026-03-05T09:00:00Z"),
         reviewedBy: did("user:officer-cuttack"),
@@ -3582,7 +3671,10 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         actorUserId: did("user:officer-cuttack"),
         resourceType: "project",
         resourceId: did("project:cuttack-girls"),
-        metadata: { code: "PRJ-CUTG-003", reason: "Compliance review during headcount reconciliation" },
+        metadata: {
+          code: "PRJ-CUTG-003",
+          reason: "Compliance review during headcount reconciliation",
+        },
         occurredAt: new Date("2026-02-25T09:00:00Z"),
       },
       {
@@ -3753,7 +3845,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   {
     const vaniId = did("project:vani");
     const windowId = did("attwindow:vani-morning");
-    const rows: typeof s.attendanceCalculations.$inferInsert[] = [];
+    const rows: (typeof s.attendanceCalculations.$inferInsert)[] = [];
     for (let day = 1; day <= 365; day++) {
       const base = new Date(Date.UTC(2026, 0, 1));
       base.setUTCDate(base.getUTCDate() + day - 1);
@@ -3761,7 +3853,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       const iso = base.toISOString().slice(0, 10);
       const dow = base.getUTCDay();
       const month = base.getUTCMonth(); // 0-based
-      const holidayDip = (month === 4 || month === 5) ? 12 : 0; // May/June
+      const holidayDip = month === 4 || month === 5 ? 12 : 0; // May/June
       const wave = Math.round(Math.sin(day / 9) * 6 + Math.cos(day / 29) * 4);
       const weekendLift = dow === 0 ? 3 : 0;
       const present = Math.min(160, Math.max(108, 148 + wave + weekendLift - holidayDip));
@@ -3791,14 +3883,24 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       {
         projectId: did("project:ganjam-school"),
         dayStartTime: "05:00",
-        thresholds: { crossSourceDiscrepancy: 0.15, historicalDeviation: 0.25, persistenceWindowDays: 5, materialityThreshold: 0.1 },
+        thresholds: {
+          crossSourceDiscrepancy: 0.15,
+          historicalDeviation: 0.25,
+          persistenceWindowDays: 5,
+          materialityThreshold: 0.1,
+        },
         baseline: { windowDays: 14, minObservations: 5 },
         retention: { rawTransactionsDays: 365, exportsHours: 24 },
       },
       {
         projectId: did("project:rourkela"),
         dayStartTime: "05:00",
-        thresholds: { crossSourceDiscrepancy: 0.15, historicalDeviation: 0.25, persistenceWindowDays: 5, materialityThreshold: 0.1 },
+        thresholds: {
+          crossSourceDiscrepancy: 0.15,
+          historicalDeviation: 0.25,
+          persistenceWindowDays: 5,
+          materialityThreshold: 0.1,
+        },
         baseline: { windowDays: 14, minObservations: 5 },
         retention: { rawTransactionsDays: 365, exportsHours: 24 },
       },
@@ -4118,7 +4220,13 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         confidence: 0.66,
         dataQuality: "GOOD",
         detectorVersion: "attendance-hybrid-0.1",
-        supportingSignals: { difference: 14, relative: 0.13, biometric: 104, reported: 118, expected: 110 },
+        supportingSignals: {
+          difference: 14,
+          relative: 0.13,
+          biometric: 104,
+          reported: 118,
+          expected: 110,
+        },
         state: "NEW",
         reviewedBy: null,
         reviewedAt: null,
@@ -4126,7 +4234,13 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         groupId: did("attgroup:ganjam-discrepancy"),
         linkedInspectionId: did("inspection:ganjam-feb-surprise"),
         linkedComplaintId: null,
-        sourceData: { present: 104, expected: 110, biometric: 104, reported: 118, detectorVersion: "attendance-hybrid-0.1" },
+        sourceData: {
+          present: 104,
+          expected: 110,
+          biometric: 104,
+          reported: 118,
+          detectorVersion: "attendance-hybrid-0.1",
+        },
         createdAt: new Date("2026-02-18T10:30:00Z"),
       },
       {
@@ -4147,7 +4261,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         state: "FALSE_POSITIVE",
         reviewedBy: did("user:dept-admin"),
         reviewedAt: new Date("2026-01-15T09:00:00Z"),
-        reviewNotes: "Verified manually — low biometric count was caused by a device offline window, not absenteeism.",
+        reviewNotes:
+          "Verified manually — low biometric count was caused by a device offline window, not absenteeism.",
         groupId: did("attgroup:ganjam-low-dismissed"),
         linkedInspectionId: null,
         linkedComplaintId: null,
@@ -4200,7 +4315,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "EXP-003",
       name: "Duplicate Invoice Number",
       category: "INTEGRITY",
-      description: "Detects multiple expenses citing identical invoice numbers across time or projects.",
+      description:
+        "Detects multiple expenses citing identical invoice numbers across time or projects.",
       conditionConfig: {},
       weight: 20,
       severity: "high",
@@ -4288,7 +4404,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "EXP-011",
       name: "Prior Incomplete Corrective Actions",
       category: "GOVERNANCE",
-      description: "Elevates risk when an institution has unresolved corrective actions from prior inspections.",
+      description:
+        "Elevates risk when an institution has unresolved corrective actions from prior inspections.",
       conditionConfig: {},
       weight: 10,
       severity: "medium",
@@ -4310,7 +4427,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "EXP-013",
       name: "Discrepancy with Attendance/Activity",
       category: "CROSS_CHECK",
-      description: "Cross-references claimed operational or meal spending against recorded attendance.",
+      description:
+        "Cross-references claimed operational or meal spending against recorded attendance.",
       conditionConfig: {},
       weight: 14,
       severity: "high",
@@ -4657,6 +4775,126 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     await db.insert(s.financialDocuments).values(d).onConflictDoNothing();
   }
 
+  // ===========================================================================
+  // Funds Action Inbox variety (§32): a Rourkela allocation, a submitted
+  // expense, an under-review expense, a pending verification document, and an
+  // open inspection flag — so verifiers and reviewers have deterministic
+  // pending work in every funds queue after db:setup.
+  // ===========================================================================
+
+  await db
+    .insert(s.fundAllocations)
+    .values({
+      id: did("alloc:rourkela-2024"),
+      projectId: did("project:rourkela"),
+      organisationId: did("org:rourkela"),
+      allocatedAmount: "8000000.00",
+      fiscalYear: "2024-2025",
+      currency: "INR",
+      description: "Model ST girls' hostel operations grant",
+      notes: "Sanctioned for residential operations, nutrition and maintenance",
+      scheme: "Integrated Model School & Hostel Development Grant",
+      status: "active",
+      createdAt: new Date("2024-04-01T00:00:00Z"),
+      updatedAt: new Date("2024-04-01T00:00:00Z"),
+    })
+    .onConflictDoNothing();
+
+  // Submitted expense awaiting verification in the funds queue.
+  await db
+    .insert(s.expenses)
+    .values({
+      id: did("expense:rourkela-03"),
+      projectId: did("project:rourkela"),
+      organisationId: did("org:rourkela"),
+      allocationId: did("alloc:rourkela-2024"),
+      category: "Food & Nutrition",
+      description: "Quarterly ration procurement: grains, pulses, cooking oil and condiments",
+      amount: "412500.00",
+      transactionDate: new Date("2025-04-12T00:00:00Z"),
+      vendorName: "Rourkela Wholesale Provisions",
+      vendorGstin: "21AAJCR5555F1Z6",
+      invoiceNumber: "RWP-RATION-0231",
+      invoiceDate: new Date("2025-04-11T00:00:00Z"),
+      paymentMethod: "PFMS_TRANSFER",
+      paymentReference: "UTR2211445566",
+      status: "submitted",
+      submittedAt: new Date("2025-04-14T00:00:00Z"),
+      createdAt: new Date("2025-04-14T00:00:00Z"),
+      updatedAt: new Date("2025-04-14T00:00:00Z"),
+    })
+    .onConflictDoNothing();
+
+  // Under-review expense: second verification-queue state.
+  await db
+    .insert(s.expenses)
+    .values({
+      id: did("expense:rourkela-04"),
+      projectId: did("project:rourkela"),
+      organisationId: did("org:rourkela"),
+      allocationId: did("alloc:rourkela-2024"),
+      category: "Maintenance & Repairs",
+      description: "Dormitory mosquito-net replacement and drainage desilting",
+      amount: "128700.00",
+      transactionDate: new Date("2025-05-06T00:00:00Z"),
+      vendorName: "Rourkela Wholesale Provisions",
+      vendorGstin: "21AAJCR5555F1Z6",
+      invoiceNumber: "RWP-MAINT-0244",
+      invoiceDate: new Date("2025-05-05T00:00:00Z"),
+      paymentMethod: "BANK_TRANSFER",
+      paymentReference: "NEFT-RKL-0312",
+      status: "under_review",
+      submittedAt: new Date("2025-05-07T00:00:00Z"),
+      createdAt: new Date("2025-05-07T00:00:00Z"),
+      updatedAt: new Date("2025-05-09T00:00:00Z"),
+    })
+    .onConflictDoNothing();
+
+  // Pending financial document attached to the submitted expense.
+  await db
+    .insert(s.financialDocuments)
+    .values({
+      id: did("findoc:rourkela-ration-1"),
+      expenseId: did("expense:rourkela-03"),
+      projectId: did("project:rourkela"),
+      documentType: "invoice",
+      fileName: "rwp_ration_invoice_0231.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 268400,
+      sha256Hash: "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+      storageKey: "financial-docs/rourkela/rwp_ration_invoice_0231.pdf",
+      verificationStatus: "pending",
+      createdAt: new Date("2025-04-14T00:00:00Z"),
+    })
+    .onConflictDoNothing();
+
+  // An open inspection flag referencing the ration expense, so the
+  // inspection_flag_review queue holds a dispatchable item.
+  await db
+    .insert(s.inspectionFlags)
+    .values({
+      id: did("flag:rourkela-rations"),
+      projectId: did("project:rourkela"),
+      organisationId: did("org:rourkela"),
+      allocationId: did("alloc:rourkela-2024"),
+      riskScore: 68,
+      riskLevel: "high",
+      triggerSource: "risk_engine",
+      explanation:
+        "Ration spend concentrated with a single new vendor ahead of the reporting window; three invoices share sequential numbers across different purchase orders.",
+      evidenceRefs: [
+        {
+          type: "expense",
+          id: did("expense:rourkela-03"),
+          label: "Expense: Quarterly ration procurement (RWP-RATION-0231)",
+        },
+      ],
+      status: "open",
+      createdAt: new Date("2026-09-23T10:00:00Z"),
+      updatedAt: new Date("2026-09-23T10:00:00Z"),
+    })
+    .onConflictDoNothing();
+
   // ---------- Inspection Flags ----------
   await db
     .insert(s.inspectionFlags)
@@ -4669,7 +4907,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         riskScore: 42,
         riskLevel: "medium",
         triggerSource: "risk_engine",
-        explanation: "Advisory review flag: Spending velocity surge observed in late Q2 alongside unverified supporting vouchers.",
+        explanation:
+          "Advisory review flag: Spending velocity surge observed in late Q2 alongside unverified supporting vouchers.",
         evidenceRefs: [
           {
             type: "expense",
@@ -4703,11 +4942,27 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       complaintDensitySignals: { openComplaints: 2, severity: "high" },
       aiAnomalySignals: { cameraTampering: true, occupancyDiscrepancy: true },
       topContributors: [
-        { dimension: "Financial Risk", contribution: 34.0, percentage: 43.6, explanation: "Unverified bulk expenditure surge near reporting window" },
-        { dimension: "Inspection Quality", contribution: 18.0, percentage: 23.1, explanation: "Overdue corrective action for hostel sanitation and kitchen maintenance" },
-        { dimension: "Attendance Anomaly", contribution: 16.0, percentage: 20.5, explanation: "Significant divergence between biometric attendance and physical counts" },
+        {
+          dimension: "Financial Risk",
+          contribution: 34.0,
+          percentage: 43.6,
+          explanation: "Unverified bulk expenditure surge near reporting window",
+        },
+        {
+          dimension: "Inspection Quality",
+          contribution: 18.0,
+          percentage: 23.1,
+          explanation: "Overdue corrective action for hostel sanitation and kitchen maintenance",
+        },
+        {
+          dimension: "Attendance Anomaly",
+          contribution: 16.0,
+          percentage: 20.5,
+          explanation: "Significant divergence between biometric attendance and physical counts",
+        },
       ],
-      explanation: "Elevated composite risk driven by fund front-loading, overdue sanitation findings, and CCTV tampering signals.",
+      explanation:
+        "Elevated composite risk driven by fund front-loading, overdue sanitation findings, and CCTV tampering signals.",
       scheduledInspectionId: did("inspection:rourkela-sep-surprise"),
       createdAt: new Date("2026-09-20T10:00:00Z"),
       calculatedAt: new Date("2026-09-20T10:00:00Z"),
@@ -4729,10 +4984,21 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       complaintDensitySignals: { openComplaints: 1 },
       aiAnomalySignals: { cameraHealth: "degraded" },
       topContributors: [
-        { dimension: "Financial Risk", contribution: 26.0, percentage: 44.8, explanation: "Concentrated disbursements on single vendor without tax registration" },
-        { dimension: "Inspection Quality", contribution: 15.0, percentage: 25.9, explanation: "Pending inspection corrective action nearing statutory deadline" },
+        {
+          dimension: "Financial Risk",
+          contribution: 26.0,
+          percentage: 44.8,
+          explanation: "Concentrated disbursements on single vendor without tax registration",
+        },
+        {
+          dimension: "Inspection Quality",
+          contribution: 15.0,
+          percentage: 25.9,
+          explanation: "Pending inspection corrective action nearing statutory deadline",
+        },
       ],
-      explanation: "High risk score driven by unverified invoice clusters and repeat inspection findings.",
+      explanation:
+        "High risk score driven by unverified invoice clusters and repeat inspection findings.",
       createdAt: new Date("2026-09-20T10:00:00Z"),
       calculatedAt: new Date("2026-09-20T10:00:00Z"),
     },
@@ -4753,7 +5019,12 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       complaintDensitySignals: { openComplaints: 0 },
       aiAnomalySignals: {},
       topContributors: [
-        { dimension: "Financial Risk", contribution: 18.0, percentage: 42.9, explanation: "Late submission of supporting vouchers for Phase 1 grant release" },
+        {
+          dimension: "Financial Risk",
+          contribution: 18.0,
+          percentage: 42.9,
+          explanation: "Late submission of supporting vouchers for Phase 1 grant release",
+        },
       ],
       explanation: "Moderate risk score. Standard monitoring recommended.",
       createdAt: new Date("2026-09-20T10:00:00Z"),
@@ -4776,7 +5047,12 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       complaintDensitySignals: {},
       aiAnomalySignals: {},
       topContributors: [
-        { dimension: "Inspection Quality", contribution: 7.5, percentage: 23.4, explanation: "Minor observation on electrical wiring pending verification" },
+        {
+          dimension: "Inspection Quality",
+          contribution: 7.5,
+          percentage: 23.4,
+          explanation: "Minor observation on electrical wiring pending verification",
+        },
       ],
       explanation: "Low-to-moderate risk profile. Normal monitoring.",
       createdAt: new Date("2026-09-20T10:00:00Z"),
@@ -4799,7 +5075,12 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       complaintDensitySignals: {},
       aiAnomalySignals: {},
       topContributors: [
-        { dimension: "Financial Risk", contribution: 6.0, percentage: 33.3, explanation: "Baseline expenditure tracking compliant" },
+        {
+          dimension: "Financial Risk",
+          contribution: 6.0,
+          percentage: 33.3,
+          explanation: "Baseline expenditure tracking compliant",
+        },
       ],
       explanation: "Low risk score across all five operational dimensions.",
       createdAt: new Date("2026-09-20T10:00:00Z"),
@@ -4822,7 +5103,12 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       complaintDensitySignals: {},
       aiAnomalySignals: {},
       topContributors: [
-        { dimension: "Attendance Anomaly", contribution: 2.0, percentage: 16.7, explanation: "High biometric device uptime and reliable attendance records" },
+        {
+          dimension: "Attendance Anomaly",
+          contribution: 2.0,
+          percentage: 16.7,
+          explanation: "High biometric device uptime and reliable attendance records",
+        },
       ],
       explanation: "Clean profile with zero adverse findings and prompt accounting.",
       createdAt: new Date("2026-09-20T10:00:00Z"),
@@ -4833,6 +5119,34 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   for (const snap of riskSnapshots) {
     await db.insert(s.projectRiskSnapshots).values(snap).onConflictDoNothing();
   }
+
+  // ===========================================================================
+  // Action Inbox variety (§32): every decision queue must hold at least one
+  // deterministic pending item so approvers, reviewers and verifiers can
+  // exercise the unified inbox immediately after db:setup.
+  // ===========================================================================
+
+  // Pending attendance correction awaiting an authority decision (approver is
+  // a different user than the requester — §34 independence rule).
+  await db
+    .insert(s.attendanceCorrections)
+    .values({
+      id: did("attcorr:rourkela-present-adjust"),
+      projectId: did("project:rourkela"),
+      targetType: "calculation",
+      targetId: did("attcalc:vani-2026-03-01"),
+      field: "present",
+      originalValue: { present: 22, expected: 25 },
+      newValue: { present: 25 },
+      reason:
+        "Three beneficiaries marked absent due to biometric device outage; wardens confirmed full attendance on the manual roll.",
+      requestedBy: did("user:inspector-2"),
+      status: "PENDING",
+      approvedBy: null,
+      approvedAt: null,
+      createdAt: new Date("2026-09-23T09:30:00Z"),
+    })
+    .onConflictDoNothing();
 
   console.log(
     `Seed complete: ${projects.length + enrichedProjects.length} projects, ${users.length + enrichedUsers.length} users across ${districtRows.length} districts.`,

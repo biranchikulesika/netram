@@ -18,6 +18,7 @@ export const complaintSchema = z.object({
   projectCode: z.string(),
   projectName: z.string(),
   districtId: z.string().uuid().nullable(),
+  districtName: z.string().max(200).nullable(),
   complainantName: z.string().nullable(),
   contactInfo: z.string().nullable(),
   trackingCode: z.string(),

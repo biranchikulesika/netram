@@ -235,10 +235,17 @@ export const projects = pgTable("projects", {
   status: varchar("status", { length: 30 }).notNull().default("Draft"),
   approvedById: uuid("approved_by_id").references(() => users.id),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
+  /** Structured facility contact details (person in charge + contacts). */
+  contactName: varchar("contact_name", { length: 200 }),
+  contactPhone: varchar("contact_phone", { length: 40 }),
+  contactEmail: varchar("contact_email", { length: 200 }),
   programmeIds: json("programme_ids").$type<string[]>().default([]).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  // Jurisdiction-scoped verification queue and lifecycle filters (§16).
+  index("projects_status_district_idx").on(t.status, t.districtId),
+]);
 
 export const projectGeofences = pgTable("project_geofences", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -334,7 +341,11 @@ export const inspections = pgTable("inspections", {
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  // Review queues filter by workflow status; findings join on it (§32).
+  index("inspections_status_idx").on(t.status),
+  index("inspections_project_idx").on(t.projectId),
+]);
 
 export const inspectionAssignments = pgTable("inspection_assignments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -471,7 +482,11 @@ export const complaints = pgTable("complaints", {
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  // Oversight queue: status + receipt recency; jurisdiction resolved via the
+  // project join (§35).
+  index("complaints_status_received_idx").on(t.status, t.receivedAt),
+]);
 
 /**
  * Supporting attachments (PDFs, photos, videos, docs) lodged with a public
@@ -505,7 +520,11 @@ export const aiAnomalies = pgTable("ai_anomalies", {
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   reviewedBy: uuid("reviewed_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  // Review queue filters (§36): advisory alerts await authority review.
+  index("ai_anomalies_status_created_idx").on(t.status, t.createdAt),
+  index("ai_anomalies_inspection_idx").on(t.inspectionId),
+]);
 
 /* ---------- CCTV ---------- */
 
@@ -625,7 +644,12 @@ export const outboxEvents = pgTable("outbox_events", {
   availableAfter: timestamp("available_after", { withTimezone: true }),
   lastError: text("last_error"),
   processedAt: timestamp("processed_at", { withTimezone: true }),
-});
+}, (t) => [
+  // Dispatcher poll + resource-history reads (§27).
+  index("outbox_events_status_idx").on(t.status, t.availableAfter),
+  index("outbox_events_type_idx").on(t.type),
+  index("outbox_events_resource_idx").on(t.resourceType, t.resourceId),
+]);
 
 /* ---------- Feature Flags ---------- */
 
@@ -957,6 +981,8 @@ export const attendanceAnomalies = pgTable(
   (t) => [
     index("attendance_anomalies_project_state_idx").on(t.projectId, t.state),
     index("attendance_anomalies_group_idx").on(t.groupId),
+    index("attendance_anomalies_state_created_idx").on(t.state, t.createdAt),
+    index("attendance_anomalies_severity_idx").on(t.severity),
   ],
 );
 
@@ -998,7 +1024,10 @@ export const attendanceCorrections = pgTable(
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("attendance_corrections_project_idx").on(t.projectId, t.status)],
+  (t) => [
+    index("attendance_corrections_project_idx").on(t.projectId, t.status),
+    index("attendance_corrections_status_created_idx").on(t.status, t.createdAt),
+  ],
 );
 
 export const attendanceExports = pgTable(
@@ -1111,6 +1140,7 @@ export const expenses = pgTable(
     index("expenses_status_idx").on(t.status),
     index("expenses_tx_date_idx").on(t.transactionDate),
     index("expenses_project_invoice_idx").on(t.projectId, t.invoiceNumber),
+    index("expenses_status_submitted_idx").on(t.status, t.submittedAt),
   ],
 );
 
@@ -1141,6 +1171,7 @@ export const financialDocuments = pgTable(
     index("financial_docs_expense_idx").on(t.expenseId),
     index("financial_docs_hash_idx").on(t.sha256Hash),
     index("financial_docs_project_idx").on(t.projectId),
+    index("financial_docs_status_created_idx").on(t.verificationStatus, t.createdAt),
   ],
 );
 

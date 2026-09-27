@@ -5,7 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { Inspection } from "@netram/types";
 import { IconSearch, IconList, IconGrid, IconMapPin } from "../../components/icons";
-import { getProjectName, getProjectCode, formatDate } from "../../../lib/presentation";
+import { formatDate } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 import { InspectionCard } from "./inspection-card";
 import { ScheduleInspectionModal, type ProjectOption } from "./schedule-inspection-modal";
@@ -322,10 +322,10 @@ export function InspectionsView({
                     </td>
                     <td>
                       <div style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
-                        {i.projectName || getProjectName(i.projectId)}
+                        {i.projectName || "Sanctioned facility"}
                       </div>
                       <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", color: "var(--text-subtle)", marginTop: "2px" }}>
-                        {i.projectCode || getProjectCode(i.projectId)}
+                        {i.projectCode || "—"}
                       </div>
                     </td>
                     <td title={i.id} style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--text-subtle)" }}>

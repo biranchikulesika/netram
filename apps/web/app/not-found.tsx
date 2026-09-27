@@ -57,7 +57,7 @@ export default function NotFound() {
             marginRight: "auto",
           }}
         >
-          The requested page does not exist or has been relocated. Please verify the link or go back to the previous screen.
+          The requested page does not exist or has been relocated.
         </p>
 
         <ErrorActions fallbackHref="/dashboard" />

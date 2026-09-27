@@ -3,6 +3,7 @@ import type { UUID, ISODateTime } from "./common.js";
 export const DOMAIN_EVENT_TYPES = [
   "project.created",
   "project.updated",
+  "project.contact_updated",
   "project.status_transitioned",
   "project.approved",
   "project.suspended",

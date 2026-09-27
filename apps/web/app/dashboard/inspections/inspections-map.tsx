@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import type { Inspection, InspectionStatus } from "@netram/types";
-import { getDistrictName } from "../../../lib/presentation";
 import { DISTRICT_COORDINATES } from "../projects/real-leaflet-map";
 import NetramOverviewMap, { type MapFacility } from "../../components/netram-overview-map";
 import { InspectionCard } from "./inspection-card";
@@ -74,7 +73,9 @@ export default function InspectionsMap({ inspections }: InspectionsMapProps) {
       const lng = (district?.lng ?? 84.8) + Math.cos(angle) * offset;
       out.push({
         districtId,
-        label: district?.name ?? getDistrictName(districtId, first.projectCode),
+        // DISTRICT_COORDINATES only positions the cluster; the label is resolved
+        // by the API so a new or unmapped district still reads correctly.
+        label: first.districtName ?? district?.name ?? "Unknown district",
         items,
         lat,
         lng,

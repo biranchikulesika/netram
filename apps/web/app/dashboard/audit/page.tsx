@@ -3,6 +3,7 @@ import { getClient, getSessionUser } from "../../../lib/api";
 import { NavHeader } from "../../components/nav-header";
 import { IconAlertTriangle } from "../../components/icons";
 import { ErrorActions } from "../../components/error-actions";
+import { getUserNames } from "../../../lib/facility";
 import { AuditExplorerView } from "./audit-explorer-view";
 
 export const dynamic = "force-dynamic";
@@ -71,13 +72,7 @@ export default async function AuditPage() {
 
   // Actor directory (server-side; user-admin API is permission-gated). The
   // activity log degrades gracefully to role labels when the viewer lacks it.
-  const usersPage = await client
-    .listUsers({ pageSize: 200 })
-    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 200 }));
-  const userNames: Record<string, string> = {};
-  for (const u of usersPage.items) {
-    if (u.displayName) userNames[u.id] = u.displayName;
-  }
+  const userNames = await getUserNames();
 
   return (
     <main>

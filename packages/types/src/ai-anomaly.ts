@@ -64,6 +64,8 @@ export interface AIAnomalyListQuery {
   severity?: AnomalySeverity;
   status?: AnomalyStatus;
   inspectionId?: UUID;
+  /** Narrow results to one facility (anomaly → inspection → project join). */
+  projectId?: UUID;
   page?: number;
   pageSize?: number;
 }

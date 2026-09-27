@@ -80,7 +80,7 @@ export default function GlobalErrorBoundary({
         >
           {isForbidden
             ? "Your official account does not have authorization to view this resource. Please contact your administrative supervisor if this requires elevated access."
-            : "An unexpected operational exception occurred while retrieving this record. Please retry the operation or go back to the previous screen."}
+            : "An unexpected operational exception occurred while retrieving this record."}
         </p>
 
         <ErrorActions onRetry={reset} fallbackHref="/dashboard" />

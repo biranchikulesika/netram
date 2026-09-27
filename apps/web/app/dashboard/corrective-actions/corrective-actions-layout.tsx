@@ -3,18 +3,11 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import type { CorrectiveAction, FindingAwaitingOrder, OrganisationView } from "@netram/types";
+import type { CorrectiveAction } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 import { CorrectiveActionCard, getStatusBadge, getSeverityStyle } from "./corrective-action-card";
-import { OrderCorrectiveActionButton } from "../../components/order-corrective-action-button";
-import {
-  IconSearch,
-  IconList,
-  IconGrid,
-  IconMapPin,
-  IconGavel,
-} from "../../components/icons";
+import { IconSearch, IconList, IconGrid, IconMapPin } from "../../components/icons";
 
 const CorrectiveActionsMap = dynamic(() => import("./corrective-actions-map"), {
   ssr: false,
@@ -42,9 +35,6 @@ const CorrectiveActionsMap = dynamic(() => import("./corrective-actions-map"), {
 export interface CorrectiveActionsLayoutProps {
   initialActions: CorrectiveAction[];
   totalActions: number;
-  awaitingOrders: FindingAwaitingOrder[];
-  canOrder: boolean;
-  organisations: OrganisationView[];
 }
 
 type StatusFilter = "ALL" | "PENDING" | "IN_REVIEW" | "OVERDUE" | "ACCEPTED";
@@ -61,9 +51,6 @@ function matchesFilter(a: CorrectiveAction, filter: StatusFilter): boolean {
 export function CorrectiveActionsLayout({
   initialActions,
   totalActions: _totalActions,
-  awaitingOrders,
-  canOrder,
-  organisations,
 }: CorrectiveActionsLayoutProps) {
   const [actionsList] = useState<CorrectiveAction[]>(initialActions);
   const [filter, setFilter] = useState<StatusFilter>("ALL");
@@ -125,109 +112,6 @@ export function CorrectiveActionsLayout({
 
   return (
     <div>
-      {/* Pending remediation orders (authority queue, §32) */}
-      {canOrder && awaitingOrders.length > 0 && (
-        <div className="table-card" style={{ marginBottom: "1.25rem" }}>
-          <div
-            style={{
-              padding: "1rem 1.25rem",
-              borderBottom: "1px solid #e2e8f0",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-            }}
-          >
-            <div
-              style={{
-                width: "34px",
-                height: "34px",
-                borderRadius: "8px",
-                background: "#fef3c7",
-                color: "#b45309",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <IconGavel style={{ width: 18, height: 18 }} />
-            </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700 }}>
-                Pending Remediation Orders
-              </h3>
-              <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.8rem" }}>
-                {awaitingOrders.length} confirmed finding{awaitingOrders.length === 1 ? "" : "s"} in your
-                jurisdiction awaiting a corrective action order.
-              </p>
-            </div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Facility</th>
-                <th>Severity</th>
-                <th>Finding</th>
-                <th style={{ width: "220px" }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {awaitingOrders.map((f) => {
-                const severityMeta = getSeverityStyle(f.severity);
-                return (
-                  <tr key={f.id}>
-                    <td>
-                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--color-navy-brand)" }}>
-                        {f.project.name}
-                      </div>
-                      <div className="muted" style={{ fontSize: "0.72rem" }}>
-                        {f.project.code}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: severityMeta.color }}>
-                        {severityMeta.label}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "0.8rem" }}>{f.description}</div>
-                      {f.remediation && (
-                        <div className="muted" style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
-                          <span style={{ fontWeight: 600, color: "#334155" }}>Remediation:</span>{" "}
-                          {f.remediation}
-                        </div>
-                      )}
-                      <div className="muted" style={{ fontSize: "0.72rem", marginTop: "0.25rem" }}>
-                        Inspection: {f.inspectionId.slice(0, 8)} ·
-                        {formatDate(f.createdAt)}
-                      </div>
-                    </td>
-                    <td>
-                      <OrderCorrectiveActionButton
-                        finding={{
-                          id: f.id,
-                          severity: f.severity,
-                          description: f.description,
-                          remediation: f.remediation,
-                        }}
-                        inspectionId={f.inspectionId}
-                        project={{
-                          name: f.project.name,
-                          code: f.project.code,
-                          organisationId: f.project.organisationId,
-                        }}
-                        organisations={organisations}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
       {/* Toolbar: Search, Filters & View Toggle (projects pattern) */}
       <div
         className="registry-toolbar"

@@ -6,8 +6,8 @@ Cross-area contracts, their owners, and change protocols.
 
 | Package | Path | Purpose | Owner(s) |
 |---------|------|---------|----------|
-| `@netram/types` | `packages/types/src/` | Canonical domain and contract types (22 files) | @biranchikulesika @jyotirmaya2004 |
-| `@netram/validation` | `packages/validation/src/` | Zod runtime validation schemas (21 files) | @biranchikulesika @jyotirmaya2004 |
+| `@netram/types` | `packages/types/src/` | Canonical domain and contract types (28 files) | @biranchikulesika @jyotirmaya2004 |
+| `@netram/validation` | `packages/validation/src/` | Zod runtime validation schemas (26 files) | @biranchikulesika @jyotirmaya2004 |
 | `@netram/api-client` | `packages/api-client/src/` | Typed HTTP client for the REST API | @biranchikulesika |
 | `@netram/config` | `packages/config/src/` | Centralised validated environment configuration | @biranchikulesika |
 | `@netram/data` | `packages/data/src/` | Repository interfaces and implementations | @biranchikulesika |
@@ -31,12 +31,19 @@ Cross-area contracts, their owners, and change protocols.
 | `notification.ts` | `Notification`, notification channels |
 | `audit.ts` | `AuditEvent`, append-only audit trail |
 | `ai-anomaly.ts` | `AIAnomaly`, `AnomalyScore`, `AnomalySeverity`, confidence |
-| `attendance.ts` | `AttendanceRecord`, attendance estimation |
-| `cctv.ts` | `CCTVCamera`, `CameraHealthStatus`, `AuthorizedStream` |
+| `attendance.ts` | `AttendanceCalculation`, `AttendanceAnomaly`, `AttendanceCorrection`, attendance estimation |
+| `cctv.ts` | `PublicCctvCamera`, `CameraHealthStatus`, `AuthorizedStream` |
 | `vc.ts` | `VideoConferenceSession`, `VCSessionStatus` |
 | `domain-events.ts` | All domain event types (`InspectionAssigned`, `EvidenceCaptured`, etc.) |
 | `common.ts` | Shared utilities (`UUID`, `Timestamp`, `Pagination`) |
 | `sync.ts` | Offline sync types (`OfflineOperation`, `SyncResult`, `ConflictResult`) |
+| `registry.ts` | Registry views, `REGISTRY_CAPABILITIES`, registration inputs |
+| `fund.ts` | `FundAllocation`, `FundRelease`, `Expense`, `FinancialDocument`, `InspectionFlag` |
+| `project-risk.ts` | `ProjectRiskSnapshot`, composite scoring types |
+| `action-inbox.ts` | `ActionInboxItem`, `ActionInboxSection`, kind → permission registry |
+| `scheme-component.ts` | `SchemeComponent` (DoSJE scheme components) |
+| `project-photo.ts` | `ProjectPhoto` |
+| `domain-events.ts` | All domain event types (`InspectionAssigned`, `EvidenceCaptured`, etc.) |
 
 ## Validation schemas (`packages/validation/src/`)
 
@@ -48,7 +55,7 @@ Each file corresponds to a type file and provides Zod schemas for runtime valida
 - **Exported format:** OpenAPI 3.1 JSON.
 - **Export command:** `pnpm api:export-openapi`
 - **Idempotency:** Verified — re-export produces identical SHA-1 checksum.
-- **Canonical inventory:** `docs/contracts/README.md` (73 routes across 20 modules).
+- **Canonical inventory:** `docs/contracts/README.md` (154 operations across 26 OpenAPI tags).
 - **Client source of truth:** `packages/api-client/src/` (typed client generated from API patterns).
 
 ## Change protocol

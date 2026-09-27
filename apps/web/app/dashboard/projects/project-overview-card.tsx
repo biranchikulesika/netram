@@ -4,14 +4,15 @@ import Link from "next/link";
 import type { Project } from "@netram/types";
 import {
   IconBuilding,
+  IconFileText,
   IconGavel,
   IconShieldCheck,
   IconTag,
 } from "../../components/icons";
 import {
-  getDistrictName,
+  getAuthorityName,
+  formatDistrict,
   getOrganisationName,
-  getProgrammeName,
 } from "../../../lib/presentation";
 import { StatusBadge } from "./[id]/status-badge";
 
@@ -55,13 +56,13 @@ interface ProjectOverviewCardProps {
  */
 export function ProjectOverviewCard({ project, href }: ProjectOverviewCardProps) {
   const hasOrganisation = Boolean(project.organisationId);
-  const hasSchemes = project.programmeIds.length > 0;
-  const orgName = getOrganisationName(project.organisationId, project.name);
-  const schemeNames = project.programmeIds.map(getProgrammeName);
+  const hasAuthority = Boolean(project.authorityId);
+  const orgName = getOrganisationName(project.organisationName);
+  const authorityName = getAuthorityName(project.authorityId, project.authorityName);
+  const schemeNames = project.programmeNames ?? [];
+  const hasSchemes = schemeNames.length > 0;
   const schemeLabel =
-    project.programmeIds.length <= 2
-      ? schemeNames.join(", ")
-      : `${schemeNames[0]} +${project.programmeIds.length - 2}`;
+    schemeNames.length <= 2 ? schemeNames.join(", ") : `${schemeNames[0]} +${schemeNames.length - 2}`;
 
   const body = (
     <>
@@ -91,7 +92,7 @@ export function ProjectOverviewCard({ project, href }: ProjectOverviewCardProps)
           <dt title="District jurisdiction" aria-label="District jurisdiction">
             <IconGavel className="meta-label-icon" />
           </dt>
-          <dd>{getDistrictName(project.districtId, project.code)}</dd>
+          <dd>{formatDistrict(project.districtName, project.stateName)}</dd>
         </div>
         <div className="facility-card-meta-item">
           <dt title="Managing organisation" aria-label="Managing organisation">
@@ -104,8 +105,18 @@ export function ProjectOverviewCard({ project, href }: ProjectOverviewCardProps)
           )}
         </div>
         <div className="facility-card-meta-item">
-          <dt title="Linked welfare schemes" aria-label="Linked welfare schemes">
+          <dt title="Responsible authority" aria-label="Responsible authority">
             <IconShieldCheck className="meta-label-icon" />
+          </dt>
+          {hasAuthority ? (
+            <dd title={authorityName}>{authorityName}</dd>
+          ) : (
+            <dd className="meta-placeholder">No authority assigned</dd>
+          )}
+        </div>
+        <div className="facility-card-meta-item">
+          <dt title="Linked welfare schemes" aria-label="Linked welfare schemes">
+            <IconFileText className="meta-label-icon" />
           </dt>
           {hasSchemes ? (
             <dd title={schemeNames.join(", ")}>{schemeLabel}</dd>

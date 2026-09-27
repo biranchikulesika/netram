@@ -67,6 +67,8 @@ export interface Inspection {
   projectCode: string;
   projectName: string;
   districtId: UUID | null;
+  /** District name resolved from `districtId` at read time. */
+  districtName: string | null;
   templateId: UUID | null;
   type: InspectionType;
   trigger: InspectionTrigger;

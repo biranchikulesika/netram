@@ -16,7 +16,7 @@ justified by real constraints (AGENTS.md §7):
         └──────────────┬─────────────────────────┘
                        ▼
         services/api — REST /api/v1  (modular monolith)
-        authority for app behavior: authZ, jurisdiction, workflows,
+        authority for app behaviour: authZ, jurisdiction, workflows,
         audit, outbox, session lifecycle
                        │ repository interfaces
                        ▼

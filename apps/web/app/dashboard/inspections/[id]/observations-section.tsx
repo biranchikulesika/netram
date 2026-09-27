@@ -3,16 +3,23 @@
 import { useState } from "react";
 import type { Observation } from "@netram/types";
 import { useRouter } from "next/navigation";
-import { getUserDisplayName, formatDateTime } from "../../../../lib/presentation";
+import { formatDateTime } from "../../../../lib/presentation";
 import { IconClipboard } from "../../../components/icons";
 
 export interface ObservationsSectionProps {
   inspectionId: string;
   items: Observation[];
   canAdd: boolean;
+  /** userId -> displayName, resolved server-side (user-admin API is permission-gated). */
+  userNames: Record<string, string>;
 }
 
-export function ObservationsSection({ inspectionId, items, canAdd }: ObservationsSectionProps) {
+export function ObservationsSection({
+  inspectionId,
+  items,
+  canAdd,
+  userNames,
+}: ObservationsSectionProps) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -71,7 +78,7 @@ export function ObservationsSection({ inspectionId, items, canAdd }: Observation
             <article key={obs.id} className="observation-item">
               <div className="observation-header">
                 <span className="obs-author">
-                  {getUserDisplayName(obs.userId, "Field Inspector")}
+                  {userNames[obs.userId] ?? "Field inspector"}
                 </span>
                 <span className="obs-time">{formatDateTime(obs.createdAt)}</span>
               </div>

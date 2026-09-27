@@ -159,6 +159,9 @@ export class ActionInboxService {
         inspectionId: f.inspectionId,
         inspectionStatus: f.inspectionStatus,
         remediation: f.remediation,
+        // Default responsible party for the order; matches the finding service's
+        // own fallback to the audited facility's operator.
+        organisationId: f.project.organisationId,
       },
     }));
   }
@@ -363,10 +366,19 @@ export class ActionInboxService {
       amountInr: Number(e.amount),
       actor: null,
       link: { href: "/dashboard/funds", label: "Open funds workspace" },
+      // Self-contained decision: the card's verify-payment popup renders the
+      // same vendor/payment detail the funds workspace exposes, so the whole
+      // dossier for this decision fits on the inbox page.
       context: {
         status: e.status,
+        category: e.category,
+        description: e.description,
         vendorName: e.vendorName,
+        vendorGstin: e.vendorGstin,
         invoiceNumber: e.invoiceNumber,
+        invoiceDate: e.invoiceDate,
+        paymentMethod: e.paymentMethod,
+        paymentReference: e.paymentReference,
         transactionDate: e.transactionDate,
       },
     }));

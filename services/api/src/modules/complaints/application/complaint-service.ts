@@ -237,6 +237,9 @@ export class ComplaintService {
         from: complaint.status,
         to,
         trackingCode: complaint.trackingCode,
+        // Lets the dispatcher pulse the establishment's administrators on
+        // escalation without disclosing complainant identity in the payload.
+        projectId: complaint.projectId,
       },
     });
   }

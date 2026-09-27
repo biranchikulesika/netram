@@ -454,26 +454,19 @@ export function NavHeader({
                       )}
                       {inboxBadge && !isExpanded && (
                         <span
+                          aria-hidden="true"
+                          title={`${inboxCount} item${inboxCount === 1 ? "" : "s"} awaiting your decision`}
                           style={{
                             position: "absolute",
-                            top: "-2px",
-                            right: "-2px",
+                            top: "-1px",
+                            right: "-1px",
+                            width: "9px",
+                            height: "9px",
+                            borderRadius: "50%",
                             background: "#b45309",
-                            color: "#ffffff",
-                            fontSize: "0.55rem",
-                            fontWeight: 700,
-                            borderRadius: "9999px",
-                            minWidth: "12px",
-                            height: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            lineHeight: 1,
-                            padding: "0 2px",
+                            border: "1.5px solid var(--color-surface, #ffffff)",
                           }}
-                        >
-                          {inboxCount > 9 ? "!" : inboxCount}
-                        </span>
+                        />
                       )}
                     </span>
                     {isExpanded && (
@@ -493,18 +486,16 @@ export function NavHeader({
                         )}
                         {inboxBadge && (
                           <span
-                            className="badge"
+                            aria-label={`${inboxCount} item${inboxCount === 1 ? "" : "s"} awaiting your decision`}
+                            title={`${inboxCount} item${inboxCount === 1 ? "" : "s"} awaiting your decision`}
                             style={{
-                              fontSize: "0.65rem",
-                              padding: "1px 6px",
-                              borderRadius: "9999px",
-                              background: "#fef3c7",
-                              color: "#b45309",
-                              border: "1px solid #fde68a",
+                              width: "9px",
+                              height: "9px",
+                              borderRadius: "50%",
+                              background: "#b45309",
+                              flexShrink: 0,
                             }}
-                          >
-                            {inboxCount > 99 ? "99+" : inboxCount}
-                          </span>
+                          />
                         )}
                       </span>
                     )}

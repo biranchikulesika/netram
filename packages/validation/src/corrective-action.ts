@@ -37,6 +37,8 @@ export const correctiveActionSchema = z.object({
       code: z.string(),
       name: z.string(),
       districtId: z.string().uuid().nullable(),
+      districtName: z.string().max(200).nullable(),
+      stateName: z.string().max(200).nullable(),
       description: z.string().nullable(),
     })
     .nullable(),

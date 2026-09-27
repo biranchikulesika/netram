@@ -1,32 +1,226 @@
 "use client";
 
-import React, { useState } from "react";
-import type { ProjectFundOverview } from "@netram/types";
-import { IconShieldCheck } from "../../../../components/icons";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import type { InspectionFlag, Project, ProjectFundOverview } from "@netram/types";
+import {
+  IconSearch,
+  IconX,
+  IconPlus,
+  IconChevronRight,
+} from "../../../../components/icons";
+import {
+  ALLOCATION_STATUS_FILTERS,
+  EXPENSE_STATUS_FILTERS,
+  StatusFilter,
+  matchesStatusFilter,
+} from "../../../../components/fund-status-filter";
+import {
+  AllocationDetailModal,
+  ExpenseDetailModal,
+  FlagActionModal,
+  FlagDetailModal,
+  ScheduleInspectionModal,
+  formatCurrency,
+  formatDate,
+  type FlagAction,
+} from "../../../../components/funds-ui";
 
 interface ProjectFundsClientProps {
-  projectId: string;
-  projectCode: string;
-  projectName: string;
+  project: Project;
   initialOverview: ProjectFundOverview;
   canSubmitExpense: boolean;
   canVerifyExpense: boolean;
+  canAllocate: boolean;
+  /** Risk/flag visibility (financial_risk:read | project_risk:read | *) — the
+   *  API omits flags for callers without it, so the tab mirrors the disclosure. */
+  canViewFlags: boolean;
+  /** Escalating an alert into a field inspection needs inspection:create. */
+  canInspect: boolean;
 }
 
+/**
+ * Shared design language with the global Funds & Expenses dashboard
+ * (apps/web/app/dashboard/funds/funds-dashboard-client.tsx): StatKpi strip,
+ * registry-toolbar section tabs, table-card tables and dashboard badge/status
+ * treatment. Kept local because the dashboard's helpers are not exported.
+ */
+/** Dashboard-style label for an expense lifecycle status. */
+function formatCompact(val: number): string {
+  if (val >= 1e7)
+    return "₹ " + (val / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + " Cr";
+  if (val >= 1e5)
+    return "₹ " + (val / 1e5).toLocaleString("en-IN", { maximumFractionDigits: 1 }) + " L";
+  if (val >= 1e3)
+    return "₹ " + (val / 1e3).toLocaleString("en-IN", { maximumFractionDigits: 0 }) + " K";
+  return "₹ " + val.toLocaleString("en-IN");
+}
+
+/**
+ * Fiscal-year helper and FY strip styles, matching the funds dashboard idiom
+ * (Indian FY starting April, indigo active pill, ‹ › year arrows).
+ */
+function fyOf(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const start = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  return `${start}-${start + 1}`;
+}
+
+/** Current Indian fiscal year (April start) — mirrors the dashboard helper. */
+function currentFy(): string {
+  const now = new Date();
+  const start = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${start}-${start + 1}`;
+}
+
+function nextFy(): string {
+  const start = Number(currentFy().slice(0, 4)) + 1;
+  return `${start}-${start + 1}`;
+}
+
+const fyArrowStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "none",
+  background: "transparent",
+  fontSize: "1rem",
+  fontWeight: 700,
+  lineHeight: 1,
+  color: "#334155",
+  cursor: "pointer",
+  padding: "0.1rem 0.2rem",
+};
+
+const fyStripStyle: React.CSSProperties = {
+  fontSize: "0.9rem",
+  fontWeight: 600,
+  color: "#64748b",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  padding: "0.15rem 0.55rem",
+};
+
+const fyStripActiveStyle: React.CSSProperties = {
+  color: "#ffffff",
+  background: "#4338ca",
+  borderRadius: "999px",
+  fontWeight: 700,
+};
+
+/** StatKpi idiom from the funds dashboard: label, value, coloured rail. */
+function StatKpi({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: "0.1rem",
+        padding: "0 1.35rem",
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          fontSize: "0.78rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: "var(--text-muted)",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: "1.55rem",
+          fontWeight: 800,
+          lineHeight: 1.15,
+          color: "var(--text-primary)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{sub}</div>}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: 0,
+          transform: "translateY(-50%)",
+          width: 3,
+          height: "2.4rem",
+          borderRadius: 2,
+          background: color,
+        }}
+      />
+    </div>
+  );
+}
+
+const EXPENSE_CATEGORIES = [
+  "Materials & Supplies",
+  "Works & Construction",
+  "Consultancy & Services",
+  "Equipment & Machinery",
+  "Staff & Honorarium",
+  "Operational Overheads",
+] as const;
+
+const expenseFieldStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  minHeight: "2.75rem",
+  padding: "0.7rem 0.8rem",
+  borderRadius: "8px",
+  border: "1px solid var(--color-border-strong)",
+  background: "#ffffff",
+  color: "var(--text-primary)",
+  font: "inherit",
+};
+
 export function ProjectFundsClient({
-  projectId,
-  projectCode: _projectCode,
-  projectName: _projectName,
+  project,
   initialOverview,
   canSubmitExpense,
   canVerifyExpense,
+  canAllocate,
+  canViewFlags,
+  canInspect,
 }: ProjectFundsClientProps) {
   const [overview, setOverview] = useState<ProjectFundOverview>(initialOverview);
+  const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"expenses" | "flags" | "allocations">("expenses");
+  const [fyFilter, setFyFilter] = useState<string>("");
+  // Status filters — same pop-up screen as the funds dashboard, one selection
+  // per list so switching tabs keeps each list's own filter.
+  const [expenseStatuses, setExpenseStatuses] = useState<string[]>(
+    EXPENSE_STATUS_FILTERS.filter((f) => f.value !== "ALL").map((f) => f.value),
+  );
+  const [allocationStatuses, setAllocationStatuses] = useState<string[]>(
+    ALLOCATION_STATUS_FILTERS.filter((f) => f.value !== "ALL").map((f) => f.value),
+  );
 
   // New Expense modal state
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [submittingExpense, setSubmittingExpense] = useState(false);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
   const [expenseForm, setExpenseForm] = useState({
     category: "Materials & Supplies",
     description: "",
@@ -38,21 +232,52 @@ export function ProjectFundsClient({
     allocationId: overview.allocations[0]?.id ?? "",
   });
 
+  // Row detail modal (dashboard idiom: click a row → full record details + actions)
+  const [detailExpenseId, setDetailExpenseId] = useState<string | null>(null);
+  const [allocationDetailId, setAllocationDetailId] = useState<string | null>(null);
+  const [flagDetailId, setFlagDetailId] = useState<string | null>(null);
+  const [flagAction, setFlagAction] = useState<{ flag: InspectionFlag; action: FlagAction } | null>(null);
+  const [flagNote, setFlagNote] = useState("");
+  const [inspectFlag, setInspectFlag] = useState<InspectionFlag | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectError, setRejectError] = useState<string | null>(null);
+
+  // New Allocation (sanction) modal state
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
+  const [submittingAllocation, setSubmittingAllocation] = useState(false);
+  const [allocationError, setAllocationError] = useState<string | null>(null);
+  const [allocationForm, setAllocationForm] = useState({
+    fiscalYear: currentFy(),
+    allocatedAmount: "",
+    scheme: "",
+    description: "",
+    notes: "",
+  });
+
   // Void modal state
   const [voidingExpenseId, setVoidingExpenseId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [voiding, setVoiding] = useState(false);
+  const [voidError, setVoidError] = useState<string | null>(null);
+
+  async function refreshOverview() {
+    const res = await fetch(`/api/v1/funds/projects/${project.id}/overview`);
+    if (res.ok) setOverview(await res.json());
+  }
 
   // Submit new expense
   async function handleCreateExpense(e: React.FormEvent) {
     e.preventDefault();
     setSubmittingExpense(true);
+    setExpenseError(null);
     try {
       const res = await fetch("/api/v1/funds/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          projectId,
+          projectId: project.id,
           allocationId: expenseForm.allocationId || undefined,
           category: expenseForm.category,
           description: expenseForm.description,
@@ -78,31 +303,146 @@ export function ProjectFundsClient({
         transactionDate: new Date().toISOString().split("T")[0],
         allocationId: overview.allocations[0]?.id ?? "",
       });
-      // Refresh overview
-      const refreshRes = await fetch(`/api/v1/funds/projects/${projectId}/overview`);
-      if (refreshRes.ok) {
-        const updated = await refreshRes.json();
-        setOverview(updated);
-      }
+      await refreshOverview();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      alert(msg);
+      setExpenseError(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmittingExpense(false);
     }
   }
 
-  // Verify expense
-  async function handleVerifyExpense(id: string) {
-    if (!confirm("Are you sure you want to verify this expense claim? Verified records become immutable.")) return;
+  // Verify expense (used from the row-detail modal, as on the dashboard)
+  async function handleFlagAction(e: React.FormEvent) {
+    e.preventDefault();
+    if (!flagAction) return;
+    const { flag, action } = flagAction;
     try {
-      const res = await fetch(`/api/v1/funds/expenses/${id}/verify`, { method: "POST" });
-      if (!res.ok) throw new Error("Verification failed");
-      const refreshRes = await fetch(`/api/v1/funds/projects/${projectId}/overview`);
-      if (refreshRes.ok) setOverview(await refreshRes.json());
+      let endpoint = `/api/v1/inspection-flags/${flag.id}/review`;
+      let body: Record<string, unknown> = { reviewNotes: flagNote, status: "under_review" };
+      if (action === "resolve") {
+        endpoint = `/api/v1/inspection-flags/${flag.id}/resolve`;
+        body = { resolution: flagNote };
+      } else if (action === "dismiss") {
+        endpoint = `/api/v1/inspection-flags/${flag.id}/dismiss`;
+        body = { dismissedReason: flagNote };
+      }
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || "Action failed");
+      }
+      setFlagAction(null);
+      setFlagNote("");
+      await refreshOverview();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      alert(msg);
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleTriggerInspection(flagId: string) {
+    try {
+      const res = await fetch(`/api/v1/inspection-flags/${flagId}/create-inspection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || "Failed to trigger inspection");
+      }
+      const data = await res.json();
+      alert(`Special Field Inspection #${data.inspection?.id?.slice(0, 8)} successfully scheduled!`);
+      setInspectFlag(null);
+      await refreshOverview();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleVerifyExpense(id: string) {
+    if (
+      !confirm(
+        "Confirm verification of this expenditure against supporting documentation? Verified records become immutable.",
+      )
+    )
+      return;
+    try {
+      const res = await fetch(`/api/v1/funds/expenses/${id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error("Verification failed");
+      await refreshOverview();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  // Reject expense (same endpoint + flow as the dashboard row-detail actions)
+  async function handleRejectExpense() {
+    if (!showRejectModal || !rejectReason.trim()) return;
+    setRejecting(true);
+    setRejectError(null);
+    try {
+      const res = await fetch(`/api/v1/funds/expenses/${showRejectModal}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || "Rejection failed");
+      }
+      setShowRejectModal(null);
+      setRejectReason("");
+      await refreshOverview();
+    } catch (err: unknown) {
+      setRejectError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRejecting(false);
+    }
+  }
+
+  // Sanction a new fund allocation (same endpoint + flow as the funds dashboard)
+  async function handleCreateAllocation(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmittingAllocation(true);
+    setAllocationError(null);
+    try {
+      const res = await fetch("/api/v1/funds/allocations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          fiscalYear: allocationForm.fiscalYear,
+          allocatedAmount: allocationForm.allocatedAmount,
+          scheme: allocationForm.scheme || undefined,
+          description: allocationForm.description || undefined,
+          notes: allocationForm.notes || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || "Failed to create allocation");
+      }
+      setShowAllocationModal(false);
+      setAllocationForm({
+        fiscalYear: currentFy(),
+        allocatedAmount: "",
+        scheme: "",
+        description: "",
+        notes: "",
+      });
+      await refreshOverview();
+    } catch (err: unknown) {
+      setAllocationError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmittingAllocation(false);
     }
   }
 
@@ -110,6 +450,7 @@ export function ProjectFundsClient({
   async function handleVoidExpense() {
     if (!voidingExpenseId || !voidReason.trim()) return;
     setVoiding(true);
+    setVoidError(null);
     try {
       const res = await fetch(`/api/v1/funds/expenses/${voidingExpenseId}/void`, {
         method: "POST",
@@ -122,307 +463,358 @@ export function ProjectFundsClient({
       }
       setVoidingExpenseId(null);
       setVoidReason("");
-      const refreshRes = await fetch(`/api/v1/funds/projects/${projectId}/overview`);
-      if (refreshRes.ok) setOverview(await refreshRes.json());
+      await refreshOverview();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      alert(msg);
+      setVoidError(err instanceof Error ? err.message : String(err));
     } finally {
       setVoiding(false);
     }
   }
 
-  const { summary, allocations, releases, recentExpenses, activeFlags } = overview;
+  const { summary, allocations, recentExpenses, activeFlags } = overview;
   const numAlloc = parseFloat(summary.totalAllocated || "0");
-  const numRel = parseFloat(summary.totalReleased || "0");
-  const numExp = parseFloat(summary.totalExpenditure || "0");
+
+  // Expenditure lifecycle buckets (dashboard stats idiom): disjoint amounts per
+  // status so each record contributes to exactly one KPI. Draft/voided are
+  // excluded from pending/verified/rejected, matching the dashboard.
+  const statsOverview = useMemo(() => {
+    let pending = 0;
+    let verified = 0;
+    let rejected = 0;
+    for (const e of recentExpenses) {
+      const amount = parseFloat(e.amount) || 0;
+      if (e.status === "verified") verified += amount;
+      else if (e.status === "rejected") rejected += amount;
+      else if (e.status === "submitted" || e.status === "under_review") pending += amount;
+    }
+    return { pending, verified, rejected };
+  }, [recentExpenses]);
+
+  const q = search.trim().toLowerCase();
+  const matches = (text: string | null | undefined) => !q || (text ?? "").toLowerCase().includes(q);
+  const filteredExpenses = recentExpenses.filter(
+    (e) =>
+      (!fyFilter || fyOf(e.transactionDate) === fyFilter) &&
+      matchesStatusFilter(e.status, expenseStatuses, EXPENSE_STATUS_FILTERS) &&
+      (matches(e.description) ||
+        matches(e.vendorName) ||
+        matches(e.invoiceNumber) ||
+        matches(e.category)),
+  );
+  const filteredFlags = activeFlags.filter((f) => !fyFilter || fyOf(f.createdAt) === fyFilter);
+  const filteredAllocations = allocations.filter(
+    (a) =>
+      (!fyFilter || a.fiscalYear === fyFilter) &&
+      matchesStatusFilter(a.status, allocationStatuses, ALLOCATION_STATUS_FILTERS) &&
+      (matches(a.scheme) || matches(a.description) || matches(a.notes) || matches(a.fiscalYear)),
+  );
+  // FY strip options — same derivation as the funds dashboard (current-year capped).
+  const fyOptions = useMemo(() => {
+    const present: number[] = [];
+    const collect = (fy: string | null) => {
+      if (fy) {
+        const start = Number(fy.slice(0, 4));
+        if (!present.includes(start)) present.push(start);
+      }
+    };
+    for (const a of allocations) collect(a.fiscalYear);
+    for (const e of recentExpenses) collect(fyOf(e.transactionDate));
+    if (present.length === 0) return [];
+    const currentYear = new Date().getFullYear();
+    const start = Math.min(Math.min(...present), currentYear);
+    const end = Math.min(Math.max(...present), currentYear);
+    return Array.from({ length: end - start + 1 }, (_, i) => {
+      const y = start + i;
+      return `${y}-${y + 1}`;
+    });
+  }, [allocations, recentExpenses]);
+
+  // Default the strip to the most recent fiscal year, as the dashboard does.
+  useEffect(() => {
+    if (fyOptions.length > 0 && !fyOptions.includes(fyFilter)) {
+      setFyFilter(fyOptions[fyOptions.length - 1] ?? "");
+    }
+  }, [fyOptions, fyFilter]);
+
+  const fyIdx = fyOptions.indexOf(fyFilter);
+
+  const detailFlag = useMemo(
+    () => (flagDetailId ? activeFlags.find((f) => f.id === flagDetailId) : undefined),
+    [flagDetailId, activeFlags],
+  );
+  const detailAllocation = useMemo(
+    () => (allocationDetailId ? allocations.find((a) => a.id === allocationDetailId) : undefined),
+    [allocationDetailId, allocations],
+  );
+  const detailExpense =
+    detailExpenseId != null ? recentExpenses.find((e) => e.id === detailExpenseId) : undefined;
+  const detailExpenseAllocation = detailExpense?.allocationId
+    ? allocations.find((a) => a.id === detailExpense.allocationId)
+    : undefined;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Metric Cards Banner */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-        <div className="card" style={{ padding: "1.25rem", borderLeft: "4px solid #2563eb" }}>
-          <div style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)", fontWeight: 500 }}>
-            Sanctioned Allocation
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, marginTop: "0.25rem" }}>
-            ₹{numAlloc.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", marginTop: "0.25rem" }}>
-            {allocations.length} active allocation{allocations.length === 1 ? "" : "s"}
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: "1.25rem", borderLeft: "4px solid #059669" }}>
-          <div style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)", fontWeight: 500 }}>
-            Disbursed / Released
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, marginTop: "0.25rem" }}>
-            ₹{numRel.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", marginTop: "0.25rem" }}>
-            {releases.length} disbursal installment{releases.length === 1 ? "" : "s"}
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: "1.25rem", borderLeft: "4px solid #d97706" }}>
-          <div style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)", fontWeight: 500 }}>
-            Total Expenditure
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, marginTop: "0.25rem" }}>
-            ₹{numExp.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", marginTop: "0.25rem" }}>
-            {recentExpenses.length} expense record{recentExpenses.length === 1 ? "" : "s"}
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: "1.25rem", borderLeft: "4px solid #7c3aed" }}>
-          <div style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)", fontWeight: 500 }}>
-            Fund Utilization
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, marginTop: "0.25rem" }}>
-            {summary.utilizationRate}%
-          </div>
-          <div style={{ width: "100%", height: "6px", backgroundColor: "#e2e8f0", borderRadius: "3px", marginTop: "0.5rem", overflow: "hidden" }}>
-            <div
-              style={{
-                width: `${Math.min(100, summary.utilizationRate)}%`,
-                height: "100%",
-                backgroundColor: summary.utilizationRate > 90 ? "#dc2626" : summary.utilizationRate > 70 ? "#d97706" : "#059669",
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: "1.25rem", borderLeft: `4px solid ${activeFlags.length > 0 ? "#dc2626" : "#059669"}` }}>
-          <div style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)", fontWeight: 500 }}>
-            Active Review Flags
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, marginTop: "0.25rem", color: activeFlags.length > 0 ? "#dc2626" : "inherit" }}>
-            {activeFlags.length}
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", marginTop: "0.25rem" }}>
-            {activeFlags.length > 0 ? "Requires inspection follow-up" : "Clean profile"}
-          </div>
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      {/* KPI strip — dashboard stats idiom: Sanctioned / Pending / Verified / Rejected */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+          gap: "0.9rem",
+          padding: "1.1rem 0.5rem",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--color-border-subtle)",
+          borderRadius: "10px",
+          boxShadow: "0 1px 3px rgba(12, 42, 82, 0.03)",
+        }}
+      >
+        <StatKpi label="Total Sanctioned" value={formatCompact(numAlloc)} color="#2563eb" />
+        <StatKpi
+          label="Pending Verification"
+          value={formatCompact(statsOverview.pending)}
+          color="#f59e0b"
+        />
+        <StatKpi label="Verified" value={formatCompact(statsOverview.verified)} color="#059669" />
+        <StatKpi label="Rejected" value={formatCompact(statsOverview.rejected)} color="#dc2626" />
       </div>
 
-      {/* Action Header & Notice */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button
-            type="button"
-            className={`btn ${activeTab === "expenses" ? "primary" : "outline"}`}
-            onClick={() => setActiveTab("expenses")}
-          >
-            Expenses ({recentExpenses.length})
-          </button>
-          <button
-            type="button"
-            className={`btn ${activeTab === "flags" ? "primary" : "outline"}`}
-            onClick={() => setActiveTab("flags")}
-          >
-            Inspection Review Flags ({activeFlags.length})
-          </button>
-          <button
-            type="button"
-            className={`btn ${activeTab === "allocations" ? "primary" : "outline"}`}
-            onClick={() => setActiveTab("allocations")}
-          >
-            Sanction Orders & Disbursals ({allocations.length})
-          </button>
+      {/* Toolbar — registry-toolbar + filter-tabs idiom from the dashboard */}
+      <div className="registry-toolbar">
+        <div className="search-filter-group">
+          <div className="search-input-wrap">
+            <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
+            <input
+              type="search"
+              placeholder="Search expenditures, vendors, invoices, schemes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="search-input-with-icon"
+              aria-label="Filter fund records"
+              style={{ minWidth: "240px", maxWidth: "380px" }}
+            />
+          </div>
+
+          <div className="filter-tabs" role="tablist" aria-label="Facility fund sections">
+            {(
+              [
+                { key: "allocations" as const, label: "Allocations", count: filteredAllocations.length },
+                { key: "expenses" as const, label: "Expenditures", count: filteredExpenses.length },
+                ...(canViewFlags
+                  ? [{ key: "flags" as const, label: "Alerts", count: filteredFlags.length }]
+                  : []),
+              ] as const
+            ).map(({ key, label, count }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === key}
+                className={`filter-tab-btn ${activeTab === key ? "active" : ""}`}
+                onClick={() => setActiveTab(key)}
+              >
+                <span>{label}</span>
+                {activeTab === key && <span className="filter-count-badge">{count}</span>}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginLeft: "auto" }}>
+          {/* Status filter pop-up — the funds section's screen, applied to the
+              expenditure and allocations lists. Flags carry their own
+              lifecycle, so no status filter there. */}
+          {activeTab === "expenses" && (
+            <StatusFilter
+              filters={EXPENSE_STATUS_FILTERS}
+              selected={expenseStatuses}
+              onChange={setExpenseStatuses}
+              title="Filter expenditures by status"
+            />
+          )}
+          {activeTab === "allocations" && (
+            <StatusFilter
+              filters={ALLOCATION_STATUS_FILTERS}
+              selected={allocationStatuses}
+              onChange={setAllocationStatuses}
+              title="Filter allocations by status"
+            />
+          )}
+          {canAllocate && (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setAllocationError(null);
+                setShowAllocationModal(true);
+              }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+            >
+              <IconPlus width={15} height={15} />
+              <span>Allocate Fund</span>
+            </button>
+          )}
           {canSubmitExpense && (
             <button
               type="button"
-              className="btn primary"
-              onClick={() => setShowExpenseModal(true)}
+              className="btn-primary"
+              onClick={() => {
+                setExpenseError(null);
+                setShowExpenseModal(true);
+              }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
             >
-              + Record Expense
+              <IconPlus width={15} height={15} />
+              <span>Record Expense</span>
             </button>
+          )}
+
+          {/* FY selector — dashboard toolbar idiom, applies to every section */}
+          {fyOptions.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.2rem",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <button
+                type="button"
+                style={fyArrowStyle}
+                title="Previous fiscal year"
+                aria-label="Previous fiscal year"
+                disabled={fyIdx <= 0}
+                onClick={() => setFyFilter(fyOptions[Math.max(fyIdx - 1, 0)] ?? fyFilter)}
+              >
+                ‹
+              </button>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  whiteSpace: "nowrap",
+                  fontSize: "0.9rem",
+                  fontWeight: 600,
+                  color: "var(--text-subtle)",
+                }}
+              >
+                {fyOptions
+                  .map((fy) => (
+                    <button
+                      key={fy}
+                      type="button"
+                      style={{ ...fyStripStyle, ...(fy === fyFilter ? fyStripActiveStyle : {}) }}
+                      aria-pressed={fy === fyFilter}
+                      aria-label={`Filter fiscal year ${fy}`}
+                      onClick={() => setFyFilter(fy)}
+                    >
+                      {fy}
+                    </button>
+                  ))
+                  .flatMap((el, i) =>
+                    i === 0
+                      ? [el]
+                      : [
+                          <span
+                            key={`sep-${i}`}
+                            style={{
+                              color: "#cbd5e1",
+                              fontSize: "0.85rem",
+                              fontWeight: 600,
+                              padding: "0 0.45rem",
+                            }}
+                          >
+                            |
+                          </span>,
+                          el,
+                        ],
+                  )}
+              </div>
+              <button
+                type="button"
+                style={fyArrowStyle}
+                title="Next fiscal year"
+                aria-label="Next fiscal year"
+                disabled={fyIdx < 0 || fyIdx >= fyOptions.length - 1}
+                onClick={() =>
+                  setFyFilter(fyOptions[Math.min(fyIdx + 1, fyOptions.length - 1)] ?? fyFilter)
+                }
+              >
+                ›
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Tab: Active Inspection Flags */}
-      {activeTab === "flags" && (
-        <div className="table-card">
-          <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-            <h3 style={{ margin: 0, fontSize: "1rem" }}>Active Financial Risk Review Flags</h3>
-            <p className="muted" style={{ margin: "0.25rem 0 0 0", fontSize: "0.8125rem" }}>
-              Explainable anomalies identified by the 13-rule risk engine for verification and oversight.
-            </p>
-          </div>
-          {activeFlags.length === 0 ? (
-            <div style={{ padding: "2.5rem", textAlign: "center", color: "var(--muted-foreground)" }}>
-              <IconShieldCheck width={36} height={36} style={{ color: "#059669", marginBottom: "0.5rem" }} />
-              <div>No active inspection review flags for this project.</div>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {activeFlags.map((flag) => (
-                <div key={flag.id} style={{ padding: "1.25rem", borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <span
-                          className={`badge ${
-                            flag.riskLevel === "critical"
-                              ? "danger"
-                              : flag.riskLevel === "high"
-                              ? "danger"
-                              : flag.riskLevel === "medium"
-                              ? "warn"
-                              : "neutral"
-                          }`}
-                          style={{ textTransform: "uppercase", fontSize: "0.75rem", fontWeight: 700 }}
-                        >
-                          {flag.riskLevel} (Score {flag.riskScore})
-                        </span>
-                        <span style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)" }}>
-                          Status: <strong>{flag.status.replace(/_/g, " ")}</strong>
-                        </span>
-                      </div>
-                      <pre
-                        style={{
-                          marginTop: "0.75rem",
-                          whiteSpace: "pre-wrap",
-                          fontFamily: "inherit",
-                          fontSize: "0.875rem",
-                          lineHeight: 1.5,
-                          backgroundColor: "#f8fafc",
-                          padding: "0.75rem",
-                          borderRadius: "4px",
-                          border: "1px solid #e2e8f0",
-                        }}
-                      >
-                        {flag.explanation}
-                      </pre>
-                      {flag.evidenceRefs.length > 0 && (
-                        <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                          {flag.evidenceRefs.map((ref, idx) => (
-                            <span
-                              key={idx}
-                              style={{
-                                fontSize: "0.75rem",
-                                padding: "2px 8px",
-                                backgroundColor: "#e0f2fe",
-                                color: "#0369a1",
-                                borderRadius: "4px",
-                              }}
-                            >
-                              {ref.label}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", minWidth: "160px" }}>
-                      <a
-                        href={`/funds#flag-${flag.id}`}
-                        className="btn outline"
-                        style={{ fontSize: "0.8125rem", textAlign: "center" }}
-                      >
-                        Open Flag Details
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Expenses */}
+      {/* Tab: Expenditures — dashboard columns + click-for-details rows */}
       {activeTab === "expenses" && (
         <div className="table-card">
-          <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "1rem" }}>Submitted Expenditure Claims</h3>
-              <p className="muted" style={{ margin: "0.25rem 0 0 0", fontSize: "0.8125rem" }}>
-                All procurement, works, and operational expenses recorded for this facility.
-              </p>
-            </div>
-          </div>
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Category</th>
                 <th>Description</th>
-                <th>Vendor / GSTIN</th>
-                <th>Invoice #</th>
-                <th>Amount (₹)</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>Vendor</th>
+                <th>Date</th>
+                <th style={{ textAlign: "right" }}>Expenditure Amount</th>
+                <th style={{ textAlign: "center" }}>Status</th>
               </tr>
             </thead>
             <tbody>
-              {recentExpenses.length === 0 ? (
+              {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: "2rem", color: "var(--muted-foreground)" }}>
-                    No expenses submitted yet for this project.
+                  <td
+                    colSpan={5}
+                    style={{
+                      textAlign: "center",
+                      padding: "2.5rem 1rem",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {recentExpenses.length === 0
+                      ? "No expenditures submitted yet for this facility."
+                      : "No expenditures match the current search."}
                   </td>
                 </tr>
               ) : (
-                recentExpenses.map((exp) => (
-                  <tr key={exp.id}>
-                    <td>{new Date(exp.transactionDate).toLocaleDateString("en-IN")}</td>
-                    <td>{exp.category}</td>
+                filteredExpenses.map((exp) => (
+                  <tr
+                    key={exp.id}
+                    onClick={() => setDetailExpenseId(exp.id)}
+                    title="View expenditure details & actions"
+                    style={{ cursor: "pointer" }}
+                  >
                     <td>
-                      <div>{exp.description}</div>
+                      <div style={{ fontWeight: 500, maxWidth: "250px" }}>{exp.description}</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 500 }}>{exp.vendorName}</div>
-                      {exp.vendorGstin && <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>{exp.vendorGstin}</div>}
+                      <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>{exp.vendorName}</div>
                     </td>
-                    <td>{exp.invoiceNumber || "—"}</td>
-                    <td style={{ fontWeight: 600 }}>
-                      ₹{parseFloat(exp.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {formatDate(exp.transactionDate)}
                     </td>
-                    <td>
+                    <td
+                      style={{
+                        textAlign: "right",
+                        fontWeight: 700,
+                        color: "var(--color-navy-dark)",
+                      }}
+                    >
+                      {formatCurrency(exp.amount)}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
                       <span
-                        className={`badge ${
-                          exp.status === "verified"
-                            ? "success"
-                            : exp.status === "submitted"
-                            ? "neutral"
-                            : exp.status === "rejected" || exp.status === "voided"
-                            ? "danger"
-                            : "neutral"
-                        }`}
+                        style={{
+                          fontWeight: 600,
+                          color:
+                            exp.status === "verified"
+                              ? "#16a34a"
+                              : exp.status === "rejected"
+                                ? "#dc2626"
+                                : "#d97706",
+                        }}
                       >
-                        {exp.status.toUpperCase()}
+                        {exp.status.replace(/_/g, " ").toUpperCase()}
                       </span>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                        {canVerifyExpense && exp.status === "submitted" && (
-                          <button
-                            type="button"
-                            className="btn outline"
-                            style={{ fontSize: "0.75rem", padding: "2px 8px" }}
-                            onClick={() => handleVerifyExpense(exp.id)}
-                          >
-                            Verify
-                          </button>
-                        )}
-                        {exp.status !== "voided" && (
-                          <button
-                            type="button"
-                            className="btn outline"
-                            style={{ fontSize: "0.75rem", padding: "2px 8px", color: "#dc2626" }}
-                            onClick={() => setVoidingExpenseId(exp.id)}
-                          >
-                            Void
-                          </button>
-                        )}
-                      </div>
                     </td>
                   </tr>
                 ))
@@ -432,138 +824,276 @@ export function ProjectFundsClient({
         </div>
       )}
 
-      {/* Tab: Allocations & Releases */}
-      {activeTab === "allocations" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div className="table-card">
-            <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-              <h3 style={{ margin: 0, fontSize: "1rem" }}>Sanctioned Budget Allocations</h3>
-            </div>
-            <table>
-              <thead>
+      {/* Tab: Alerts (inspection review flags) — oversight-only disclosure */}
+      {canViewFlags && activeTab === "flags" && (
+        <div className="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Reason</th>
+                <th>Flagged On</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFlags.length === 0 ? (
                 <tr>
-                  <th>Fiscal Year</th>
-                  <th>Sanctioned Amount (₹)</th>
-                  <th>Status</th>
-                  <th>Sanction Date</th>
-                  <th>Notes</th>
+                  <td colSpan={3} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
+                    No active financial alerts recorded.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {allocations.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>No allocations found.</td>
+              ) : (
+                filteredFlags.map((f) => (
+                  <tr
+                    key={f.id}
+                    onClick={() => setFlagDetailId(f.id)}
+                    title="View alert details & actions"
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <span
+                        className="badge"
+                        style={{
+                          display: "inline-block",
+                          whiteSpace: "nowrap",
+                          background:
+                            f.riskLevel === "critical" || f.riskLevel === "high"
+                              ? "#fee2e2"
+                              : f.riskLevel === "medium"
+                                ? "#fef3c7"
+                                : "#e0f2fe",
+                          color:
+                            f.riskLevel === "critical" || f.riskLevel === "high"
+                              ? "#991b1b"
+                              : f.riskLevel === "medium"
+                                ? "#92400e"
+                                : "#0369a1",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {f.riskLevel.toUpperCase()}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{f.explanation}</div>
+                      {f.linkedInspectionId && (
+                        <div style={{ fontSize: "0.7rem", marginTop: "0.2rem", color: "#2563eb" }}>
+                          <Link
+                            href={`/inspections/${f.linkedInspectionId}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Inspection #{f.linkedInspectionId.slice(0, 8)}
+                          </Link>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {formatDate(f.createdAt)}
+                    </td>
                   </tr>
-                ) : (
-                  allocations.map((a) => (
-                    <tr key={a.id}>
-                      <td>{a.fiscalYear}</td>
-                      <td style={{ fontWeight: 600 }}>₹{parseFloat(a.allocatedAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                      <td>
-                        <span className={`badge ${a.status === "active" ? "success" : "danger"}`}>
-                          {a.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>{a.sanctionedAt ? new Date(a.sanctionedAt).toLocaleDateString("en-IN") : "—"}</td>
-                      <td>{a.scheme || a.description || a.notes || "—"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="table-card">
-            <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-              <h3 style={{ margin: 0, fontSize: "1rem" }}>Fund Releases (Disbursals)</h3>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Release Date</th>
-                  <th>Reference #</th>
-                  <th>Disbursed Amount (₹)</th>
-                  <th>Status</th>
-                  <th>Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {releases.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>No fund releases found.</td>
-                  </tr>
-                ) : (
-                  releases.map((r) => (
-                    <tr key={r.id}>
-                      <td>{new Date(r.releaseDate).toLocaleDateString("en-IN")}</td>
-                      <td style={{ fontWeight: 500 }}>{r.referenceNumber}</td>
-                      <td style={{ fontWeight: 600 }}>₹{parseFloat(r.releasedAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                      <td>
-                        <span className={`badge ${r.status === "released" ? "success" : "danger"}`}>
-                          {r.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>{r.remarks || "—"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Record Expense Modal */}
+
+      {/* Tab: Allocations */}
+      {activeTab === "allocations" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Scheme</th>
+                  <th>Description</th>
+                  <th>FY</th>
+                  <th style={{ textAlign: "right" }}>Sanctioned Amount</th>
+                  <th>Actioned On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAllocations.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      style={{
+                        textAlign: "center",
+                        padding: "2.5rem 1rem",
+                        color: "var(--text-muted)",
+                      }}
+                    >
+                      No fund allocations found matching filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAllocations.map((a) => (
+                    <tr
+                      key={a.id}
+                      onClick={() => setAllocationDetailId(a.id)}
+                      title="View allocation details"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td>
+                        <div style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                          {a.scheme ?? "Government Scheme Allocation"}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{a.description ?? "—"}</div>
+                      </td>
+                      <td>
+                        <span className="badge" style={{ fontSize: "0.75rem" }}>
+                          {a.fiscalYear}
+                        </span>
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontWeight: 700,
+                          color: "var(--color-navy-dark)",
+                        }}
+                      >
+                        {formatCurrency(a.allocatedAmount)}
+                      </td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                        {formatDate(a.updatedAt)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      )}
+
+      {/* Record Expense Modal — dashboard modal idiom: overlay + card + X close */}
       {showExpenseModal && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Record expenditure claim"
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            background: "rgba(0, 26, 56, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            padding: "1rem",
             zIndex: 1000,
-            backdropFilter: "blur(4px)",
           }}
         >
           <div
+            className="card"
             style={{
-              width: "500px",
-              maxWidth: "90%",
-              padding: "1.75rem",
-              backgroundColor: "#ffffff",
-              borderRadius: "12px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-              border: "1px solid #e2e8f0",
+              width: "min(560px, calc(100vw - 2rem))",
+              padding: "1.5rem",
+              background: "#ffffff",
+              borderRadius: "10px",
+              boxSizing: "border-box",
+              maxHeight: "calc(100vh - 4rem)",
+              overflowY: "auto",
             }}
           >
-            <h3 style={{ marginTop: 0, fontSize: "1.25rem", fontWeight: 600 }}>Record Expenditure Claim</h3>
-            <form onSubmit={handleCreateExpense} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "1rem",
+              }}
+            >
               <div>
-                <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Category *</label>
-                <select
-                  className="input"
-                  style={{ width: "100%", marginTop: "0.25rem" }}
-                  value={expenseForm.category}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                  required
+                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 750 }}>
+                  Record expenditure
+                </h3>
+                <p
+                  style={{ margin: "0.35rem 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}
                 >
-                  <option value="Materials & Supplies">Materials & Supplies</option>
-                  <option value="Works & Construction">Works & Construction</option>
-                  <option value="Consultancy & Services">Consultancy & Services</option>
-                  <option value="Equipment & Machinery">Equipment & Machinery</option>
-                  <option value="Staff & Honorarium">Staff & Honorarium</option>
-                  <option value="Operational Overheads">Operational Overheads</option>
-                </select>
+                  {project.name} · {project.code}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExpenseModal(false)}
+                disabled={submittingExpense}
+                aria-label="Close expenditure form"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "0.35rem",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--color-border-subtle)",
+                  borderRadius: "6px",
+                  cursor: submittingExpense ? "wait" : "pointer",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <IconX width={18} height={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleCreateExpense}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.85rem",
+                marginTop: "1.1rem",
+              }}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label htmlFor="pf-category" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                    Category *
+                  </label>
+                  <select
+                    id="pf-category"
+                    className="input"
+                    style={expenseFieldStyle}
+                    value={expenseForm.category}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                    required
+                  >
+                    {EXPENSE_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label htmlFor="pf-amount" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                    Amount (₹) *
+                  </label>
+                  <input
+                    id="pf-amount"
+                    type="text"
+                    inputMode="decimal"
+                    className="input"
+                    style={expenseFieldStyle}
+                    placeholder="25000.00"
+                    value={expenseForm.amount}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Description *</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                <label htmlFor="pf-description" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                  Description *
+                </label>
                 <input
+                  id="pf-description"
                   type="text"
                   className="input"
-                  style={{ width: "100%", marginTop: "0.25rem" }}
+                  style={expenseFieldStyle}
                   placeholder="e.g. Supply of cement bags batch 4"
                   value={expenseForm.description}
                   onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
@@ -572,85 +1102,100 @@ export function ProjectFundsClient({
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div>
-                  <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Amount (₹) *</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label htmlFor="pf-vendor" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                    Vendor / payee *
+                  </label>
                   <input
+                    id="pf-vendor"
                     type="text"
                     className="input"
-                    style={{ width: "100%", marginTop: "0.25rem" }}
-                    placeholder="25000.00"
-                    value={expenseForm.amount}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Transaction Date *</label>
-                  <input
-                    type="date"
-                    className="input"
-                    style={{ width: "100%", marginTop: "0.25rem" }}
-                    value={expenseForm.transactionDate}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, transactionDate: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div>
-                  <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Vendor Name *</label>
-                  <input
-                    type="text"
-                    className="input"
-                    style={{ width: "100%", marginTop: "0.25rem" }}
+                    style={expenseFieldStyle}
                     placeholder="ABC Suppliers Ltd"
                     value={expenseForm.vendorName}
                     onChange={(e) => setExpenseForm({ ...expenseForm, vendorName: e.target.value })}
                     required
                   />
                 </div>
-
-                <div>
-                  <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Vendor GSTIN</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label htmlFor="pf-gstin" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                    GSTIN
+                  </label>
                   <input
+                    id="pf-gstin"
                     type="text"
                     className="input"
-                    style={{ width: "100%", marginTop: "0.25rem" }}
+                    style={expenseFieldStyle}
                     placeholder="22AAAAA0000A1Z5"
                     value={expenseForm.vendorGstin}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, vendorGstin: e.target.value })}
+                    onChange={(e) =>
+                      setExpenseForm({ ...expenseForm, vendorGstin: e.target.value })
+                    }
                   />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Invoice Number</label>
-                <input
-                  type="text"
-                  className="input"
-                  style={{ width: "100%", marginTop: "0.25rem" }}
-                  placeholder="INV-2025-001"
-                  value={expenseForm.invoiceNumber}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, invoiceNumber: e.target.value })}
-                />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label htmlFor="pf-invoice" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                    Invoice / voucher
+                  </label>
+                  <input
+                    id="pf-invoice"
+                    type="text"
+                    className="input"
+                    style={expenseFieldStyle}
+                    placeholder="INV-2025-001"
+                    value={expenseForm.invoiceNumber}
+                    onChange={(e) =>
+                      setExpenseForm({ ...expenseForm, invoiceNumber: e.target.value })
+                    }
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label htmlFor="pf-date" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                    Transaction date *
+                  </label>
+                  <input
+                    id="pf-date"
+                    type="date"
+                    className="input"
+                    style={expenseFieldStyle}
+                    value={expenseForm.transactionDate}
+                    onChange={(e) =>
+                      setExpenseForm({ ...expenseForm, transactionDate: e.target.value })
+                    }
+                    required
+                  />
+                </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem" }}>
+              {expenseError && (
+                <div role="alert" className="error-banner">
+                  {expenseError}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "0.75rem",
+                  marginTop: "0.5rem",
+                }}
+              >
                 <button
                   type="button"
-                  className="btn outline"
+                  className="btn-secondary"
                   onClick={() => setShowExpenseModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn primary"
                   disabled={submittingExpense}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
                 >
-                  {submittingExpense ? "Saving..." : "Submit Claim"}
+                  <IconX width={15} height={15} />
+                  <span>Cancel</span>
+                </button>
+                <button type="submit" className="btn-primary" disabled={submittingExpense}>
+                  {submittingExpense ? "Submitting…" : "Submit Claim"}
                 </button>
               </div>
             </form>
@@ -658,64 +1203,626 @@ export function ProjectFundsClient({
         </div>
       )}
 
-      {/* Void Confirmation Modal */}
-      {voidingExpenseId && (
+      {/* MODAL: EXPENSE ROW DETAIL — dashboard idiom (overlay + card + actions) */}
+      {detailFlag && (
+        <FlagDetailModal
+          flag={detailFlag}
+          projectName={project.name}
+          projectCode={project.code}
+          canInspect={canInspect}
+          onClose={() => setFlagDetailId(null)}
+          onReview={() => {
+            setFlagDetailId(null);
+            setFlagAction({ flag: detailFlag, action: "review" });
+          }}
+          onInspect={() => {
+            setFlagDetailId(null);
+            setInspectFlag(detailFlag);
+          }}
+          onDismiss={() => {
+            setFlagDetailId(null);
+            setFlagAction({ flag: detailFlag, action: "dismiss" });
+          }}
+          onResolve={() => {
+            setFlagDetailId(null);
+            setFlagAction({ flag: detailFlag, action: "resolve" });
+          }}
+        />
+      )}
+
+      {flagAction && (
+        <FlagActionModal
+          action={flagAction.action}
+          note={flagNote}
+          onNoteChange={setFlagNote}
+          onSubmit={handleFlagAction}
+          onClose={() => setFlagAction(null)}
+        />
+      )}
+
+      {inspectFlag && (
+        <ScheduleInspectionModal
+          flag={inspectFlag}
+          projectName={project.name}
+          onConfirm={() => handleTriggerInspection(inspectFlag.id)}
+          onClose={() => setInspectFlag(null)}
+        />
+      )}
+
+      {detailAllocation && (
+        <AllocationDetailModal
+          allocation={detailAllocation}
+          projectName={project.name}
+          onClose={() => setAllocationDetailId(null)}
+        />
+      )}
+
+      {detailExpense && (
+        <ExpenseDetailModal
+          expense={detailExpense}
+          allocation={detailExpenseAllocation}
+          project={project}
+          canVerify={canVerifyExpense}
+          onClose={() => setDetailExpenseId(null)}
+          onReject={(id) => {
+            setDetailExpenseId(null);
+            setRejectError(null);
+            setRejectReason("");
+            setShowRejectModal(id);
+          }}
+          onVerify={(id) => {
+            setDetailExpenseId(null);
+            void handleVerifyExpense(id);
+          }}
+        />
+      )}
+
+      {/* MODAL: REJECT EXPENSE (reason required, as on the dashboard) */}
+      {showRejectModal && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Reject expenditure record"
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            background: "rgba(0, 26, 56, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            padding: "1rem",
             zIndex: 1000,
-            backdropFilter: "blur(4px)",
           }}
         >
           <div
+            className="card"
             style={{
-              width: "450px",
-              maxWidth: "90%",
-              padding: "1.75rem",
-              backgroundColor: "#ffffff",
-              borderRadius: "12px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-              border: "1px solid #e2e8f0",
+              width: "min(460px, calc(100vw - 2rem))",
+              padding: "1.5rem",
+              background: "#ffffff",
+              borderRadius: "10px",
+              boxSizing: "border-box",
             }}
           >
-            <h3 style={{ marginTop: 0, color: "#dc2626", fontSize: "1.25rem", fontWeight: 600 }}>Void Expense Record</h3>
-            <p style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
-              Financial records cannot be deleted. Voiding will permanently deactivate this claim while retaining an immutable audit trail.
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "1rem",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#b91c1c", fontSize: "1.1rem", fontWeight: 750 }}>
+                Reject expenditure record
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowRejectModal(null)}
+                disabled={rejecting}
+                aria-label="Close rejection form"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "0.35rem",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--color-border-subtle)",
+                  borderRadius: "6px",
+                  cursor: rejecting ? "wait" : "pointer",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <IconX width={18} height={18} />
+              </button>
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0.5rem 0 0" }}>
+              The submitting organisation will be able to amend and resubmit this claim. The
+              rejection reason is recorded in the audit trail.
             </p>
-            <div style={{ marginTop: "1rem" }}>
-              <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Justification / Reason *</label>
+            <div
+              style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}
+            >
+              <label htmlFor="pf-reject-reason" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                Rejection reason *
+              </label>
               <textarea
+                id="pf-reject-reason"
+                style={{ ...expenseFieldStyle, minHeight: "5.5rem", resize: "vertical" }}
+                placeholder="Reason for rejecting this claim (required by audit policy)…"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                required
+              />
+            </div>
+
+            {rejectError && (
+              <div role="alert" className="error-banner" style={{ marginTop: "0.75rem" }}>
+                {rejectError}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+                marginTop: "1.1rem",
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowRejectModal(null)}
+                disabled={rejecting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!rejectReason.trim() || rejecting}
+                onClick={() => void handleRejectExpense()}
+                style={{ background: "#b91c1c", borderColor: "#b91c1c" }}
+              >
+                {rejecting ? "Rejecting…" : "Confirm Rejection"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Void Confirmation Modal */}
+      {voidingExpenseId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Void expense record"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 26, 56, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: "min(460px, calc(100vw - 2rem))",
+              padding: "1.5rem",
+              background: "#ffffff",
+              borderRadius: "10px",
+              boxSizing: "border-box",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "1rem",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#b91c1c", fontSize: "1.1rem", fontWeight: 750 }}>
+                Void expenditure record
+              </h3>
+              <button
+                type="button"
+                onClick={() => setVoidingExpenseId(null)}
+                disabled={voiding}
+                aria-label="Close void confirmation"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "0.35rem",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--color-border-subtle)",
+                  borderRadius: "6px",
+                  cursor: voiding ? "wait" : "pointer",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <IconX width={18} height={18} />
+              </button>
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0.5rem 0 0" }}>
+              Financial records cannot be deleted. Voiding permanently deactivates this claim while
+              retaining an immutable audit trail.
+            </p>
+            <div
+              style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}
+            >
+              <label htmlFor="pf-void-reason" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                Justification / reason *
+              </label>
+              <textarea
+                id="pf-void-reason"
                 className="input"
-                style={{ width: "100%", height: "80px", marginTop: "0.25rem" }}
-                placeholder="Reason for voiding (required by audit policy)..."
+                style={{ ...expenseFieldStyle, minHeight: "5.5rem", resize: "vertical" }}
+                placeholder="Reason for voiding (required by audit policy)…"
                 value={voidReason}
                 onChange={(e) => setVoidReason(e.target.value)}
                 required
               />
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
+            {voidError && (
+              <div role="alert" className="error-banner" style={{ marginTop: "0.75rem" }}>
+                {voidError}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+                marginTop: "1.1rem",
+              }}
+            >
               <button
                 type="button"
-                className="btn outline"
+                className="btn-secondary"
                 onClick={() => setVoidingExpenseId(null)}
+                disabled={voiding}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn danger"
+                className="btn-primary"
                 disabled={!voidReason.trim() || voiding}
                 onClick={handleVoidExpense}
+                style={{ background: "#b91c1c", borderColor: "#b91c1c" }}
               >
-                {voiding ? "Voiding..." : "Confirm Void"}
+                {voiding ? "Voiding…" : "Confirm Void"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sanction Allocation modal — dashboard idiom (overlay + card + sections) */}
+      {showAllocationModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Sanction scheme allocation"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 26, 56, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: "min(720px, calc(100vw - 2rem))",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: 0,
+              background: "#ffffff",
+              borderRadius: "12px",
+              boxSizing: "border-box",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "1rem",
+                padding: "1.25rem 1.5rem 1rem",
+                borderBottom: "1px solid var(--color-border-subtle)",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 750 }}>
+                  Sanction Scheme Allocation
+                </h2>
+                <p
+                  style={{ margin: "0.35rem 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}
+                >
+                  {project.name} · {project.code}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllocationModal(false)}
+                disabled={submittingAllocation}
+                aria-label="Close allocation form"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "0.35rem",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--color-border-subtle)",
+                  borderRadius: "6px",
+                  cursor: submittingAllocation ? "wait" : "pointer",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <IconX width={18} height={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleCreateAllocation}
+              style={{ display: "flex", flexDirection: "column", padding: "0 1.5rem" }}
+            >
+              <section
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.9rem",
+                  padding: "1.25rem 0",
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700 }}>
+                    Allocation Target
+                  </h3>
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: "0.85rem",
+                  }}
+                >
+                  <div>
+                    <label
+                      htmlFor="pf-allocation-fy"
+                      style={{
+                        display: "block",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        marginBottom: "0.3rem",
+                      }}
+                    >
+                      Fiscal Year *
+                    </label>
+                    <select
+                      id="pf-allocation-fy"
+                      required
+                      value={allocationForm.fiscalYear}
+                      onChange={(e) =>
+                        setAllocationForm({ ...allocationForm, fiscalYear: e.target.value })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "0.6rem",
+                        borderRadius: "6px",
+                        border: "1px solid var(--color-border-strong)",
+                        background: "var(--bg-surface)",
+                      }}
+                    >
+                      <option value={currentFy()}>{currentFy()} · Current FY</option>
+                      <option value={nextFy()}>{nextFy()} · Next FY</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="pf-allocation-amount"
+                      style={{
+                        display: "block",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        marginBottom: "0.3rem",
+                      }}
+                    >
+                      Sanctioned Amount (₹) *
+                    </label>
+                    <input
+                      id="pf-allocation-amount"
+                      required
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="e.g. 5000000.00"
+                      value={allocationForm.allocatedAmount}
+                      onChange={(e) =>
+                        setAllocationForm({ ...allocationForm, allocatedAmount: e.target.value })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "0.6rem",
+                        borderRadius: "6px",
+                        border: "1px solid var(--color-border-strong)",
+                      }}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.9rem",
+                  padding: "1.25rem 0",
+                  borderTop: "1px solid var(--color-border-subtle)",
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700 }}>Scheme Details</h3>
+                </div>
+                <div>
+                  <label
+                    htmlFor="pf-allocation-scheme"
+                    style={{
+                      display: "block",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      marginBottom: "0.3rem",
+                    }}
+                  >
+                    Scheme Name *
+                  </label>
+                  <input
+                    id="pf-allocation-scheme"
+                    required
+                    type="text"
+                    placeholder="Enter the sanctioning scheme name"
+                    value={allocationForm.scheme}
+                    onChange={(e) =>
+                      setAllocationForm({ ...allocationForm, scheme: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border-strong)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="pf-allocation-description"
+                    style={{
+                      display: "block",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      marginBottom: "0.3rem",
+                    }}
+                  >
+                    Description{" "}
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(Optional)</span>
+                  </label>
+                  <input
+                    id="pf-allocation-description"
+                    type="text"
+                    placeholder="Purpose or scope of this allocation"
+                    value={allocationForm.description}
+                    onChange={(e) =>
+                      setAllocationForm({ ...allocationForm, description: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border-strong)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="pf-allocation-notes"
+                    style={{
+                      display: "block",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      marginBottom: "0.3rem",
+                    }}
+                  >
+                    Administrative Notes{" "}
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(Optional)</span>
+                  </label>
+                  <textarea
+                    id="pf-allocation-notes"
+                    rows={3}
+                    placeholder="Internal notes for reviewers"
+                    value={allocationForm.notes}
+                    onChange={(e) =>
+                      setAllocationForm({ ...allocationForm, notes: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border-strong)",
+                      font: "inherit",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+              </section>
+
+              {allocationError && (
+                <div role="alert" className="error-banner" style={{ marginBottom: "0.9rem" }}>
+                  {allocationError}
+                </div>
+              )}
+
+              <div
+                style={{
+                  position: "sticky",
+                  bottom: 0,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "0.75rem",
+                  margin: "0 -1.5rem",
+                  padding: "1rem 1.5rem",
+                  background: "rgba(255, 255, 255, 0.97)",
+                  borderTop: "1px solid var(--color-border-subtle)",
+                  boxShadow: "0 -8px 20px rgba(15, 23, 42, 0.06)",
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowAllocationModal(false)}
+                  disabled={submittingAllocation}
+                  style={{
+                    padding: "0.65rem 1rem",
+                    cursor: submittingAllocation ? "wait" : "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingAllocation}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.45rem",
+                    minWidth: "190px",
+                    padding: "0.7rem 1.2rem",
+                    borderRadius: "6px",
+                    background:
+                      "linear-gradient(90deg, var(--color-navy-brand), var(--color-accent-blue))",
+                    color: "#ffffff",
+                    border: "none",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {submittingAllocation ? "Sanctioning allocation..." : "Sanction allocation"}
+                  {!submittingAllocation && <IconChevronRight width={15} height={15} />}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

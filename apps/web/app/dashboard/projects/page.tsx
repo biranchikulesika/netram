@@ -43,17 +43,6 @@ export default async function ProjectsPage({
     })
     .catch(() => ({ items: [], total: 0, page: 1, pageSize }));
 
-  // Verification queue: facility registrations awaiting an approve/reject
-  // decision. Only fetched for users holding project:approve — for everyone
-  // else the section simply does not render.
-  const canApprove = session.permissions.includes("project:approve");
-  const verificationQueue = canApprove
-    ? await client
-        .listVerificationQueue()
-        .then((r) => r.items)
-        .catch(() => [])
-      : [];
-
   const apiUrl = loadClientEnv().NEXT_PUBLIC_API_URL;
 
   return (
@@ -73,7 +62,6 @@ export default async function ProjectsPage({
         initialStatus={params.status ?? "ALL"}
         initialView={validView}
         initialSearch={searchQuery}
-        verificationQueue={verificationQueue}
         apiUrl={apiUrl}
       />
     </main>

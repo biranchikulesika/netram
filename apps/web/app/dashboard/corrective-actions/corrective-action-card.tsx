@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CorrectiveAction, CorrectiveActionStatus } from "@netram/types";
-import { formatDate, getDistrictName } from "../../../lib/presentation";
+import { formatDate, formatDistrict } from "../../../lib/presentation";
 import {
   IconAlertTriangle,
   IconBuilding,
@@ -120,7 +120,7 @@ export function CorrectiveActionCard({ ca }: { ca: CorrectiveAction }) {
               <IconGavel className="meta-label-icon" />
             </dt>
             {ca.project?.districtId ? (
-              <dd>{getDistrictName(ca.project.districtId, ca.project.code)}</dd>
+              <dd>{formatDistrict(ca.project.districtName, ca.project.stateName)}</dd>
             ) : (
               <dd className="meta-placeholder">Not assigned</dd>
             )}

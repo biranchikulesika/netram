@@ -5,6 +5,8 @@ import {
   findings as findingsTable,
   inspections as inspectionsTable,
   projects as projectsTable,
+  districts as districtsTable,
+  states as statesTable,
   findingCategories as findingCategoriesTable,
   auditEvents,
   outboxEvents,
@@ -62,6 +64,8 @@ export interface CorrectiveActionProjectRow {
   code: string;
   name: string;
   districtId: string | null;
+  districtName: string | null;
+  stateName: string | null;
   description: string | null;
 }
 
@@ -166,6 +170,8 @@ export class CorrectiveActionRepository {
             code: projectsTable.code,
             name: projectsTable.name,
             districtId: projectsTable.districtId,
+            districtName: districtsTable.name,
+            stateName: statesTable.name,
             description: projectsTable.description,
           },
           finding: {
@@ -181,6 +187,8 @@ export class CorrectiveActionRepository {
         .innerJoin(projectsTable, eq(inspectionsTable.projectId, projectsTable.id))
         .innerJoin(findingsTable, eq(correctiveActionsTable.findingId, findingsTable.id))
         .leftJoin(findingCategoriesTable, eq(findingsTable.categoryId, findingCategoriesTable.id))
+        .leftJoin(districtsTable, eq(projectsTable.districtId, districtsTable.id))
+        .leftJoin(statesTable, eq(districtsTable.stateId, statesTable.id))
         .where(and(where, joinScope))
         .orderBy(desc(correctiveActionsTable.createdAt))
         .limit(filter.pageSize)
@@ -201,6 +209,8 @@ export class CorrectiveActionRepository {
           code: r.project.code,
           name: r.project.name,
           districtId: r.project.districtId,
+          districtName: r.project.districtName,
+          stateName: r.project.stateName,
           description: r.project.description,
         },
         finding: {

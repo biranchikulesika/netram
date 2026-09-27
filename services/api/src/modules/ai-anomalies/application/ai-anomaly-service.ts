@@ -47,6 +47,7 @@ export class AiAnomalyService {
       severity: query.severity,
       status: query.status,
       inspectionId: query.inspectionId,
+      projectId: query.projectId,
       jurisdictionIds: scope ? [...scope] : undefined,
     });
     return { items: page.items, total: page.total, page: pageNum, pageSize };

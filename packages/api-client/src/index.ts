@@ -204,6 +204,14 @@ export class NetramApiClient extends HttpClient {
     return this.get(`/api/v1/projects/${id}`);
   }
 
+  /** Updates a facility's contact details (person in charge + contacts). */
+  async updateProjectContact(
+    id: string,
+    body: { contactName?: string | null; contactPhone?: string | null; contactEmail?: string | null },
+  ): Promise<Project> {
+    return this.patch(`/api/v1/projects/${id}/contact`, body);
+  }
+
   async listProjectPhotos(id: string): Promise<ProjectPhoto[]> {
     return this.get(`/api/v1/projects/${id}/photos`);
   }

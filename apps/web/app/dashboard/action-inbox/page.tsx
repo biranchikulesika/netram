@@ -21,6 +21,11 @@ export default async function ActionInboxPage() {
     generatedAt: new Date().toISOString(),
   }));
 
+  // Responsible-organisation options for the remediation-order dialog. The
+  // inbox itself discloses no organisation roster (§34), so this is fetched
+  // here and permission-gated by the API like any other list endpoint.
+  const organisations = await client.listOrganisations().catch(() => []);
+
   return (
     <main>
       <NavHeader
@@ -29,7 +34,11 @@ export default async function ActionInboxPage() {
         permissions={permissions}
         activeSection="action-inbox"
       />
-      <ActionInboxView sections={inbox.sections} generatedAt={inbox.generatedAt} />
+      <ActionInboxView
+        sections={inbox.sections}
+        generatedAt={inbox.generatedAt}
+        organisations={organisations}
+      />
     </main>
   );
 }

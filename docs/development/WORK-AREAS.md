@@ -206,7 +206,7 @@ packages/config/src/      # Centralized env config (server, client, realtime, cc
 
 ### Responsibilities
 
-- REST API under `/api/v1/` (73 routes — see `docs/contracts/README.md`)
+- REST API under `/api/v1/` (150+ operations — see `docs/contracts/README.md`)
 - Application and domain logic (state transitions, authorisation, audit, outbox)
 - Database schema, migrations, seed data
 - Repository implementations (all DB access confined to `packages/data`)
