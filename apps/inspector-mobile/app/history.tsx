@@ -22,7 +22,7 @@ type HistoryFilter = "ALL" | "SUBMITTED" | "CLOSED" | "IN_PROGRESS";
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { theme, isPureDark } = useSettings();
+  const { theme } = useSettings();
   const queue = useMemo(() => new OfflineInspectionQueue(), []);
 
   const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);

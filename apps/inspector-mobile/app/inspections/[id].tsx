@@ -13,18 +13,19 @@ import {
   Text,
   TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
+import { WebView } from "react-native-webview";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { colors, typography } from "../../src/theme/colors";
 import { useSettings } from "../../src/theme/settings-context";
 import { requestInspectionPermissions } from "../../src/utils/permissions";
 import {
-  EmptyState,
   Icon,
   NetramBadge,
   NetramButton,
-  NetramInput,
 } from "../../src/components/ui";
 import {
   OfflineInspectionQueue,
@@ -39,7 +40,6 @@ import { useSyncStatus } from "../../src/offline/sync-context";
 import { useAuth } from "../../src/auth/auth-context";
 import { formatCurrencyString } from "../../src/utils/currency";
 import type {
-  FindingSeverity,
   InspectionFlag,
   OrganisationView,
   ProgrammeView,
@@ -54,9 +54,10 @@ function PlayableVideo({
   autoPlay = false,
 }: {
   src: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
   autoPlay?: boolean;
 }) {
+  const flattened = StyleSheet.flatten(style);
   if (Platform.OS === "web") {
     return React.createElement("video", {
       src,
@@ -66,19 +67,18 @@ function PlayableVideo({
       preload: "metadata",
       style: {
         width: "100%",
-        height: style?.height || 220,
+        height: flattened?.height || 220,
         backgroundColor: "#000000",
-        borderRadius: style?.borderRadius || 8,
+        borderRadius: flattened?.borderRadius || 8,
         objectFit: "contain",
         display: "block",
         outline: "none",
-        ...style,
+        ...flattened,
       },
     });
   }
 
   try {
-    const { WebView } = require("react-native-webview");
     const html = `
       <!DOCTYPE html>
       <html>
@@ -121,7 +121,11 @@ function PlayableVideo({
 function playSyntheticTone(onEnd?: () => void) {
   try {
     if (typeof window !== "undefined") {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const windowWithAudio = window as unknown as {
+        AudioContext?: typeof AudioContext;
+        webkitAudioContext?: typeof AudioContext;
+      };
+      const AudioCtx = windowWithAudio.AudioContext || windowWithAudio.webkitAudioContext;
       if (AudioCtx) {
         const ctx = new AudioCtx();
         const osc = ctx.createOscillator();
@@ -341,10 +345,6 @@ export default function InspectionDetailScreen() {
   const status = inspection?.status ?? "assigned";
   const canStart = status === "assigned";
   const isFieldStage = status === "in_progress";
-  const attendanceOps = useMemo(
-    () => operations.filter((o) => o.operation_type === "record_attendance"),
-    [operations],
-  );
 
   // Geofence gate: facility detail is unlocked once the inspector has
   // recorded a check-in (or started the inspection) for this assignment.

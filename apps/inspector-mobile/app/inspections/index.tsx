@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { colors, typography } from "../../src/theme/colors";
+import { typography } from "../../src/theme/colors";
 import { useSettings } from "../../src/theme/settings-context";
 import { EmptyState, ScreenHeader, Icon, NetramBadge } from "../../src/components/ui";
 import { OfflineInspectionQueue, type CachedInspectionRecord } from "../../src/offline/queue";
@@ -252,7 +252,7 @@ export default function InspectionsListScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item, index }) => {
+          renderItem={({ item }) => {
             const isUnlocked =
               item.status !== "assigned" || checkedInIds.has(item.id);
             const isInProgress = item.status === "in_progress";

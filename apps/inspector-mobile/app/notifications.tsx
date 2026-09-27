@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { colors, typography } from "../src/theme/colors";
+import { typography } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import {
   EmptyState,
@@ -98,7 +98,7 @@ const DEMO_NOTIFICATIONS: Notification[] = [
 export default function NotificationsScreen() {
   const router = useRouter();
   const { client } = useAuth();
-  const { theme, isPureDark } = useSettings();
+  const { theme } = useSettings();
 
   const [items, setItems] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
