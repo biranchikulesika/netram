@@ -5,866 +5,523 @@ import {
   Pressable,
   StyleSheet,
   Platform,
-  Modal,
+  Image,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { Video, ResizeMode, type AVPlaybackStatus } from "expo-av";
+import { Video, ResizeMode, Audio as ExpoAudio, type AVPlaybackStatus } from "expo-av";
 import { Icon } from "./Icon";
 import { colors } from "../../theme/colors";
 
 export interface InteractiveVideoPlayerProps {
-  src: string;
+  src: string | number;
+  inspectorSrc?: string | number;
   title?: string;
   style?: StyleProp<ViewStyle>;
   autoPlay?: boolean;
   watermarkText?: string;
-}
-
-function formatDuration(seconds: number): string {
-  if (!seconds || isNaN(seconds) || seconds < 0) return "00:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m < 10 ? "0" : ""}${m}:${s < 10 ? "0" : ""}${s}`;
+  contactName?: string;
+  contactAvatarColor?: string;
 }
 
 export function InteractiveVideoPlayer({
   src,
-  title,
+  inspectorSrc,
+  contactName: _contactName,
   style,
   autoPlay = false,
-  watermarkText = "NETRAM VERIFIED EVIDENCE",
 }: InteractiveVideoPlayerProps) {
   const flattened = StyleSheet.flatten(style);
-  const containerHeight = flattened?.height || 230;
+  const containerHeight = flattened?.height || 220;
+
+  const resolveUri = useCallback((source?: string | number): string => {
+    if (!source) return "";
+    if (typeof source === "string") return source;
+    try {
+      const resolved = Image.resolveAssetSource(source);
+      if (resolved?.uri) return resolved.uri;
+    } catch {}
+    return "";
+  }, []);
+
+  const webSrc = typeof src === "string" ? src : resolveUri(src);
+  const webInspectorSrc = typeof inspectorSrc === "string" ? inspectorSrc : resolveUri(inspectorSrc);
+  const nativeSource = typeof src === "number" ? src : { uri: src };
+  const nativeInspectorSource = typeof inspectorSrc === "number" ? inspectorSrc : inspectorSrc ? { uri: inspectorSrc } : undefined;
 
   if (!src) {
     return (
       <View style={[styles.container, { height: containerHeight }, style, styles.emptyBox]}>
-        <Icon name="videocam" size={36} color={colors.textMuted} />
+        <Icon name="videocam" size={32} color={colors.textMuted} />
         <Text style={styles.emptyText}>No Video Source</Text>
       </View>
     );
   }
 
   const [isPlaying, setIsPlaying] = useState(autoPlay);
+  const [isEnded, setIsEnded] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1.0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isEnded, setIsEnded] = useState(false);
-  const [nativeTrackWidth, setNativeTrackWidth] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const inspectorVideoRef = useRef<HTMLVideoElement | null>(null);
+
   const nativeVideoRef = useRef<Video | null>(null);
-  const progressBarRef = useRef<HTMLDivElement | null>(null);
+  const nativeInspectorRef = useRef<Video | null>(null);
+  const trackWidthRef = useRef<number>(200);
 
-  const isReplayingRef = useRef(false);
-
-  // Web native HTML5 controls
+  // Configure native audio mode for dual simultaneous overlapping audio tracks
   useEffect(() => {
-    if (Platform.OS !== "web" || !videoRef.current) return;
-    const vid = videoRef.current;
-
-    const onTimeUpdate = () => {
-      setCurrentTime(vid.currentTime);
-      if (vid.duration && !isNaN(vid.duration)) {
-        setDuration(vid.duration);
-      }
-    };
-    const onLoadedMetadata = () => {
-      if (vid.duration && !isNaN(vid.duration)) {
-        setDuration(vid.duration);
-      }
-    };
-    const onPlay = () => {
-      setIsPlaying(true);
-      setIsEnded(false);
-      isReplayingRef.current = false;
-    };
-    const onPause = () => {
-      if (!isReplayingRef.current) {
-        setIsPlaying(false);
-      }
-    };
-    const onEnded = () => {
-      setIsPlaying(false);
-      setIsEnded(true);
-      isReplayingRef.current = false;
-    };
-
-    vid.addEventListener("timeupdate", onTimeUpdate);
-    vid.addEventListener("loadedmetadata", onLoadedMetadata);
-    vid.addEventListener("play", onPlay);
-    vid.addEventListener("pause", onPause);
-    vid.addEventListener("ended", onEnded);
-
-    return () => {
-      vid.removeEventListener("timeupdate", onTimeUpdate);
-      vid.removeEventListener("loadedmetadata", onLoadedMetadata);
-      vid.removeEventListener("play", onPlay);
-      vid.removeEventListener("pause", onPause);
-      vid.removeEventListener("ended", onEnded);
-    };
-  }, [src]);
-
-  // Synchronize autoPlay when src or autoPlay prop changes
-  useEffect(() => {
-    setCurrentTime(0);
-    setIsEnded(false);
-    if (autoPlay) {
-      setIsPlaying(true);
-      if (Platform.OS === "web" && videoRef.current) {
-        const p = videoRef.current.play();
-        if (p !== undefined) {
-          p.catch(() => {
-            if (videoRef.current) {
-              videoRef.current.muted = true;
-              setIsMuted(true);
-              videoRef.current.play().catch(() => {});
-            }
-          });
-        }
-      } else if (nativeVideoRef.current) {
-        nativeVideoRef.current.playAsync().catch(() => {});
-      }
-    } else {
-      setIsPlaying(false);
+    if (Platform.OS !== "web") {
+      void ExpoAudio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      }).catch(() => {});
     }
-  }, [src, autoPlay]);
+  }, []);
 
-  const seekToRatio = useCallback(
-    async (ratio: number, autoResume = true) => {
-      const dur = duration > 0 ? duration : (videoRef.current?.duration || 0);
-      const clampedRatio = Math.max(0, Math.min(1, ratio));
-      const targetSec = clampedRatio * dur;
-      setCurrentTime(targetSec);
-      setIsEnded(false);
+  // Replay from beginning in lockstep
+  const replay = useCallback(async () => {
+    setIsEnded(false);
+    setCurrentTime(0);
 
-      if (Platform.OS === "web" && videoRef.current) {
-        videoRef.current.currentTime = targetSec;
-        if (autoResume) {
-          videoRef.current.play().catch(() => {});
-          setIsPlaying(true);
+    if (Platform.OS === "web") {
+      if (videoRef.current) {
+        try {
+          videoRef.current.currentTime = 0;
+        } catch {}
+        videoRef.current.muted = isMuted;
+        videoRef.current.play().catch(() => {});
+      }
+      if (inspectorVideoRef.current) {
+        try {
+          inspectorVideoRef.current.currentTime = 0;
+        } catch {}
+        inspectorVideoRef.current.playbackRate = 1.0;
+        inspectorVideoRef.current.muted = isMuted;
+        inspectorVideoRef.current.play().catch(() => {});
+      }
+      setIsPlaying(true);
+    } else {
+      if (nativeVideoRef.current) {
+        await nativeVideoRef.current.setPositionAsync(0).catch(() => {});
+        await nativeVideoRef.current.playAsync().catch(() => {});
+      }
+      if (nativeInspectorRef.current) {
+        await nativeInspectorRef.current.setPositionAsync(0).catch(() => {});
+        await nativeInspectorRef.current.playAsync().catch(() => {});
+      }
+      setIsPlaying(true);
+    }
+  }, [isMuted]);
+
+  // Seek both videos in lockstep
+  const seekTo = useCallback(
+    async (targetTime: number) => {
+      const clamped = Math.max(0, Math.min(targetTime, duration || 0));
+      setCurrentTime(clamped);
+
+      if (Platform.OS === "web") {
+        const vid = videoRef.current;
+        const insVid = inspectorVideoRef.current;
+        if (vid) {
+          try {
+            vid.currentTime = clamped;
+          } catch {}
         }
-      } else if (nativeVideoRef.current) {
-        await nativeVideoRef.current.setPositionAsync(targetSec * 1000).catch(() => {});
-        if (autoResume) {
-          await nativeVideoRef.current.playAsync().catch(() => {});
-          setIsPlaying(true);
+        if (insVid) {
+          const insDur = insVid.duration;
+          const hasValidInsDur = insDur && isFinite(insDur) && insDur > 0;
+          const targetIns = hasValidInsDur ? clamped % insDur : clamped;
+          try {
+            insVid.currentTime = targetIns;
+          } catch {}
+          insVid.playbackRate = 1.0;
+        }
+      } else {
+        if (nativeVideoRef.current) {
+          await nativeVideoRef.current.setPositionAsync(clamped * 1000).catch(() => {});
+        }
+        if (nativeInspectorRef.current) {
+          await nativeInspectorRef.current.setPositionAsync(clamped * 1000).catch(() => {});
         }
       }
     },
     [duration]
   );
 
-  const replay = useCallback(async () => {
-    isReplayingRef.current = true;
-    setCurrentTime(0);
-    setIsEnded(false);
-    setIsPlaying(true);
-
-    if (Platform.OS === "web" && videoRef.current) {
-      videoRef.current.currentTime = 0;
-      try {
-        await videoRef.current.play();
-      } catch {
-        // browser autoplay catch
-      }
-      setTimeout(() => {
-        isReplayingRef.current = false;
-      }, 350);
-    } else if (nativeVideoRef.current) {
-      try {
-        await nativeVideoRef.current.setStatusAsync({
-          shouldPlay: true,
-          positionMillis: 0,
-        });
-      } catch {
-        try {
-          await nativeVideoRef.current.replayAsync();
-        } catch {
-          await nativeVideoRef.current.setPositionAsync(0).catch(() => {});
-          await nativeVideoRef.current.playAsync().catch(() => {});
-        }
-      }
-      setTimeout(() => {
-        isReplayingRef.current = false;
-      }, 500);
-    }
-  }, []);
-
+  // Play / Pause Toggle with synchronization
   const togglePlay = useCallback(async () => {
-    if (Platform.OS === "web" && videoRef.current) {
-      if (isEnded) {
-        await replay();
-        return;
-      }
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch(() => {});
-        setIsPlaying(true);
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    } else if (nativeVideoRef.current) {
-      if (isEnded) {
-        await replay();
-        return;
-      }
-      if (isPlaying) {
-        await nativeVideoRef.current.pauseAsync().catch(() => {});
-        setIsPlaying(false);
-      } else {
-        await nativeVideoRef.current.playAsync().catch(() => {});
-        setIsPlaying(true);
-      }
-    } else {
-      setIsPlaying((prev) => !prev);
+    if (isEnded) {
+      await replay();
+      return;
     }
-  }, [isPlaying, isEnded, replay]);
 
-  const skipSeconds = useCallback(
-    async (delta: number) => {
-      setIsEnded(false);
-      if (Platform.OS === "web" && videoRef.current) {
-        const dur = videoRef.current.duration || duration || 0;
-        const next = Math.max(0, Math.min(dur, (videoRef.current.currentTime || currentTime) + delta));
-        videoRef.current.currentTime = next;
-        setCurrentTime(next);
-        // Automatically run video after skipping without requiring manual play
-        videoRef.current.play().catch(() => {});
+    if (Platform.OS === "web") {
+      const vid = videoRef.current;
+      const insVid = inspectorVideoRef.current;
+      if (!vid) return;
+
+      if (vid.paused) {
+        vid.muted = isMuted;
+        if (insVid) {
+          insVid.muted = isMuted;
+          const insDur = insVid.duration;
+          const hasValidInsDur = insDur && isFinite(insDur) && insDur > 0;
+          const targetIns = hasValidInsDur ? vid.currentTime % insDur : vid.currentTime;
+          if (Math.abs(insVid.currentTime - targetIns) > 0.3) {
+            try {
+              insVid.currentTime = targetIns;
+            } catch {}
+          }
+          insVid.playbackRate = 1.0;
+          insVid.play().catch(() => {});
+        }
+        vid.play().catch(() => {});
         setIsPlaying(true);
-      } else if (nativeVideoRef.current) {
-        const next = Math.max(0, Math.min(duration || 0, currentTime + delta));
-        await nativeVideoRef.current.setPositionAsync(next * 1000).catch(() => {});
-        setCurrentTime(next);
-        // Automatically run video after skipping without requiring manual play
-        await nativeVideoRef.current.playAsync().catch(() => {});
+      } else {
+        vid.pause();
+        insVid?.pause();
+        setIsPlaying(false);
+      }
+    } else {
+      const nativeVid = nativeVideoRef.current;
+      const nativeIns = nativeInspectorRef.current;
+      if (!nativeVid) return;
+
+      if (isPlaying) {
+        await nativeVid.pauseAsync().catch(() => {});
+        await nativeIns?.pauseAsync().catch(() => {});
+        setIsPlaying(false);
+      } else {
+        await nativeVid.playAsync().catch(() => {});
+        await nativeIns?.playAsync().catch(() => {});
         setIsPlaying(true);
       }
-    },
-    [currentTime, duration]
-  );
+    }
+  }, [isPlaying, isEnded, isMuted, replay]);
 
+  // Toggle audio mute: overlaps both inspector and caller audio tracks
   const toggleMute = useCallback(async () => {
-    if (Platform.OS === "web" && videoRef.current) {
-      const nextMuted = !videoRef.current.muted;
-      videoRef.current.muted = nextMuted;
-      setIsMuted(nextMuted);
-    } else if (nativeVideoRef.current) {
-      const nextMuted = !isMuted;
-      await nativeVideoRef.current.setIsMutedAsync(nextMuted).catch(() => {});
-      setIsMuted(nextMuted);
+    const next = !isMuted;
+    setIsMuted(next);
+
+    if (Platform.OS === "web") {
+      if (videoRef.current) {
+        videoRef.current.muted = next;
+      }
+      if (inspectorVideoRef.current) {
+        inspectorVideoRef.current.muted = next;
+      }
     } else {
-      setIsMuted((prev) => !prev);
+      if (nativeVideoRef.current) {
+        await nativeVideoRef.current.setIsMutedAsync(next).catch(() => {});
+      }
+      if (nativeInspectorRef.current) {
+        await nativeInspectorRef.current.setIsMutedAsync(next).catch(() => {});
+      }
     }
   }, [isMuted]);
 
-  const cyclePlaybackRate = useCallback(async () => {
-    const rates = [0.5, 1.0, 1.5, 2.0];
-    const currentIndex = rates.indexOf(playbackRate);
-    const nextRate = rates[(currentIndex + 1) % rates.length] ?? 1.0;
-    setPlaybackRate(nextRate);
-    if (Platform.OS === "web" && videoRef.current) {
-      videoRef.current.playbackRate = nextRate;
-    } else if (nativeVideoRef.current) {
-      await nativeVideoRef.current.setRateAsync(nextRate, true).catch(() => {});
+  // Keep inspector muted state synchronized with player state
+  useEffect(() => {
+    if (Platform.OS === "web" && inspectorVideoRef.current) {
+      inspectorVideoRef.current.muted = isMuted;
     }
-  }, [playbackRate]);
+  }, [isMuted]);
 
-  // Web scrubber drag support
-  const handleWebScrub = useCallback(
-    (clientX: number, isRelease: boolean) => {
-      if (!progressBarRef.current) return;
-      const rect = progressBarRef.current.getBoundingClientRect();
-      const clickX = clientX - rect.left;
-      const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-      seekToRatio(ratio, isRelease);
-    },
-    [seekToRatio]
-  );
-
-  const handleWebMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      handleWebScrub(e.clientX, true);
-      const onMouseMove = (moveEvent: MouseEvent) => {
-        handleWebScrub(moveEvent.clientX, false);
-      };
-      const onMouseUp = (upEvent: MouseEvent) => {
-        handleWebScrub(upEvent.clientX, true);
-        window.removeEventListener("mousemove", onMouseMove);
-        window.removeEventListener("mouseup", onMouseUp);
-      };
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
-    },
-    [handleWebScrub]
-  );
-
-  // Native scrubber touch & drag support
-  const handleNativeTouch = useCallback(
-    (locationX: number, isRelease: boolean) => {
-      if (nativeTrackWidth <= 0 || duration <= 0) return;
-      const ratio = Math.max(0, Math.min(1, locationX / nativeTrackWidth));
-      if (isRelease) {
-        seekToRatio(ratio, true);
-      } else {
-        setCurrentTime(ratio * duration);
+  // Autoplay handler with audio policy fallback
+  useEffect(() => {
+    if (autoPlay && Platform.OS === "web") {
+      const vid = videoRef.current;
+      const insVid = inspectorVideoRef.current;
+      if (vid) {
+        vid.muted = isMuted;
+        if (insVid) insVid.muted = isMuted;
+        vid.play().catch(() => {
+          // If browser blocks unmuted autoplay, start muted and update state
+          if (vid) vid.muted = true;
+          if (insVid) insVid.muted = true;
+          setIsMuted(true);
+          vid?.play().catch(() => {});
+          insVid?.play().catch(() => {});
+        });
       }
-    },
-    [nativeTrackWidth, duration, seekToRatio]
-  );
+      if (insVid) {
+        insVid.play().catch(() => {});
+      }
+    }
+  }, [autoPlay, isMuted]);
+
+  // Sync web video events with smooth micro-playback-rate drift correction
+  useEffect(() => {
+    if (Platform.OS !== "web" || !videoRef.current) return;
+    const vid = videoRef.current;
+
+    const syncInspector = (forceSeek = false) => {
+      const insVid = inspectorVideoRef.current;
+      if (!insVid) return;
+
+      const insDur = insVid.duration;
+      const hasValidInsDur = insDur && isFinite(insDur) && insDur > 0;
+      const targetTime = hasValidInsDur ? vid.currentTime % insDur : vid.currentTime;
+      const drift = insVid.currentTime - targetTime;
+
+      // Loop restart detector: leader wrapped around back to start
+      if (vid.currentTime < 0.25 && insVid.currentTime > 0.5) {
+        try {
+          insVid.currentTime = 0;
+        } catch {}
+        insVid.playbackRate = 1.0;
+        return;
+      }
+
+      if (forceSeek || Math.abs(drift) > 1.0) {
+        // Hard seek only on large drift, seeking events, or initial start
+        try {
+          insVid.currentTime = targetTime;
+        } catch {}
+        insVid.playbackRate = 1.0;
+      } else if (drift < -0.12) {
+        // Inspector is slightly behind: gently speed up by 7% (smooth, pitch preserved, zero audio muting)
+        insVid.playbackRate = 1.07;
+      } else if (drift > 0.12) {
+        // Inspector is slightly ahead: gently slow down by 7% (smooth, pitch preserved, zero audio muting)
+        insVid.playbackRate = 0.93;
+      } else {
+        if (insVid.playbackRate !== 1.0) {
+          insVid.playbackRate = 1.0;
+        }
+      }
+    };
+
+    const onPlay = () => {
+      setIsPlaying(true);
+      setIsEnded(false);
+      const insVid = inspectorVideoRef.current;
+      if (insVid) {
+        insVid.muted = isMuted;
+        syncInspector(true);
+        insVid.play().catch(() => {});
+      }
+    };
+
+    const onPause = () => {
+      if (!vid.ended) {
+        setIsPlaying(false);
+        inspectorVideoRef.current?.pause();
+      }
+    };
+
+    const onSeeking = () => {
+      syncInspector(true);
+    };
+
+    const onSeeked = () => {
+      syncInspector(true);
+    };
+
+    const onTimeUpdate = () => {
+      setCurrentTime(vid.currentTime);
+      if (vid.duration && !isNaN(vid.duration)) {
+        setDuration(vid.duration);
+      }
+      syncInspector(false);
+    };
+
+    const onLoadedMetadata = () => {
+      if (vid.duration && !isNaN(vid.duration)) {
+        setDuration(vid.duration);
+      }
+      syncInspector(true);
+    };
+
+    const onEnded = () => {
+      setIsPlaying(false);
+      setIsEnded(true);
+      inspectorVideoRef.current?.pause();
+    };
+
+    vid.addEventListener("play", onPlay);
+    vid.addEventListener("pause", onPause);
+    vid.addEventListener("seeking", onSeeking);
+    vid.addEventListener("seeked", onSeeked);
+    vid.addEventListener("timeupdate", onTimeUpdate);
+    vid.addEventListener("loadedmetadata", onLoadedMetadata);
+    vid.addEventListener("ended", onEnded);
+
+    return () => {
+      vid.removeEventListener("play", onPlay);
+      vid.removeEventListener("pause", onPause);
+      vid.removeEventListener("seeking", onSeeking);
+      vid.removeEventListener("seeked", onSeeked);
+      vid.removeEventListener("timeupdate", onTimeUpdate);
+      vid.removeEventListener("loadedmetadata", onLoadedMetadata);
+      vid.removeEventListener("ended", onEnded);
+    };
+  }, [src, isMuted]);
 
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
-  // Render on Web platform
-  const renderWebPlayer = (full: boolean) => {
-    return (
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: full ? "100%" : "100%",
-          backgroundColor: "#030B17",
-          borderRadius: full ? 0 : 8,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          userSelect: "none",
-        }}
-      >
-        {/* Top Watermark & HUD */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            padding: "8px 12px",
-            background: "linear-gradient(180deg, rgba(3,11,23,0.85) 0%, rgba(3,11,23,0) 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            zIndex: 10,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                display: "inline-block",
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                backgroundColor: "#10B981",
-              }}
-            />
-            <span
-              style={{
-                color: "#E2E8F0",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.5px",
-                textTransform: "uppercase",
-              }}
-            >
-              {title || watermarkText}
-            </span>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Speed toggle */}
-            <button
-              onClick={cyclePlaybackRate}
-              type="button"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: 4,
-                color: "#FFFFFF",
-                fontSize: 11,
-                fontWeight: 700,
-                padding: "2px 6px",
-                cursor: "pointer",
-              }}
-            >
-              {playbackRate}x
-            </button>
-
-            {/* Fullscreen Button */}
-            <button
-              onClick={() => setIsFullscreen(!full)}
-              type="button"
-              title={full ? "Exit Fullscreen" : "Fullscreen"}
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: 4,
-                color: "#FFFFFF",
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "2px 8px",
-                cursor: "pointer",
-              }}
-            >
-              {full ? "✕ Exit" : "⛶ Full"}
-            </button>
-          </div>
-        </div>
-
-        {/* Video Element */}
-        <div
-          onClick={togglePlay}
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-            cursor: "pointer",
-            minHeight: full ? "80vh" : 120,
-          }}
-        >
+  return (
+    <View style={[styles.container, { height: containerHeight }, style]}>
+      {/* Main Video Canvas: Remote Participant Video */}
+      <Pressable style={styles.videoCanvas} onPress={togglePlay} hitSlop={0}>
+        {Platform.OS === "web" ? (
           <video
             ref={videoRef}
-            src={src}
-            playsInline
+            src={webSrc}
             controls
+            playsInline
+            loop
             muted={isMuted}
             autoPlay={autoPlay}
             preload="metadata"
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "contain",
-              backgroundColor: "#030B17",
+              objectFit: "cover",
+              backgroundColor: "#0F172A",
+              display: "block",
+              filter: "contrast(1.03) brightness(0.97)",
             }}
           />
-
-          {/* Center Play/Pause Indicator when paused */}
-          {!isPlaying && !isEnded && (
-            <div
-              style={{
-                position: "absolute",
-                width: 52,
-                height: 52,
-                borderRadius: "50%",
-                backgroundColor: "rgba(0, 36, 73, 0.8)",
-                border: "2px solid #0284C7",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#FFFFFF",
-                boxShadow: "0 0 0 4px rgba(2, 132, 199, 0.2)",
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFFFFF">
-                <polygon points="6,3 20,12 6,21" />
-              </svg>
-            </div>
-          )}
-
-          {isEnded && (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                replay();
-              }}
-              style={{
-                position: "absolute",
-                padding: "8px 16px",
-                borderRadius: 6,
-                backgroundColor: "#002449",
-                border: "1px solid #0284C7",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                color: "#FFFFFF",
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              <span>↺ Replay Inspection Video</span>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Interactive Controls Bar */}
-        <div
-          style={{
-            backgroundColor: "rgba(3, 11, 23, 0.95)",
-            borderTop: "1px solid #1E293B",
-            padding: "8px 12px 10px 12px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-            zIndex: 10,
-          }}
-        >
-          {/* Seekable Scrubber Track with Drag & Touch Support */}
-          <div
-            ref={progressBarRef}
-            onMouseDown={handleWebMouseDown}
-            onTouchStart={(e) => {
-              const t = e.touches[0];
-              if (t) handleWebScrub(t.clientX, false);
-            }}
-            onTouchMove={(e) => {
-              const t = e.touches[0];
-              if (t) handleWebScrub(t.clientX, false);
-            }}
-            onTouchEnd={(e) => {
-              const t = e.changedTouches[0];
-              if (t) handleWebScrub(t.clientX, true);
-            }}
-            style={{
-              width: "100%",
-              height: 20,
-              display: "flex",
-              alignItems: "center",
-              cursor: "pointer",
-              position: "relative",
-              touchAction: "none",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                height: 4,
-                backgroundColor: "#334155",
-                borderRadius: 2,
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${progressPercent}%`,
-                  height: "100%",
-                  backgroundColor: "#0284C7",
-                  borderRadius: 2,
-                  transition: "width 0.05s linear",
-                }}
-              />
-            </div>
-            {/* Scrubber thumb */}
-            <div
-              style={{
-                position: "absolute",
-                left: `calc(${progressPercent}% - 6px)`,
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                backgroundColor: "#FFFFFF",
-                border: "2px solid #0284C7",
-                pointerEvents: "none",
-                transition: "left 0.05s linear",
-              }}
-            />
-          </div>
-
-          {/* Action Row */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {/* Play / Pause Toggle */}
-              <button
-                onClick={togglePlay}
-                type="button"
-                style={{
-                  background: "#002449",
-                  border: "1px solid #0284C7",
-                  borderRadius: 4,
-                  width: 32,
-                  height: 32,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#FFFFFF",
-                  cursor: "pointer",
-                  fontSize: 14,
-                }}
-              >
-                {isPlaying ? "❚❚" : "▶"}
-              </button>
-
-              {/* Rewind -10s */}
-              <button
-                onClick={() => skipSeconds(-10)}
-                type="button"
-                title="Rewind 10 seconds"
-                style={{
-                  background: "transparent",
-                  border: "1px solid #334155",
-                  borderRadius: 4,
-                  width: 30,
-                  height: 30,
-                  color: "#94A3B8",
-                  cursor: "pointer",
-                  fontSize: 10,
-                  fontWeight: 700,
-                }}
-              >
-                -10s
-              </button>
-
-              {/* Forward +10s */}
-              <button
-                onClick={() => skipSeconds(10)}
-                type="button"
-                title="Forward 10 seconds"
-                style={{
-                  background: "transparent",
-                  border: "1px solid #334155",
-                  borderRadius: 4,
-                  width: 30,
-                  height: 30,
-                  color: "#94A3B8",
-                  cursor: "pointer",
-                  fontSize: 10,
-                  fontWeight: 700,
-                }}
-              >
-                +10s
-              </button>
-
-              {/* Current Time / Duration */}
-              <span
-                style={{
-                  color: "#E2E8F0",
-                  fontSize: 12,
-                  fontVariantNumeric: "tabular-nums",
-                  fontWeight: 500,
-                  marginLeft: 4,
-                }}
-              >
-                {formatDuration(currentTime)} / {formatDuration(duration)}
-              </span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {/* Audio Mute Button */}
-              <button
-                onClick={toggleMute}
-                type="button"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: isMuted ? "#EF4444" : "#94A3B8",
-                  fontSize: 16,
-                  cursor: "pointer",
-                  padding: "4px 8px",
-                }}
-              >
-                {isMuted ? "🔇" : "🔊"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Render on Native (Android / iOS) via expo-av hardware-accelerated video player
-  const renderNativePlayer = (full: boolean) => {
-    return (
-      <View style={[styles.nativeWrap, full ? styles.nativeWrapFull : null]}>
-        {/* Top Watermark & HUD */}
-        <View style={styles.nativeHeaderHud}>
-          <View style={styles.nativeBadgeRow}>
-            <View style={styles.nativeDot} />
-            <Text style={styles.nativeBadgeText}>{title || watermarkText}</Text>
-          </View>
-          <View style={styles.nativeSpeedRow}>
-            <Pressable onPress={cyclePlaybackRate} style={styles.nativeSpeedBtn} hitSlop={6}>
-              <Text style={styles.nativeSpeedText}>{playbackRate}x</Text>
-            </Pressable>
-            <Pressable onPress={() => setIsFullscreen(!full)} style={styles.nativeSpeedBtn} hitSlop={6}>
-              <Text style={styles.nativeSpeedText}>{full ? "✕ Exit" : "⛶ Full"}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Native Video Surface */}
-        <Pressable
-          style={styles.nativeVideoArea}
-          onPress={() => {
-            if (isEnded) {
-              replay();
-            } else {
-              togglePlay();
-            }
-          }}
-        >
+        ) : (
           <Video
             ref={nativeVideoRef}
-            source={{ uri: src }}
-            style={StyleSheet.absoluteFillObject}
-            resizeMode={ResizeMode.CONTAIN}
-            shouldPlay={isPlaying}
+            source={nativeSource}
+            style={styles.nativeVideo}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay={autoPlay}
             isMuted={isMuted}
-            rate={playbackRate}
-            shouldCorrectPitch
+            isLooping={true}
             useNativeControls={false}
-            progressUpdateIntervalMillis={200}
-            onLoad={(status: AVPlaybackStatus) => {
-              if (status.isLoaded && status.durationMillis && !isNaN(status.durationMillis)) {
-                setDuration(status.durationMillis / 1000);
-              }
-              if (autoPlay && status.isLoaded) {
-                setIsPlaying(true);
-                setIsEnded(false);
-                nativeVideoRef.current?.playAsync().catch(() => {});
-              }
-            }}
-            onError={(error) => {
-              console.warn("Video load error:", error);
-            }}
             onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
-              if (!status.isLoaded) return;
-              setCurrentTime(status.positionMillis / 1000);
-              if (status.durationMillis && !isNaN(status.durationMillis)) {
-                setDuration(status.durationMillis / 1000);
-              }
-              if (status.didJustFinish) {
-                setIsEnded(true);
-                setIsPlaying(false);
-                isReplayingRef.current = false;
-              } else if (!isReplayingRef.current) {
-                if (status.isPlaying) {
-                  setIsPlaying(true);
-                  setIsEnded(false);
-                } else if (!status.isBuffering && !status.shouldPlay) {
+              if (status.isLoaded) {
+                setIsPlaying(status.isPlaying);
+                setCurrentTime(status.positionMillis / 1000);
+                if (status.durationMillis) {
+                  setDuration(status.durationMillis / 1000);
+                }
+                if (status.didJustFinish) {
                   setIsPlaying(false);
+                  setIsEnded(true);
+                  nativeInspectorRef.current?.pauseAsync().catch(() => {});
                 }
               }
             }}
           />
-          {(!isPlaying || isEnded) && (
-            <View style={styles.nativeBigPlayOverlay}>
-              <Pressable
-                style={styles.nativeBigPlayCircle}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  if (isEnded) {
-                    replay();
-                  } else {
-                    togglePlay();
-                  }
-                }}
-              >
-                <Icon name={isEnded ? "reload" : "play"} size={26} color="#FFFFFF" />
-              </Pressable>
-            </View>
-          )}
-        </Pressable>
+        )}
 
-        {/* Native Controls Bar */}
-        <View style={styles.nativeControlsBar}>
-          {/* Progress Bar / Draggable Scrubber */}
-          <View
-            style={styles.nativeScrubberTouchArea}
-            onLayout={(e) => {
-              const w = e.nativeEvent.layout.width;
-              if (w > 0) setNativeTrackWidth(w);
-            }}
-            onStartShouldSetResponder={() => true}
-            onMoveShouldSetResponder={() => true}
-            onResponderGrant={(e) => handleNativeTouch(e.nativeEvent.locationX, false)}
-            onResponderMove={(e) => handleNativeTouch(e.nativeEvent.locationX, false)}
-            onResponderRelease={(e) => handleNativeTouch(e.nativeEvent.locationX, true)}
-          >
-            <View style={styles.nativeProgressBarTrack}>
-              <View style={[styles.nativeProgressBarFill, { width: `${progressPercent}%` }]} />
+        {/* Simultaneous Inspector Video (Corner PIP Overlay - Overlapped Audio Enabled) */}
+        {Boolean(inspectorSrc) && (
+          <View style={styles.inspectorPipOverlay} pointerEvents="none">
+            {Platform.OS === "web" ? (
+              <video
+                ref={inspectorVideoRef}
+                src={webInspectorSrc}
+                playsInline
+                loop
+                muted={isMuted}
+                autoPlay={autoPlay}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  backgroundColor: "#1E293B",
+                  display: "block",
+                }}
+              />
+            ) : (
+              nativeInspectorSource && (
+                <Video
+                  ref={nativeInspectorRef}
+                  source={nativeInspectorSource}
+                  style={styles.nativeInspectorVideo}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay={isPlaying}
+                  isMuted={isMuted}
+                  isLooping={true}
+                  useNativeControls={false}
+                />
+              )
+            )}
+          </View>
+        )}
+
+        {/* Center Plain Play/Pause/Replay Toggle Button */}
+        {(!isPlaying || isEnded) && (
+          <View style={styles.centerToggleOverlay} pointerEvents="none">
+            <View style={styles.centerToggleCircle}>
+              <Icon
+                name={isEnded ? "refresh" : isPlaying ? "pause" : "play"}
+                size={26}
+                color="#FFFFFF"
+              />
             </View>
+          </View>
+        )}
+
+        {/* Minimalist White Transparent Timeline Control with Icons Only (No Text) */}
+        <View style={styles.transparentTimelineBar}>
+          {/* Play / Pause Toggle Icon Button */}
+          <Pressable
+            style={styles.timelineIconBtn}
+            onPress={togglePlay}
+            hitSlop={8}
+            accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
+          >
+            <Icon
+              name={isEnded ? "refresh" : isPlaying ? "pause" : "play"}
+              size={15}
+              color="#FFFFFF"
+            />
+          </Pressable>
+
+          {/* Interactive Progress Bar Track with Tap to Seek */}
+          <Pressable
+            style={styles.transparentProgressTrack}
+            onPress={(e) => {
+              if (duration > 0) {
+                const { locationX } = e.nativeEvent;
+                const width = trackWidthRef.current || 200;
+                const ratio = Math.max(0, Math.min(1, locationX / width));
+                void seekTo(ratio * duration);
+              }
+            }}
+            onLayout={(e) => {
+              trackWidthRef.current = e.nativeEvent.layout.width;
+            }}
+            hitSlop={6}
+            accessibilityLabel="Seek video position"
+          >
             <View
               style={[
-                styles.nativeScrubberThumb,
-                { left: `${progressPercent}%` },
+                styles.transparentProgressFill,
+                { width: `${progressPercent}%` },
               ]}
             />
-          </View>
-          <View style={styles.nativeActionsRow}>
-            <View style={styles.nativeBtnGroup}>
-              <Pressable
-                style={styles.nativePlayBtn}
-                onPress={() => {
-                  if (isEnded) {
-                    replay();
-                  } else {
-                    togglePlay();
-                  }
-                }}
-              >
-                <Icon name={isPlaying ? "pause" : isEnded ? "reload" : "play"} size={16} color="#FFFFFF" />
-              </Pressable>
-              <Pressable style={styles.nativeSkipBtn} onPress={() => skipSeconds(-10)}>
-                <Text style={styles.nativeSkipText}>-10s</Text>
-              </Pressable>
-              <Pressable style={styles.nativeSkipBtn} onPress={() => skipSeconds(10)}>
-                <Text style={styles.nativeSkipText}>+10s</Text>
-              </Pressable>
-              <Text style={styles.nativeTimeText}>
-                {formatDuration(currentTime)} / {formatDuration(duration)}
-              </Text>
-            </View>
-            <Pressable style={styles.nativeMuteBtn} onPress={toggleMute} hitSlop={8}>
-              <Icon name={isMuted ? "volume-mute" : "volume-high"} size={18} color={isMuted ? "#EF4444" : "#94A3B8"} />
-            </Pressable>
-          </View>
+          </Pressable>
+
+          {/* Mute Toggle Icon Button */}
+          <Pressable
+            style={styles.timelineIconBtn}
+            onPress={toggleMute}
+            hitSlop={8}
+            accessibilityLabel={isMuted ? "Unmute audio" : "Mute audio"}
+          >
+            <Icon
+              name={isMuted ? "volume-mute" : "volume-high"}
+              size={15}
+              color="#FFFFFF"
+            />
+          </Pressable>
         </View>
-      </View>
-    );
-  };
-
-  return (
-    <View
-      style={[
-        styles.container,
-        { height: containerHeight },
-        style,
-      ]}
-    >
-      {!isFullscreen && (Platform.OS === "web" ? renderWebPlayer(false) : renderNativePlayer(false))}
-
-      {/* Fullscreen Expand Modal */}
-      {isFullscreen && (
-        <Modal
-          visible={isFullscreen}
-          animationType="fade"
-          transparent={false}
-          onRequestClose={() => setIsFullscreen(false)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderLeft}>
-                <View style={styles.liveIndicator} />
-                <Text style={styles.modalTitleText}>
-                  {title || watermarkText}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => setIsFullscreen(false)}
-                style={styles.modalCloseBtn}
-              >
-                <Icon name="close" size={20} color="#FFFFFF" />
-              </Pressable>
-            </View>
-
-            <View style={styles.modalBody}>
-              {Platform.OS === "web" ? renderWebPlayer(true) : renderNativePlayer(true)}
-            </View>
-          </View>
-        </Modal>
-      )}
+      </Pressable>
     </View>
   );
 }
@@ -872,215 +529,137 @@ export function InteractiveVideoPlayer({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    backgroundColor: "#030B17",
+    backgroundColor: "#000000",
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
     overflow: "hidden",
   },
-  nativeWrap: {
+  videoCanvas: {
+    flex: 1,
+    backgroundColor: "#000000",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  nativeVideo: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#030B17",
+    backgroundColor: "#000000",
   },
-  nativeWrapFull: {
-    flex: 1,
-    height: "100%",
-  },
-  nativeHeaderHud: {
-    height: 38,
-    backgroundColor: "rgba(3, 11, 23, 0.9)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1E293B",
-    zIndex: 10,
-  },
-  nativeBadgeRow: {
+  contactTagBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    zIndex: 10,
   },
-  nativeDot: {
+  contactTagDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#10B981",
+    backgroundColor: colors.actionGreen,
   },
-  nativeBadgeText: {
-    color: "#E2E8F0",
+  contactTagText: {
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  nativeSpeedRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  nativeSpeedBtn: {
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  nativeSpeedText: {
     color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "700",
+    maxWidth: 160,
   },
-  nativeVideoArea: {
-    flex: 1,
-    backgroundColor: "#030B17",
+  inspectorPipOverlay: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 76,
+    height: 102,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+    overflow: "hidden",
+    backgroundColor: "#1E293B",
+    zIndex: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  nativeInspectorVideo: {
+    width: "100%",
+    height: "100%",
+  },
+  inspectorPipLabelBox: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    paddingVertical: 1.5,
     alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
   },
-  nativeBigPlayOverlay: {
+  inspectorPipLabelText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
+  },
+  centerToggleOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    zIndex: 10,
   },
-  nativeBigPlayCircle: {
+  centerToggleCircle: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: "rgba(0, 36, 73, 0.85)",
+    backgroundColor: "rgba(255, 255, 255, 0.28)",
     borderWidth: 1.5,
-    borderColor: "#0284C7",
+    borderColor: "rgba(255, 255, 255, 0.7)",
     alignItems: "center",
     justifyContent: "center",
   },
-  nativeControlsBar: {
-    backgroundColor: "rgba(3, 11, 23, 0.96)",
-    borderTopWidth: 1,
-    borderTopColor: "#1E293B",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 6,
-    zIndex: 10,
+  transparentTimelineBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 15,
   },
-  nativeScrubberTouchArea: {
-    width: "100%",
-    height: 22,
+  timelineIconBtn: {
+    padding: 4,
+    alignItems: "center",
     justifyContent: "center",
-    position: "relative",
   },
-  nativeProgressBarTrack: {
-    width: "100%",
+  transparentProgressTrack: {
+    flex: 1,
     height: 4,
-    backgroundColor: "#334155",
+    backgroundColor: "rgba(255, 255, 255, 0.28)",
     borderRadius: 2,
     overflow: "hidden",
   },
-  nativeProgressBarFill: {
+  transparentProgressFill: {
     height: "100%",
-    backgroundColor: "#0284C7",
+    backgroundColor: "#FFFFFF",
     borderRadius: 2,
   },
-  nativeScrubberThumb: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 2,
-    borderColor: "#0284C7",
-    transform: [{ translateX: -6 }],
-  },
-  nativeActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  nativeBtnGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  nativePlayBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 4,
-    backgroundColor: "#002449",
-    borderWidth: 1,
-    borderColor: "#0284C7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nativeSkipBtn: {
-    height: 28,
-    paddingHorizontal: 6,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#334155",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nativeSkipText: {
-    color: "#94A3B8",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  nativeTimeText: {
-    color: "#E2E8F0",
+  transparentTimeText: {
     fontSize: 11,
     fontWeight: "600",
-    fontVariant: ["tabular-nums"],
-    marginLeft: 4,
-  },
-  nativeMuteBtn: {
-    padding: 4,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "#030B17",
-    paddingTop: Platform.OS === "ios" ? 44 : 0,
-  },
-  modalHeader: {
-    height: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    backgroundColor: colors.navyDark,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1E293B",
-  },
-  modalHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  liveIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.actionGreen,
-  },
-  modalTitleText: {
     color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  modalCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
-  modalBody: {
-    flex: 1,
-    backgroundColor: "#030B17",
+    fontVariant: ["tabular-nums"],
   },
   emptyBox: {
     alignItems: "center",

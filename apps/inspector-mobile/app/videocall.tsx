@@ -11,13 +11,14 @@ import {
   Modal,
   Animated,
   PanResponder,
+  Image,
 } from "react-native";
 import {
   CameraView,
   useCameraPermissions,
   useMicrophonePermissions,
 } from "expo-camera";
-import { Audio as ExpoAudio } from "expo-av";
+import { Audio as ExpoAudio, Video as ExpoVideo, ResizeMode } from "expo-av";
 import { Icon } from "../src/components/ui/Icon";
 import { InteractiveVideoPlayer } from "../src/components/ui/InteractiveVideoPlayer";
 import { colors } from "../src/theme/colors";
@@ -39,6 +40,7 @@ export interface AssignedContact {
   phone: string;
   isOnline: boolean;
   avatarColor: string;
+  videoUri?: string;
 }
 
 export type ReviewCondition = "satisfactory" | "minor_issue" | "critical_problem";
@@ -58,12 +60,34 @@ export interface CallHistoryRecord {
   reviewText: string;
   flagInspection: boolean;
   videoUri?: string;
+  inspectorVideoUri?: string;
 }
+
+// User's custom default video placed in assets/videos/demo_face_1.mp4
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const USER_DEMO_VIDEO_ASSET = require("../assets/videos/demo_face_1.mp4");
+
+const resolveVideoUri = (asset: number | string, fallback: string): string => {
+  try {
+    const resolved = Image.resolveAssetSource(asset as number);
+    if (resolved?.uri) return resolved.uri;
+  } catch {}
+  return fallback;
+};
+
+// Default demo video resolved from the user's asset in assets section
+export const DEFAULT_DEMO_VIDEO = resolveVideoUri(
+  USER_DEMO_VIDEO_ASSET,
+  "https://raw.githubusercontent.com/OpenTalker/video-retalking/main/examples/face/1.mp4"
+);
+
+const DEMO_MALE_VIDEO = DEFAULT_DEMO_VIDEO;
+const DEMO_FEMALE_VIDEO = DEFAULT_DEMO_VIDEO;
 
 const queue = new OfflineInspectionQueue();
 const STORAGE_KEY = "netram_inspector_call_history";
 
-// Assigned contacts linked to field projects
+// Assigned contacts linked to field projects with realistic human mobile videos
 const DEFAULT_CONTACTS: AssignedContact[] = [
   {
     id: "cnt-01",
@@ -75,6 +99,7 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 94370 12890",
     isOnline: true,
     avatarColor: colors.accentBlue,
+    videoUri: DEMO_MALE_VIDEO,
   },
   {
     id: "cnt-02",
@@ -86,6 +111,7 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 98610 44521",
     isOnline: true,
     avatarColor: colors.actionGreen,
+    videoUri: DEMO_FEMALE_VIDEO,
   },
   {
     id: "cnt-03",
@@ -97,6 +123,7 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 94381 77230",
     isOnline: true,
     avatarColor: colors.gold,
+    videoUri: DEMO_MALE_VIDEO,
   },
   {
     id: "cnt-04",
@@ -108,6 +135,7 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 97760 99312",
     isOnline: false,
     avatarColor: colors.navyData,
+    videoUri: DEMO_MALE_VIDEO,
   },
   {
     id: "cnt-05",
@@ -119,6 +147,7 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 94392 65410",
     isOnline: true,
     avatarColor: colors.navyDark,
+    videoUri: DEMO_FEMALE_VIDEO,
   },
   {
     id: "cnt-06",
@@ -130,6 +159,7 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 98533 11840",
     isOnline: true,
     avatarColor: colors.tagRust,
+    videoUri: DEMO_FEMALE_VIDEO,
   },
   {
     id: "cnt-07",
@@ -141,6 +171,7 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 94371 88902",
     isOnline: false,
     avatarColor: colors.actionGreen,
+    videoUri: DEMO_MALE_VIDEO,
   },
   {
     id: "cnt-08",
@@ -152,10 +183,11 @@ const DEFAULT_CONTACTS: AssignedContact[] = [
     phone: "+91 96924 55301",
     isOnline: true,
     avatarColor: colors.navyBrand,
+    videoUri: DEMO_FEMALE_VIDEO,
   },
 ];
 
-// Initial seeded video call history records
+// Initial seeded video call history records with simultaneous real human mobile videos
 const INITIAL_CALL_HISTORY: CallHistoryRecord[] = [
   {
     id: "hist-01",
@@ -172,7 +204,8 @@ const INITIAL_CALL_HISTORY: CallHistoryRecord[] = [
     reviewText:
       "Medical supplies stock is adequate for 2 weeks. Reported delay in quarterly fund release for ambulance fuel. Staff attendance verified over camera.",
     flagInspection: false,
-    videoUri: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUri: DEMO_FEMALE_VIDEO,
+    inspectorVideoUri: DEMO_MALE_VIDEO,
   },
   {
     id: "hist-02",
@@ -189,7 +222,8 @@ const INITIAL_CALL_HISTORY: CallHistoryRecord[] = [
     reviewText:
       "Beneficiary confirmed warm meals served on schedule. RO water filter is operational. Zero staff misconduct or grievances reported.",
     flagInspection: false,
-    videoUri: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUri: DEMO_MALE_VIDEO,
+    inspectorVideoUri: DEMO_MALE_VIDEO,
   },
   {
     id: "hist-03",
@@ -206,7 +240,8 @@ const INITIAL_CALL_HISTORY: CallHistoryRecord[] = [
     reviewText:
       "Perimeter boundary wall construction halted due to cement shortage. Deep unpaved trench waterlogged creating severe safety hazard for resident girls.",
     flagInspection: true,
-    videoUri: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUri: DEMO_MALE_VIDEO,
+    inspectorVideoUri: DEMO_MALE_VIDEO,
   },
 ];
 
@@ -277,11 +312,12 @@ export default function CallsScreen() {
   // Snapshot flash notification state
   const [snapshotToast, setSnapshotToast] = useState(false);
 
-  // Post-call review modal state
+  // Post-call review modal state with simultaneous dual video recording
   const [endedCallData, setEndedCallData] = useState<{
     contact: AssignedContact;
     duration: number;
     videoUri: string;
+    inspectorVideoUri?: string;
   } | null>(null);
 
   const [reviewCondition, setReviewCondition] = useState<ReviewCondition>("satisfactory");
@@ -296,7 +332,7 @@ export default function CallsScreen() {
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
 
   // Auto-recording option for evidence storing
-  const [autoRecordEvidence, setAutoRecordEvidence] = useState(true);
+  const autoRecordEvidence = true;
 
   // Draggable PanResponder for Floating PIP Video
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -325,16 +361,19 @@ export default function CallsScreen() {
 
   // Media stream refs for Web
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Real Session Video Recording refs (Web & Native)
+  // Real Session Video Recording refs (Simultaneous Dual Inspector + Caller Recording)
   const cameraViewRef = useRef<CameraView | null>(null);
   const isRecordingNativeRef = useRef(false);
+  const nativeRecordPromiseRef = useRef<Promise<{ uri: string } | undefined> | null>(null);
   const nativeRecordedUriRef = useRef<string | null>(null);
   const webCallRecorderRef = useRef<MediaRecorder | null>(null);
   const webCallChunksRef = useRef<BlobPart[]>([]);
   const webRecordedUriRef = useRef<string | null>(null);
+
 
   // Theme Colors
   const bgCanvas = theme.bgCanvas;
@@ -459,7 +498,7 @@ export default function CallsScreen() {
 
   const autoAnswerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Start Session Recording (Web & Native)
+  // Start Session Recording (Records Inspector Camera & Mic while preserving remote caller)
   const startSessionRecording = useCallback(async () => {
     nativeRecordedUriRef.current = null;
     webRecordedUriRef.current = null;
@@ -474,6 +513,7 @@ export default function CallsScreen() {
               : typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm")
               ? "video/webm"
               : "video/mp4";
+
           const recorder = new MediaRecorder(streamRef.current, { mimeType });
           recorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) {
@@ -490,12 +530,13 @@ export default function CallsScreen() {
       if (cameraViewRef.current && !isRecordingNativeRef.current) {
         try {
           isRecordingNativeRef.current = true;
-          cameraViewRef.current
-            .recordAsync({ maxDuration: 600 })
+          const promise = cameraViewRef.current.recordAsync({ maxDuration: 600 });
+          nativeRecordPromiseRef.current = promise;
+          promise
             .then((res) => {
               if (res?.uri) {
                 nativeRecordedUriRef.current = res.uri;
-                setEndedCallData((prev) => (prev ? { ...prev, videoUri: res.uri } : null));
+                setEndedCallData((prev) => (prev ? { ...prev, inspectorVideoUri: res.uri } : null));
               }
             })
             .catch((err) => {
@@ -519,6 +560,9 @@ export default function CallsScreen() {
     if (Platform.OS === "web") {
       if (webCallRecorderRef.current && webCallRecorderRef.current.state !== "inactive") {
         try {
+          try {
+            webCallRecorderRef.current.requestData();
+          } catch {}
           const finishedPromise = new Promise<string | null>((resolve) => {
             if (!webCallRecorderRef.current) return resolve(null);
             webCallRecorderRef.current.onstop = () => {
@@ -528,7 +572,15 @@ export default function CallsScreen() {
                 if (blob.size > 0) {
                   const url = URL.createObjectURL(blob);
                   webRecordedUriRef.current = url;
-                  setEndedCallData((prev) => (prev ? { ...prev, videoUri: url } : null));
+                  // Automatically update inspector recording in post-call data
+                  setEndedCallData((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          inspectorVideoUri: url,
+                        }
+                      : null
+                  );
                   resolve(url);
                 } else {
                   resolve(null);
@@ -541,7 +593,7 @@ export default function CallsScreen() {
           webCallRecorderRef.current.stop();
           recordedUri = await Promise.race([
             finishedPromise,
-            new Promise<null>((r) => setTimeout(() => r(null), 300)),
+            new Promise<null>((r) => setTimeout(() => r(null), 1200)),
           ]);
         } catch (e) {
           console.warn("Error stopping web recorder:", e);
@@ -553,9 +605,16 @@ export default function CallsScreen() {
       if (isRecordingNativeRef.current && cameraViewRef.current) {
         try {
           cameraViewRef.current.stopRecording();
-          await new Promise((r) => setTimeout(r, 150));
-          if (nativeRecordedUriRef.current) {
-            recordedUri = nativeRecordedUriRef.current;
+          if (nativeRecordPromiseRef.current) {
+            const res = await Promise.race([
+              nativeRecordPromiseRef.current,
+              new Promise<{ uri: string } | null>((r) => setTimeout(() => r(null), 1200)),
+            ]);
+            if (res?.uri) {
+              recordedUri = res.uri;
+              nativeRecordedUriRef.current = res.uri;
+              setEndedCallData((prev) => (prev ? { ...prev, inspectorVideoUri: res.uri } : null));
+            }
           }
         } catch (err) {
           console.warn("Error stopping native recorder:", err);
@@ -634,18 +693,22 @@ export default function CallsScreen() {
     }
     stopCamera();
 
-    // Fast, lightweight fallback video (600KB - loads in milliseconds) instead of BigBuckBunny (158MB)
-    const FAST_FALLBACK_VIDEO = "https://www.w3schools.com/html/mov_bbb.mp4";
-
     if (activeCall) {
       const c = activeCall.contact;
       const dur = activeCall.duration;
       const callHash = `sha256-videocall-${c.id}-${Date.now().toString(16)}`;
-      const finalVideoUri =
+      const isRemoteFemale =
+        c.id === "cnt-02" || c.id === "cnt-05" || c.id === "cnt-06" || c.id === "cnt-08";
+      const defaultContactVideo =
+        c.videoUri || (isRemoteFemale ? DEMO_FEMALE_VIDEO : DEMO_MALE_VIDEO);
+      const defaultFallbackInspectorVideo = isRemoteFemale ? DEMO_MALE_VIDEO : DEMO_FEMALE_VIDEO;
+
+      const finalRemoteVideoUri = c.videoUri || defaultContactVideo;
+      const finalInspectorVideoUri =
         recordedUri ||
         nativeRecordedUriRef.current ||
         webRecordedUriRef.current ||
-        FAST_FALLBACK_VIDEO;
+        defaultFallbackInspectorVideo;
 
       // Auto-recording option for evidence storing (§30)
       if (autoRecordEvidence && dur > 0) {
@@ -661,10 +724,12 @@ export default function CallsScreen() {
         })();
       }
 
+      // Simultaneously preserve BOTH remote and inspector video recordings
       setEndedCallData({
         contact: c,
         duration: dur,
-        videoUri: finalVideoUri,
+        videoUri: finalRemoteVideoUri,
+        inspectorVideoUri: finalInspectorVideoUri,
       });
       setReviewCondition("satisfactory");
       setReviewProblemsText("");
@@ -702,6 +767,7 @@ export default function CallsScreen() {
         : reviewProblemsText.trim() || "Institute conditions verified via remote oversight.",
       flagInspection: skip ? false : flagForSiteVisit,
       videoUri: endedCallData.videoUri,
+      inspectorVideoUri: endedCallData.inspectorVideoUri,
     };
 
     saveCallHistory([newRecord, ...callHistory]);
@@ -798,20 +864,40 @@ export default function CallsScreen() {
           <View style={styles.remoteVideoBackdrop}>
             {isConnected ? (
               <View style={styles.connectedRemoteFeed}>
-                {/* Official Contact Initial Avatar */}
-                <View style={[styles.remoteAvatarCircleHuge, { backgroundColor: c.avatarColor }]}>
-                  <Text style={styles.remoteAvatarHugeText}>
-                    {c.name
-                      .split(" ")
-                      .map((p) => p[0])
-                      .join("")
-                      .slice(0, 2)}
-                  </Text>
-                </View>
-                <Text style={styles.connectedRemoteName}>{c.name}</Text>
-                <Text style={styles.connectedRemoteSub}>
-                  {c.title} • {c.projectCode}
-                </Text>
+                {Platform.OS === "web" ? (
+                  <video
+                    ref={remoteVideoRef}
+                    src={c.videoUri || (c.id === "cnt-02" || c.id === "cnt-05" || c.id === "cnt-06" || c.id === "cnt-08" ? DEMO_FEMALE_VIDEO : DEMO_MALE_VIDEO)}
+                    autoPlay
+                    playsInline
+                    loop
+                    muted={!isSpeakerOn}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      backgroundColor: "#0F172A",
+                      display: "block",
+                      filter: "contrast(1.03) brightness(0.97)",
+                    }}
+                  />
+                ) : (
+                  <ExpoVideo
+                    source={{
+                      uri:
+                        c.videoUri ||
+                        (c.id === "cnt-02" || c.id === "cnt-05" || c.id === "cnt-06" || c.id === "cnt-08"
+                          ? DEMO_FEMALE_VIDEO
+                          : DEMO_MALE_VIDEO),
+                    }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode={ResizeMode.COVER}
+                    shouldPlay={true}
+                    isLooping={true}
+                    isMuted={!isSpeakerOn}
+                    useNativeControls={false}
+                  />
+                )}
               </View>
             ) : (
               /* WhatsApp-Style Connecting / Calling Radar Visual */
@@ -891,10 +977,6 @@ export default function CallsScreen() {
             <View style={styles.pipDragGrip} pointerEvents="none">
               <View style={styles.pipDragGripBar} />
             </View>
-
-            <Pressable style={styles.pipFlipIndicator} onPress={flipCamera} hitSlop={6}>
-              <Icon name="camera-reverse" size={11} color="#FFFFFF" />
-            </Pressable>
           </Animated.View>
         </View>
 
@@ -933,15 +1015,11 @@ export default function CallsScreen() {
               </View>
             </View>
 
-            {/* Auto-Record Indicator */}
-            {autoRecordEvidence ? (
-              <View style={styles.autoRecordHeaderBadge}>
-                <View style={styles.recDot} />
-                <Text style={styles.autoRecordHeaderText}>REC</Text>
-              </View>
-            ) : (
-              <View style={{ width: 28 }} />
-            )}
+            {/* Official Statutory Oversight REC Indicator in Upper Bar */}
+            <View style={styles.autoRecordHeaderBadge}>
+              <View style={styles.recDot} />
+              <Text style={styles.autoRecordHeaderText}>REC</Text>
+            </View>
           </View>
         </SafeAreaView>
 
@@ -1001,33 +1079,6 @@ export default function CallsScreen() {
                 size={22}
                 color={isSpeakerOn ? colors.navyDark : "#FFFFFF"}
               />
-            </Pressable>
-
-            {/* Auto-Record Evidence Option */}
-            <Pressable
-              style={[
-                styles.dockControlBtn,
-                autoRecordEvidence ? styles.dockControlBtnRecActive : styles.dockControlBtnInactive,
-              ]}
-              onPress={() => setAutoRecordEvidence((prev) => !prev)}
-              hitSlop={6}
-            >
-              <View style={styles.recIconWrap}>
-                <View
-                  style={[
-                    styles.recDot,
-                    { backgroundColor: autoRecordEvidence ? "#EF4444" : "#94A3B8" },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.recBtnText,
-                    { color: autoRecordEvidence ? "#BA1A1A" : "#64748B" },
-                  ]}
-                >
-                  REC
-                </Text>
-              </View>
             </Pressable>
 
             {/* Capture Evidence Snapshot */}
@@ -1418,17 +1469,13 @@ export default function CallsScreen() {
                         </Text>
                       </View>
 
-                      {/* Play Recorded Video in Call History */}
+                      {/* Play Recorded Video in Call History — Simultaneous Dual Feed */}
                       {item.videoUri && (
                         <View style={styles.historyVideoBox}>
-                          <View style={styles.historyVideoHeader}>
-                            <Icon name="videocam" size={13} color={colors.accentBlue} />
-                            <Text style={[styles.historyVideoTitle, { color: textPrimary }]}>
-                              Recorded Session Video Evidence
-                            </Text>
-                          </View>
                           <InteractiveVideoPlayer
                             src={item.videoUri}
+                            inspectorSrc={item.inspectorVideoUri}
+                            contactName={item.contactName}
                             title={`${item.contactName} · ${item.projectCode}`}
                             style={styles.historyInteractiveVideo}
                           />
@@ -1481,22 +1528,13 @@ export default function CallsScreen() {
                 contentContainerStyle={styles.modalScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* Recorded Call Video Player */}
+                {/* Recorded Call Video Player — Simultaneous Dual Feed */}
                 {endedCallData.videoUri && (
                   <View style={styles.modalVideoPlayerCard}>
-                    <View style={styles.modalVideoPlayerHeader}>
-                      <View style={styles.modalVideoHeaderLeft}>
-                        <Icon name="videocam" size={15} color={colors.accentBlue} />
-                        <Text style={styles.modalVideoHeaderTitle}>
-                          Recorded Call Video
-                        </Text>
-                      </View>
-                      <View style={styles.recSecBadge}>
-                        <Text style={styles.recSecBadgeText}>SEC. 30 EVIDENCE</Text>
-                      </View>
-                    </View>
                     <InteractiveVideoPlayer
                       src={endedCallData.videoUri}
+                      inspectorSrc={endedCallData.inspectorVideoUri}
+                      contactName={endedCallData.contact.name}
                       title={`Session Recording: ${endedCallData.contact.name}`}
                       style={styles.modalInteractiveVideo}
                       autoPlay={true}
@@ -1924,11 +1962,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   connectedRemoteFeed: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#0F172A",
     position: "relative",
-    gap: 10,
+    overflow: "hidden",
+  },
+  remoteParticipantOverlayBadge: {
+    position: "absolute",
+    bottom: 96,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  remoteParticipantDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.actionGreen,
+  },
+  remoteParticipantOverlayText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
   },
   connectedRemoteName: {
     fontSize: 20,
@@ -2271,41 +2334,8 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   modalVideoPlayerCard: {
-    backgroundColor: "#030B17",
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#1E293B",
-    padding: 8,
-    gap: 6,
-  },
-  modalVideoPlayerHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  modalVideoHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  modalVideoHeaderTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  recSecBadge: {
-    backgroundColor: "rgba(2, 132, 199, 0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(2, 132, 199, 0.4)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  recSecBadgeText: {
-    color: "#38BDF8",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    overflow: "hidden",
   },
   modalInteractiveVideo: {
     height: 230,
@@ -2314,21 +2344,8 @@ const styles = StyleSheet.create({
   },
   historyVideoBox: {
     marginTop: 8,
-    padding: 8,
-    backgroundColor: "#030B17",
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#1E293B",
-    gap: 6,
-  },
-  historyVideoHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  historyVideoTitle: {
-    fontSize: 12,
-    fontWeight: "700",
+    overflow: "hidden",
   },
   historyInteractiveVideo: {
     height: 230,
