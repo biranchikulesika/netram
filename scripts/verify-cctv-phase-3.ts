@@ -83,7 +83,7 @@ async function apiLogin(): Promise<string> {
   const res = await fetch(`${values["api-base"]}/api/v1/auth/dev-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "controlroom@dev.netram.in" }),
+    body: JSON.stringify({ email: "controlroom@netram.dev" }),
   });
   if (!res.ok) throw new Error(`API dev-login failed: HTTP ${res.status}`);
   const body = (await res.json()) as { token?: string };

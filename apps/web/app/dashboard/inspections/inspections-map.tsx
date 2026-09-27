@@ -222,7 +222,7 @@ export default function InspectionsMap({ inspections }: InspectionsMapProps) {
               <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
                 {c.label}
               </h3>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", marginTop: "0.15rem" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
                 {c.items.length} {c.items.length === 1 ? "inspection" : "inspections"}
               </div>
             </div>

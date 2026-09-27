@@ -21,10 +21,13 @@ import {
   IconCalendar,
   IconRotateCcw,
 } from "../../components/icons";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
-interface AuditExplorerViewProps {
+export interface AuditExplorerViewProps {
   initialEvents: AuditEvent[];
   initialTotal: number;
+  userNames?: Record<string, string>;
+  headerAction?: React.ReactNode;
 }
 
 type CategoryId =
@@ -99,7 +102,8 @@ export function AuditExplorerView({
   initialEvents,
   initialTotal: _initialTotal,
   userNames,
-}: AuditExplorerViewProps & { userNames?: Record<string, string> }) {
+  headerAction,
+}: AuditExplorerViewProps) {
   const [events] = useState<AuditEvent[]>(initialEvents);
   const [categoryFilter, setCategoryFilter] = useState<CategoryId>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -179,6 +183,14 @@ export function AuditExplorerView({
       }),
     [presented, categoryFilter, timePreset, appliedStartDate, appliedEndDate, searchQuery],
   );
+
+  const pagination = useClientPagination(filtered, 20, [
+    categoryFilter,
+    timePreset,
+    appliedStartDate,
+    appliedEndDate,
+    searchQuery,
+  ]);
 
   const closeDialog = useCallback(() => setSelectedEvent(null), []);
   const closeDateRangeModal = useCallback(() => setDateRangeModalOpen(false), []);
@@ -282,6 +294,8 @@ export function AuditExplorerView({
             marginLeft: "auto",
           }}
         >
+          {headerAction}
+
           {/* Pop-up Date Range Trigger */}
           <button
             type="button"
@@ -363,28 +377,28 @@ export function AuditExplorerView({
       </div>
 
       {/* Activity table */}
-      <div className="table-card" style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="table-card">
+        <table>
           <thead>
             <tr>
-              <th style={{ paddingLeft: "1.25rem", width: "140px" }}>Status</th>
+              <th style={{ width: "140px" }}>Status</th>
               <th>Activity</th>
               <th style={{ width: "260px" }}>Performed by</th>
-              <th style={{ textAlign: "right", paddingRight: "1.25rem", width: "190px" }}>Time Stamp</th>
+              <th style={{ width: "190px" }} className="table-align-right">Time Stamp</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="muted" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
-                  <IconLock style={{ width: 28, height: 28, margin: "0 auto 0.75rem auto", opacity: 0.3 }} />
-                  <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                <td colSpan={4} className="table-empty-state">
+                  <IconLock className="table-empty-icon" style={{ width: 28, height: 28 }} />
+                  <div className="table-empty-title">
                     {searchQuery || categoryFilter !== "all" || hasActiveTimeFilter
-                      ? "No matching activity"
-                      : "No activity yet"}
+                      ? "No matching activity found"
+                      : "No activity recorded yet"}
                   </div>
                   {searchQuery || categoryFilter !== "all" || hasActiveTimeFilter ? (
-                    <div style={{ fontSize: "0.825rem", marginTop: "0.25rem" }}>
+                    <div className="table-empty-desc">
                       Try adjusting your search, category, or time range filter.
                     </div>
                   ) : null}
@@ -405,7 +419,7 @@ export function AuditExplorerView({
                 </td>
               </tr>
             ) : (
-              filtered.map(({ event, activity, actor }) => (
+              pagination.paginatedItems.map(({ event, activity, actor }) => (
                 <tr
                   key={event.id}
                   tabIndex={0}
@@ -418,11 +432,11 @@ export function AuditExplorerView({
                       setSelectedEvent(event);
                     }
                   }}
-                  style={{ cursor: "pointer" }}
-                  className="audit-row"
+                  className="table-row audit-row"
+                  title="View activity audit details"
                 >
                   {/* Status (Clean text, no dot) */}
-                  <td style={{ paddingLeft: "1.25rem", whiteSpace: "nowrap", verticalAlign: "middle" }}>
+                  <td style={{ whiteSpace: "nowrap", verticalAlign: "middle" }}>
                     <span
                       style={{
                         fontWeight: 600,
@@ -448,8 +462,8 @@ export function AuditExplorerView({
                     <span
                       style={{
                         fontWeight: 500,
-                        fontSize: "0.84rem",
-                        color: "var(--text-primary, #0c2a52)",
+                        fontSize: "0.85rem",
+                        color: "var(--color-navy-brand)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -475,7 +489,7 @@ export function AuditExplorerView({
                       style={{
                         fontSize: "0.8125rem",
                         fontWeight: 500,
-                        color: actor ? "var(--text-data, #1c3a63)" : "var(--text-muted, #64748b)",
+                        color: actor ? "var(--color-navy-data)" : "var(--text-muted)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -489,15 +503,10 @@ export function AuditExplorerView({
 
                   {/* Time Stamp (When) */}
                   <td
-                    className="muted"
+                    className="table-date table-align-right"
                     style={{
-                      fontSize: "0.8125rem",
                       whiteSpace: "nowrap",
-                      textAlign: "right",
-                      paddingRight: "1.25rem",
                       verticalAlign: "middle",
-                      fontVariantNumeric: "tabular-nums",
-                      fontFamily: "var(--font-mono, monospace)",
                     }}
                   >
                     {formatTimestamp(event.occurredAt)}
@@ -507,6 +516,18 @@ export function AuditExplorerView({
             )}
           </tbody>
         </table>
+
+        <PaginationBar
+          from={pagination.from}
+          to={pagination.to}
+          total={pagination.total}
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          itemName="activity records"
+          onPageClick={pagination.onPageClick}
+          onPageSizeChange={pagination.onPageSizeChange}
+        />
       </div>
 
       {/* Detail pop up dialog */}
@@ -618,7 +639,7 @@ export function AuditExplorerView({
                       <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                         Transition
                       </td>
-                      <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-primary, #0c2a52)", fontFamily: "var(--font-mono, monospace)", fontSize: "0.8rem", fontWeight: 600, borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-primary, #0c2a52)", fontSize: "0.85rem", fontWeight: 600, borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                         {selected.activity.transition}
                       </td>
                     </tr>
@@ -656,7 +677,7 @@ export function AuditExplorerView({
                     <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                       Action Code
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.78rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                    <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", fontWeight: 600, borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                       {selected.event.action}
                     </td>
                   </tr>
@@ -686,7 +707,7 @@ export function AuditExplorerView({
                       <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                         IP Address
                       </td>
-                      <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.78rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                      <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                         {selected.event.ipAddress}
                       </td>
                     </tr>
@@ -696,7 +717,7 @@ export function AuditExplorerView({
                     <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                       Time Stamp
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.8rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
+                    <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)" }}>
                       {formatTimestamp(selected.event.occurredAt)}
                     </td>
                   </tr>
@@ -705,7 +726,7 @@ export function AuditExplorerView({
                     <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #f8fafc)" }}>
                       Event ID
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", fontFamily: "var(--font-mono, monospace)", fontSize: "0.75rem", wordBreak: "break-all" }}>
+                    <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", wordBreak: "break-all" }}>
                       {selected.event.id}
                     </td>
                   </tr>

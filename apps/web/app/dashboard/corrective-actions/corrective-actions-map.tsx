@@ -193,9 +193,7 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
             >
               <span
                 style={{
-                  fontFamily: "var(--font-mono)",
                   fontWeight: 600,
-                  letterSpacing: "0.04em",
                   flexShrink: 0,
                 }}
                 title={`Project Identifier: ${f.code}`}
@@ -235,7 +233,7 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
               <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
                 {c.project.name}
               </h3>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", marginTop: "0.15rem" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
                 {c.project.code} · {c.items.length} corrective {c.items.length === 1 ? "action" : "actions"}
               </div>
             </div>

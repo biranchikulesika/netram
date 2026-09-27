@@ -18,14 +18,14 @@ async function main() {
   console.log("==================================================================");
 
   // 1. Authenticate as Khordha District Officer
-  console.log("\n1. Authenticating as Khordha District Officer: officer.khordha@dev.netram.in...");
+  console.log("\n1. Authenticating as Khordha District Officer: officer@netram.dev...");
   let currentToken: string | null = null;
   const khordhaClient = new NetramApiClient({
     baseUrl: API_URL,
     getToken: () => currentToken,
   });
 
-  const khordhaLogin = await khordhaClient.devLogin("officer.khordha@dev.netram.in");
+  const khordhaLogin = await khordhaClient.devLogin("officer@netram.dev");
   currentToken = khordhaLogin.token;
   console.log(`✓ Logged in as ${khordhaLogin.user.displayName} (id: ${khordhaLogin.user.id})`);
 
@@ -183,7 +183,7 @@ async function main() {
     baseUrl: API_URL,
     getToken: () => adminToken,
   });
-  const adminLogin = await adminClient.devLogin("admin.example-social@dev.netram.in");
+  const adminLogin = await adminClient.devLogin("admin@netram.dev");
   adminToken = adminLogin.token;
 
   const auditEvents = await adminClient.listAuditEvents({ action: "cctv.accessed" });

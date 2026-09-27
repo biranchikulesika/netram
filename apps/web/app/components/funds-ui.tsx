@@ -102,7 +102,7 @@ export function VendorPaymentInfo({
   paymentMethod?: string | null;
   paymentReference?: string | null;
 }) {
-  const mono = { fontFamily: "var(--font-mono)", fontSize: "0.8rem" } as const;
+  const dataTextStyle = { fontSize: "0.85rem", fontWeight: 600 } as const;
   return (
     <section>
       <h3 style={{ margin: "0 0 0.55rem", fontSize: "0.85rem", fontWeight: 700 }}>
@@ -111,15 +111,15 @@ export function VendorPaymentInfo({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "1rem" }}>
         <DetailRow label="Vendor / payee">{vendorName ?? "Not provided"}</DetailRow>
         <DetailRow label="GSTIN">
-          {vendorGstin ? <span style={mono}>{vendorGstin}</span> : "Not provided"}
+          {vendorGstin ? <span style={dataTextStyle}>{vendorGstin}</span> : "Not provided"}
         </DetailRow>
         <DetailRow label="Invoice / voucher number">
-          {invoiceNumber ? <span style={mono}>{invoiceNumber}</span> : "Not provided"}
+          {invoiceNumber ? <span style={dataTextStyle}>{invoiceNumber}</span> : "Not provided"}
         </DetailRow>
         <DetailRow label="Invoice Date">{formatDate(invoiceDate)}</DetailRow>
         <DetailRow label="Payment mode">{paymentMethod ?? "Not recorded"}</DetailRow>
         <DetailRow label="Payment reference">
-          {paymentReference ? <span style={mono}>{paymentReference}</span> : "Not recorded"}
+          {paymentReference ? <span style={dataTextStyle}>{paymentReference}</span> : "Not recorded"}
         </DetailRow>
       </div>
     </section>
@@ -232,7 +232,7 @@ export function AllocationDetailModal({
           </Link>
         </DetailRow>
         <DetailRow label="Allocation ID">
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{allocation.id}</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{allocation.id}</span>
         </DetailRow>
         <DetailRow label="Financial Year">
           <span className="badge">{allocation.fiscalYear}</span>
@@ -265,7 +265,7 @@ export function AllocationDetailModal({
               fontSize: "0.85rem",
             }}
           >
-            Open Facility Fund Dossier
+            Open Facility Fund Record
           </Link>
         </div>
       </div>
@@ -667,14 +667,21 @@ export function FlagDetailModal({
       <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
         <DetailRow label="Facility / Project">
           <Link
-            href={`/projects/${flag.projectId}/funds`}
-            style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}
+            href={`/dashboard/projects/${flag.projectId}`}
+            className="table-name-link"
+            title={`Open facility record for ${projectName}`}
           >
             {projectName}
           </Link>
         </DetailRow>
         <DetailRow label="Project Code">
-          <span style={{ fontFamily: "var(--font-mono)" }}>{projectCode}</span>
+          <Link
+            href={`/dashboard/projects/${flag.projectId}`}
+            className="table-code-link"
+            title={`Project identifier: ${projectCode}`}
+          >
+            {projectCode}
+          </Link>
         </DetailRow>
         <DetailRow label="Severity">
           <span className="badge badge-surprise">
@@ -689,7 +696,7 @@ export function FlagDetailModal({
         {flag.evidenceRefs.length > 0 && (
           <DetailRow label="Evidence Refs">
             {flag.evidenceRefs.map((r) => (
-              <div key={r.id} style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>
+              <div key={r.id} style={{ fontSize: "0.85rem", fontWeight: 500 }}>
                 {r.label}
               </div>
             ))}
@@ -697,7 +704,11 @@ export function FlagDetailModal({
         )}
         {flag.linkedInspectionId && (
           <DetailRow label="Linked Inspection">
-            <Link href={`/inspections/${flag.linkedInspectionId}`} style={{ color: "#2563eb" }}>
+            <Link
+              href={`/dashboard/inspections/${flag.linkedInspectionId}`}
+              className="table-code-link"
+              title={`Linked inspection ${flag.linkedInspectionId}`}
+            >
               Inspection #{flag.linkedInspectionId.slice(0, 8)}
             </Link>
           </DetailRow>

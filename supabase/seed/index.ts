@@ -206,13 +206,13 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   const users = [
     {
       id: did("user:dept-admin"),
-      email: "admin.example-social@dev.netram.in",
+      email: "admin@netram.dev",
       displayName: "Biranchi (Dept Admin)",
       status: "active",
     },
     {
       id: did("user:officer-khordha"),
-      email: "officer.khordha@dev.netram.in",
+      email: "officer@netram.dev",
       displayName: "Sruti (Officer, Khordha)",
       status: "active",
     },
@@ -224,19 +224,19 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     },
     {
       id: did("user:control-room"),
-      email: "controlroom@dev.netram.in",
+      email: "controlroom@netram.dev",
       displayName: "Room Ops",
       status: "active",
     },
     {
       id: did("user:institution"),
-      email: "institution.vani@dev.netram.in",
+      email: "institute@netram.dev",
       displayName: "Vani Vihar Hostel Admin",
       status: "active",
     },
     {
       id: did("user:inspector-1"),
-      email: "inspector.one@dev.netram.in",
+      email: "inspector@netram.dev",
       displayName: "Inspector Smruti",
       status: "active",
     },
@@ -1879,7 +1879,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         actorUserId: did("user:officer-khordha"),
         resourceType: "inspection",
         resourceId: did("inspection:vani-surprise"),
-        metadata: { inspector: "inspector.one@dev.netram.in" },
+        metadata: { inspector: "inspector@netram.dev" },
         occurredAt: new Date("2026-02-10T18:00:00Z"),
       },
     ])

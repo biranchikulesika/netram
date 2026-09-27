@@ -6,17 +6,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Project, ProjectStatus } from "@netram/types";
 import { StatusBadge } from "./[id]/status-badge";
-import {
-  IconMapPin,
-  IconShieldCheck,
-  IconChevronRight,
-  IconCheck,
-} from "../../components/icons";
+import { IconMapPin, IconShieldCheck, IconChevronRight, IconCheck } from "../../components/icons";
 import { formatDistrict, getAuthorityName } from "../../../lib/presentation";
 import { ProjectOverviewCard } from "./project-overview-card";
-import NetramOverviewMap, {
-  type MapFacility,
-} from "../../components/netram-overview-map";
+import NetramOverviewMap, { type MapFacility } from "../../components/netram-overview-map";
 
 interface RealLeafletMapProps {
   projects: Project[];
@@ -360,7 +353,15 @@ export default function RealLeafletMap({
         fillOpacity: 0.18,
       }).addTo(geofenceGroup);
     }
-  }, [selectedFacility, geofenceMode, circleRadius, polygonVertices, currentGeofence, draftLocation, mapReady]);
+  }, [
+    selectedFacility,
+    geofenceMode,
+    circleRadius,
+    polygonVertices,
+    currentGeofence,
+    draftLocation,
+    mapReady,
+  ]);
 
   // Seal Geofence
   const handleSealGeofence = async () => {
@@ -636,7 +637,9 @@ export default function RealLeafletMap({
               >
                 {f.name}
               </div>
-              <div style={{ flexShrink: 0 }}>{proj ? <StatusBadge status={proj.status} /> : null}</div>
+              <div style={{ flexShrink: 0 }}>
+                {proj ? <StatusBadge status={proj.status} /> : null}
+              </div>
             </div>
             <div
               style={{
@@ -650,9 +653,7 @@ export default function RealLeafletMap({
             >
               <span
                 style={{
-                  fontFamily: "var(--font-mono)",
                   fontWeight: 600,
-                  letterSpacing: "0.04em",
                   flexShrink: 0,
                 }}
                 title={`Project Identifier: ${f.code}`}
@@ -672,11 +673,18 @@ export default function RealLeafletMap({
                 }}
                 title={f.districtLabel}
               >
-                <IconMapPin width={11} height={11} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
+                <IconMapPin
+                  width={11}
+                  height={11}
+                  style={{ color: "var(--text-subtle)", flexShrink: 0 }}
+                />
                 {f.districtLabel}
               </span>
               <span style={{ flex: 1 }} />
-              <span title="Open facility dossier" style={{ color: "#2563eb", display: "inline-flex", flexShrink: 0 }}>
+              <span
+                title="Open facility record"
+                style={{ color: "#2563eb", display: "inline-flex", flexShrink: 0 }}
+              >
                 <IconChevronRight width={13} height={13} />
               </span>
             </div>
@@ -704,7 +712,9 @@ export default function RealLeafletMap({
                   boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
                   <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
                     Set Facility Location
                   </span>
@@ -846,7 +856,9 @@ export default function RealLeafletMap({
                   boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
                   <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
                     Adjust Circular Radius
                   </span>
@@ -956,7 +968,9 @@ export default function RealLeafletMap({
                   boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
                   <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
                     Draw Perimeter
                   </span>
@@ -1074,83 +1088,99 @@ export default function RealLeafletMap({
               </div>
             ) : /* VIEW MODE: Clean Action Bar */
             isAuthority ? (
-                <div style={{ display: "flex", gap: "0.45rem" }}>
-                  <button
-                    type="button"
-                    onClick={handleStartAdjustRadius}
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.35rem",
-                      padding: "0.45rem 0.65rem",
-                      fontSize: "0.74rem",
-                      fontWeight: 600,
-                      background: "#ffffff",
-                      color: "var(--color-navy-brand)",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
+              <div style={{ display: "flex", gap: "0.45rem" }}>
+                <button
+                  type="button"
+                  onClick={handleStartAdjustRadius}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.35rem",
+                    padding: "0.45rem 0.65rem",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: "#ffffff",
+                    color: "var(--color-navy-brand)",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    width={13}
+                    height={13}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={13} height={13}>
-                      <circle cx="12" cy="12" r="9" />
-                      <circle cx="12" cy="12" r="2" fill="currentColor" />
-                    </svg>
-                    <span>Adjust Radius</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleStartDrawPolygon}
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.35rem",
-                      padding: "0.45rem 0.65rem",
-                      fontSize: "0.74rem",
-                      fontWeight: 600,
-                      background: "#ffffff",
-                      color: "var(--color-navy-brand)",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
+                    <circle cx="12" cy="12" r="9" />
+                    <circle cx="12" cy="12" r="2" fill="currentColor" />
+                  </svg>
+                  <span>Adjust Radius</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartDrawPolygon}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.35rem",
+                    padding: "0.45rem 0.65rem",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: "#ffffff",
+                    color: "var(--color-navy-brand)",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    width={13}
+                    height={13}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
-                      <polygon points="12 2 22 8.5 18 21 6 21 2 8.5" />
-                    </svg>
-                    <span>Draw Polygon</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleStartSetLocation}
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.35rem",
-                      padding: "0.45rem 0.65rem",
-                      fontSize: "0.74rem",
-                      fontWeight: 600,
-                      background: "#ffffff",
-                      color: "var(--color-navy-brand)",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <IconMapPin width={13} height={13} />
-                    <span>Set Location</span>
-                  </button>
-                </div>
-              ) : null}
+                    <polygon points="12 2 22 8.5 18 21 6 21 2 8.5" />
+                  </svg>
+                  <span>Draw Polygon</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartSetLocation}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.35rem",
+                    padding: "0.45rem 0.65rem",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: "#ffffff",
+                    color: "var(--color-navy-brand)",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <IconMapPin width={13} height={13} />
+                  <span>Set Location</span>
+                </button>
+              </div>
+            ) : null}
 
             {/* Divider */}
             <div style={{ height: "1px", background: "var(--color-border-subtle)" }} />
@@ -1161,7 +1191,11 @@ export default function RealLeafletMap({
                 style={{ display: "flex", gap: "0.55rem", alignItems: "center", minWidth: 0 }}
                 title="Supervising Authority"
               >
-                <IconShieldCheck width={14} height={14} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
+                <IconShieldCheck
+                  width={14}
+                  height={14}
+                  style={{ color: "var(--text-subtle)", flexShrink: 0 }}
+                />
                 <span
                   style={{
                     fontSize: "0.78rem",
@@ -1199,7 +1233,7 @@ export default function RealLeafletMap({
                   boxShadow: "0 1px 4px rgba(22, 163, 74, 0.25)",
                 }}
               >
-                <span>Open Facility Dossier</span>
+                <span>Open facility record</span>
                 <IconChevronRight width={14} height={14} />
               </Link>
             </div>

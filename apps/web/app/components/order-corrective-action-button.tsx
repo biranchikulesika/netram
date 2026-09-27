@@ -91,7 +91,7 @@ export function OrderCorrectiveActionButton({
           cursor: "pointer",
         }}
       >
-        Order Corrective Action →
+        Order Corrective Action
       </button>
 
       {isOpen && (

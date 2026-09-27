@@ -42,7 +42,7 @@ export interface ExpenseVerifyPopupProps {
  * Verify-payment popup for expenditure items (mirrors the funds workspace's
  * expense detail modal). Everything the authority needs for this decision —
  * amount, purpose, vendor/payment detail — is carried by the item itself, so
- * the decision completes on the inbox page without opening the dossier.
+ * the decision completes on the inbox page without opening the record.
  */
 export function ExpenseVerifyPopup({
   item,

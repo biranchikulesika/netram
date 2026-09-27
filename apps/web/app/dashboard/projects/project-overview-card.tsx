@@ -9,11 +9,7 @@ import {
   IconShieldCheck,
   IconTag,
 } from "../../components/icons";
-import {
-  getAuthorityName,
-  formatDistrict,
-  getOrganisationName,
-} from "../../../lib/presentation";
+import { getAuthorityName, formatDistrict, getOrganisationName } from "../../../lib/presentation";
 import { StatusBadge } from "./[id]/status-badge";
 
 function getProjectTypeLabel(type: Project["type"]): string {
@@ -62,7 +58,9 @@ export function ProjectOverviewCard({ project, href }: ProjectOverviewCardProps)
   const schemeNames = project.programmeNames ?? [];
   const hasSchemes = schemeNames.length > 0;
   const schemeLabel =
-    schemeNames.length <= 2 ? schemeNames.join(", ") : `${schemeNames[0]} +${schemeNames.length - 2}`;
+    schemeNames.length <= 2
+      ? schemeNames.join(", ")
+      : `${schemeNames[0]} +${schemeNames.length - 2}`;
 
   const body = (
     <>
@@ -127,9 +125,7 @@ export function ProjectOverviewCard({ project, href }: ProjectOverviewCardProps)
       </dl>
 
       <div className="facility-card-footer">
-        <span className="facility-card-date">
-          Regd. {formatRegisteredDate(project.createdAt)}
-        </span>
+        <span className="facility-card-date">Regd. {formatRegisteredDate(project.createdAt)}</span>
       </div>
     </>
   );
@@ -144,7 +140,11 @@ export function ProjectOverviewCard({ project, href }: ProjectOverviewCardProps)
 
   return (
     <article className="facility-card">
-      <Link href={href} className="facility-card-link" aria-label={`Open dossier for ${project.name}`}>
+      <Link
+        href={href}
+        className="facility-card-link"
+        aria-label={`Open record for ${project.name}`}
+      >
         {body}
       </Link>
     </article>

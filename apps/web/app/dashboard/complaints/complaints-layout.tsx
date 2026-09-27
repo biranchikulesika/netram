@@ -2,17 +2,15 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useUrlState } from "../../../lib/url-state";
 import dynamic from "next/dynamic";
 import type { Complaint } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 import { ComplaintCard, getComplaintStatusBadge } from "./complaint-card";
-import {
-  IconSearch,
-  IconList,
-  IconGrid,
-  IconMapPin,
-} from "../../components/icons";
+import { IconSearch, IconList, IconGrid, IconMapPin } from "../../components/icons";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 const ComplaintsMap = dynamic(() => import("./complaints-map"), {
   ssr: false,
@@ -39,11 +37,19 @@ const ComplaintsMap = dynamic(() => import("./complaints-map"), {
 
 export interface ComplaintsLayoutProps {
   initialComplaints: Complaint[];
+  initialStatus?: StatusFilter;
+  initialView?: ViewMode;
+  initialSearch?: string;
   totalComplaints: number;
+  showMap?: boolean;
+  showProjectInfo?: boolean;
+  searchPlaceholder?: string;
 }
 
 type StatusFilter = "ALL" | "ACTION_REQUIRED" | "ESCALATED" | "RESOLVED";
 type ViewMode = "table" | "cards" | "map";
+/** The section default; other views go in the URL. */
+const DEFAULT_VIEW: ViewMode = "map";
 
 function matchesFilter(c: Complaint, filter: StatusFilter): boolean {
   if (filter === "ALL") return true;
@@ -64,11 +70,32 @@ function matchesSearch(c: Complaint, q: string): boolean {
 
 export function ComplaintsLayout({
   initialComplaints,
-  totalComplaints: _totalComplaints,
+  initialStatus = "ALL",
+  initialView = "map",
+  initialSearch = "",
+  showMap = true,
+  showProjectInfo = true,
+  searchPlaceholder,
 }: ComplaintsLayoutProps) {
-  const [filter, setFilter] = useState<StatusFilter>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const router = useRouter();
+  const setUrlState = useUrlState();
+
+  const [filter, setFilter] = useState<StatusFilter>(initialStatus);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
+
+  const applyFilter = (next: StatusFilter) => {
+    setFilter(next);
+    setUrlState({ status: next === "ALL" ? null : next });
+  };
+  const applyView = (next: ViewMode) => {
+    setViewMode(next);
+    setUrlState({ view: next === DEFAULT_VIEW ? null : next });
+  };
+  const applySearch = (value: string) => {
+    setSearchQuery(value);
+    setUrlState({ q: value.trim() || null });
+  };
 
   // Metrics
   const metrics = useMemo(() => {
@@ -104,13 +131,15 @@ export function ComplaintsLayout({
       ? "No grievances match the selected filter criteria."
       : "No grievances recorded.";
 
+  const pagination = useClientPagination(filtered, 20, [filter, searchQuery]);
+
   const isXl = useMediaQuery("(min-width: 1401px)");
   const isLg = useMediaQuery("(min-width: 1101px) and (max-width: 1400px)");
   const isMd = useMediaQuery("(min-width: 641px) and (max-width: 1100px)");
   const columnCount = isXl ? 4 : isLg ? 3 : isMd ? 2 : 1;
   const cardColumns = useMemo(
-    () => distributeIntoColumns(filtered, columnCount),
-    [filtered, columnCount],
+    () => distributeIntoColumns(pagination.paginatedItems, columnCount),
+    [pagination.paginatedItems, columnCount],
   );
 
   return (
@@ -125,9 +154,14 @@ export function ComplaintsLayout({
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
             <input
               type="search"
-              placeholder="Search by tracking code, facility, keyword…"
+              placeholder={
+                searchPlaceholder ??
+                (showProjectInfo
+                  ? "Search by tracking code, facility, keyword…"
+                  : "Search by tracking code, keyword…")
+              }
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => applySearch(e.target.value)}
               className="search-input-with-icon"
               aria-label="Filter grievances"
             />
@@ -139,7 +173,7 @@ export function ComplaintsLayout({
                 key={tab.key}
                 type="button"
                 className={`filter-tab-btn ${filter === tab.key ? "active" : ""}`}
-                onClick={() => setFilter(tab.key)}
+                onClick={() => applyFilter(tab.key)}
                 role="tab"
                 aria-selected={filter === tab.key}
               >
@@ -155,7 +189,7 @@ export function ComplaintsLayout({
             <button
               type="button"
               className={`view-btn ${viewMode === "table" ? "active" : ""}`}
-              onClick={() => setViewMode("table")}
+              onClick={() => applyView("table")}
               title="Table View"
             >
               <IconList style={{ width: 14, height: 14 }} />
@@ -164,21 +198,23 @@ export function ComplaintsLayout({
             <button
               type="button"
               className={`view-btn ${viewMode === "cards" ? "active" : ""}`}
-              onClick={() => setViewMode("cards")}
+              onClick={() => applyView("cards")}
               title="Cards View"
             >
               <IconGrid style={{ width: 14, height: 14 }} />
               <span>Cards</span>
             </button>
-            <button
-              type="button"
-              className={`view-btn ${viewMode === "map" ? "active" : ""}`}
-              onClick={() => setViewMode("map")}
-              title="Map"
-            >
-              <IconMapPin style={{ width: 14, height: 14 }} />
-              <span>Map</span>
-            </button>
+            {showMap && (
+              <button
+                type="button"
+                className={`view-btn ${viewMode === "map" ? "active" : ""}`}
+                onClick={() => applyView("map")}
+                title="Map"
+              >
+                <IconMapPin style={{ width: 14, height: 14 }} />
+                <span>Map</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -190,7 +226,7 @@ export function ComplaintsLayout({
             <thead>
               <tr>
                 <th>Tracking Code</th>
-                <th>Facility / Project</th>
+                {showProjectInfo && <th>Facility / Project</th>}
                 <th>Grievance Summary</th>
                 <th>Status</th>
                 <th>Received</th>
@@ -200,42 +236,59 @@ export function ComplaintsLayout({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="muted" style={{ textAlign: "center", padding: "2.5rem" }}>
-                    {emptyState}
+                  <td colSpan={showProjectInfo ? 6 : 5} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No complaints found</div>
+                    <div className="table-empty-desc">
+                      {filter !== "ALL" || searchQuery
+                        ? "Try adjusting your filter or search criteria."
+                        : "Grievances regarding facilities will appear here once submitted."}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filtered.map((c) => {
+                pagination.paginatedItems.map((c) => {
                   const statusMeta = getComplaintStatusBadge(c.status);
 
                   return (
-                    <tr key={c.id}>
+                    <tr
+                      key={c.id}
+                      className="table-row"
+                      onClick={() => router.push(`/dashboard/complaints/${c.id}`)}
+                      title="View complaint details"
+                    >
                       <td>
                         <Link
                           href={`/dashboard/complaints/${c.id}`}
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            fontWeight: 700,
-                            fontSize: "0.82rem",
-                            color: "var(--color-navy-brand)",
-                            textDecoration: "none",
-                          }}
+                          className="table-code-link"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Tracking code: ${c.trackingCode}`}
                         >
                           {c.trackingCode}
                         </Link>
                       </td>
 
-                      <td>
-                        <Link
-                          href={`/dashboard/projects/${c.projectId}`}
-                          style={{ textDecoration: "none", color: "inherit" }}
-                        >
-                          <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{c.projectName}</div>
-                          <div className="muted" style={{ fontSize: "0.75rem" }}>
-                            {c.projectCode}
-                          </div>
-                        </Link>
-                      </td>
+                      {showProjectInfo && (
+                        <td>
+                          {c.projectId ? (
+                            <Link
+                              href={`/dashboard/projects/${c.projectId}`}
+                              className="table-name-link"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Open facility record for ${c.projectName}`}
+                            >
+                              <div>{c.projectName}</div>
+                              {c.projectCode && (
+                                <div className="table-subtext">{c.projectCode}</div>
+                              )}
+                            </Link>
+                          ) : (
+                            <span className="table-name-link" style={{ cursor: "default" }}>
+                              {c.projectName}
+                            </span>
+                          )}
+                        </td>
+                      )}
 
                       <td>
                         <div
@@ -244,23 +297,18 @@ export function ComplaintsLayout({
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
-                            fontSize: "0.82rem",
+                            fontSize: "0.85rem",
                           }}
                           title={c.description}
                         >
                           {c.description}
                         </div>
-                        {c.complainantName && (
-                          <div className="muted" style={{ fontSize: "0.72rem", marginTop: "0.15rem" }}>
-                            By: {c.complainantName}
-                          </div>
-                        )}
                       </td>
 
                       <td>
                         <span
                           style={{
-                            fontSize: "0.68rem",
+                            fontSize: "0.72rem",
                             fontWeight: 700,
                             color: statusMeta.color,
                           }}
@@ -269,9 +317,7 @@ export function ComplaintsLayout({
                         </span>
                       </td>
 
-                      <td className="muted" style={{ fontSize: "0.8rem" }}>
-                        {formatDate(c.receivedAt)}
-                      </td>
+                      <td className="table-date">{formatDate(c.receivedAt)}</td>
 
                       <td style={{ textAlign: "right" }}>
                         <div
@@ -284,15 +330,11 @@ export function ComplaintsLayout({
                         >
                           <Link
                             href={`/dashboard/complaints/${c.id}`}
-                            style={{
-                              fontSize: "0.78rem",
-                              textDecoration: "none",
-                              whiteSpace: "nowrap",
-                              fontWeight: 600,
-                              color: "var(--color-navy-brand)",
-                            }}
+                            className="btn-secondary"
+                            style={{ fontSize: "0.74rem", padding: "0.22rem 0.55rem" }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            View Complaint
+                            View
                           </Link>
                         </div>
                       </td>
@@ -302,6 +344,17 @@ export function ComplaintsLayout({
               )}
             </tbody>
           </table>
+          <PaginationBar
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            pageSize={pagination.pageSize}
+            itemName="grievances"
+            onPageClick={pagination.onPageClick}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -310,7 +363,14 @@ export function ComplaintsLayout({
         <div>
           {filtered.length === 0 ? (
             <div className="empty-box" style={{ padding: "3rem 1rem", marginBottom: "2rem" }}>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  marginBottom: "0.25rem",
+                  color: "var(--text-primary)",
+                }}
+              >
                 No grievances found
               </div>
               <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>{emptyState}</div>
@@ -320,18 +380,35 @@ export function ComplaintsLayout({
               {cardColumns.map((column, colIdx) => (
                 <div className="facility-cards-column" key={colIdx}>
                   {column.map((c) => (
-                    <ComplaintCard complaint={c} key={c.id} />
+                    <ComplaintCard complaint={c} key={c.id} showProjectInfo={showProjectInfo} />
                   ))}
                 </div>
               ))}
             </div>
           )}
+
+          {filtered.length > 0 && (
+            <PaginationBar
+              from={pagination.from}
+              to={pagination.to}
+              total={pagination.total}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              pageSize={pagination.pageSize}
+              itemName="grievances"
+              onPageClick={pagination.onPageClick}
+              onPageSizeChange={pagination.onPageSizeChange}
+            />
+          )}
         </div>
       )}
 
       {/* View: Map */}
-      {viewMode === "map" && (
-        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+      {showMap && viewMode === "map" && (
+        <div
+          className="map-view-wrapper"
+          style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}
+        >
           <ComplaintsMap complaints={filtered} />
         </div>
       )}

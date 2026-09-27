@@ -2,12 +2,15 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useUrlState } from "../../../lib/url-state";
 import dynamic from "next/dynamic";
 import type { CorrectiveAction } from "@netram/types";
 import { formatDate } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 import { CorrectiveActionCard, getStatusBadge, getSeverityStyle } from "./corrective-action-card";
 import { IconSearch, IconList, IconGrid, IconMapPin } from "../../components/icons";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 const CorrectiveActionsMap = dynamic(() => import("./corrective-actions-map"), {
   ssr: false,
@@ -34,11 +37,19 @@ const CorrectiveActionsMap = dynamic(() => import("./corrective-actions-map"), {
 
 export interface CorrectiveActionsLayoutProps {
   initialActions: CorrectiveAction[];
+  initialStatus?: StatusFilter;
+  initialView?: ViewMode;
+  initialSearch?: string;
   totalActions: number;
+  showMap?: boolean;
+  showProjectInfo?: boolean;
+  searchPlaceholder?: string;
 }
 
 type StatusFilter = "ALL" | "PENDING" | "IN_REVIEW" | "OVERDUE" | "ACCEPTED";
 type ViewMode = "table" | "cards" | "map";
+/** The section default; other views go in the URL. */
+const DEFAULT_VIEW: ViewMode = "table";
 
 function matchesFilter(a: CorrectiveAction, filter: StatusFilter): boolean {
   if (filter === "ALL") return true;
@@ -50,19 +61,50 @@ function matchesFilter(a: CorrectiveAction, filter: StatusFilter): boolean {
 
 export function CorrectiveActionsLayout({
   initialActions,
-  totalActions: _totalActions,
+  initialStatus = "ALL",
+  initialView = "table",
+  initialSearch = "",
+  showMap = true,
+  showProjectInfo = true,
+  searchPlaceholder,
 }: CorrectiveActionsLayoutProps) {
-  const [actionsList] = useState<CorrectiveAction[]>(initialActions);
-  const [filter, setFilter] = useState<StatusFilter>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const router = useRouter();
+  const setUrlState = useUrlState();
+
+  const [actionsList, setActionsList] = useState<CorrectiveAction[]>(initialActions);
+  const [filter, setFilter] = useState<StatusFilter>(initialStatus);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
+
+  const applyFilter = (next: StatusFilter) => {
+    setFilter(next);
+    setUrlState({ status: next === "ALL" ? null : next });
+  };
+  const applyView = (next: ViewMode) => {
+    setViewMode(next);
+    setUrlState({ view: next === DEFAULT_VIEW ? null : next });
+  };
+  const applySearch = (value: string) => {
+    setSearchQuery(value);
+    setUrlState({ q: value.trim() || null });
+  };
+
+  React.useEffect(() => {
+    setActionsList(initialActions);
+  }, [initialActions]);
 
   // Metrics
   const metrics = useMemo(() => {
     const total = actionsList.length;
-    const pending = actionsList.filter((a) => a.status === "pending" || a.status === "rejected").length;
-    const inReview = actionsList.filter((a) => a.status === "submitted" || a.status === "under_review").length;
-    const overdue = actionsList.filter((a) => a.status === "overdue" || a.status === "escalated").length;
+    const pending = actionsList.filter(
+      (a) => a.status === "pending" || a.status === "rejected",
+    ).length;
+    const inReview = actionsList.filter(
+      (a) => a.status === "submitted" || a.status === "under_review",
+    ).length;
+    const overdue = actionsList.filter(
+      (a) => a.status === "overdue" || a.status === "escalated",
+    ).length;
     const accepted = actionsList.filter((a) => a.status === "accepted").length;
     return { total, pending, inReview, overdue, accepted };
   }, [actionsList]);
@@ -101,13 +143,15 @@ export function CorrectiveActionsLayout({
       ? "No corrective actions match the selected filter criteria."
       : "No corrective actions recorded.";
 
+  const pagination = useClientPagination(filtered, 20, [filter, searchQuery]);
+
   const isXl = useMediaQuery("(min-width: 1401px)");
   const isLg = useMediaQuery("(min-width: 1101px) and (max-width: 1400px)");
   const isMd = useMediaQuery("(min-width: 641px) and (max-width: 1100px)");
   const columnCount = isXl ? 4 : isLg ? 3 : isMd ? 2 : 1;
   const cardColumns = useMemo(
-    () => distributeIntoColumns(filtered, columnCount),
-    [filtered, columnCount],
+    () => distributeIntoColumns(pagination.paginatedItems, columnCount),
+    [pagination.paginatedItems, columnCount],
   );
 
   return (
@@ -122,9 +166,14 @@ export function CorrectiveActionsLayout({
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
             <input
               type="search"
-              placeholder="Search by action ID, finding ID, ATR code, facility…"
+              placeholder={
+                searchPlaceholder ??
+                (showProjectInfo
+                  ? "Search by action ID, finding ID, ATR code, facility…"
+                  : "Search by action ID, finding ID, ATR code…")
+              }
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => applySearch(e.target.value)}
               className="search-input-with-icon"
               aria-label="Filter corrective actions"
             />
@@ -136,7 +185,7 @@ export function CorrectiveActionsLayout({
                 key={tab.key}
                 type="button"
                 className={`filter-tab-btn ${filter === tab.key ? "active" : ""}`}
-                onClick={() => setFilter(tab.key)}
+                onClick={() => applyFilter(tab.key)}
                 role="tab"
                 aria-selected={filter === tab.key}
               >
@@ -152,7 +201,7 @@ export function CorrectiveActionsLayout({
             <button
               type="button"
               className={`view-btn ${viewMode === "table" ? "active" : ""}`}
-              onClick={() => setViewMode("table")}
+              onClick={() => applyView("table")}
               title="Table View"
             >
               <IconList style={{ width: 14, height: 14 }} />
@@ -161,21 +210,23 @@ export function CorrectiveActionsLayout({
             <button
               type="button"
               className={`view-btn ${viewMode === "cards" ? "active" : ""}`}
-              onClick={() => setViewMode("cards")}
+              onClick={() => applyView("cards")}
               title="Cards View"
             >
               <IconGrid style={{ width: 14, height: 14 }} />
               <span>Cards</span>
             </button>
-            <button
-              type="button"
-              className={`view-btn ${viewMode === "map" ? "active" : ""}`}
-              onClick={() => setViewMode("map")}
-              title="Map"
-            >
-              <IconMapPin style={{ width: 14, height: 14 }} />
-              <span>Map</span>
-            </button>
+            {showMap && (
+              <button
+                type="button"
+                className={`view-btn ${viewMode === "map" ? "active" : ""}`}
+                onClick={() => applyView("map")}
+                title="Map"
+              >
+                <IconMapPin style={{ width: 14, height: 14 }} />
+                <span>Map</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -196,12 +247,18 @@ export function CorrectiveActionsLayout({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="muted" style={{ textAlign: "center", padding: "2.5rem" }}>
-                    {emptyState}
+                  <td colSpan={5} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No corrective actions found</div>
+                    <div className="table-empty-desc">
+                      {filter !== "ALL" || searchQuery
+                        ? "Try adjusting your filter or search criteria."
+                        : "Remediation items for this facility will appear here once findings are issued."}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filtered.map((ca) => {
+                pagination.paginatedItems.map((ca) => {
                   const statusMeta = getStatusBadge(ca.status);
                   const findingMeta = getSeverityStyle(ca.finding?.severity ?? "low");
                   const findingLabel =
@@ -209,29 +266,42 @@ export function CorrectiveActionsLayout({
                     (ca.finding ? ca.finding.description : `Finding ${ca.findingId.slice(0, 8)}`);
 
                   const isOverdue =
-                    ca.deadline &&
-                    ca.status !== "accepted" &&
-                    new Date(ca.deadline) < new Date();
+                    ca.deadline && ca.status !== "accepted" && new Date(ca.deadline) < new Date();
 
                   return (
-                    <tr key={ca.id}>
+                    <tr
+                      key={ca.id}
+                      className="table-row"
+                      onClick={() => router.push(`/dashboard/corrective-actions/${ca.id}`)}
+                      title="View corrective action details"
+                    >
                       <td>
                         <div>
                           <Link
                             href={`/dashboard/corrective-actions/${ca.id}`}
-                            style={{
-                              fontSize: "0.82rem",
-                              fontWeight: 600,
-                              color: "var(--color-navy-brand)",
-                              textDecoration: "none",
-                            }}
+                            className="table-name-link"
+                            onClick={(e) => e.stopPropagation()}
                             title={ca.finding?.description ?? undefined}
                           >
                             {findingLabel}
                           </Link>
-                          <div className="muted" style={{ fontSize: "0.72rem" }}>
-                            {ca.project ? `${ca.project.name} (${ca.project.code})` : `Inspection: ${ca.inspectionId.slice(0, 8)}...`}
-                          </div>
+                          {showProjectInfo && (
+                            <div className="table-subtext">
+                              {ca.project ? (
+                                <Link
+                                  href={`/dashboard/projects/${ca.project.id}`}
+                                  className="table-name-link"
+                                  style={{ fontSize: "0.75rem" }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title={`Open facility record for ${ca.project.name}`}
+                                >
+                                  {ca.project.name} {ca.project.code && `(${ca.project.code})`}
+                                </Link>
+                              ) : (
+                                <span>Inspection: {ca.inspectionId.slice(0, 8)}...</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -239,24 +309,37 @@ export function CorrectiveActionsLayout({
                         {ca.finding ? (
                           <span
                             title={ca.finding.description}
-                            style={{ fontSize: "0.72rem", fontWeight: 700, color: findingMeta.color }}
+                            style={{
+                              fontSize: "0.72rem",
+                              fontWeight: 700,
+                              color: findingMeta.color,
+                            }}
                           >
                             {findingMeta.label}
                           </span>
                         ) : (
-                          <span className="muted" style={{ fontSize: "0.8rem" }}>—</span>
+                          <span className="muted" style={{ fontSize: "0.8rem" }}>
+                            —
+                          </span>
                         )}
                       </td>
 
                       <td>
-                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: statusMeta.color }}>
+                        <span
+                          style={{ fontSize: "0.72rem", fontWeight: 700, color: statusMeta.color }}
+                        >
                           {statusMeta.label}
                         </span>
                       </td>
 
-                      <td className="muted" style={{ fontSize: "0.8rem" }}>
+                      <td className="table-date">
                         {ca.deadline ? (
-                          <span style={{ color: isOverdue ? "#dc2626" : "inherit", fontWeight: isOverdue ? 700 : 400 }}>
+                          <span
+                            style={{
+                              color: isOverdue ? "#dc2626" : "inherit",
+                              fontWeight: isOverdue ? 700 : 400,
+                            }}
+                          >
                             {formatDate(ca.deadline)}
                             {isOverdue && " (Overdue)"}
                           </span>
@@ -265,15 +348,24 @@ export function CorrectiveActionsLayout({
                         )}
                       </td>
 
-                      <td className="muted" style={{ fontSize: "0.8rem" }}>
-                        {formatDate(ca.createdAt)}
-                      </td>
+                      <td className="table-date">{formatDate(ca.createdAt)}</td>
                     </tr>
                   );
                 })
               )}
             </tbody>
           </table>
+          <PaginationBar
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            pageSize={pagination.pageSize}
+            itemName="corrective actions"
+            onPageClick={pagination.onPageClick}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -282,7 +374,14 @@ export function CorrectiveActionsLayout({
         <div>
           {filtered.length === 0 ? (
             <div className="empty-box" style={{ padding: "3rem 1rem", marginBottom: "2rem" }}>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  marginBottom: "0.25rem",
+                  color: "var(--text-primary)",
+                }}
+              >
                 No corrective actions found
               </div>
               <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>{emptyState}</div>
@@ -292,18 +391,35 @@ export function CorrectiveActionsLayout({
               {cardColumns.map((column, colIdx) => (
                 <div className="facility-cards-column" key={colIdx}>
                   {column.map((ca) => (
-                    <CorrectiveActionCard ca={ca} key={ca.id} />
+                    <CorrectiveActionCard ca={ca} key={ca.id} showProjectInfo={showProjectInfo} />
                   ))}
                 </div>
               ))}
             </div>
           )}
+
+          {filtered.length > 0 && (
+            <PaginationBar
+              from={pagination.from}
+              to={pagination.to}
+              total={pagination.total}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              pageSize={pagination.pageSize}
+              itemName="corrective actions"
+              onPageClick={pagination.onPageClick}
+              onPageSizeChange={pagination.onPageSizeChange}
+            />
+          )}
         </div>
       )}
 
       {/* View: Map */}
-      {viewMode === "map" && (
-        <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
+      {showMap && viewMode === "map" && (
+        <div
+          className="map-view-wrapper"
+          style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}
+        >
           <CorrectiveActionsMap actions={filtered} />
         </div>
       )}

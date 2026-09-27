@@ -126,7 +126,7 @@ export function CreateProjectForm({ onCancel, onCreated }: CreateProjectFormProp
               onChange={(e) => setDescription(e.target.value)}
               maxLength={2000}
             />
-            <span className="form-helper">Auditable notes recorded in central project dossier</span>
+            <span className="form-helper">Auditable notes recorded in central project record</span>
           </div>
         </div>
 

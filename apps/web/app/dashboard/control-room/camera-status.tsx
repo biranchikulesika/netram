@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { PublicCctvCamera } from "@netram/types";
 import { IconCamera, IconMapPin } from "../../components/icons";
 import { formatDateTime } from "../../../lib/presentation";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 export function formatCameraDuration(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -97,28 +98,24 @@ export function CameraStatusView({
       );
   }, [filteredRows]);
 
+  const pagination = useClientPagination(facilityGroups, 10, [filter, query]);
+
   return (
     <section>
       {cameras.length === 0 ? (
-        <div
-          className="empty-state"
-          style={{ padding: "3rem", textAlign: "center", background: "#ffffff", borderRadius: "8px", border: "1px solid #e2e8f0" }}
-        >
-          <IconCamera style={{ width: 36, height: 36, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
-          <h3>No Cameras Available</h3>
-          <p className="muted">No CCTV cameras are configured for your authorized jurisdiction.</p>
+        <div className="table-empty-state">
+          <IconCamera className="table-empty-icon" />
+          <div className="table-empty-title">No Cameras Available</div>
+          <div className="table-empty-desc">No CCTV cameras are configured for your authorized jurisdiction.</div>
         </div>
       ) : rows.length === 0 ? (
-        <div
-          className="empty-state"
-          style={{ padding: "3rem", textAlign: "center", background: "#ffffff", borderRadius: "8px", border: "1px solid #e2e8f0" }}
-        >
-          <IconCamera style={{ width: 36, height: 36, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
-          <h3>No matching cameras</h3>
-          <p className="muted">Nothing matches &quot;{query}&quot; in camera name, facility or district.</p>
+        <div className="table-empty-state">
+          <IconCamera className="table-empty-icon" />
+          <div className="table-empty-title">No matching cameras</div>
+          <div className="table-empty-desc">Nothing matches &quot;{query}&quot; in camera name, facility or district.</div>
         </div>
       ) : (
-        <div className="status-table-wrap">
+        <div className="table-card">
           <table className="status-table">
             <thead>
               <tr>
@@ -129,7 +126,7 @@ export function CameraStatusView({
               </tr>
             </thead>
             <tbody>
-              {facilityGroups.flatMap((group) => [
+              {pagination.paginatedItems.flatMap((group) => [
                 <tr key={group.key} className="status-group-row">
                   <td colSpan={4}>
                     <span className="status-group-title">
@@ -147,24 +144,42 @@ export function CameraStatusView({
                 ...group.cams.map((r) => {
                   const isDown = r.cam.status !== "active";
                   return (
-                    <tr key={r.cam.id}>
+                    <tr key={r.cam.id} className="table-row">
                       <td className="status-cam-name">{r.place || r.cam.name}</td>
-                      <td
-                        className="status-secondary"
-                        style={{
-                          color:
-                            r.cam.status === "active"
-                              ? "#15803d"
-                              : r.cam.status === "inactive"
-                                ? "#b91c1c"
-                                : "#b45309",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {r.cam.status === "active" ? "Live" : r.cam.status === "inactive" ? "Offline" : "Maintenance"}
+                      <td>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            fontSize: "0.78rem",
+                            fontWeight: 600,
+                            color:
+                              r.cam.status === "active"
+                                ? "#15803d"
+                                : r.cam.status === "inactive"
+                                  ? "#b91c1c"
+                                  : "#b45309",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              backgroundColor:
+                                r.cam.status === "active"
+                                  ? "#16a34a"
+                                  : r.cam.status === "inactive"
+                                    ? "#dc2626"
+                                    : "#d97706",
+                            }}
+                          />
+                          {r.cam.status === "active" ? "Live" : r.cam.status === "inactive" ? "Offline" : "Maintenance"}
+                        </span>
                       </td>
-                      <td className="status-secondary">{formatDateTime(r.cam.updatedAt)}</td>
-                      <td className="status-secondary">
+                      <td className="table-date">{formatDateTime(r.cam.updatedAt)}</td>
+                      <td className="table-date">
                         {isDown ? formatCameraDuration(r.cam.updatedAt) : "—"}
                       </td>
                     </tr>
@@ -173,6 +188,18 @@ export function CameraStatusView({
               ])}
             </tbody>
           </table>
+
+          <PaginationBar
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            pageSize={pagination.pageSize}
+            itemName="facility groups"
+            onPageClick={pagination.onPageClick}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
         </div>
       )}
     </section>

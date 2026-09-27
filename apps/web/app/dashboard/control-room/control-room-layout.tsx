@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import type { PublicCctvCamera, AIAnomaly } from "@netram/types";
+import { useUrlState } from "../../../lib/url-state";
 import { CameraWall } from "./camera-wall";
 import { CameraStatusView } from "./camera-status";
 import { AlertsScreen } from "./alerts-screen";
@@ -14,14 +15,18 @@ export interface ControlRoomLayoutProps {
   anomalies: AIAnomaly[];
   anomaliesTotal: number;
   canTransition?: boolean;
-  cameraProjectLinks?: Record<string, string>;
+  initialTab?: ControlRoomTab;
+  initialColumns?: FeedColumns;
+  initialQuery?: string;
+  initialAlertView?: "active" | "resolved";
+  initialStatusFilter?: StatusFilter;
   /** districtId -> district name, for camera context in Status/Feeds. */
   districtNames?: Record<string, string>;
 }
 
-type ControlRoomTab = "feeds" | "alerts" | "status";
-type StatusFilter = "all" | "online" | "offline";
-type FeedColumns = 4 | 3 | 2;
+export type ControlRoomTab = "feeds" | "alerts" | "status";
+export type StatusFilter = "all" | "online" | "offline";
+export type FeedColumns = 4 | 3 | 2;
 
 const SEARCH_PLACEHOLDER: Record<ControlRoomTab, string> = {
   feeds: "Search cameras by facility, place or name…",
@@ -34,10 +39,33 @@ export function ControlRoomLayout({
   anomalies = [],
   anomaliesTotal: _anomaliesTotal = 0,
   canTransition = false,
-  cameraProjectLinks = {},
+  initialTab = "feeds",
+  initialColumns = 3,
+  initialQuery = "",
+  initialAlertView = "active",
+  initialStatusFilter = "all",
   districtNames = {},
 }: ControlRoomLayoutProps) {
-  const [activeTab, setActiveTab] = useState<ControlRoomTab>("feeds");
+  const setUrlState = useUrlState();
+
+  const applyTab = (next: ControlRoomTab) => {
+    setActiveTab(next);
+    setUrlState({ tab: next === "feeds" ? null : next });
+  };
+  const applyColumns = (next: FeedColumns) => {
+    setFeedColumns(next);
+    setUrlState({ cols: next === 3 ? null : String(next) });
+  };
+  const applyAlertView = (next: "active" | "resolved") => {
+    setAlertView(next);
+    setUrlState({ alerts: next === "active" ? null : next });
+  };
+  const applyStatus = (next: StatusFilter) => {
+    setStatusFilter(next);
+    setUrlState({ status: next === "all" ? null : next });
+  };
+
+  const [activeTab, setActiveTab] = useState<ControlRoomTab>(initialTab);
   const [anomalyList, setAnomalyList] = useState<AIAnomaly[]>(anomalies);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AIAnomaly | null>(null);
   const [selectedCamera, setSelectedCamera] = useState<PublicCctvCamera | null>(null);
@@ -46,10 +74,10 @@ export function ControlRoomLayout({
   /** Camera ids currently playing HLS wall tiles (explicit user enable, PART 7/8). */
   const [hlsEnabled, setHlsEnabled] = useState<Set<string>>(new Set());
   const [wallCapMessage, setWallCapMessage] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [alertView, setAlertView] = useState<"active" | "resolved">("active");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [feedColumns, setFeedColumns] = useState<FeedColumns>(4);
+  const [query, setQuery] = useState(initialQuery);
+  const [alertView, setAlertView] = useState<"active" | "resolved">(initialAlertView);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatusFilter);
+  const [feedColumns, setFeedColumns] = useState<FeedColumns>(initialColumns);
 
   /**
    * Bounded concurrent wall viewers (PART 7): each HLS tile is one authorized
@@ -74,6 +102,10 @@ export function ControlRoomLayout({
     });
   };
 
+  const activeAlertsCount = anomalyList.filter(
+    (a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated",
+  ).length;
+
   const SECTION_TABS: {
     key: ControlRoomTab;
     label: string;
@@ -84,19 +116,19 @@ export function ControlRoomLayout({
       key: "feeds",
       label: "Live Feeds",
       icon: <IconVideo style={{ width: 15, height: 15 }} />,
-      count: 0,
+      count: cameras.length,
     },
     {
       key: "alerts",
       label: "Alerts",
       icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />,
-      count: 0,
+      count: activeAlertsCount,
     },
     {
       key: "status",
       label: "Status",
       icon: <IconBarChart style={{ width: 15, height: 15 }} />,
-      count: 0,
+      count: cameras.length,
     },
   ];
 
@@ -112,7 +144,10 @@ export function ControlRoomLayout({
               type="search"
               placeholder={SEARCH_PLACEHOLDER[activeTab]}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setUrlState({ q: e.target.value.trim() || null });
+              }}
               className="search-input-with-icon"
               aria-label={`Filter ${activeTab === "feeds" ? "cameras" : activeTab === "alerts" ? "alerts" : "camera status"}`}
             />
@@ -125,7 +160,7 @@ export function ControlRoomLayout({
                 type="button"
                 role="tab"
                 aria-selected={activeTab === t.key}
-                onClick={() => setActiveTab(t.key)}
+                onClick={() => applyTab(t.key)}
                 className={`filter-tab-btn ${activeTab === t.key ? "active" : ""}`}
               >
                 {t.icon}
@@ -146,7 +181,7 @@ export function ControlRoomLayout({
                 key={cols}
                 type="button"
                 className={`view-btn ${feedColumns === cols ? "active" : ""}`}
-                onClick={() => setFeedColumns(cols)}
+                onClick={() => applyColumns(cols)}
                 title={`${cols} column view`}
               >
                 <span>{cols}</span>
@@ -162,7 +197,7 @@ export function ControlRoomLayout({
               type="button"
               role="tab"
               aria-selected={alertView === "active"}
-              onClick={() => setAlertView("active")}
+              onClick={() => applyAlertView("active")}
               className={`filter-tab-btn ${alertView === "active" ? "active" : ""}`}
             >
               <span>Active</span>
@@ -183,7 +218,7 @@ export function ControlRoomLayout({
               type="button"
               role="tab"
               aria-selected={alertView === "resolved"}
-              onClick={() => setAlertView("resolved")}
+              onClick={() => applyAlertView("resolved")}
               className={`filter-tab-btn ${alertView === "resolved" ? "active" : ""}`}
             >
               <span>Resolved</span>
@@ -206,7 +241,7 @@ export function ControlRoomLayout({
               type="button"
               role="tab"
               aria-selected={statusFilter === "all"}
-              onClick={() => setStatusFilter("all")}
+              onClick={() => applyStatus("all")}
               className={`filter-tab-btn ${statusFilter === "all" ? "active" : ""}`}
             >
               <span>All</span>
@@ -218,7 +253,7 @@ export function ControlRoomLayout({
               type="button"
               role="tab"
               aria-selected={statusFilter === "online"}
-              onClick={() => setStatusFilter("online")}
+              onClick={() => applyStatus("online")}
               className={`filter-tab-btn ${statusFilter === "online" ? "active" : ""}`}
             >
               <span>Online</span>
@@ -232,7 +267,7 @@ export function ControlRoomLayout({
               type="button"
               role="tab"
               aria-selected={statusFilter === "offline"}
-              onClick={() => setStatusFilter("offline")}
+              onClick={() => applyStatus("offline")}
               className={`filter-tab-btn ${statusFilter === "offline" ? "active" : ""}`}
             >
               <span>Offline</span>
@@ -255,7 +290,6 @@ export function ControlRoomLayout({
       {activeTab === "feeds" ? (
         <CameraWall
           cameras={cameras}
-          cameraProjectLinks={cameraProjectLinks}
           query={query}
           columns={feedColumns}
           hlsEnabled={hlsEnabled}

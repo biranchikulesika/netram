@@ -119,7 +119,7 @@ export async function loginAsInspector(
     return session;
   } catch (err: unknown) {
     if (
-      trimmedEmail === "inspector.one@dev.netram.in" ||
+      trimmedEmail === "inspector@netram.dev" ||
       trimmedEmail === "inspector.two@dev.netram.in"
     ) {
       try {

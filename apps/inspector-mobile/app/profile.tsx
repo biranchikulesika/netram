@@ -137,7 +137,7 @@ export default function ProfileScreen() {
 
           <View style={styles.metaRow}>
             <Text style={[styles.metaLabel, { color: textMuted }]}>Official Email</Text>
-            <Text style={[styles.metaValue, { color: textPrimary }]}>{user?.email ?? "inspector.one@dev.netram.in"}</Text>
+            <Text style={[styles.metaValue, { color: textPrimary }]}>{user?.email ?? "inspector@netram.dev"}</Text>
           </View>
 
           <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />

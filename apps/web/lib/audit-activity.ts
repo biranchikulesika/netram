@@ -291,6 +291,10 @@ function buildSummary({ event, subject }: SummaryInput): string {
   const a: string = event.action;
   const forFacility = subject ? ` for ${subject}` : "";
   const atFacility = subject ? ` at ${subject}` : "";
+  // Corrective-action events name the finding they address, which is the only
+  // thing that makes "overdue" or "escalated" meaningful to a reader.
+  const finding = str(event.metadata?.finding);
+  const aboutFinding = finding ? ` — ${finding}` : "";
 
   switch (a) {
     /* Security & accounts */
@@ -365,17 +369,21 @@ function buildSummary({ event, subject }: SummaryInput): string {
 
     /* Corrective actions (ATR) */
     case "corrective_action.created":
-      return "Corrective action ordered";
+      return `Corrective action ordered${aboutFinding}`;
     case "corrective_action.submitted":
-      return subject ? `Action Taken Report submitted${forFacility}` : "Action Taken Report submitted";
+      return subject
+        ? `Action Taken Report submitted${forFacility}${aboutFinding}`
+        : `Action Taken Report submitted${aboutFinding}`;
     case "corrective_action.accepted":
-      return "Action Taken Report accepted";
+      return `Action Taken Report accepted${aboutFinding}`;
     case "corrective_action.rejected":
-      return "Action Taken Report rejected";
+      return `Action Taken Report rejected${aboutFinding}`;
     case "corrective_action.updated":
-      return "Corrective action updated";
+      return `Corrective action updated${aboutFinding}`;
     case "corrective_action.overdue":
-      return "Corrective action overdue";
+      return `Corrective action overdue${aboutFinding}`;
+    case "corrective_action.escalated":
+      return `Corrective action escalated${aboutFinding}`;
 
     /* Evidence */
     case "evidence.captured":

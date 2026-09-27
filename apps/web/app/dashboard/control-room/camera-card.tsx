@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import Link from "next/link";
 import type { PublicCctvCamera } from "@netram/types";
 import { IconPlay } from "../../components/icons";
 
@@ -15,7 +14,6 @@ function splitFacilityPlace(name: string): [string, string] {
 
 export interface CameraCardProps {
   camera: PublicCctvCamera;
-  projectHref?: string;
   /** Open the camera detail / live viewer (real WebRTC session, PART 10). */
   onOpen: (camera: PublicCctvCamera) => void;
   /** Switch this tile to an HLS wall tile (PART 8 — explicit user intent). */
@@ -38,7 +36,7 @@ export interface CameraCardProps {
  * from the camera's real status; connection states surface inside the
  * live viewer ("Connecting to camera…", "LIVE", "Unable to connect…").
  */
-export function CameraCard({ camera, projectHref, onOpen, onToggleHls }: CameraCardProps) {
+export function CameraCard({ camera, onOpen, onToggleHls }: CameraCardProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState(false);
 
@@ -50,18 +48,6 @@ export function CameraCard({ camera, projectHref, onOpen, onToggleHls }: CameraC
 
   const [facility, place] = splitFacilityPlace(camera.name);
 
-  const facilityNode = projectHref ? (
-    <Link
-      href={projectHref}
-      className="cc-osd-facility cc-osd-facility-link"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {facility}
-    </Link>
-  ) : (
-    <span className="cc-osd-facility">{facility}</span>
-  );
-
   return (
     <div
       className="camera-card camera-card-compact"
@@ -72,10 +58,28 @@ export function CameraCard({ camera, projectHref, onOpen, onToggleHls }: CameraC
         <div className="cc-idle-placeholder" aria-hidden="true">
           <span className="cc-idle-label">{online ? "Camera available" : "Camera offline"}</span>
         </div>
-
         <div className="cc-vp-osd cc-vp-osd-tl">
-          {facilityNode}
-          {place && <span className="cc-osd-place">{place}</span>}
+          <span
+            style={{
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              color: "#ffffff",
+              textShadow: "0 1px 2px rgba(2, 6, 23, 0.9)",
+            }}
+          >
+            {facility}
+          </span>
+          {place && (
+            <span
+              style={{
+                fontSize: "0.68rem",
+                color: "#cbd5e1",
+                textShadow: "0 1px 2px rgba(2, 6, 23, 0.9)",
+              }}
+            >
+              {place}
+            </span>
+          )}
         </div>
 
         <div className="cc-center">

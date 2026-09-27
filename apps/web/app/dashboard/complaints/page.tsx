@@ -7,9 +7,22 @@ import { ComplaintsLayout } from "./complaints-layout";
 
 export const dynamic = "force-dynamic";
 
-export default async function ComplaintsPage() {
+export default async function ComplaintsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; view?: string; q?: string }>;
+}) {
   const session = await getSessionUser();
   if (!session) redirect("/login");
+
+  const params = await searchParams;
+  const initialStatus = ["ACTION_REQUIRED", "ESCALATED", "RESOLVED"].includes(params.status ?? "")
+    ? (params.status as "ACTION_REQUIRED" | "ESCALATED" | "RESOLVED")
+    : "ALL";
+  const initialView = ["table", "cards", "map"].includes(params.view ?? "")
+    ? (params.view as "table" | "cards" | "map")
+    : "map";
+  const initialSearch = params.q?.trim() ?? "";
 
   const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
   const isAuthorized = permissions.includes("complaint:read") || permissions.includes("*");
@@ -49,11 +62,22 @@ export default async function ComplaintsPage() {
             <IconAlertTriangle style={{ width: 22, height: 22 }} />
           </div>
 
-          <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
+          <h3
+            style={{
+              margin: "0 0 0.5rem 0",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              color: "var(--color-navy-brand)",
+            }}
+          >
             Access Restricted
           </h3>
-          <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}>
-            Your official account does not have authorization to view grievance and complaint records. Please contact your administrative supervisor if you require elevated access.
+          <p
+            className="muted"
+            style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}
+          >
+            Your official account does not have authorization to view grievance and complaint
+            records. Please contact your administrative supervisor if you require elevated access.
           </p>
 
           <Link
@@ -85,9 +109,11 @@ export default async function ComplaintsPage() {
 
       <ComplaintsLayout
         initialComplaints={page.items}
+        initialStatus={initialStatus}
+        initialView={initialView}
+        initialSearch={initialSearch}
         totalComplaints={page.total}
       />
     </main>
   );
 }
-

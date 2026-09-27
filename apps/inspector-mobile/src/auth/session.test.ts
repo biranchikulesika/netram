@@ -38,7 +38,7 @@ describe("InspectorSession (SecureStore)", () => {
       token: "secure-test-token-123",
       user: {
         id: "usr-001",
-        email: "inspector.one@dev.netram.in",
+        email: "inspector@netram.dev",
         displayName: "Inspector One",
         type: "inspector",
       },
@@ -60,7 +60,7 @@ describe("InspectorSession (SecureStore)", () => {
       token: "secure-test-token-123",
       user: {
         id: "usr-001",
-        email: "inspector.one@dev.netram.in",
+        email: "inspector@netram.dev",
       },
       apiUrl: "http://localhost:3001",
     };

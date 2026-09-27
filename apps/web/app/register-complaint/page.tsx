@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import type { Complaint } from "@netram/types";
+import styles from "./complaint.module.css";
 
 interface FacilityRef {
   id: string;
@@ -37,15 +38,19 @@ function assertAllowedAttachment(file: File): string | null {
 
 const MAX_ATTACHMENTS = 5;
 
-// ADDED: shared color tokens matching the landing page / login page palette
-const NAVY = "#1e3a8a";
-const SAFFRON = "#e8590c";
-const GREEN = "#157a3d";
-const GREEN_DARK = "#0f5f2f";
+function fileKind(file: File): string {
+  if (file.type.startsWith("image/")) return "IMG";
+  if (file.type.startsWith("video/")) return "VID";
+  if (file.type === "application/pdf") return "PDF";
+  return "DOC";
+}
 
 function RegisterComplaintContent() {
   const [facilities, setFacilities] = useState<FacilityRef[]>([]);
   const [facilitiesError, setFacilitiesError] = useState(false);
+  const [facilityQuery, setFacilityQuery] = useState("");
+  const [facilityOpen, setFacilityOpen] = useState(false);
+  const facilityBox = useRef<HTMLDivElement | null>(null);
 
   const [projectId, setProjectId] = useState("");
   const [description, setDescription] = useState("");
@@ -57,6 +62,11 @@ function RegisterComplaintContent() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Complaint | null>(null);
   const [copied, setCopied] = useState(false);
+  const [declared, setDeclared] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+
+  // Step 2 only opens once both contact fields carry a value.
+  const section1Done = complainantName.trim() !== "" && contactInfo.trim() !== "";
 
   useEffect(() => {
     void (async () => {
@@ -65,12 +75,35 @@ function RegisterComplaintContent() {
         if (!res.ok) throw new Error("registry unavailable");
         const data = (await res.json()) as FacilityRef[];
         setFacilities(data);
-        if (data.length > 0) setProjectId(data[0]!.id);
+        if (data.length === 1) setProjectId(data[0]!.id);
       } catch {
         setFacilitiesError(true);
       }
     })();
   }, []);
+
+  // Close the suggestion list on an outside click.
+  useEffect(() => {
+    if (!facilityOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!facilityBox.current?.contains(e.target as Node)) setFacilityOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [facilityOpen]);
+
+  const selectedFacility = facilities.find((f) => f.id === projectId);
+  const facilityMatches = facilityQuery.trim()
+    ? facilities.filter((f) =>
+        `${f.name} ${f.code}`.toLowerCase().includes(facilityQuery.trim().toLowerCase()),
+      )
+    : facilities;
+
+  const pickFacility = (f: FacilityRef) => {
+    setProjectId(f.id);
+    setFacilityQuery("");
+    setFacilityOpen(false);
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -129,332 +162,341 @@ function RegisterComplaintContent() {
   };
 
   return (
-    <div style={{ maxWidth: "780px", margin: "2rem auto", padding: "0 1rem" }}>
-      {/* ADDED: institutional tricolor strip, matches login page */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "4px",
-          background:
-            "linear-gradient(to right, #ff9933 0%, #ff9933 33.33%, #ffffff 33.33%, #ffffff 66.66%, #138808 66.66%, #138808 100%)",
-          zIndex: 50,
-        }}
-      />
-
-      {/* Top Brand Banner — CHANGED: logo replaces the written "GOVERNMENT OF INDIA · DoSJE" pill+text */}
-      <div style={{ textAlign: "center", marginBottom: "2rem", paddingTop: "1.5rem" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.75rem" }}>
+    <>
+      <div className={styles.masthead}>
+        <a
+          href="https://socialjustice.gov.in"
+          target="_blank"
+          rel="noreferrer noopener"
+          className={styles.mastheadLink}
+        >
           <Image
             src="/National-Emblem-1.svg"
-            alt="Department of Social Justice & Empowerment, Government of Odisha"
-            width={90}
-            height={90}
-            style={{ objectFit: "contain" }}
+            alt="Department of Social Justice & Empowerment logo"
+            width={72}
+            height={72}
+            className={styles.emblem}
           />
+          <div className={styles.mastheadName}>
+            <strong>Department of Social Justice and Empowerment</strong>
+            <span>Government of India</span>
+          </div>
+        </a>
+        <a
+          href="https://sih.gov.in"
+          target="_blank"
+          rel="noreferrer noopener"
+          className={styles.mastheadEnd}
+        >
           <Image
-            src="/netram2.png"
-            alt="Department of Social Justice & Empowerment, Government of Odisha"
-            width={90}
-            height={90}
-            style={{ objectFit: "contain" }}
+            src="/sih-logo.png"
+            alt="Smart India Hackathon"
+            width={208}
+            height={96}
+            className={styles.sihLogo}
           />
-        </div>
-        <h1 style={{ margin: "0.25rem 0", fontSize: "1.85rem", fontWeight: 800 }}>
-          <span style={{ color: SAFFRON }}>Netram</span>{" "}
-          <span style={{ color: NAVY }}>Citizen Grievance Portal</span>
-        </h1>
-        <p className="muted" style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-muted, #64748b)" }}>
-          File a public grievance regarding a monitored facility for statutory review and redressal (§35)
-        </p>
+        </a>
       </div>
 
-      {/* Registration Form */}
-      <div className="table-card" style={{ padding: "1.75rem", marginBottom: "2rem", borderRadius: "12px", background: "#fff", border: "1px solid #e2e8f0" }}>
+      <div className={styles.wrapper}>
+        <div className={styles.heading}>
+        <h1>
+          <span className={styles.saffron}>Netram</span>{" "}
+          <span className={styles.navy}>Citizen Grievance Portal</span>
+        </h1>
+        <p>File a public grievance against a monitored facility for statutory review</p>
+      </div>
+
+      <div className={styles.card}>
         {facilitiesError ? (
-          <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "1.1rem 1.25rem", color: "#991b1b", fontSize: "0.9rem", textAlign: "center" }}>
+          <div className={styles.error}>
             Unable to load the facility registry. Please retry shortly or contact the district authority.
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Monitored Facility *
-              </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                required
-                disabled={facilities.length === 0}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",  // ADD THIS
-                  padding: "0.75rem 0.9rem",
-                  borderRadius: "8px",
-                  border: "1.5px solid #cbd5e1",
-                  fontSize: "0.95rem",
-                  color: "#0f172a",
-                  background: "#ffffff",
-                }}
-              >
-                <option value="" disabled>
-                  {facilities.length === 0 ? "Loading facilities…" : "Select a monitored facility"}
-                </option>
-                {facilities.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} ({f.code})
-                  </option>
-                ))}
-              </select>
-            </div>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            {step === 1 ? (
+            <fieldset className={styles.section} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+              <legend className={styles.sectionHead}>
+                <span className={styles.sectionTitle}>Your details</span>
+              </legend>
 
-            <div>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Grievance Description *
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-                minLength={10}
-                maxLength={8000}
-                rows={5}
-                placeholder="Describe the concern observed at the facility (minimum 10 characters)."
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "0.75rem 0.9rem",
-                  borderRadius: "8px",
-                  border: "1.5px solid #cbd5e1",
-                  fontSize: "0.95rem",
-                  color: "#0f172a",
-                  background: "#ffffff",
-                  resize: "vertical",
-                  fontFamily: "inherit",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.1rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Your Name <span style={{ fontWeight: 500, textTransform: "none", fontSize: "0.72rem", color: "#94a3b8" }}>(optional)</span>
-                </label>
+              <div className={styles.field}>
                 <input
+                  id="complainantName"
                   type="text"
+                  className={styles.input}
                   value={complainantName}
                   onChange={(e) => setComplainantName(e.target.value)}
                   maxLength={200}
-                  placeholder="For acknowledgment"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box", 
-                    padding: "0.75rem 0.9rem",
-                    borderRadius: "8px",
-                    border: "1.5px solid #cbd5e1",
-                    fontSize: "0.95rem",
-                    color: "#0f172a",
-                    background: "#ffffff",
-                  }}
+                  required
+                  aria-label="Your name"
+                  placeholder="Your name"
                 />
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Contact <span style={{ fontWeight: 500, textTransform: "none", fontSize: "0.72rem", color: "#94a3b8" }}>(optional)</span>
-                </label>
+              <div className={styles.field} style={{ marginTop: "0.9rem" }}>
                 <input
+                  id="contactInfo"
                   type="text"
+                  className={styles.input}
                   value={contactInfo}
                   onChange={(e) => setContactInfo(e.target.value)}
                   maxLength={300}
+                  required
+                  aria-label="Phone or email"
                   placeholder="Phone or email"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "0.75rem 0.9rem",
-                    borderRadius: "8px",
-                    border: "1.5px solid #cbd5e1",
-                    fontSize: "0.95rem",
-                    color: "#0f172a",
-                    background: "#ffffff",
-                  }}
                 />
               </div>
-            </div>
+              <button
+                type="button"
+                className={styles.continue}
+                disabled={!section1Done}
+                style={{ marginTop: "1rem" }}
+                onClick={() => setStep(2)}
+              >
+                Continue
+              </button>
+            </fieldset>
+            ) : (
+            <>
+              <div className={styles.summary}>
+                <div className={styles.summaryText}>
+                  <span className={styles.summaryLabel}>Filing as</span>
+                  <span className={styles.summaryName}>{complainantName.trim()}</span>
+                  <span className={styles.summaryContact}>{contactInfo.trim()}</span>
+                </div>
+                <button type="button" className={styles.linkBtn} onClick={() => setStep(1)}>
+                  Edit details
+                </button>
+              </div>
 
-            {/* Supporting Attachments */}
-            <div>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Supporting Evidence <span style={{ fontWeight: 500, textTransform: "none", fontSize: "0.72rem", color: "#94a3b8" }}>(optional)</span>
+            <fieldset className={styles.section} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+              <legend className={styles.sectionHead}>
+                <span className={styles.sectionTitle}>Your grievance</span>
+              </legend>
+
+              <div className={styles.field} ref={facilityBox}>
+                <label className={styles.label} htmlFor="projectId">
+                  Monitored facility *
+                </label>
+                <input
+                  id="projectId"
+                  type="text"
+                  role="combobox"
+                  aria-expanded={facilityOpen}
+                  aria-controls="facility-list"
+                  aria-autocomplete="list"
+                  autoComplete="off"
+                  className={styles.input}
+                  value={facilityOpen ? facilityQuery : (selectedFacility?.name ?? "")}
+                  onChange={(e) => {
+                    setFacilityQuery(e.target.value);
+                    setFacilityOpen(true);
+                  }}
+                  onFocus={() => {
+                    setFacilityOpen(true);
+                    setFacilityQuery("");
+                  }}
+                  onBlur={() => !projectId && setProjectId("")}
+                  required
+                  placeholder={
+                    facilities.length === 0 ? "Loading facilities…" : "Search facility by name or code"
+                  }
+                />
+                {selectedFacility && !facilityOpen && (
+                  <div className={styles.hint}>{selectedFacility.code}</div>
+                )}
+
+                {facilityOpen && (
+                  <ul className={styles.suggest} id="facility-list" role="listbox">
+                    {facilityMatches.length === 0 && <li className={styles.suggestEmpty}>No matching facility</li>}
+                    {facilityMatches.map((f) => (
+                      <li key={f.id} role="none">
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={f.id === projectId}
+                          className={`${styles.suggestItem}${f.id === projectId ? ` ${styles.suggestItemOn}` : ""}`}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickFacility(f)}
+                        >
+                          <span className={styles.suggestName}>{f.name}</span>
+                          <span className={styles.suggestCode}>{f.code}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="description">
+                  Grievance description *
+                </label>
+                <textarea
+                  id="description"
+                  className={`${styles.input} ${styles.textarea}`}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                  minLength={10}
+                  maxLength={8000}
+                  rows={6}
+                  placeholder="Describe the concern observed at the facility."
+                />
+              </div>
+
+              <div className={styles.field}>
+                <div className={styles.labelRow}>
+                  <label className={styles.label} htmlFor="files" style={{ marginBottom: 0 }}>
+                    Supporting evidence <em>optional</em>
+                  </label>
+                  <span className={styles.counter}>
+                    {attachments.length} of {MAX_ATTACHMENTS} added
+                  </span>
+                </div>
+
+                <label
+                  className={`${styles.drop}${attachments.length >= MAX_ATTACHMENTS ? ` ${styles.dropFull}` : ""}`}
+                  htmlFor="files"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 16V4" />
+                    <path d="m7 9 5-5 5 5" />
+                    <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
+                  </svg>
+                  <span>
+                    {attachments.length >= MAX_ATTACHMENTS ? (
+                      <>Attachment limit reached &mdash; remove one to add another</>
+                    ) : (
+                      <>
+                        <strong>Choose files</strong> or drag them here
+                      </>
+                    )}
+                  </span>
+                  <span className={styles.dropHint}>
+                    Images, video, PDF, documents &middot; 100 MB max each
+                  </span>
+                  <input
+                    id="files"
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.mp4,.mov,.webm,.txt,.doc,.docx,.xls,.xlsx"
+                    onChange={(e) => handleFiles(e.target.files)}
+                    className={styles.fileInput}
+                    disabled={attachments.length >= MAX_ATTACHMENTS}
+                  />
+                </label>
+
+                {attachments.length > 0 && (
+                  <ul className={styles.files}>
+                    {attachments.map((f, idx) => (
+                      <li key={idx} className={styles.fileRow}>
+                        <span className={styles.fileBadge}>{fileKind(f)}</span>
+                        <span className={styles.fileMeta}>
+                          <span className={styles.fileName}>{f.name}</span>
+                          <span className={styles.fileSize}>
+                            {(f.size / (1024 * 1024)).toFixed(1)} MB
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${f.name}`}
+                          title={`Remove ${f.name}`}
+                          onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                          className={styles.fileRemove}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M18 6 6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <label
+                htmlFor="declaration"
+                className={`${styles.declaration}${declared ? ` ${styles.declarationDone}` : ""}`}
+                style={{ marginTop: "0.4rem" }}
+              >
+                <input
+                  id="declaration"
+                  type="checkbox"
+                  checked={declared}
+                  onChange={(e) => setDeclared(e.target.checked)}
+                  style={{ accentColor: "#157a3d" }}
+                />
+                <span>
+                  I declare that the information above is true and correct to the best of my knowledge,
+                  and that I am the complainant or authorised to file on their behalf.
+                </span>
               </label>
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.jpg,.jpeg,.png,.webp,.mp4,.mov,.webm,.txt,.doc,.docx,.xls,.xlsx"
-                onChange={(e) => handleFiles(e.target.files)}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box", 
-                  padding: "0.6rem 0.9rem",
-                  borderRadius: "8px",
-                  border: "1.5px dashed #cbd5e1",
-                  fontSize: "0.9rem",
-                  color: "#0f172a",
-                  background: "#f8fafc",
-                  cursor: "pointer",
-                }}
-              />
-              <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: "0.3rem" }}>
-                Photos, videos, PDFs and office documents (up to {MAX_ATTACHMENTS} files, max 100&nbsp;MB each).
-              </div>
-              {attachments.length > 0 && (
-                <ul style={{ margin: "0.6rem 0 0", padding: 0, listStyle: "none", display: "grid", gap: "0.35rem" }}>
-                  {attachments.map((f, idx) => (
-                    <li
-                      key={idx}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        padding: "0.4rem 0.55rem",
-                        fontSize: "0.8rem",
-                        color: "#0f172a",
-                      }}
-                    >
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                        {f.name}
-                      </span>
-                      <span className="muted" style={{ fontSize: "0.7rem", flexShrink: 0 }}>
-                        {(f.size / (1024 * 1024)).toFixed(1)} MB
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#dc2626",
-                          fontSize: "0.8rem",
-                          cursor: "pointer",
-                          fontWeight: 600,
-                          flexShrink: 0,
-                          padding: "0.1rem 0.3rem",
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
 
-            {error && (
-              <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "1.1rem 1.25rem", color: "#991b1b", fontSize: "0.9rem", textAlign: "center" }}>
-                {error}
-              </div>
-            )}
+              {error && <div className={styles.error}>{error}</div>}
 
-            {/* CHANGED: navy -> institutional green, matching the primary action color used site-wide */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                padding: "0.85rem 1.75rem",
-                fontSize: "0.95rem",
-                background: `linear-gradient(to right, ${GREEN}, ${GREEN_DARK})`,
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "8px",
-                fontWeight: 700,
-                cursor: isLoading ? "not-allowed" : "pointer",
-                opacity: isLoading ? 0.7 : 1,
-              }}
-            >
-              {isLoading ? "Filing Grievance…" : "Submit Grievance"}
-            </button>
-
-            <div style={{ fontSize: "0.76rem", color: "var(--text-muted, #64748b)", lineHeight: 1.5 }}>
-              🔐 Your identity and contact coordinates are confidential (§39). A unique tracking code will be
-              issued on submission for statutory status verification.
-            </div>
+              <button type="submit" className={styles.submit} disabled={isLoading || !declared}>
+                {isLoading ? "Filing Grievance…" : "Submit Grievance"}
+              </button>
+            </fieldset>
+            </>
+          )}
           </form>
         )}
       </div>
 
-      {/* Success Receipt */}
       {result && (
-        <div
-          className="table-card"
-          style={{
-            padding: "2rem",
-            marginBottom: "2rem",
-            borderRadius: "12px",
-            border: "1px solid #cbd5e1",
-            borderLeft: `6px solid ${GREEN}`,
-            background: "#ffffff",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1.5rem", marginBottom: "1.5rem" }}>
+        <div className={styles.receipt}>
+          <div className={styles.receiptTop}>
             <div>
-              <div style={{ fontSize: "0.78rem", fontWeight: 800, color: GREEN, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
-                Grievance Filed Successfully
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "1rem", fontWeight: 800, color: NAVY, background: "#f1f5f9", padding: "0.3rem 0.65rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-                  {result.trackingCode}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyCode}
-                  style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: "4px", padding: "0.25rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", color: copied ? "#166534" : "#475569", fontWeight: 600 }}
-                >
-                  {copied ? "✓ Copied" : "Copy Code"}
+              <div className={styles.receiptKicker}>Grievance filed successfully</div>
+              <div className={styles.trackingRow}>
+                <span className={styles.trackingCode}>{result.trackingCode}</span>
+                <button type="button" onClick={handleCopyCode} className={styles.copy}>
+                  {copied ? "Copied" : "Copy"}
                 </button>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.5rem 0.9rem", fontSize: "0.8rem", fontWeight: 700, color: GREEN }}>
-              ✓ Registered in Public Ledger
-            </div>
+            <div className={styles.ledger}>Registered in public ledger</div>
           </div>
 
-          <p style={{ margin: "0 0 1.25rem", fontSize: "0.92rem", lineHeight: 1.55, color: "#0f172a" }}>
-            Your grievance regarding <strong>{result.projectName}</strong> ({result.projectCode}) has been logged
-            for district authority examination. Retention of this tracking code is required to verify statutory
-            status updates.
+          <p className={styles.receiptBody}>
+            Your grievance regarding <strong>{result.projectName}</strong> ({result.projectCode}) has
+            been logged for district authority examination. Keep this tracking code to check status.
           </p>
 
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            <Link
-              href={`/track-complaint?code=${encodeURIComponent(result.trackingCode)}`}
-              style={{ display: "inline-flex", alignItems: "center", padding: "0.7rem 1.25rem", fontSize: "0.88rem", fontWeight: 700, background: `linear-gradient(to right, ${GREEN}, ${GREEN_DARK})`, color: "#ffffff", borderRadius: "8px", textDecoration: "none" }}
-            >
-              Track Grievance Status &rarr;
-            </Link>
-          </div>
-
-          <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #e2e8f0", fontSize: "0.75rem", color: "#64748b", lineHeight: 1.5 }}>
-            🛡️ <strong>Citizen Privacy Safeguard (§39):</strong> Complainant identity and contact coordinates are
-            confidential and omitted from all public verification views.
+          <div className={styles.privacy}>
+            Complainant identity and contact details stay confidential and are omitted from public
+            verification views.
           </div>
         </div>
       )}
 
-      {/* Cross Links */}
-      <div style={{ textAlign: "center", marginTop: "2.5rem", display: "flex", justifyContent: "center", gap: "1.25rem", flexWrap: "wrap" }}>
-        <Link href="/track-complaint" style={{ color: NAVY, fontSize: "0.85rem", textDecoration: "none", fontWeight: 600 }}>
-          Track Existing Grievance
-        </Link>
-        <Link href="/login" style={{ color: NAVY, fontSize: "0.85rem", textDecoration: "none", fontWeight: 600 }}>
-          Staff & Authorized Officer Portal Login &rarr;
-        </Link>
+      <div className={styles.crossLinks}>
+        <Link href="/" className={styles.crossBtn}>Home</Link>
+        <Link href="/login" className={styles.crossBtn}>Authority Login</Link>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

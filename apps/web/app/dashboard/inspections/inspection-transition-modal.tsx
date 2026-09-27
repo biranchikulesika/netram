@@ -62,7 +62,7 @@ const TRANSITION_CONFIGS: Record<InspectionStatus, TransitionConfig> = {
     placeholder: "Specify focus areas for evidence collection, interviews, or sampling...",
   },
   submitted: {
-    label: "Submit Inspection Dossier",
+    label: "Submit Inspection",
     badgeText: "Field Submission",
     description: "Inspectors conclude field operations and formally submit observations and evidence to the Authority.",
     btnColor: "#059669",

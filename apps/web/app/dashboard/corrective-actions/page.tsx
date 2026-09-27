@@ -7,13 +7,27 @@ import { CorrectiveActionsLayout } from "./corrective-actions-layout";
 
 export const dynamic = "force-dynamic";
 
-export default async function CorrectiveActionsPage() {
+export default async function CorrectiveActionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; view?: string; q?: string }>;
+}) {
   const session = await getSessionUser();
   if (!session) redirect("/login");
 
+  const params = await searchParams;
+  const initialStatus = ["PENDING", "IN_REVIEW", "OVERDUE", "ACCEPTED"].includes(
+    params.status ?? "",
+  )
+    ? (params.status as "PENDING" | "IN_REVIEW" | "OVERDUE" | "ACCEPTED")
+    : "ALL";
+  const initialView = ["table", "cards", "map"].includes(params.view ?? "")
+    ? (params.view as "table" | "cards" | "map")
+    : "table";
+  const initialSearch = params.q?.trim() ?? "";
+
   const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
-  const isAuthorized =
-    permissions.includes("corrective_action:read") || permissions.includes("*");
+  const isAuthorized = permissions.includes("corrective_action:read") || permissions.includes("*");
 
   if (!isAuthorized) {
     return (
@@ -64,8 +78,8 @@ export default async function CorrectiveActionsPage() {
             className="muted"
             style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}
           >
-            Your official account does not have authorization to view corrective actions. Please contact
-            your administrative supervisor if you require elevated access.
+            Your official account does not have authorization to view corrective actions. Please
+            contact your administrative supervisor if you require elevated access.
           </p>
 
           <Link
@@ -97,6 +111,9 @@ export default async function CorrectiveActionsPage() {
 
       <CorrectiveActionsLayout
         initialActions={page.items}
+        initialStatus={initialStatus}
+        initialView={initialView}
+        initialSearch={initialSearch}
         totalActions={page.total}
       />
     </main>

@@ -127,7 +127,6 @@ export function DecisionConfirmModal({
           Type{" "}
           <span
             style={{
-              fontFamily: "var(--font-mono)",
               background: "#f1f5f9",
               padding: "0.1rem 0.4rem",
               borderRadius: 4,
@@ -155,7 +154,6 @@ export function DecisionConfirmModal({
           style={{
             width: "100%",
             boxSizing: "border-box",
-            fontFamily: "var(--font-mono)",
             fontSize: "0.9rem",
             padding: "0.55rem 0.7rem",
             border: `1px solid ${typed.trim().toUpperCase() === confirmWord ? accent : "var(--color-border-strong)"}`,

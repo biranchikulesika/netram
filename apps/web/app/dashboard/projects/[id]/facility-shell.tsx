@@ -120,16 +120,6 @@ export function FacilityShell({
         </div>
 
         <div className="facility-header-side">
-          <div className="facility-header-actions">
-            {permissions.includes("project:create") && EDITABLE_STATUSES.has(project.status) && (
-              <Link
-                href={`/dashboard/projects/${project.id}/edit`}
-                className="btn-secondary facility-edit-btn"
-              >
-                Edit
-              </Link>
-            )}
-          </div>
           {riskSnapshot ? (
             <div className="facility-gauge-slot">
               <HealthGauge snapshot={riskSnapshot} />
@@ -142,10 +132,25 @@ export function FacilityShell({
               </div>
             )
           )}
+
+          {permissions.includes("project:create") && EDITABLE_STATUSES.has(project.status) && (
+            <div className="facility-header-actions">
+              <Link
+                href={`/dashboard/projects/${project.id}/edit`}
+                className="btn-secondary facility-edit-btn"
+              >
+                Edit
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
-      <FacilityNav projectId={project.id} permissions={permissions} />
+      <FacilityNav
+        projectId={project.id}
+        permissions={permissions}
+        currentStatus={project.status}
+      />
     </header>
   );
 }

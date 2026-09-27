@@ -2,10 +2,12 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Inspection } from "@netram/types";
 import { IconSearch } from "../../../../components/icons";
 import { formatDate } from "../../../../../lib/presentation";
 import { ScheduleFacilityInspectionButton } from "./schedule-facility-inspection-button";
+import { PaginationBar, useClientPagination } from "../../../../components/pagination-bar";
 
 type StatusFilter = "ALL" | "ACTIVE" | "REVIEW" | "SCHEDULED" | "COMPLETED";
 
@@ -24,6 +26,7 @@ export function FacilityInspectionsTable({
   project: { id: string; name: string; code: string; districtId: string | null };
   canCreate: boolean;
 }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<StatusFilter>("ALL");
   const [search, setSearch] = useState("");
 
@@ -88,6 +91,8 @@ export function FacilityInspectionsTable({
     { key: "COMPLETED", label: "Completed" },
   ];
 
+  const pagination = useClientPagination(filtered, 20, [filter, search]);
+
   return (
     <div>
       {/* Toolbar — the inspections section's, minus the view-mode toggle */}
@@ -142,16 +147,22 @@ export function FacilityInspectionsTable({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                  <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                <td colSpan={6} className="table-empty-state">
+                  <IconSearch width={22} height={22} className="table-empty-icon" />
+                  <div className="table-empty-title">
                     {search || filter !== "ALL"
-                      ? "No inspections match the selected filter criteria."
-                      : "No inspections currently recorded."}
+                      ? "No inspections found"
+                      : "No inspections currently recorded"}
+                  </div>
+                  <div className="table-empty-desc">
+                    {search || filter !== "ALL"
+                      ? "Adjust the status filter or search query to see more."
+                      : "Inspections scheduled for this facility will appear here."}
                   </div>
                 </td>
               </tr>
             ) : (
-              filtered.map((i) => {
+              pagination.paginatedItems.map((i) => {
                 const isSurprise = i.type === "surprise";
                 const dateStr = i.startedAt
                   ? `Started: ${formatDate(i.startedAt)}`
@@ -161,13 +172,13 @@ export function FacilityInspectionsTable({
                 const assignedCount = Array.isArray(i.assignedUserIds) ? i.assignedUserIds.length : 0;
 
                 return (
-                  <tr key={i.id}>
-                    <td className="table-row-anchor-cell" style={{ cursor: "pointer" }}>
-                      <Link
-                        href={`/dashboard/inspections/${i.id}`}
-                        className="table-row-anchor-link"
-                        aria-label={`Open inspection ${i.id}`}
-                      />
+                  <tr
+                    key={i.id}
+                    className="table-row"
+                    onClick={() => router.push(`/dashboard/inspections/${i.id}`)}
+                    title={`Open inspection record ${i.id}`}
+                  >
+                    <td>
                       <span
                         style={{
                           fontWeight: 600,
@@ -179,15 +190,15 @@ export function FacilityInspectionsTable({
                         {i.type}
                       </span>
                     </td>
-                    <td
-                      title={i.id}
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontSize: "0.78rem",
-                        color: "var(--text-subtle)",
-                      }}
-                    >
-                      {i.id.slice(0, 12)}
+                    <td title={i.id}>
+                      <Link
+                        href={`/dashboard/inspections/${i.id}`}
+                        className="table-code-link"
+                        onClick={(e) => e.stopPropagation()}
+                        title={`Inspection identifier: ${i.id}`}
+                      >
+                        {i.id.slice(0, 12)}
+                      </Link>
                     </td>
                     <td>
                       <span className="trigger-text">{i.trigger.replace(/_/g, " ")}</span>
@@ -214,9 +225,7 @@ export function FacilityInspectionsTable({
                         </span>
                       )}
                     </td>
-                    <td className="muted" style={{ fontSize: "0.8rem" }}>
-                      {dateStr}
-                    </td>
+                    <td className="table-date">{dateStr}</td>
                   </tr>
                 );
               })
@@ -224,11 +233,17 @@ export function FacilityInspectionsTable({
           </tbody>
         </table>
 
-        <div className="table-footer-info">
-          <span>
-            Showing {filtered.length} of {inspections.length} inspections
-          </span>
-        </div>
+        <PaginationBar
+          from={pagination.from}
+          to={pagination.to}
+          total={pagination.total}
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          itemName="inspections"
+          onPageClick={pagination.onPageClick}
+          onPageSizeChange={pagination.onPageSizeChange}
+        />
       </div>
     </div>
   );

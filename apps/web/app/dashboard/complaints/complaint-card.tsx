@@ -30,7 +30,13 @@ export function getComplaintStatusBadge(status: ComplaintStatus): {
   }
 }
 
-export function ComplaintCard({ complaint }: { complaint: Complaint }) {
+export function ComplaintCard({
+  complaint,
+  showProjectInfo = true,
+}: {
+  complaint: Complaint;
+  showProjectInfo?: boolean;
+}) {
   const statusMeta = getComplaintStatusBadge(complaint.status);
   const districtLabel = formatDistrict(complaint.districtName);
 
@@ -42,7 +48,7 @@ export function ComplaintCard({ complaint }: { complaint: Complaint }) {
         aria-label={`Open complaint ${complaint.trackingCode}`}
       >
         <h3 className="facility-card-title">
-          <span style={{ fontFamily: "var(--font-mono)" }}>{complaint.trackingCode}</span>
+          <span>{complaint.trackingCode}</span>
         </h3>
 
         <p className="facility-card-desc">{complaint.description}</p>
@@ -65,14 +71,16 @@ export function ComplaintCard({ complaint }: { complaint: Complaint }) {
               <span>{statusMeta.label}</span>
             </dd>
           </div>
-          <div className="facility-card-meta-item">
-            <dt title="Facility" aria-label="Facility">
-              <IconBuilding className="meta-label-icon" />
-            </dt>
-            <dd title={`${complaint.projectName} (${complaint.projectCode})`}>
-              {complaint.projectName} ({complaint.projectCode})
-            </dd>
-          </div>
+          {showProjectInfo && (
+            <div className="facility-card-meta-item">
+              <dt title="Facility" aria-label="Facility">
+                <IconBuilding className="meta-label-icon" />
+              </dt>
+              <dd title={`${complaint.projectName} (${complaint.projectCode})`}>
+                {complaint.projectName} ({complaint.projectCode})
+              </dd>
+            </div>
+          )}
           <div className="facility-card-meta-item">
             <dt title="District jurisdiction" aria-label="District jurisdiction">
               <IconGavel className="meta-label-icon" />

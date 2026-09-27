@@ -1,13 +1,9 @@
 "use client";
 
+import { useUrlState } from "../../../lib/url-state";
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import type {
-  FundAllocation,
-  Expense,
-  InspectionFlag,
-  Project,
-} from "@netram/types";
+import type { FundAllocation, Expense, InspectionFlag, Project } from "@netram/types";
 import {
   IconX,
   IconSearch,
@@ -31,6 +27,7 @@ import {
   formatCurrency,
   formatDate,
 } from "../../components/funds-ui";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 export interface ProjectOption {
   id: string;
@@ -67,6 +64,11 @@ export function getWorkflowEstablishments(projects: ProjectOption[]): ProjectOpt
 
 interface FundsDashboardClientProps {
   initialAllocations: FundAllocation[];
+  /** View and filters come from the URL so a refresh or shared link restores them. */
+  initialView?: "allocations" | "expenses" | "stats" | "flags";
+  initialSearch?: string;
+  initialFyFilter?: string;
+  initialStatuses?: string[] | null;
   initialExpenses: Expense[];
   initialFlags: InspectionFlag[];
   canViewRiskFlags: boolean;
@@ -148,18 +150,36 @@ const expenseGroupStyle: React.CSSProperties = {
 };
 
 function formatCompact(val: number): string {
-  if (val >= 1e7) return "₹ " + (val / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + " Cr";
-  if (val >= 1e5) return "₹ " + (val / 1e5).toLocaleString("en-IN", { maximumFractionDigits: 1 }) + " L";
-  if (val >= 1e3) return "₹ " + (val / 1e3).toLocaleString("en-IN", { maximumFractionDigits: 0 }) + " K";
+  if (val >= 1e7)
+    return "₹ " + (val / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + " Cr";
+  if (val >= 1e5)
+    return "₹ " + (val / 1e5).toLocaleString("en-IN", { maximumFractionDigits: 1 }) + " L";
+  if (val >= 1e3)
+    return "₹ " + (val / 1e3).toLocaleString("en-IN", { maximumFractionDigits: 0 }) + " K";
   return "₹ " + val.toLocaleString("en-IN");
 }
 
-const PIE_PALETTE = ["#2563eb", "#f59e0b", "#059669", "#8b5cf6", "#dc2626", "#0ea5e9", "#ec4899", "#84cc16", "#f97316", "#64748b"];
+const PIE_PALETTE = [
+  "#2563eb",
+  "#f59e0b",
+  "#059669",
+  "#8b5cf6",
+  "#dc2626",
+  "#0ea5e9",
+  "#ec4899",
+  "#84cc16",
+  "#f97316",
+  "#64748b",
+];
 
 function StatDonut({ data }: { data: { label: string; value: number }[] }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   if (total <= 0) {
-    return <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>No expenditure data available.</div>;
+    return (
+      <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
+        No expenditure data available.
+      </div>
+    );
   }
 
   const size = 180;
@@ -169,7 +189,13 @@ function StatDonut({ data }: { data: { label: string; value: number }[] }) {
 
   return (
     <div style={{ display: "flex", gap: "1.25rem", alignItems: "center", flexWrap: "wrap" }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Expenditure by category donut chart">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        role="img"
+        aria-label="Expenditure by category donut chart"
+      >
         {data.map((d, i) => {
           const frac = d.value / total;
           const dash = Math.max(frac * c - 2, 0);
@@ -192,20 +218,61 @@ function StatDonut({ data }: { data: { label: string; value: number }[] }) {
             </circle>
           );
         })}
-        <text x={size / 2} y={size / 2 - 4} textAnchor="middle" fontSize={20} fontWeight={700} fill="var(--text-primary)">
+        <text
+          x={size / 2}
+          y={size / 2 - 4}
+          textAnchor="middle"
+          fontSize={20}
+          fontWeight={700}
+          fill="var(--text-primary)"
+        >
           {formatCompact(total)}
         </text>
-        <text x={size / 2} y={size / 2 + 14} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--text-muted)">
+        <text
+          x={size / 2}
+          y={size / 2 + 14}
+          textAnchor="middle"
+          fontSize={10}
+          fontWeight={600}
+          fill="var(--text-muted)"
+        >
           TOTAL SPENT
         </text>
       </svg>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", minWidth: 180, flex: 1 }}>
+      <div
+        style={{ display: "flex", flexDirection: "column", gap: "0.3rem", minWidth: 180, flex: 1 }}
+      >
         {data.map((d, i) => (
-          <div key={d.label} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.78rem" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: PIE_PALETTE[i % PIE_PALETTE.length], flexShrink: 0 }} />
-            <span style={{ flex: 1, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.label}</span>
-            <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{formatCompact(d.value)}</span>
-            <span style={{ color: "var(--text-muted)", width: 38, textAlign: "right" }}>{Math.round((d.value / total) * 100)}%</span>
+          <div
+            key={d.label}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.78rem" }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: PIE_PALETTE[i % PIE_PALETTE.length],
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                flex: 1,
+                color: "var(--text-secondary)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {d.label}
+            </span>
+            <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+              {formatCompact(d.value)}
+            </span>
+            <span style={{ color: "var(--text-muted)", width: 38, textAlign: "right" }}>
+              {Math.round((d.value / total) * 100)}%
+            </span>
           </div>
         ))}
       </div>
@@ -213,19 +280,46 @@ function StatDonut({ data }: { data: { label: string; value: number }[] }) {
   );
 }
 
-function StatHBar({ data, forceColors }: { data: { label: string; value: number }[]; forceColors?: string[] }) {
+function StatHBar({
+  data,
+  forceColors,
+}: {
+  data: { label: string; value: number }[];
+  forceColors?: string[];
+}) {
   const max = Math.max(...data.map((d) => d.value), 1);
   if (data.length === 0) {
-    return <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>No records available.</div>;
+    return (
+      <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>No records available.</div>
+    );
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
       {data.map((d, i) => (
         <div key={d.label} style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <span style={{ width: 130, fontSize: "0.75rem", color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "right" }} title={d.label}>
+          <span
+            style={{
+              width: 130,
+              fontSize: "0.75rem",
+              color: "var(--text-secondary)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              textAlign: "right",
+            }}
+            title={d.label}
+          >
             {d.label}
           </span>
-          <div style={{ flex: 1, height: 18, background: "rgba(148, 163, 184, 0.15)", borderRadius: 4, overflow: "hidden" }}>
+          <div
+            style={{
+              flex: 1,
+              height: 18,
+              background: "rgba(148, 163, 184, 0.15)",
+              borderRadius: 4,
+              overflow: "hidden",
+            }}
+          >
             <div
               style={{
                 height: "100%",
@@ -236,7 +330,17 @@ function StatHBar({ data, forceColors }: { data: { label: string; value: number 
               title={`${d.label}: ${formatCurrency(d.value)}`}
             />
           </div>
-          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", width: 70, textAlign: "right" }}>{formatCompact(d.value)}</span>
+          <span
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              width: 70,
+              textAlign: "right",
+            }}
+          >
+            {formatCompact(d.value)}
+          </span>
         </div>
       ))}
     </div>
@@ -246,21 +350,23 @@ function StatHBar({ data, forceColors }: { data: { label: string; value: number 
 function StatCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-      <div style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-subtle)" }}>{title}</div>
+      <div
+        style={{
+          fontSize: "0.8rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--text-subtle)",
+        }}
+      >
+        {title}
+      </div>
       {children}
     </div>
   );
 }
 
-function StatKpi({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color: string;
-}) {
+function StatKpi({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div
       style={{
@@ -269,13 +375,33 @@ function StatKpi({
         flexDirection: "column",
         justifyContent: "center",
         gap: "0.1rem",
-          padding: "0 1.35rem",
-          minWidth: 0,
-          flex: 1,
+        padding: "0 1.35rem",
+        minWidth: 0,
+        flex: 1,
+      }}
+    >
+      <div
+        style={{
+          fontSize: "0.78rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: "var(--text-muted)",
         }}
       >
-      <div style={{ fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>{label}</div>
-      <div style={{ fontSize: "1.9rem", fontWeight: 800, lineHeight: 1.1, color:"var(--text-primary)", whiteSpace: "nowrap" }}>{value}</div>
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: "1.9rem",
+          fontWeight: 800,
+          lineHeight: 1.1,
+          color: "var(--text-primary)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {value}
+      </div>
       <div
         style={{
           position: "absolute",
@@ -294,6 +420,10 @@ function StatKpi({
 
 export function FundsDashboardClient({
   initialAllocations,
+  initialView = "stats",
+  initialSearch = "",
+  initialFyFilter = "",
+  initialStatuses,
   initialExpenses,
   initialFlags,
   canViewRiskFlags,
@@ -322,10 +452,26 @@ export function FundsDashboardClient({
     return [...groups.values()];
   }, [workflowEstablishments]);
 
-  const [view, setView] = useState<
-    "allocations" | "expenses" | "stats" | "flags"
-  >("allocations");
+  const [view, setView] = useState<"allocations" | "expenses" | "stats" | "flags">(initialView);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const setUrlState = useUrlState();
+
+  const applyView = (next: "allocations" | "expenses" | "stats" | "flags") => {
+    setView(next);
+    setUrlState({ view: next === "stats" ? null : next });
+  };
+  const applySearch = (value: string) => {
+    setSearch(value);
+    setUrlState({ q: value.trim() || null });
+  };
+  const applyStatuses = (value: string[]) => {
+    setSelectedStatuses(value);
+    setUrlState({ status: value.length ? value.join(",") : null });
+  };
+  const applyFy = (value: string) => {
+    setFyFilter(value);
+    setUrlState({ fy: value || null });
+  };
 
   // Permissions
   const canAllocate = permissions.includes("fund:allocate") || permissions.includes("*");
@@ -334,11 +480,11 @@ export function FundsDashboardClient({
   const canSubmitExpense = permissions.includes("expense:submit") || permissions.includes("*");
 
   // Filters
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
-    EXPENSE_STATUS_FILTERS.filter((f) => f.value !== "ALL").map((f) => f.value),
+    initialStatuses ?? EXPENSE_STATUS_FILTERS.filter((f) => f.value !== "ALL").map((f) => f.value),
   );
-  const [fyFilter, setFyFilter] = useState<string>("");
+  const [fyFilter, setFyFilter] = useState<string>(initialFyFilter);
 
   // Modals
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -378,7 +524,10 @@ export function FundsDashboardClient({
     action: "review" | "resolve" | "dismiss";
   } | null>(null);
   const [flagNote, setFlagNote] = useState("");
-  const [detail, setDetail] = useState<{ kind: "allocation" | "expense" | "flag"; id: string } | null>(null);
+  const [detail, setDetail] = useState<{
+    kind: "allocation" | "expense" | "flag";
+    id: string;
+  } | null>(null);
 
   // Forms
   const [allocationForm, setAllocationForm] = useState({
@@ -505,7 +654,8 @@ export function FundsDashboardClient({
         return true;
       })
       .sort((a, b) => {
-        const pending = (s: Expense["status"]) => (s === "submitted" || s === "under_review" ? 0 : 1);
+        const pending = (s: Expense["status"]) =>
+          s === "submitted" || s === "under_review" ? 0 : 1;
         return pending(a.status) - pending(b.status);
       });
   }, [expenses, selectedStatuses, fyFilter, search, projectMap]);
@@ -534,6 +684,14 @@ export function FundsDashboardClient({
       return true;
     });
   }, [flags, fyFilter]);
+
+  const expensesPagination = useClientPagination(filteredExpenses, 20, [
+    selectedStatuses,
+    fyFilter,
+    search,
+  ]);
+  const allocationsPagination = useClientPagination(filteredAllocations, 20, [fyFilter, search]);
+  const flagsPagination = useClientPagination(filteredFlags, 20, [fyFilter]);
 
   const fyOptions = useMemo(() => {
     const present: number[] = [];
@@ -564,7 +722,8 @@ export function FundsDashboardClient({
 
   const detailAllocation =
     detail?.kind === "allocation" ? allocations.find((a) => a.id === detail.id) : undefined;
-  const detailExpense = detail?.kind === "expense" ? expenses.find((e) => e.id === detail.id) : undefined;
+  const detailExpense =
+    detail?.kind === "expense" ? expenses.find((e) => e.id === detail.id) : undefined;
   const detailExpenseProject = detailExpense ? projectMap.get(detailExpense.projectId) : undefined;
   const detailExpenseAllocation = detailExpense
     ? allocations.find((allocation) => allocation.id === detailExpense.allocationId)
@@ -636,7 +795,10 @@ export function FundsDashboardClient({
 
   function handleExpenseSubmitRequest(e: React.FormEvent) {
     e.preventDefault();
-    if (!expenseDraftId && (!expenseForm.projectId || !expenseForm.description || !expenseForm.amount)) {
+    if (
+      !expenseDraftId &&
+      (!expenseForm.projectId || !expenseForm.description || !expenseForm.amount)
+    ) {
       return;
     }
     setConfirmationAmount("");
@@ -748,7 +910,8 @@ export function FundsDashboardClient({
   }
 
   async function handleVerifyExpense(id: string) {
-    if (!confirm("Confirm verification of this expenditure against supporting documentation?")) return;
+    if (!confirm("Confirm verification of this expenditure against supporting documentation?"))
+      return;
     try {
       const res = await fetch(`/api/v1/funds/expenses/${id}/verify`, {
         method: "POST",
@@ -802,7 +965,9 @@ export function FundsDashboardClient({
         throw new Error(err.error?.message || "Failed to trigger inspection");
       }
       const data = await res.json();
-      alert(`Special Field Inspection #${data.inspection?.id?.slice(0, 8)} successfully scheduled!`);
+      alert(
+        `Special Field Inspection #${data.inspection?.id?.slice(0, 8)} successfully scheduled!`,
+      );
       setShowInspectModal(null);
       // Update flag status locally
       setFlags((prev) =>
@@ -863,7 +1028,7 @@ export function FundsDashboardClient({
               type="search"
               placeholder="Search by facility, scheme, description, or vendor..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => applySearch(e.target.value)}
               className="search-input-with-icon"
               aria-label="Filter fund records"
               style={{ minWidth: "280px", maxWidth: "420px" }}
@@ -876,7 +1041,7 @@ export function FundsDashboardClient({
               role="tab"
               aria-selected={view === "allocations"}
               className={`filter-tab-btn ${view === "allocations" ? "active" : ""}`}
-              onClick={() => setView("allocations")}
+              onClick={() => applyView("allocations")}
             >
               <span>Allocations</span>
             </button>
@@ -886,7 +1051,7 @@ export function FundsDashboardClient({
               role="tab"
               aria-selected={view === "expenses"}
               className={`filter-tab-btn ${view === "expenses" ? "active" : ""}`}
-              onClick={() => setView("expenses")}
+              onClick={() => applyView("expenses")}
             >
               <span>Expenditures</span>
             </button>
@@ -896,7 +1061,7 @@ export function FundsDashboardClient({
               role="tab"
               aria-selected={view === "stats"}
               className={`filter-tab-btn ${view === "stats" ? "active" : ""}`}
-              onClick={() => setView("stats")}
+              onClick={() => applyView("stats")}
             >
               <span>Stats</span>
             </button>
@@ -907,7 +1072,7 @@ export function FundsDashboardClient({
                 role="tab"
                 aria-selected={view === "flags"}
                 className={`filter-tab-btn ${view === "flags" ? "active" : ""}`}
-                onClick={() => setView("flags")}
+                onClick={() => applyView("flags")}
               >
                 <span>Alerts</span>
               </button>
@@ -915,12 +1080,20 @@ export function FundsDashboardClient({
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "0.75rem",
+            alignItems: "center",
+            marginLeft: "auto",
+            flexWrap: "wrap",
+          }}
+        >
           {view === "expenses" && (
             <StatusFilter
               filters={EXPENSE_STATUS_FILTERS}
               selected={selectedStatuses}
-              onChange={setSelectedStatuses}
+              onChange={applyStatuses}
               title="Filter by status"
             />
           )}
@@ -954,7 +1127,10 @@ export function FundsDashboardClient({
                 <IconChevronRight
                   width={12}
                   height={12}
-                  style={{ transform: showAddMenu ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}
+                  style={{
+                    transform: showAddMenu ? "rotate(90deg)" : "rotate(0deg)",
+                    transition: "transform 0.15s ease",
+                  }}
                 />
               </button>
               {showAddMenu && (
@@ -981,7 +1157,16 @@ export function FundsDashboardClient({
                       gap: "0.2rem",
                     }}
                   >
-                    <div style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", padding: "0.4rem 0.6rem 0.2rem" }}>
+                    <div
+                      style={{
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        color: "var(--text-muted)",
+                        padding: "0.4rem 0.6rem 0.2rem",
+                      }}
+                    >
                       Create Record
                     </div>
                     <button
@@ -1015,7 +1200,13 @@ export function FundsDashboardClient({
                       </span>
                       <span style={{ display: "flex", flexDirection: "column" }}>
                         <span>Add Expenditure</span>
-                        <span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-muted)" }}>
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 500,
+                            color: "var(--text-muted)",
+                          }}
+                        >
                           Record submitted/spent amount
                         </span>
                       </span>
@@ -1051,7 +1242,13 @@ export function FundsDashboardClient({
                       </span>
                       <span style={{ display: "flex", flexDirection: "column" }}>
                         <span>Allocate Fund</span>
-                        <span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-muted)" }}>
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 500,
+                            color: "var(--text-muted)",
+                          }}
+                        >
                           Sanction funds to a scheme
                         </span>
                       </span>
@@ -1113,14 +1310,18 @@ export function FundsDashboardClient({
           )}
 
           {fyOptions.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.2rem", whiteSpace: "nowrap" }}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.2rem", whiteSpace: "nowrap" }}
+            >
               <button
                 type="button"
                 style={fyArrowStyle}
                 title="Previous fiscal year"
                 aria-label="Previous fiscal year"
                 disabled={!(fyOptions.indexOf(fyFilter) > 0)}
-                onClick={() => setFyFilter(fyOptions[Math.max(fyOptions.indexOf(fyFilter) - 1, 0)]!)}
+                onClick={() =>
+                  setFyFilter(fyOptions[Math.max(fyOptions.indexOf(fyFilter) - 1, 0)]!)
+                }
               >
                 ‹
               </button>
@@ -1142,7 +1343,7 @@ export function FundsDashboardClient({
                       style={{ ...fyStripStyle, ...(fy === fyFilter ? fyStripActiveStyle : {}) }}
                       aria-pressed={fy === fyFilter}
                       aria-label={`Filter fiscal year ${fy}`}
-                      onClick={() => setFyFilter(fy)}
+                      onClick={() => applyFy(fy)}
                     >
                       {fy}
                     </button>
@@ -1153,7 +1354,12 @@ export function FundsDashboardClient({
                       : [
                           <span
                             key={`sep-${i}`}
-                            style={{ color: "#cbd5e1", fontSize: "0.85rem", fontWeight: 600, padding: "0 0.45rem" }}
+                            style={{
+                              color: "#cbd5e1",
+                              fontSize: "0.85rem",
+                              fontWeight: 600,
+                              padding: "0 0.45rem",
+                            }}
                           >
                             |
                           </span>,
@@ -1167,7 +1373,11 @@ export function FundsDashboardClient({
                 title="Next fiscal year"
                 aria-label="Next fiscal year"
                 disabled={!(fyOptions.indexOf(fyFilter) < fyOptions.length - 1)}
-                onClick={() => setFyFilter(fyOptions[Math.min(fyOptions.indexOf(fyFilter) + 1, fyOptions.length - 1)]!)}
+                onClick={() =>
+                  setFyFilter(
+                    fyOptions[Math.min(fyOptions.indexOf(fyFilter) + 1, fyOptions.length - 1)]!,
+                  )
+                }
               >
                 ›
               </button>
@@ -1180,13 +1390,37 @@ export function FundsDashboardClient({
       {view === "stats" && (
         <div className="card" style={{ padding: "1.25rem" }}>
           {/* LEFT: 2x2 KPI grid | RIGHT: pie (category donut) */}
-          <div style={{ display: "flex", gap: "1.75rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div
+            style={{ display: "flex", gap: "1.75rem", alignItems: "flex-start", flexWrap: "wrap" }}
+          >
             <div style={{ flex: "1 1 340px", minWidth: 0 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0.6rem" }}>
-                <StatKpi label="Total Sanctioned" value={formatCompact(statsOverview.sanctioned)} color="#2563eb" />
-                <StatKpi label="Pending Verification" value={formatCompact(statsOverview.pending)} color="#f59e0b" />
-                <StatKpi label="Verified" value={formatCompact(statsOverview.verified)} color="#059669" />
-                <StatKpi label="Rejected" value={formatCompact(statsOverview.rejected)} color="#dc2626" />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: "0.6rem",
+                }}
+              >
+                <StatKpi
+                  label="Total Sanctioned"
+                  value={formatCompact(statsOverview.sanctioned)}
+                  color="#2563eb"
+                />
+                <StatKpi
+                  label="Pending Verification"
+                  value={formatCompact(statsOverview.pending)}
+                  color="#f59e0b"
+                />
+                <StatKpi
+                  label="Verified"
+                  value={formatCompact(statsOverview.verified)}
+                  color="#059669"
+                />
+                <StatKpi
+                  label="Rejected"
+                  value={formatCompact(statsOverview.rejected)}
+                  color="#dc2626"
+                />
               </div>
             </div>
             <div style={{ flex: "1 1 300px", minWidth: 280 }}>
@@ -1196,12 +1430,22 @@ export function FundsDashboardClient({
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.75rem", marginTop: "1.5rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "1.75rem",
+              marginTop: "1.5rem",
+            }}
+          >
             <StatCard title="Top Projects by Spend">
               <StatHBar data={statsByProject} />
             </StatCard>
             <StatCard title="Expenditure by Status">
-              <StatHBar data={statsByStatus.map((s) => ({ label: s.label, value: s.amount }))} forceColors={statsByStatus.map((s) => s.color)} />
+              <StatHBar
+                data={statsByStatus.map((s) => ({ label: s.label, value: s.amount }))}
+                forceColors={statsByStatus.map((s) => s.color)}
+              />
             </StatCard>
           </div>
         </div>
@@ -1217,41 +1461,55 @@ export function FundsDashboardClient({
                 <th>Scheme</th>
                 <th>Description</th>
                 <th>FY</th>
-                <th style={{ textAlign: "right" }}>Sanctioned Amount</th>
+                <th className="table-align-right">Sanctioned Amount</th>
               </tr>
             </thead>
             <tbody>
               {filteredAllocations.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
-                    No fund allocations found matching filters.
+                  <td colSpan={5} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No fund allocations found</div>
+                    <div className="table-empty-desc">
+                      No allocations match the current filter criteria.
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredAllocations.map((a) => {
+                allocationsPagination.paginatedItems.map((a) => {
                   const p = projectMap.get(a.projectId);
 
                   return (
                     <tr
                       key={a.id}
+                      className="table-row"
                       onClick={() => setDetail({ kind: "allocation", id: a.id })}
                       title="View allocation details"
-                      style={{ cursor: "pointer" }}
                     >
                       <td>
                         <Link
-                          href={`/projects/${a.projectId}/funds`}
+                          href={`/dashboard/projects/${a.projectId}`}
+                          className="table-name-link"
                           onClick={(e) => e.stopPropagation()}
-                          style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}
+                          title={`Open facility record for ${p?.name ?? "facility"}`}
                         >
                           {p?.name ?? a.projectId.slice(0, 8)}
                         </Link>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
-                          {p?.code ?? "—"}
-                        </div>
+                        {p?.code && (
+                          <div className="table-subtext">
+                            <Link
+                              href={`/dashboard/projects/${a.projectId}`}
+                              className="table-code-link"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Project code: ${p.code}`}
+                            >
+                              {p.code}
+                            </Link>
+                          </div>
+                        )}
                       </td>
                       <td>
-                        <div style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                        <div style={{ fontWeight: 600, color: "var(--color-navy-dark)" }}>
                           {a.scheme ?? "Government Scheme Allocation"}
                         </div>
                       </td>
@@ -1263,7 +1521,10 @@ export function FundsDashboardClient({
                           {a.fiscalYear}
                         </span>
                       </td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                      <td
+                        className="table-align-right"
+                        style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}
+                      >
                         {formatCurrency(a.allocatedAmount)}
                       </td>
                     </tr>
@@ -1272,6 +1533,18 @@ export function FundsDashboardClient({
               )}
             </tbody>
           </table>
+
+          <PaginationBar
+            from={allocationsPagination.from}
+            to={allocationsPagination.to}
+            total={allocationsPagination.total}
+            currentPage={allocationsPagination.currentPage}
+            totalPages={allocationsPagination.totalPages}
+            pageSize={allocationsPagination.pageSize}
+            itemName="allocations"
+            onPageClick={allocationsPagination.onPageClick}
+            onPageSizeChange={allocationsPagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -1285,38 +1558,52 @@ export function FundsDashboardClient({
                 <th>Description</th>
                 <th>Vendor</th>
                 <th>Date</th>
-                <th style={{ textAlign: "right" }}>Expenditure Amount</th>
-                <th style={{ textAlign: "center" }}>Status</th>
+                <th className="table-align-right">Expenditure Amount</th>
+                <th className="table-align-center">Status</th>
               </tr>
             </thead>
             <tbody>
-{filteredExpenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
-                      No expenditures found matching current filter criteria.
-                    </td>
-                  </tr>
-                ) : (
-                filteredExpenses.map((e) => {
+              {filteredExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="table-empty-state">
+                    <IconSearch width={22} height={22} className="table-empty-icon" />
+                    <div className="table-empty-title">No expenditures found</div>
+                    <div className="table-empty-desc">
+                      No expenditures match current filter criteria.
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                expensesPagination.paginatedItems.map((e) => {
                   const p = projectMap.get(e.projectId);
                   return (
                     <tr
                       key={e.id}
+                      className="table-row"
                       onClick={() => setDetail({ kind: "expense", id: e.id })}
                       title="View expenditure details & actions"
-                      style={{ cursor: "pointer" }}
                     >
                       <td>
                         <Link
-                          href={`/projects/${e.projectId}/funds`}
+                          href={`/dashboard/projects/${e.projectId}`}
+                          className="table-name-link"
                           onClick={(e) => e.stopPropagation()}
-                          style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}
+                          title={`Open facility record for ${p?.name ?? "facility"}`}
                         >
                           {p?.name ?? e.projectId.slice(0, 8)}
                         </Link>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
-                          {p?.code ?? "—"}
-                        </div>
+                        {p?.code && (
+                          <div className="table-subtext">
+                            <Link
+                              href={`/dashboard/projects/${e.projectId}`}
+                              className="table-code-link"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Project code: ${p.code}`}
+                            >
+                              {p.code}
+                            </Link>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div style={{ fontWeight: 500, maxWidth: "250px" }}>{e.description}</div>
@@ -1324,24 +1611,15 @@ export function FundsDashboardClient({
                       <td>
                         <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>{e.vendorName}</div>
                       </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                        {formatDate(e.transactionDate)}
-                      </td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-navy-dark)" }}>
+                      <td className="table-date">{formatDate(e.transactionDate)}</td>
+                      <td
+                        className="table-align-right"
+                        style={{ fontWeight: 700, color: "var(--color-navy-dark)" }}
+                      >
                         {formatCurrency(e.amount)}
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            color:
-                              e.status === "verified"
-                                ? "#16a34a"
-                                : e.status === "rejected"
-                                  ? "#dc2626"
-                                  : "#d97706",
-                          }}
-                        >
+                      <td className="table-align-center">
+                        <span className={`status status-${e.status}`}>
                           {e.status.replace(/_/g, " ").toUpperCase()}
                         </span>
                       </td>
@@ -1351,6 +1629,18 @@ export function FundsDashboardClient({
               )}
             </tbody>
           </table>
+
+          <PaginationBar
+            from={expensesPagination.from}
+            to={expensesPagination.to}
+            total={expensesPagination.total}
+            currentPage={expensesPagination.currentPage}
+            totalPages={expensesPagination.totalPages}
+            pageSize={expensesPagination.pageSize}
+            itemName="expenditures"
+            onPageClick={expensesPagination.onPageClick}
+            onPageSizeChange={expensesPagination.onPageSizeChange}
+          />
         </div>
       )}
 
@@ -1361,7 +1651,7 @@ export function FundsDashboardClient({
             <table>
               <thead>
                 <tr>
-                  <th>Facility</th>
+                  <th>Facility / Project</th>
                   <th>Severity</th>
                   <th>Reason</th>
                   <th>Flagged On</th>
@@ -1370,28 +1660,45 @@ export function FundsDashboardClient({
               <tbody>
                 {filteredFlags.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--text-muted)" }}>
-                      No active financial alerts recorded.
+                    <td colSpan={4} className="table-empty-state">
+                      <IconSearch width={22} height={22} className="table-empty-icon" />
+                      <div className="table-empty-title">No financial alerts found</div>
+                      <div className="table-empty-desc">
+                        No active financial alerts currently recorded.
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredFlags.map((f) => {
+                  flagsPagination.paginatedItems.map((f) => {
                     const p = projectMap.get(f.projectId);
                     return (
                       <tr
                         key={f.id}
+                        className="table-row"
                         onClick={() => setDetail({ kind: "flag", id: f.id })}
                         title="View alert details & actions"
-                        style={{ cursor: "pointer" }}
                       >
                         <td>
                           <Link
-                            href={`/projects/${f.projectId}/funds`}
+                            href={`/dashboard/projects/${f.projectId}`}
+                            className="table-name-link"
                             onClick={(e) => e.stopPropagation()}
-                            style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}
+                            title={`Open facility record for ${p?.name ?? "facility"}`}
                           >
                             {p?.name ?? f.projectId.slice(0, 8)}
                           </Link>
+                          {p?.code && (
+                            <div className="table-subtext">
+                              <Link
+                                href={`/dashboard/projects/${f.projectId}`}
+                                className="table-code-link"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Project code: ${p.code}`}
+                              >
+                                {p.code}
+                              </Link>
+                            </div>
+                          )}
                         </td>
                         <td style={{ whiteSpace: "nowrap" }}>
                           <span
@@ -1418,24 +1725,41 @@ export function FundsDashboardClient({
                           </span>
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{f.explanation}</div>
+                          <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>
+                            {f.explanation}
+                          </div>
                           {f.linkedInspectionId && (
-                            <div style={{ fontSize: "0.7rem", marginTop: "0.2rem", color: "#2563eb" }}>
-                              <Link href={`/inspections/${f.linkedInspectionId}`} onClick={(e) => e.stopPropagation()}>
+                            <div className="table-subtext">
+                              <Link
+                                href={`/dashboard/inspections/${f.linkedInspectionId}`}
+                                className="table-code-link"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Linked inspection ${f.linkedInspectionId}`}
+                              >
                                 Inspection #{f.linkedInspectionId.slice(0, 8)}
                               </Link>
                             </div>
                           )}
                         </td>
-                        <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                          {formatDate(f.createdAt)}
-                        </td>
+                        <td className="table-date">{formatDate(f.createdAt)}</td>
                       </tr>
                     );
                   })
                 )}
               </tbody>
             </table>
+
+            <PaginationBar
+              from={flagsPagination.from}
+              to={flagsPagination.to}
+              total={flagsPagination.total}
+              currentPage={flagsPagination.currentPage}
+              totalPages={flagsPagination.totalPages}
+              pageSize={flagsPagination.pageSize}
+              itemName="financial alerts"
+              onPageClick={flagsPagination.onPageClick}
+              onPageSizeChange={flagsPagination.onPageSizeChange}
+            />
           </div>
         </div>
       )}
@@ -1506,19 +1830,43 @@ export function FundsDashboardClient({
               onSubmit={handleCreateAllocation}
               style={{ display: "flex", flexDirection: "column", padding: "0 1.5rem" }}
             >
-              <section style={{ display: "flex", flexDirection: "column", gap: "0.9rem", padding: "1.25rem 0" }}>
+              <section
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.9rem",
+                  padding: "1.25rem 0",
+                }}
+              >
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700 }}>Allocation Target</h3>
+                  <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700 }}>
+                    Allocation Target
+                  </h3>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      marginBottom: "0.3rem",
+                    }}
+                  >
                     Beneficiary Establishment *
                   </label>
                   <select
                     required
                     value={allocationForm.projectId}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, projectId: e.target.value })}
-                    style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-strong)", background: "var(--bg-surface)" }}
+                    onChange={(e) =>
+                      setAllocationForm({ ...allocationForm, projectId: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border-strong)",
+                      background: "var(--bg-surface)",
+                    }}
                   >
                     {projects.length === 0 && <option value="">No establishments available</option>}
                     {projects.map((project) => (
@@ -1528,16 +1876,37 @@ export function FundsDashboardClient({
                     ))}
                   </select>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.85rem" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: "0.85rem",
+                  }}
+                >
                   <div>
-                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        marginBottom: "0.3rem",
+                      }}
+                    >
                       Fiscal Year *
                     </label>
                     <select
                       required
                       value={allocationForm.fiscalYear}
-                      onChange={(e) => setAllocationForm({ ...allocationForm, fiscalYear: e.target.value })}
-                      style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-strong)", background: "var(--bg-surface)" }}
+                      onChange={(e) =>
+                        setAllocationForm({ ...allocationForm, fiscalYear: e.target.value })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "0.6rem",
+                        borderRadius: "6px",
+                        border: "1px solid var(--color-border-strong)",
+                        background: "var(--bg-surface)",
+                      }}
                     >
                       {currentAndNextFiscalYears().map((year, index) => (
                         <option key={year} value={year}>
@@ -1547,7 +1916,14 @@ export function FundsDashboardClient({
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        marginBottom: "0.3rem",
+                      }}
+                    >
                       Sanctioned Amount (₹) *
                     </label>
                     <input
@@ -1556,19 +1932,41 @@ export function FundsDashboardClient({
                       inputMode="decimal"
                       placeholder="e.g. 5000000.00"
                       value={allocationForm.allocatedAmount}
-                      onChange={(e) => setAllocationForm({ ...allocationForm, allocatedAmount: e.target.value })}
-                      style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-strong)" }}
+                      onChange={(e) =>
+                        setAllocationForm({ ...allocationForm, allocatedAmount: e.target.value })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "0.6rem",
+                        borderRadius: "6px",
+                        border: "1px solid var(--color-border-strong)",
+                      }}
                     />
                   </div>
                 </div>
               </section>
 
-              <section style={{ display: "flex", flexDirection: "column", gap: "0.9rem", padding: "1.25rem 0", borderTop: "1px solid var(--color-border-subtle)" }}>
+              <section
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.9rem",
+                  padding: "1.25rem 0",
+                  borderTop: "1px solid var(--color-border-subtle)",
+                }}
+              >
                 <div>
                   <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700 }}>Scheme Details</h3>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      marginBottom: "0.3rem",
+                    }}
+                  >
                     Scheme Name *
                   </label>
                   <input
@@ -1576,32 +1974,71 @@ export function FundsDashboardClient({
                     type="text"
                     placeholder="Enter the sanctioning scheme name"
                     value={allocationForm.scheme}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, scheme: e.target.value })}
-                    style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-strong)" }}
+                    onChange={(e) =>
+                      setAllocationForm({ ...allocationForm, scheme: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border-strong)",
+                    }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem" }}>
-                    Description <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(Optional)</span>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      marginBottom: "0.3rem",
+                    }}
+                  >
+                    Description{" "}
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(Optional)</span>
                   </label>
                   <input
                     type="text"
                     placeholder="Purpose or scope of this allocation"
                     value={allocationForm.description}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, description: e.target.value })}
-                    style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-strong)" }}
+                    onChange={(e) =>
+                      setAllocationForm({ ...allocationForm, description: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border-strong)",
+                    }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.3rem" }}>
-                    Administrative Notes <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(Optional)</span>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      marginBottom: "0.3rem",
+                    }}
+                  >
+                    Administrative Notes{" "}
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(Optional)</span>
                   </label>
                   <textarea
                     rows={3}
                     placeholder="Internal notes for reviewers"
                     value={allocationForm.notes}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, notes: e.target.value })}
-                    style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--color-border-strong)", font: "inherit", resize: "vertical" }}
+                    onChange={(e) =>
+                      setAllocationForm({ ...allocationForm, notes: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border-strong)",
+                      font: "inherit",
+                      resize: "vertical",
+                    }}
                   />
                 </div>
               </section>
@@ -1625,7 +2062,10 @@ export function FundsDashboardClient({
                   className="btn-secondary"
                   onClick={closeAllocationModal}
                   disabled={submittingAllocation}
-                  style={{ padding: "0.65rem 1rem", cursor: submittingAllocation ? "wait" : "pointer" }}
+                  style={{
+                    padding: "0.65rem 1rem",
+                    cursor: submittingAllocation ? "wait" : "pointer",
+                  }}
                 >
                   Cancel
                 </button>
@@ -1640,7 +2080,8 @@ export function FundsDashboardClient({
                     minWidth: "190px",
                     padding: "0.7rem 1.2rem",
                     borderRadius: "6px",
-                    background: "linear-gradient(90deg, var(--color-navy-brand), var(--color-accent-blue))",
+                    background:
+                      "linear-gradient(90deg, var(--color-navy-brand), var(--color-accent-blue))",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,
@@ -1712,7 +2153,10 @@ export function FundsDashboardClient({
                 >
                   <IconIndianRupee width={18} height={18} />
                 </span>
-                <h2 id="expense-modal-title" style={{ margin: 0, fontSize: "1.3rem", fontWeight: 750 }}>
+                <h2
+                  id="expense-modal-title"
+                  style={{ margin: 0, fontSize: "1.3rem", fontWeight: 750 }}
+                >
                   Add expenditure
                 </h2>
               </div>
@@ -1780,7 +2224,8 @@ export function FundsDashboardClient({
                             >
                               {group.establishments.map((establishment) => (
                                 <option key={establishment.id} value={establishment.id}>
-                                  {establishment.organisationName} · {establishment.name} ({establishment.code})
+                                  {establishment.organisationName} · {establishment.name} (
+                                  {establishment.code})
                                 </option>
                               ))}
                             </optgroup>
@@ -1789,13 +2234,16 @@ export function FundsDashboardClient({
                         <select
                           aria-label="Allocated funds"
                           value={expenseForm.allocationId}
-                          onChange={(e) => setExpenseForm({ ...expenseForm, allocationId: e.target.value })}
+                          onChange={(e) =>
+                            setExpenseForm({ ...expenseForm, allocationId: e.target.value })
+                          }
                           style={expenseFieldStyle}
                         >
                           <option value="">Allocation (optional)</option>
                           {expenseAllocations.map((allocation) => (
                             <option key={allocation.id} value={allocation.id}>
-                              {allocation.scheme || "Allocation"} · {formatCurrency(allocation.allocatedAmount)} ({allocation.fiscalYear})
+                              {allocation.scheme || "Allocation"} ·{" "}
+                              {formatCurrency(allocation.allocatedAmount)} ({allocation.fiscalYear})
                             </option>
                           ))}
                         </select>
@@ -1816,7 +2264,8 @@ export function FundsDashboardClient({
                           </span>
                           <span>{selectedExpenseEstablishment.organisationName}</span>
                           <span>
-                            {selectedExpenseEstablishment.stateName} / {selectedExpenseEstablishment.districtName}
+                            {selectedExpenseEstablishment.stateName} /{" "}
+                            {selectedExpenseEstablishment.districtName}
                           </span>
                         </div>
                       )}
@@ -1879,14 +2328,18 @@ export function FundsDashboardClient({
                           aria-label="Expenditure amount"
                           placeholder="Amount *"
                           value={expenseForm.amount}
-                          onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                          onChange={(e) =>
+                            setExpenseForm({ ...expenseForm, amount: e.target.value })
+                          }
                           style={{ ...expenseFieldStyle, padding: "0.7rem 0.8rem 0.7rem 2rem" }}
                         />
                       </div>
                       <select
                         aria-label="Expenditure category"
                         value={expenseForm.category}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, category: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       >
                         <option value="Civil Works & Renovation">Civil Works & Renovation</option>
@@ -1903,7 +2356,9 @@ export function FundsDashboardClient({
                         type="date"
                         aria-label="Expenditure date"
                         value={expenseForm.transactionDate}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, transactionDate: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, transactionDate: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       />
                     </div>
@@ -1913,7 +2368,9 @@ export function FundsDashboardClient({
                       aria-label="Purpose of expenditure"
                       placeholder="Purpose *"
                       value={expenseForm.description}
-                      onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                      onChange={(e) =>
+                        setExpenseForm({ ...expenseForm, description: e.target.value })
+                      }
                       style={expenseTextareaStyle}
                     />
                   </section>
@@ -1945,7 +2402,9 @@ export function FundsDashboardClient({
                         aria-label="Vendor / payee"
                         placeholder="Vendor / payee *"
                         value={expenseForm.vendorName}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, vendorName: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, vendorName: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       />
                       <input
@@ -1953,7 +2412,9 @@ export function FundsDashboardClient({
                         aria-label="GSTIN"
                         placeholder="GSTIN"
                         value={expenseForm.vendorGstin}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, vendorGstin: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, vendorGstin: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       />
                       <input
@@ -1961,20 +2422,26 @@ export function FundsDashboardClient({
                         aria-label="Invoice / voucher number"
                         placeholder="Invoice / voucher"
                         value={expenseForm.invoiceNumber}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, invoiceNumber: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, invoiceNumber: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       />
                       <input
                         type="date"
                         aria-label="Invoice date"
                         value={expenseForm.invoiceDate}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, invoiceDate: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, invoiceDate: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       />
                       <select
                         aria-label="Payment mode"
                         value={expenseForm.paymentMethod}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       >
                         <option value="">Payment mode</option>
@@ -1988,7 +2455,9 @@ export function FundsDashboardClient({
                         aria-label="Payment reference"
                         placeholder="Payment reference"
                         value={expenseForm.paymentReference}
-                        onChange={(e) => setExpenseForm({ ...expenseForm, paymentReference: e.target.value })}
+                        onChange={(e) =>
+                          setExpenseForm({ ...expenseForm, paymentReference: e.target.value })
+                        }
                         style={expenseFieldStyle}
                       />
                     </div>
@@ -2070,8 +2539,7 @@ export function FundsDashboardClient({
                       submittingExpense || workflowEstablishments.length === 0
                         ? "not-allowed"
                         : "pointer",
-                    opacity:
-                      submittingExpense || workflowEstablishments.length === 0 ? 0.6 : 1,
+                    opacity: submittingExpense || workflowEstablishments.length === 0 ? 0.6 : 1,
                   }}
                 >
                   <span>
@@ -2126,7 +2594,9 @@ export function FundsDashboardClient({
                 <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 750 }}>
                   Confirm expenditure
                 </h3>
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                <p
+                  style={{ margin: "0.35rem 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}
+                >
                   Enter the amount exactly as shown to confirm this expenditure.
                 </p>
               </div>
@@ -2163,14 +2633,24 @@ export function FundsDashboardClient({
                 fontSize: "0.82rem",
               }}
             >
-              <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Expenditure amount</span>
+              <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>
+                Expenditure amount
+              </span>
               <strong style={{ textAlign: "right" }}>{expenseForm.amount}</strong>
               <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Establishment</span>
-              <span style={{ textAlign: "right" }}>{selectedExpenseEstablishment?.name ?? "—"}</span>
+              <span style={{ textAlign: "right" }}>
+                {selectedExpenseEstablishment?.name ?? "—"}
+              </span>
             </div>
 
-            <form onSubmit={handleExpenseConfirmation} style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-              <label htmlFor="expense-confirmation-amount" style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+            <form
+              onSubmit={handleExpenseConfirmation}
+              style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}
+            >
+              <label
+                htmlFor="expense-confirmation-amount"
+                style={{ fontSize: "0.8rem", fontWeight: 600 }}
+              >
                 Enter amount to confirm *
               </label>
               <input
@@ -2189,7 +2669,9 @@ export function FundsDashboardClient({
                   width: "100%",
                   padding: "0.65rem",
                   borderRadius: "6px",
-                  border: confirmationError ? "1px solid #dc2626" : "1px solid var(--color-border-strong)",
+                  border: confirmationError
+                    ? "1px solid #dc2626"
+                    : "1px solid var(--color-border-strong)",
                   font: "inherit",
                 }}
               />
@@ -2198,13 +2680,23 @@ export function FundsDashboardClient({
                   {confirmationError}
                 </div>
               )}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "0.45rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "0.6rem",
+                  marginTop: "0.45rem",
+                }}
+              >
                 <button
                   type="button"
                   className="btn-secondary"
                   onClick={closeExpenseConfirmation}
                   disabled={submittingExpense}
-                  style={{ padding: "0.65rem 0.9rem", cursor: submittingExpense ? "wait" : "pointer" }}
+                  style={{
+                    padding: "0.65rem 0.9rem",
+                    cursor: submittingExpense ? "wait" : "pointer",
+                  }}
                 >
                   Cancel
                 </button>
@@ -2218,14 +2710,19 @@ export function FundsDashboardClient({
                     gap: "0.4rem",
                     padding: "0.65rem 1rem",
                     borderRadius: "6px",
-                    background: "linear-gradient(90deg, var(--action-green), var(--action-green-dark))",
+                    background:
+                      "linear-gradient(90deg, var(--action-green), var(--action-green-dark))",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,
                     cursor: submittingExpense ? "wait" : "pointer",
                   }}
                 >
-                  {submittingExpense ? "Submitting..." : expenseDraftId ? "Confirm retry" : "Confirm expenditure"}
+                  {submittingExpense
+                    ? "Submitting..."
+                    : expenseDraftId
+                      ? "Confirm retry"
+                      : "Confirm expenditure"}
                   {!submittingExpense && <IconChevronRight width={15} height={15} />}
                 </button>
               </div>
@@ -2257,7 +2754,8 @@ export function FundsDashboardClient({
           >
             <h3 style={{ margin: "0 0 0.75rem 0", color: "#991b1b" }}>Reject Expenditure</h3>
             <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0 0 1rem 0" }}>
-              Provide the specific non-compliance, documentary omission, or discrepancy rationale. This note will be recorded in the official audit register.
+              Provide the specific non-compliance, documentary omission, or discrepancy rationale.
+              This note will be recorded in the official audit register.
             </p>
             <form onSubmit={handleRejectExpense}>
               <textarea
@@ -2307,13 +2805,16 @@ export function FundsDashboardClient({
             </form>
           </div>
         </div>
-)}
+      )}
 
       {/* MODAL: TRIGGER FIELD INSPECTION */}
       {showInspectModal && (
         <ScheduleInspectionModal
           flag={showInspectModal}
-          projectName={projectMap.get(showInspectModal.projectId)?.name ?? showInspectModal.projectId.slice(0, 8)}
+          projectName={
+            projectMap.get(showInspectModal.projectId)?.name ??
+            showInspectModal.projectId.slice(0, 8)
+          }
           onConfirm={() => handleTriggerInspection(showInspectModal.id)}
           onClose={() => setShowInspectModal(null)}
         />
@@ -2334,7 +2835,10 @@ export function FundsDashboardClient({
       {detailAllocation && (
         <AllocationDetailModal
           allocation={detailAllocation}
-          projectName={projectMap.get(detailAllocation.projectId)?.name ?? detailAllocation.projectId.slice(0, 8)}
+          projectName={
+            projectMap.get(detailAllocation.projectId)?.name ??
+            detailAllocation.projectId.slice(0, 8)
+          }
           onClose={() => setDetail(null)}
         />
       )}
@@ -2342,8 +2846,12 @@ export function FundsDashboardClient({
       {detail && detailFlag && (
         <FlagDetailModal
           flag={detailFlag}
-          projectName={projectMap.get(detailFlag.projectId)?.name ?? detailFlag.projectId.slice(0, 8)}
-          projectCode={projectMap.get(detailFlag.projectId)?.code ?? detailFlag.projectId.slice(0, 8)}
+          projectName={
+            projectMap.get(detailFlag.projectId)?.name ?? detailFlag.projectId.slice(0, 8)
+          }
+          projectCode={
+            projectMap.get(detailFlag.projectId)?.code ?? detailFlag.projectId.slice(0, 8)
+          }
           canInspect={canInspect}
           onClose={() => setDetail(null)}
           onReview={() => {

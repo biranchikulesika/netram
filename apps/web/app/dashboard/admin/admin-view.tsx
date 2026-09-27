@@ -14,6 +14,7 @@ import {
   IconMapPin,
 } from "../../components/icons";
 import { AssignRoleModal } from "./assign-role-modal";
+import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 function getInitials(name?: string | null, email?: string | null): string {
   if (name && name.trim()) {
@@ -102,6 +103,8 @@ export function AdminView({
       return true;
     });
   }, [safeUsers, searchQuery, safeRoles]);
+
+  const pagination = useClientPagination(filteredUsers, 20, [searchQuery]);
 
   // Derived effective permissions for selected user in detail view
   const effectivePermissions = useMemo(() => {
@@ -321,40 +324,42 @@ export function AdminView({
       </div>
 
       {/* OPERATORS TABLE */}
-      <div className="table-card" style={{ overflowX: "auto" }}>
+      <div className="table-card">
         <table style={{ width: "100%", whiteSpace: "nowrap" }}>
           <thead>
             <tr>
-              <th style={{ minWidth: "180px", whiteSpace: "nowrap" }}>Name</th>
-              <th style={{ minWidth: "220px", whiteSpace: "nowrap" }}>Email</th>
-              <th style={{ minWidth: "160px", whiteSpace: "nowrap" }}>Role</th>
-              <th style={{ minWidth: "140px", whiteSpace: "nowrap" }}>Scope</th>
-              <th style={{ minWidth: "130px", whiteSpace: "nowrap" }}>Registered</th>
+              <th style={{ minWidth: "180px" }}>Name</th>
+              <th style={{ minWidth: "220px" }}>Email</th>
+              <th style={{ minWidth: "160px" }}>Role</th>
+              <th style={{ minWidth: "140px" }}>Scope</th>
+              <th style={{ minWidth: "130px" }}>Registered</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="muted" style={{ textAlign: "center", padding: "2.5rem" }}>
-                  <div>
-                    {searchQuery.trim()
-                      ? "No operators match the search criteria."
-                      : "No operators recorded."}
+                <td colSpan={5} style={{ padding: 0 }}>
+                  <div className="table-empty-state">
+                    <div className="table-empty-title">
+                      {searchQuery.trim()
+                        ? "No operators match the search criteria."
+                        : "No operators recorded."}
+                    </div>
+                    {searchQuery.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="btn-secondary"
+                        style={{ marginTop: "0.75rem", fontSize: "0.78rem", padding: "0.35rem 0.75rem" }}
+                      >
+                        Reset Search
+                      </button>
+                    )}
                   </div>
-                  {searchQuery.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="btn-secondary"
-                      style={{ marginTop: "0.75rem", fontSize: "0.78rem", padding: "0.35rem 0.75rem" }}
-                    >
-                      Reset Search
-                    </button>
-                  )}
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((u) => {
+              pagination.paginatedItems.map((u) => {
                 const assignments = Array.isArray(u?.assignments) ? u.assignments : [];
                 const isCurrentUser = u.email === currentEmail;
 
@@ -363,6 +368,7 @@ export function AdminView({
                     key={u.id}
                     tabIndex={0}
                     role="button"
+                    className="table-row"
                     onClick={() => setSelectedUserForDetails(u)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -370,12 +376,11 @@ export function AdminView({
                         setSelectedUserForDetails(u);
                       }
                     }}
-                    style={{ cursor: "pointer", whiteSpace: "nowrap" }}
                     title={`Click to view details for ${u.displayName || u.email}`}
                   >
                     {/* Name */}
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <div style={{ fontWeight: 600, color: "var(--color-navy-brand)", whiteSpace: "nowrap" }}>
+                    <td>
+                      <span className="table-name-link" style={{ cursor: "pointer" }}>
                         {u.displayName || "Official Account"}
                         {isCurrentUser && (
                           <span
@@ -389,16 +394,16 @@ export function AdminView({
                             (You)
                           </span>
                         )}
-                      </div>
+                      </span>
                     </td>
 
                     {/* Email */}
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                    <td style={{ color: "var(--text-secondary)" }}>
                       {u.email}
                     </td>
 
                     {/* Role (clean text, deduplicated abstracted title, no wrap) */}
-                    <td style={{ whiteSpace: "nowrap" }}>
+                    <td>
                       {(() => {
                         const dedupedTitles = Array.from(
                           new Set(
@@ -411,7 +416,7 @@ export function AdminView({
 
                         if (dedupedTitles.length === 0) {
                           return (
-                            <span className="muted" style={{ fontStyle: "italic", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                            <span className="muted" style={{ fontStyle: "italic", fontSize: "0.8rem" }}>
                               No role
                             </span>
                           );
@@ -420,10 +425,8 @@ export function AdminView({
                         return (
                           <span
                             style={{
-                              fontSize: "0.82rem",
                               fontWeight: 600,
                               color: "var(--color-navy-brand)",
-                              whiteSpace: "nowrap",
                             }}
                           >
                             {dedupedTitles.join(", ")}
@@ -433,7 +436,7 @@ export function AdminView({
                     </td>
 
                     {/* Scope (clean text, deduplicated, no wrap) */}
-                    <td style={{ whiteSpace: "nowrap" }}>
+                    <td>
                       {(() => {
                         const dedupedScopes = Array.from(
                           new Set(
@@ -451,19 +454,11 @@ export function AdminView({
                         );
 
                         if (dedupedScopes.length === 0) {
-                          return (
-                            <span className="muted" style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}>—</span>
-                          );
+                          return <span className="muted">—</span>;
                         }
 
                         return (
-                          <span
-                            style={{
-                              fontSize: "0.8rem",
-                              color: "var(--text-secondary)",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                          <span style={{ color: "var(--text-secondary)" }}>
                             {dedupedScopes.join(", ")}
                           </span>
                         );
@@ -471,7 +466,7 @@ export function AdminView({
                     </td>
 
                     {/* Created Date */}
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                    <td className="table-date">
                       {formatDate(u.createdAt)}
                     </td>
                   </tr>
@@ -481,11 +476,17 @@ export function AdminView({
           </tbody>
         </table>
 
-        <div className="table-footer-info">
-          <span>
-            Showing {filteredUsers.length} of {safeUsers.length} registered operators &bull; Click any row to view details &amp; manage roles
-          </span>
-        </div>
+        <PaginationBar
+          from={pagination.from}
+          to={pagination.to}
+          total={pagination.total}
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          itemName="registered operators"
+          onPageClick={pagination.onPageClick}
+          onPageSizeChange={pagination.onPageSizeChange}
+        />
       </div>
 
       {/* MODAL: Operator Details & Permission Management */}
@@ -909,8 +910,8 @@ export function AdminView({
                           border: "1px solid var(--color-border-subtle, #e2e8f0)",
                           borderRadius: "5px",
                           padding: "0.3rem 0.6rem",
-                          fontSize: "0.74rem",
-                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
                           color: "var(--color-navy-data, #0f172a)",
                           boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
                           whiteSpace: "nowrap",

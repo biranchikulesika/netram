@@ -36,7 +36,7 @@ const FILTER_KINDS: Record<Exclude<ActionFilter, "ALL">, Set<ActionInboxSection[
     "project_verification",
     "attendance_correction_approval",
   ]),
-  // Reviews: judgement calls worked from the full dossier.
+  // Reviews: judgement calls worked from the full record.
   REVIEWS: new Set<ActionInboxSection["kind"]>([
     "finding_review",
     "corrective_action_review",

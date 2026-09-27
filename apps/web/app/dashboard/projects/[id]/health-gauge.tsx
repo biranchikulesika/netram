@@ -195,7 +195,6 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
           fontSize="15"
           fontWeight="800"
           fill="#ffffff"
-          style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
           {health ?? "—"}
         </text>

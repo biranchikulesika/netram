@@ -46,8 +46,8 @@ function AiSpinner() {
  * Quick decision CTAs per kind — every endpoint is the workflow's own canonical
  * write path. Only self-contained decisions may be taken from the card: the
  * whole change is visible in the summary (attendance correction before/after),
- * or the decision popup itself carries the full dossier (expenditure payment
- * verification, see ExpenseVerifyPopup). Anything whose wider dossier
+ * or the decision popup itself carries the full record (expenditure payment
+ * verification, see ExpenseVerifyPopup). Anything whose wider record
  * materially informs the decision (facility registration, ATR review, finding
  * review) offers no inline options and routes into its page instead.
  */
@@ -59,7 +59,7 @@ export function quickActionsFor(item: ActionInboxItem): InboxAction[] {
         { label: "Reject", kind: "reject", endpoint: `/api/v1/attendance/corrections/${item.id}/decide`, body: { decision: "reject" } },
       ];
     default:
-      // Dossier-required kinds and expense_verification (popup-decided): no
+      // Record-required kinds and expense_verification (popup-decided): no
       // inline write CTAs.
       return [];
   }
@@ -247,7 +247,7 @@ export function ActionInboxCard({
         <Link
           href={item.link.href}
           className="ai-open-btn"
-          title={`Open the full dossier before deciding`}
+          title={`Open the full record before deciding`}
         >
           {item.link.label}
           <IconChevronRight width={13} height={13} />
