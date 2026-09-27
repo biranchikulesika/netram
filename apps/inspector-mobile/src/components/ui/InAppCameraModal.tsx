@@ -42,14 +42,13 @@ export function InAppCameraModal({
   onCapturePhoto,
   onCaptureVideo,
 }: InAppCameraModalProps) {
-  // Mode is fixed to what was selected (photo only or video only)
   const [facing, setFacing] = useState<CameraType>("back");
   const [torch, setTorch] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordSeconds, setRecordSeconds] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  // Camera permissions
+  // Camera and Microphone permissions
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
@@ -82,7 +81,7 @@ export function InAppCameraModal({
     }
   }, [visible, initialMode, cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
 
-  // Web camera stream fallback
+  // Web camera stream fallback with full audio support
   useEffect(() => {
     if (Platform.OS !== "web" || !visible) return;
 
@@ -90,10 +89,15 @@ export function InAppCameraModal({
     const startWebCam = async () => {
       try {
         if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: facing === "back" ? "environment" : "user" },
-            audio: initialMode === "video",
-          });
+          const constraints: MediaStreamConstraints = {
+            video: {
+              facingMode: facing === "back" ? "environment" : "user",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: initialMode === "video" ? { echoCancellation: true, noiseSuppression: true } : false,
+          };
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
           webMediaStreamRef.current = stream;
           if (webVideoRef.current) {
             webVideoRef.current.srcObject = stream;
@@ -127,7 +131,7 @@ export function InAppCameraModal({
     };
   }, []);
 
-  // Handle Photo Capture
+  // Handle Photo Capture (Instantaneous)
   const handleTakePhoto = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
@@ -145,28 +149,22 @@ export function InAppCameraModal({
             const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
             const fileName = `photo-${Date.now()}.jpg`;
 
-            const base64Data = dataUrl.split(",")[1] ?? "";
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-
+            // Close modal & deliver photo immediately (0ms delay)
+            setIsProcessing(false);
+            onClose();
             onCapturePhoto({
               uri: dataUrl,
               fileName,
-              fileBytes: bytes,
               width: canvas.width,
               height: canvas.height,
             });
-            onClose();
             return;
           }
         }
       }
 
       if (!cameraRef.current) {
-        throw new Error("In-app camera not ready");
+        throw new Error("Camera not ready");
       }
 
       const photo = await cameraRef.current.takePictureAsync({
@@ -176,28 +174,19 @@ export function InAppCameraModal({
 
       if (photo && photo.uri) {
         const fileName = `photo-${Date.now()}.jpg`;
-        let fileBytes: Uint8Array | undefined;
-        try {
-          const resp = await fetch(photo.uri);
-          const buf = await resp.arrayBuffer();
-          fileBytes = new Uint8Array(buf);
-        } catch {
-          fileBytes = new TextEncoder().encode(`photo-bytes-${fileName}`);
-        }
-
+        // Close modal & deliver photo immediately without blocking fetch
+        setIsProcessing(false);
+        onClose();
         onCapturePhoto({
           uri: photo.uri,
           fileName,
-          fileBytes,
           width: photo.width,
           height: photo.height,
         });
-        onClose();
       }
     } catch (err: unknown) {
-      Alert.alert("Capture Error", err instanceof Error ? err.message : String(err));
-    } finally {
       setIsProcessing(false);
+      Alert.alert("Capture Error", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -224,7 +213,24 @@ export function InAppCameraModal({
           throw new Error("Web media stream not ready");
         }
         webRecordedChunksRef.current = [];
-        const mediaRecorder = new MediaRecorder(webMediaStreamRef.current);
+
+        // Select the browser's native supported MIME format
+        let selectedMime = "";
+        const candidates = [
+          "video/webm;codecs=vp9,opus",
+          "video/webm;codecs=vp8,opus",
+          "video/webm",
+          "video/mp4",
+        ];
+        for (const c of candidates) {
+          if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c)) {
+            selectedMime = c;
+            break;
+          }
+        }
+
+        const options: MediaRecorderOptions = selectedMime ? { mimeType: selectedMime } : {};
+        const mediaRecorder = new MediaRecorder(webMediaStreamRef.current, options);
         webMediaRecorderRef.current = mediaRecorder;
 
         mediaRecorder.ondataavailable = (e) => {
@@ -233,7 +239,7 @@ export function InAppCameraModal({
           }
         };
 
-        mediaRecorder.start();
+        mediaRecorder.start(250);
         return;
       }
 
@@ -243,25 +249,18 @@ export function InAppCameraModal({
         });
 
         videoPromise
-          .then(async (recorded) => {
+          .then((recorded) => {
             if (recorded && recorded.uri) {
               const fileName = `video-${Date.now()}.mp4`;
-              let fileBytes: Uint8Array | undefined;
-              try {
-                const resp = await fetch(recorded.uri);
-                const buf = await resp.arrayBuffer();
-                fileBytes = new Uint8Array(buf);
-              } catch {
-                fileBytes = new TextEncoder().encode(`video-bytes-${fileName}`);
-              }
-
+              // Deliver recorded video immediately without heavy fetch
+              setIsProcessing(false);
+              setIsRecording(false);
+              onClose();
               onCaptureVideo({
                 uri: recorded.uri,
                 fileName,
-                fileBytes,
                 duration: recordSeconds,
               });
-              onClose();
             }
           })
           .catch((err) => {
@@ -294,22 +293,21 @@ export function InAppCameraModal({
     try {
       if (Platform.OS === "web") {
         if (webMediaRecorderRef.current && webMediaRecorderRef.current.state !== "inactive") {
-          webMediaRecorderRef.current.onstop = async () => {
-            const blob = new Blob(webRecordedChunksRef.current, { type: "video/mp4" });
+          webMediaRecorderRef.current.onstop = () => {
+            const recordedMime = webMediaRecorderRef.current?.mimeType || "video/webm";
+            const blob = new Blob(webRecordedChunksRef.current, { type: recordedMime });
             const uri = URL.createObjectURL(blob);
-            const fileName = `video-${Date.now()}.mp4`;
-            const arrayBuffer = await blob.arrayBuffer();
-            const fileBytes = new Uint8Array(arrayBuffer);
+            const ext = recordedMime.includes("mp4") ? "mp4" : "webm";
+            const fileName = `video-${Date.now()}.${ext}`;
 
             setIsRecording(false);
             setIsProcessing(false);
+            onClose();
             onCaptureVideo({
               uri,
               fileName,
-              fileBytes,
               duration: recordSeconds,
             });
-            onClose();
           };
           webMediaRecorderRef.current.stop();
           return;
@@ -350,7 +348,7 @@ export function InAppCameraModal({
       }}
     >
       <View style={styles.container}>
-        {/* Top Header — Clean White with Premium Icons */}
+        {/* Top Header — Clean White with Premium Action Buttons */}
         <View style={styles.topHeader}>
           {/* Close Button */}
           <Pressable
@@ -367,7 +365,7 @@ export function InAppCameraModal({
             <Icon name="close" size={22} color={colors.navyDark} />
           </Pressable>
 
-          {/* Action Row: Torch & Flip Lens with Premium Styling */}
+          {/* Action Row: Torch & Camera Flip with Premium Buttons */}
           <View style={styles.headerActionRow}>
             <Pressable
               onPress={toggleTorch}
@@ -442,6 +440,7 @@ export function InAppCameraModal({
               facing={facing}
               mode={initialMode === "video" ? "video" : "picture"}
               enableTorch={torch}
+              mute={false}
             />
           )}
 
@@ -464,7 +463,7 @@ export function InAppCameraModal({
             </View>
           </View>
 
-          {/* Recording Timer Pill (Video Mode only when active) */}
+          {/* Recording Timer Pill (Video Mode only when actively recording) */}
           {isRecording && (
             <View style={styles.recordingPill}>
               <View style={styles.recordingDot} />

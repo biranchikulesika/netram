@@ -17,6 +17,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import * as Location from "expo-location";
+import { Audio } from "expo-av";
 import { colors, typography } from "../../src/theme/colors";
 import { useSettings } from "../../src/theme/settings-context";
 import { requestInspectionPermissions } from "../../src/utils/permissions";
@@ -68,40 +69,6 @@ function PlayableVideo({
       title={title}
     />
   );
-}
-
-function playSyntheticTone(onEnd?: () => void) {
-  try {
-    if (typeof window !== "undefined") {
-      const windowWithAudio = window as unknown as {
-        AudioContext?: typeof AudioContext;
-        webkitAudioContext?: typeof AudioContext;
-      };
-      const AudioCtx = windowWithAudio.AudioContext || windowWithAudio.webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-        setTimeout(() => {
-          onEnd?.();
-          ctx.close().catch(() => {});
-        }, 600);
-        return;
-      }
-    }
-  } catch {
-    // Ignore audio context errors
-  }
-  setTimeout(() => onEnd?.(), 1200);
 }
 
 type SegmentTab = "FACILITY" | "NOTES" | "REMARKS";
@@ -173,6 +140,8 @@ export default function InspectionDetailScreen() {
   const voiceAudioChunksRef = useRef<Blob[]>([]);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const nativeRecordingRef = useRef<Audio.Recording | null>(null);
+  const nativeSoundRef = useRef<Audio.Sound | null>(null);
 
   // Request Android runtime permissions on screen entry
   useEffect(() => {
@@ -413,18 +382,39 @@ export default function InspectionDetailScreen() {
     }
   };
 
-  // Helper to acquire location at evidence capture time (§2.5)
+  // Helper to acquire location at evidence capture time (§2.5) — instant with fallback
   const getCaptureLocation = async () => {
     try {
       const perm = await Location.getForegroundPermissionsAsync();
       if (perm.granted) {
-        const pos = await Location.getCurrentPositionAsync({
+        // 1. Try instant last known location (0ms delay)
+        const lastKnown = await Location.getLastKnownPositionAsync();
+        if (lastKnown && Date.now() - lastKnown.timestamp < 120000) {
+          return {
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+          };
+        }
+        // 2. Fast race with 1.5s timeout for fresh GPS
+        const posPromise = Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        return {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        };
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 1500),
+        );
+        const pos = await Promise.race([posPromise, timeoutPromise]);
+        if (pos) {
+          return {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          };
+        }
+        if (lastKnown) {
+          return {
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+          };
+        }
       }
     } catch {
       // Store null/undefined if unavailable per Rule 2.5
@@ -464,37 +454,47 @@ export default function InspectionDetailScreen() {
     }
   };
 
-  const handleInAppPhotoCaptured = async (result: CapturedEvidenceResult) => {
-    const loc = await getCaptureLocation();
+  const handleInAppPhotoCaptured = (result: CapturedEvidenceResult) => {
+    // Open Note & Voice Note dialog IMMEDIATELY (instant 0ms popup)
     setPendingMedia({
       uri: result.uri,
       fileName: result.fileName,
       evidenceType: "photo",
       mimeType: "image/jpeg",
       fileBytes: result.fileBytes,
-      latitude: loc.latitude,
-      longitude: loc.longitude,
     });
     setPendingCaption("");
     deleteVoiceRecording();
+
+    // Attach location asynchronously in background
+    void getCaptureLocation().then((loc) => {
+      if (loc.latitude != null && loc.longitude != null) {
+        setPendingMedia((prev) => (prev ? { ...prev, ...loc } : null));
+      }
+    });
   };
 
-  const handleInAppVideoCaptured = async (result: CapturedEvidenceResult) => {
-    const loc = await getCaptureLocation();
+  const handleInAppVideoCaptured = (result: CapturedEvidenceResult) => {
+    // Open Note & Voice Note dialog IMMEDIATELY (instant 0ms popup)
     setPendingMedia({
       uri: result.uri,
       fileName: result.fileName,
       evidenceType: "video",
-      mimeType: "video/mp4",
+      mimeType: result.fileName.endsWith(".webm") ? "video/webm" : "video/mp4",
       fileBytes: result.fileBytes,
-      latitude: loc.latitude,
-      longitude: loc.longitude,
     });
     setPendingCaption("");
     deleteVoiceRecording();
+
+    // Attach location asynchronously in background
+    void getCaptureLocation().then((loc) => {
+      if (loc.latitude != null && loc.longitude != null) {
+        setPendingMedia((prev) => (prev ? { ...prev, ...loc } : null));
+      }
+    });
   };
 
-  // Voice Note Recording Handlers
+  // Voice Note Recording Handlers (Real audio on native via expo-av, and web via MediaRecorder)
   const startVoiceRecording = async () => {
     try {
       const perms = await requestInspectionPermissions();
@@ -509,7 +509,9 @@ export default function InspectionDetailScreen() {
 
       if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true },
+          });
           const mediaRecorder = new MediaRecorder(stream);
           voiceMediaRecorderRef.current = mediaRecorder;
           voiceAudioChunksRef.current = [];
@@ -529,20 +531,27 @@ export default function InspectionDetailScreen() {
             const uint8 = new Uint8Array(arrayBuffer);
             setPendingVoiceBytes(uint8);
 
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              if (typeof reader.result === "string") {
-                setPendingVoiceUri(reader.result);
-              }
-            };
-            reader.readAsDataURL(audioBlob);
-
             stream.getTracks().forEach((track) => track.stop());
           };
 
           mediaRecorder.start(250);
         } catch (mediaErr) {
           console.warn("Web audio recording error:", mediaErr);
+        }
+      } else {
+        // Native (Android / iOS) recording via expo-av
+        try {
+          await Audio.requestPermissionsAsync();
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+          });
+          const recording = new Audio.Recording();
+          await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+          await recording.startAsync();
+          nativeRecordingRef.current = recording;
+        } catch (nativeErr) {
+          console.warn("Native audio recording error:", nativeErr);
         }
       }
 
@@ -555,7 +564,7 @@ export default function InspectionDetailScreen() {
     }
   };
 
-  const stopVoiceRecording = () => {
+  const stopVoiceRecording = async (): Promise<{ uri: string | null; bytes: Uint8Array | null }> => {
     if (voiceTimerRef.current) {
       clearInterval(voiceTimerRef.current);
       voiceTimerRef.current = null;
@@ -563,12 +572,59 @@ export default function InspectionDetailScreen() {
     setIsRecordingVoice(false);
 
     if (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") {
-      voiceMediaRecorderRef.current.stop();
-    } else {
-      const fallbackBytes = new TextEncoder().encode(`voice-note-${Date.now()}`);
-      setPendingVoiceBytes(fallbackBytes);
-      setPendingVoiceUri(`voice://local-${Date.now()}`);
+      return new Promise((resolve) => {
+        const recorder = voiceMediaRecorderRef.current;
+        if (!recorder) {
+          resolve({ uri: pendingVoiceUri, bytes: pendingVoiceBytes });
+          return;
+        }
+        recorder.onstop = async () => {
+          try {
+            const audioBlob = new Blob(voiceAudioChunksRef.current, { type: "audio/webm" });
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const uint8 = new Uint8Array(arrayBuffer);
+            setPendingVoiceBytes(uint8);
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = reader.result as string;
+              setPendingVoiceUri(dataUrl);
+              resolve({ uri: dataUrl, bytes: uint8 });
+            };
+            reader.onerror = () => {
+              const fallbackUrl = URL.createObjectURL(audioBlob);
+              setPendingVoiceUri(fallbackUrl);
+              resolve({ uri: fallbackUrl, bytes: uint8 });
+            };
+            reader.readAsDataURL(audioBlob);
+          } catch (e) {
+            console.warn("Web audio processing error:", e);
+            resolve({ uri: null, bytes: null });
+          }
+        };
+        try {
+          recorder.stop();
+        } catch {
+          resolve({ uri: null, bytes: null });
+        }
+      });
     }
+
+    if (nativeRecordingRef.current) {
+      try {
+        await nativeRecordingRef.current.stopAndUnloadAsync();
+        const uri = nativeRecordingRef.current.getURI();
+        nativeRecordingRef.current = null;
+        if (uri) {
+          setPendingVoiceUri(uri);
+          return { uri, bytes: null };
+        }
+      } catch (err) {
+        console.warn("Stop native recording error:", err);
+      }
+    }
+
+    return { uri: pendingVoiceUri, bytes: pendingVoiceBytes };
   };
 
   const deleteVoiceRecording = () => {
@@ -577,7 +633,19 @@ export default function InspectionDetailScreen() {
       voiceTimerRef.current = null;
     }
     if (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") {
-      voiceMediaRecorderRef.current.stop();
+      try {
+        voiceMediaRecorderRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
+    if (nativeRecordingRef.current) {
+      nativeRecordingRef.current.stopAndUnloadAsync().catch(() => {});
+      nativeRecordingRef.current = null;
+    }
+    if (nativeSoundRef.current) {
+      nativeSoundRef.current.unloadAsync().catch(() => {});
+      nativeSoundRef.current = null;
     }
     if (activeAudioPlayerRef.current) {
       activeAudioPlayerRef.current.pause();
@@ -590,43 +658,69 @@ export default function InspectionDetailScreen() {
     setVoiceDuration(0);
   };
 
-  const playAudioUri = (
+  const playAudioUri = async (
     uri: string | null,
     onStart: () => void,
     onEnd: () => void,
   ) => {
+    if (!uri) {
+      onEnd();
+      return;
+    }
     onStart();
 
-    if (Platform.OS === "web" && typeof Audio !== "undefined" && uri) {
+    // 1. Web playback via HTML5 Audio element
+    if (Platform.OS === "web" && typeof Audio !== "undefined") {
       try {
-        const audio = new Audio(uri);
+        const audio = new window.Audio(uri);
         activeAudioPlayerRef.current = audio;
         audio.onended = () => {
           activeAudioPlayerRef.current = null;
           onEnd();
         };
         audio.onerror = () => {
-          playSyntheticTone(() => {
-            activeAudioPlayerRef.current = null;
-            onEnd();
-          });
+          activeAudioPlayerRef.current = null;
+          onEnd();
         };
-        audio.play().catch(() => {
-          playSyntheticTone(() => {
-            activeAudioPlayerRef.current = null;
-            onEnd();
-          });
-        });
+        await audio.play();
         return;
-      } catch {
-        // Fallback tone below
+      } catch (e) {
+        console.warn("Web audio playback error:", e);
       }
     }
 
-    playSyntheticTone(() => {
-      activeAudioPlayerRef.current = null;
+    // 2. Native playback via expo-av Audio.Sound (speaker output unmuted)
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        playThroughEarpieceAndroid: false,
+        shouldDuckAndroid: true,
+      });
+
+      if (nativeSoundRef.current) {
+        await nativeSoundRef.current.unloadAsync().catch(() => {});
+        nativeSoundRef.current = null;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true, volume: 1.0 },
+      );
+      nativeSoundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+          nativeSoundRef.current = null;
+          onEnd();
+        }
+      });
+      return;
+    } catch (nativeErr) {
+      console.warn("Native audio play failed:", nativeErr);
       onEnd();
-    });
+    }
   };
 
   const togglePlayPreviewVoice = () => {
@@ -635,9 +729,12 @@ export default function InspectionDetailScreen() {
         activeAudioPlayerRef.current.pause();
         activeAudioPlayerRef.current = null;
       }
+      if (nativeSoundRef.current) {
+        nativeSoundRef.current.pauseAsync().catch(() => {});
+      }
       setIsPlayingVoice(false);
     } else {
-      playAudioUri(
+      void playAudioUri(
         pendingVoiceUri,
         () => setIsPlayingVoice(true),
         () => setIsPlayingVoice(false),
@@ -651,13 +748,20 @@ export default function InspectionDetailScreen() {
         activeAudioPlayerRef.current.pause();
         activeAudioPlayerRef.current = null;
       }
+      if (nativeSoundRef.current) {
+        nativeSoundRef.current.pauseAsync().catch(() => {});
+      }
       setPlayingObsVoiceId(null);
     } else {
       if (activeAudioPlayerRef.current) {
         activeAudioPlayerRef.current.pause();
         activeAudioPlayerRef.current = null;
       }
-      playAudioUri(
+      if (nativeSoundRef.current) {
+        nativeSoundRef.current.pauseAsync().catch(() => {});
+      }
+      setPlayingObsVoiceId(itemId);
+      void playAudioUri(
         uri,
         () => setPlayingObsVoiceId(itemId),
         () => setPlayingObsVoiceId(null),
@@ -670,6 +774,19 @@ export default function InspectionDetailScreen() {
     if (!id || !pendingMedia) return;
     setActionBusy(true);
     try {
+      // 0. Auto-stop active voice recording if user didn't hit stop before save
+      let voiceUri = pendingVoiceUri;
+      let voiceBytes = pendingVoiceBytes;
+      if (
+        isRecordingVoice ||
+        (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") ||
+        nativeRecordingRef.current
+      ) {
+        const stopped = await stopVoiceRecording();
+        voiceUri = stopped.uri ?? voiceUri;
+        voiceBytes = stopped.bytes ?? voiceBytes;
+      }
+
       // 1. Capture Photo or Video Evidence
       const mediaResult = await captureEvidenceOffline(queue, {
         inspectionId: id,
@@ -684,14 +801,14 @@ export default function InspectionDetailScreen() {
 
       // 2. Capture Voice Note as Audio Evidence if recorded
       let voiceEvidenceId: string | null = null;
-      if (pendingVoiceBytes || pendingVoiceUri) {
+      if (voiceBytes || voiceUri) {
         const audioResult = await captureEvidenceOffline(queue, {
           inspectionId: id,
           evidenceType: "audio",
-          fileName: `voice-note-${Date.now()}.m4a`,
-          fileBytes: pendingVoiceBytes || new TextEncoder().encode(`voice-${Date.now()}`),
-          localFileUri: pendingVoiceUri || undefined,
-          mimeType: "audio/m4a",
+          fileName: `voice-note-${Date.now()}.${Platform.OS === "web" ? "webm" : "m4a"}`,
+          fileBytes: voiceBytes || new TextEncoder().encode(`voice-${Date.now()}`),
+          localFileUri: voiceUri || undefined,
+          mimeType: Platform.OS === "web" ? "audio/webm" : "audio/m4a",
           latitude: pendingMedia.latitude,
           longitude: pendingMedia.longitude,
         });
@@ -1193,6 +1310,12 @@ export default function InspectionDetailScreen() {
                             >
                               <Text style={styles.obsTypeBadgeText}>VIDEO</Text>
                             </View>
+                            {(item.voiceEvidenceId || item.voiceUri) && (
+                              <View style={styles.obsVoiceAttachedBadge}>
+                                <Icon name="mic" size={11} color="#FFFFFF" />
+                                <Text style={styles.obsVoiceAttachedBadgeText}>VOICE NOTE</Text>
+                              </View>
+                            )}
                           </View>
                         ) : (
                           <Pressable
@@ -1225,6 +1348,13 @@ export default function InspectionDetailScreen() {
                                 {isVideo ? "VIDEO" : "PHOTO"}
                               </Text>
                             </View>
+
+                            {(item.voiceEvidenceId || item.voiceUri) && (
+                              <View style={styles.obsVoiceAttachedBadge}>
+                                <Icon name="mic" size={11} color="#FFFFFF" />
+                                <Text style={styles.obsVoiceAttachedBadgeText}>VOICE NOTE</Text>
+                              </View>
+                            )}
                           </Pressable>
                         )}
 
@@ -2668,12 +2798,32 @@ const styles = StyleSheet.create({
   obsTypeBadge: {
     position: "absolute",
     top: 10,
-    right: 10,
+    left: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    zIndex: 10,
   },
   obsTypeBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  obsVoiceAttachedBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.actionGreen,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    zIndex: 10,
+  },
+  obsVoiceAttachedBadgeText: {
     color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "800",

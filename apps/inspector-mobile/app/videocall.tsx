@@ -10,6 +10,11 @@ import {
   TextInput,
   Modal,
 } from "react-native";
+import {
+  CameraView,
+  useCameraPermissions,
+  useMicrophonePermissions,
+} from "expo-camera";
 import { Icon } from "../src/components/ui/Icon";
 import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
@@ -192,10 +197,22 @@ const INITIAL_CALL_HISTORY: CallHistoryRecord[] = [
   },
 ];
 
-function renderWebVideo(videoRef: React.RefObject<unknown>, isFacingFront: boolean) {
+function renderWebVideo(
+  videoRef: React.RefObject<HTMLVideoElement | null>,
+  isFacingFront: boolean,
+  stream: MediaStream | null,
+) {
   if (Platform.OS !== "web") return null;
   return React.createElement("video", {
-    ref: videoRef,
+    ref: (node: HTMLVideoElement | null) => {
+      if (videoRef) {
+        (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node;
+      }
+      if (node && stream && node.srcObject !== stream) {
+        node.srcObject = stream;
+        node.play().catch(() => {});
+      }
+    },
     autoPlay: true,
     playsInline: true,
     muted: true,
@@ -256,6 +273,10 @@ export default function CallsScreen() {
   const [reviewCondition, setReviewCondition] = useState<ReviewCondition>("satisfactory");
   const [reviewProblemsText, setReviewProblemsText] = useState("");
   const [flagForSiteVisit, setFlagForSiteVisit] = useState(false);
+
+  // Camera and Microphone permissions
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
   // Media state
   const [isMuted, setIsMuted] = useState(false);
@@ -330,9 +351,9 @@ export default function CallsScreen() {
     };
   }, [activeCall?.status]);
 
-  // Start local camera on Web
+  // Start local camera on Web and Native
   const startCamera = useCallback(async () => {
-    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.mediaDevices) {
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: isFacingFront ? "user" : "environment" },
@@ -344,10 +365,21 @@ export default function CallsScreen() {
           localVideoRef.current.play().catch(() => {});
         }
       } catch (err) {
-        console.warn("Camera/mic not accessible:", err);
+        console.warn("Camera/mic not accessible on web:", err);
+      }
+    } else if (Platform.OS !== "web") {
+      try {
+        if (!cameraPermission?.granted) {
+          await requestCameraPermission();
+        }
+        if (!micPermission?.granted) {
+          await requestMicPermission();
+        }
+      } catch (err) {
+        console.warn("Native camera permissions error:", err);
       }
     }
-  }, [isFacingFront]);
+  }, [isFacingFront, cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -558,12 +590,18 @@ export default function CallsScreen() {
                   <Icon name="videocam-off" size={24} color={colors.navyDark} />
                 </View>
               ) : (
-                renderWebVideo(localVideoRef, isFacingFront)
+                renderWebVideo(localVideoRef, isFacingFront, streamRef.current)
               )
-            ) : (
+            ) : isVideoOff ? (
               <View style={styles.pipCameraOff}>
-                <Icon name={isVideoOff ? "videocam-off" : "person"} size={24} color={colors.navyDark} />
+                <Icon name="videocam-off" size={24} color={colors.navyDark} />
               </View>
+            ) : (
+              <CameraView
+                style={StyleSheet.absoluteFillObject}
+                facing={isFacingFront ? "front" : "back"}
+                mute={isMuted}
+              />
             )}
           </View>
         </View>

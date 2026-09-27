@@ -116,22 +116,21 @@ describe("UI Components Render Tests (P14-04)", () => {
   });
 
   describe("InteractiveVideoPlayer", () => {
-    it("renders with custom watermark and controls markup", () => {
+    it("renders video element with src and controls", () => {
       const html = renderToStaticMarkup(
         <InteractiveVideoPlayer
           src="https://example.com/test-inspection.mp4"
-          title="SITE RECORDING #01"
         />,
       );
-      expect(html).toContain("SITE RECORDING #01");
       expect(html).toContain("test-inspection.mp4");
+      expect(html).toContain("controls");
     });
 
-    it("renders with default watermark when title is omitted", () => {
+    it("renders empty state placeholder when src is omitted or empty", () => {
       const html = renderToStaticMarkup(
-        <InteractiveVideoPlayer src="https://example.com/evidence.mp4" />,
+        <InteractiveVideoPlayer src="" />,
       );
-      expect(html).toContain("NETRAM VERIFIED EVIDENCE");
+      expect(html).toContain("No Video Source");
     });
   });
 
