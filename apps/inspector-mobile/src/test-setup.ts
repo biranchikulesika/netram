@@ -44,30 +44,45 @@ vi.mock("expo-video", () => ({
 
 vi.mock("expo-av", () => ({
   Audio: {
-    requestPermissionsAsync: vi.fn(async () => ({ granted: true })),
-    setAudioModeAsync: vi.fn(async () => {}),
     Recording: vi.fn().mockImplementation(() => ({
-      prepareToRecordAsync: vi.fn(async () => {}),
-      startAsync: vi.fn(async () => {}),
-      stopAndUnloadAsync: vi.fn(async () => {}),
-      getURI: vi.fn(() => "file:///mock/audio.m4a"),
+      prepareToRecordAsync: vi.fn().mockResolvedValue({}),
+      startAsync: vi.fn().mockResolvedValue({}),
+      stopAndUnloadAsync: vi.fn().mockResolvedValue({}),
+      getURI: vi.fn().mockReturnValue("file:///data/recording.m4a"),
     })),
     Sound: {
-      createAsync: vi.fn(async () => ({
+      createAsync: vi.fn().mockResolvedValue({
         sound: {
-          playAsync: vi.fn(async () => {}),
-          pauseAsync: vi.fn(async () => {}),
-          stopAsync: vi.fn(async () => {}),
-          unloadAsync: vi.fn(async () => {}),
+          playAsync: vi.fn().mockResolvedValue({}),
+          pauseAsync: vi.fn().mockResolvedValue({}),
+          stopAsync: vi.fn().mockResolvedValue({}),
+          unloadAsync: vi.fn().mockResolvedValue({}),
+          setPositionAsync: vi.fn().mockResolvedValue({}),
+          setRateAsync: vi.fn().mockResolvedValue({}),
+          setIsMutedAsync: vi.fn().mockResolvedValue({}),
           setOnPlaybackStatusUpdate: vi.fn(),
         },
-      })),
+      }),
     },
-    RecordingOptionsPresets: {
-      HIGH_QUALITY: {},
-    },
+    requestPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+    setAudioModeAsync: vi.fn().mockResolvedValue({}),
+    RecordingOptionsPresets: { HIGH_QUALITY: {} },
+  },
+  Video: () => null,
+  ResizeMode: {
+    CONTAIN: "contain",
+    COVER: "cover",
+    STRETCH: "stretch",
   },
 }));
 
+vi.mock("expo-file-system", () => ({
+  cacheDirectory: "file:///mock/cache/",
+  documentDirectory: "file:///mock/documents/",
+  writeAsStringAsync: vi.fn().mockResolvedValue(undefined),
+  readAsStringAsync: vi.fn().mockResolvedValue(""),
+  deleteAsync: vi.fn().mockResolvedValue(undefined),
+  EncodingType: { Base64: "base64", UTF8: "utf8" },
+}));
 
 

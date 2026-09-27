@@ -1529,8 +1529,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    paddingBottom: Platform.OS === "ios" ? 24 : 12,
-    gap: 10,
+    paddingBottom: 0,
+    gap: 8,
   },
 
   // Chip strip (single row)
@@ -1562,6 +1562,7 @@ const styles = StyleSheet.create({
   // Empty state card
   emptyCard: {
     marginHorizontal: 16,
+    marginBottom: Platform.OS === "ios" ? 24 : 12,
     borderRadius: 8,
     borderWidth: 1,
     paddingVertical: 18,
@@ -1583,24 +1584,26 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
     borderWidth: 1,
     borderBottomWidth: 0,
-    padding: 16,
-    gap: 14,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 24 : 14,
+    gap: 8,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 10,
   },
   cardHeaderLeft: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   badgeRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginBottom: 2,
+    marginBottom: 0,
   },
   badge: {
     flexDirection: "row",
