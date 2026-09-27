@@ -1,453 +1,389 @@
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  Alert,
+  Image,
   Pressable,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { OfflineInspectionQueue } from "../src/offline/queue.js";
-import type { CachedInspectionRecord } from "../src/offline/queue.js";
-import { useAuth } from "./_layout";
+import { Icon, NetramBadge } from "../src/components/ui";
+import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
+import { useAuth } from "../src/auth/auth-context";
+import { useSyncStatus } from "../src/offline/sync-context";
+import { typography } from "../src/theme/colors";
+import { useSettings } from "../src/theme/settings-context";
+import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
 
-export default function InspectorHomeScreen() {
+export default function InspectorDashboardScreen() {
   const router = useRouter();
   const { client, user } = useAuth();
+  const { theme, isPureDark } = useSettings();
+  const queue = useMemo(() => new OfflineInspectionQueue(), []);
+  const { refreshPendingCount } = useSyncStatus();
 
   const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
 
   const loadLocalState = useCallback(async () => {
-    const cached = await queue.getCachedInspections();
-    setInspections(cached);
-
-    const pending = await queue.getPendingOperations();
-    setPendingCount(pending.length);
-  }, []);
+    try {
+      await seedDemoDataIfEmpty();
+      const cached = await queue.getCachedInspections();
+      setInspections(cached);
+      const allOps = await queue.getAllOperations();
+      const checkedSet = new Set(
+        allOps
+          .filter(
+            (o) =>
+              o.operation_type === "check_in" ||
+              o.operation_type === "start_inspection",
+          )
+          .map((o) => o.inspection_id),
+      );
+      setCheckedInIds(checkedSet);
+      const pending = await queue.getPendingOperations();
+      setPendingCount(pending.length);
+      void refreshPendingCount();
+    } catch (err) {
+      console.warn("Error reading SQLite local state:", err);
+    }
+  }, [queue, refreshPendingCount]);
 
   useEffect(() => {
     loadLocalState();
-  }, [loadLocalState]);
-
-  const handleFetchFromServer = async () => {
-    if (!client) {
-      setSyncMessage("API client unavailable.");
-      return;
+    if (client) {
+      client
+        .listNotifications({ pageSize: 1 })
+        .then((res) => setUnreadNotifications(res.unread ?? 0))
+        .catch(() => {});
     }
+  }, [loadLocalState, client]);
 
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setSyncMessage(null);
-
     try {
-      const page = await client.listInspections({ pageSize: 50 });
-      await queue.cacheInspections(page.items);
+      if (client) {
+        const page = await client.listInspections({ pageSize: 50 });
+        if (page.items.length > 0) {
+          await queue.cacheInspections(page.items);
+        }
+      }
       await loadLocalState();
-
-      setSyncMessage(`Updated ${page.items.length} inspections from server.`);
-    } catch (err) {
-      setSyncMessage(
-        `Offline mode: using local inspection data. ${err instanceof Error ? err.message : String(err)
-        }`
-      );
+    } catch {
+      await loadLocalState();
     } finally {
       setRefreshing(false);
     }
   };
 
-  const handleSyncQueue = async () => {
+  const handleSyncNow = async () => {
     if (!client) {
-      setSyncMessage("API client unavailable.");
+      router.push("/sync");
       return;
     }
-
     setSyncing(true);
-    setSyncMessage(null);
-
     try {
-      const summary = await queue.sync(client);
+      await queue.sync(client);
       await loadLocalState();
-
-      const parts = [`${summary.synced} operations synced`];
-
-      if (summary.mediaUploaded > 0) {
-        parts.push(`${summary.mediaUploaded} media uploaded`);
-      }
-
-      if (summary.conflicts > 0) {
-        parts.push(`${summary.conflicts} conflicts`);
-      }
-
-      if (summary.rejected > 0) {
-        parts.push(`${summary.rejected} rejected`);
-      }
-
-      if (
-        summary.synced === 0 &&
-        summary.mediaUploaded === 0 &&
-        summary.conflicts === 0 &&
-        summary.rejected === 0
-      ) {
-        setSyncMessage("Everything is already synchronized.");
-      } else {
-        setSyncMessage(`Sync complete: ${parts.join(" • ")}`);
-      }
+      Alert.alert("Sync Complete", "Inspections synchronised with central server.");
     } catch (err) {
-      setSyncMessage(
-        `Sync failed: ${err instanceof Error ? err.message : String(err)}`
-      );
+      Alert.alert("Sync Error", err instanceof Error ? err.message : "Unable to reach server.");
     } finally {
       setSyncing(false);
     }
   };
 
-  const inspectorName =
-    user?.email?.split("@")[0]?.replace(/[._-]/g, " ") ?? "Inspector";
+  const officerName = user?.displayName || user?.email?.split("@")[0] || "Inspector";
+  const _initials = officerName
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "IN";
+
+  const assignedCount = useMemo(
+    () => inspections.filter((i) => i.status === "assigned").length,
+    [inspections],
+  );
+  const inProgressCount = useMemo(
+    () => inspections.filter((i) => i.status === "in_progress").length,
+    [inspections],
+  );
+  const submittedCount = useMemo(
+    () => inspections.filter((i) => i.status === "submitted").length,
+    [inspections],
+  );
+
+  const currentTask = useMemo(() => {
+    return (
+      inspections.find((i) => i.status === "in_progress") ||
+      inspections.find((i) => i.status === "assigned") ||
+      inspections[0] ||
+      null
+    );
+  }, [inspections]);
+
+  // Color tokens
+  const bgCanvas = theme.bgCanvas;
+  const bgSurface = theme.bgSurface;
+  const bgSubtle = isPureDark ? "#18181B" : theme.bgSubtle;
+  const borderColor = theme.borderSubtle;
+  const textPrimary = theme.textPrimary;
+  const textMuted = theme.textMuted;
+  const navyDark = theme.navyDark;
+  const accentBlue = theme.accentBlue;
+
+  const isCurrentTaskUnlocked =
+    currentTask && (currentTask.status !== "assigned" || checkedInIds.has(currentTask.id));
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <FlatList
-        data={inspections}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
+      {/* ── Header Bar ── */}
+      <View style={[styles.headerBar, { backgroundColor: navyDark }]}>
+        <View style={styles.brandGroup}>
+          <Image
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            source={require("../assets/ashoka_stambh.png")}
+            style={styles.emblemImage}
+            resizeMode="contain"
+          />
+          <View>
+            <Text style={styles.appTitle}>NETRAM</Text>
+            <Text style={styles.appSubtitle}>Field Inspector Portal</Text>
+          </View>
+        </View>
+
+        <View style={styles.headerActions}>
+          <Pressable
+            style={styles.headerIconBtn}
+            onPress={() => router.push("/notifications")}
+            accessibilityLabel="Notifications"
+          >
+            <Icon name="notifications-outline" size={20} color="#FFFFFF" />
+            {unreadNotifications > 0 && <View style={styles.notifDot} />}
+          </Pressable>
+
+          <Pressable
+            style={styles.avatarBtn}
+            onPress={() => router.push("/profile")}
+            accessibilityLabel="Profile"
+          >
+            <Image
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              source={require("../assets/inspector_demo.jpg")}
+              style={styles.avatarThumb}
+              resizeMode="cover"
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={handleFetchFromServer}
-            tintColor="#14B8A6"
+            onRefresh={handleRefresh}
+            tintColor={navyDark}
+            colors={[navyDark]}
           />
         }
-        ListHeaderComponent={
-          <>
-            {/* Top bar */}
-            <View style={styles.topBar}>
-              <View style={styles.brandRow}>
-                <View style={styles.logoMark}>
-                  <Text style={styles.logoText}>N</Text>
-                  <View style={styles.logoCheck} />
-                </View>
-
-                <View>
-                  <Text style={styles.brandName}>NETRAM</Text>
-                  <Text style={styles.brandSubtitle}>
-                    FIELD OPERATIONS
-                  </Text>
-                </View>
-              </View>
-
-              <Pressable
-                style={styles.profileCircle}
-                onPress={() => router.push("/profile")}
-              >
-                <Text style={styles.profileInitial}>
-                  {inspectorName.charAt(0).toUpperCase()}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Welcome */}
-            <View style={styles.welcomeBlock}>
-              <Text style={styles.eyebrow}>INSPECTOR DASHBOARD</Text>
-
-              <Text style={styles.welcomeTitle}>
-                Welcome back, {inspectorName.split(" ")[0]}
-              </Text>
-
-              <Text style={styles.welcomeSubtitle}>
-                Your field operations at a glance.
-              </Text>
-            </View>
-
-            {/* Sync status */}
-            <View style={styles.syncCard}>
-              <View style={styles.syncTopRow}>
-                <View style={styles.syncIcon}>
-                  <Text style={styles.syncIconText}>↻</Text>
-                </View>
-
-                <View style={styles.syncInfo}>
-                  <View style={styles.syncTitleRow}>
-                    <Text style={styles.syncTitle}>Sync status</Text>
-
-                    <View
-                      style={[
-                        styles.connectionBadge,
-                        pendingCount > 0
-                          ? styles.connectionPending
-                          : styles.connectionGood,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.connectionDot,
-                          pendingCount > 0
-                            ? styles.pendingDot
-                            : styles.goodDot,
-                        ]}
-                      />
-
-                      <Text style={styles.connectionText}>
-                        {pendingCount > 0 ? "PENDING" : "READY"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.syncSubtitle}>
-                    {pendingCount === 0
-                      ? "All local operations are synchronized."
-                      : `${pendingCount} operation${pendingCount === 1 ? "" : "s"
-                      } waiting to sync.`}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Sync Queue button */}
-              <Pressable
-                style={[
-                  styles.primaryButton,
-                  syncing && styles.primaryButtonDisabled,
-                ]}
-                onPress={handleSyncQueue}
-                disabled={syncing}
-              >
-                {syncing ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <Text style={styles.primaryButtonText}>
-                      Sync Queue
-                    </Text>
-
-                    <Text style={styles.primaryButtonArrow}>→</Text>
-                  </>
-                )}
-              </Pressable>
-
-              {syncMessage && (
-                <View style={styles.messageBox}>
-                  <Text style={styles.messageText}>
-                    {syncMessage}
-                  </Text>
-                </View>
-              )}
-
-              <View style={styles.quickLinks}>
-                <Pressable onPress={() => router.push("/sync")}>
-                  <Text style={styles.quickLink}>
-                    View sync details
-                  </Text>
-                </Pressable>
-
-                <View style={styles.linkDivider} />
-
-                <Pressable onPress={() => router.push("/check-in")}>
-                  <Text style={styles.quickLink}>
-                    Field check-in
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Quick actions */}
-            <View style={styles.quickActionRow}>
-              <Pressable
-                style={styles.quickAction}
-                onPress={() => router.push("/inspections")}
-              >
-                <View style={styles.actionIconBlue}>
-                  <Text style={styles.actionIconText}>▣</Text>
-                </View>
-
-                <View>
-                  <Text style={styles.actionTitle}>
-                    Inspections
-                  </Text>
-
-                  <Text style={styles.actionSubtitle}>
-                    View assigned work
-                  </Text>
-                </View>
-              </Pressable>
-
-              <Pressable
-                style={styles.quickAction}
-                onPress={() => router.push("/check-in")}
-              >
-                <View style={styles.actionIconTeal}>
-                  <Text style={styles.actionIconText}>⌖</Text>
-                </View>
-
-                <View>
-                  <Text style={styles.actionTitle}>
-                    Check-in
-                  </Text>
-
-                  <Text style={styles.actionSubtitle}>
-                    Field guidance
-                  </Text>
-                </View>
-              </Pressable>
-            </View>
-
-            {/* Section header */}
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionEyebrow}>
-                  FIELD WORK
-                </Text>
-
-                <Text style={styles.sectionTitle}>
-                  Assigned inspections
-                </Text>
-              </View>
-
-              <Pressable
-                onPress={handleFetchFromServer}
-                disabled={refreshing}
-                style={styles.refreshButton}
-              >
-                <Text style={styles.refreshIcon}>↻</Text>
-
-                <Text style={styles.refreshText}>
-                  {refreshing ? "Updating" : "Refresh"}
-                </Text>
-              </Pressable>
-            </View>
-          </>
-        }
-        renderItem={({ item }) => (
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Stats Strip ── */}
+        <View style={[styles.statsRow, { borderColor }]}>
           <Pressable
-            style={({ pressed }) => [
-              styles.inspectionCard,
-              pressed && styles.inspectionCardPressed,
-            ]}
-            onPress={() => router.push(`/inspections/${item.id}`)}
+            style={[styles.statItem, { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor }]}
+            onPress={() => router.push({ pathname: "/inspections", params: { tab: "ASSIGNED" } })}
+            accessibilityLabel="Assigned inspections"
           >
-            <View style={styles.inspectionTopRow}>
-              <View style={styles.typeRow}>
-                <View
-                  style={[
-                    styles.typeTag,
-                    item.type === "surprise"
-                      ? styles.surpriseTag
-                      : styles.routineTag,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.typeTagText,
-                      item.type === "surprise"
-                        ? styles.surpriseText
-                        : styles.routineText,
-                    ]}
-                  >
-                    {item.type.toUpperCase()}
-                  </Text>
-                </View>
+            <Text style={[styles.statCount, { color: navyDark }]}>{assignedCount}</Text>
+            <Text style={[styles.statLabel, { color: textMuted }]}>ASSIGNED</Text>
+          </Pressable>
 
-                <Text style={styles.projectCode}>
-                  {item.project_code}
-                </Text>
-              </View>
+          <Pressable
+            style={[styles.statItem, { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor }]}
+            onPress={() => router.push({ pathname: "/inspections", params: { tab: "IN_PROGRESS" } })}
+            accessibilityLabel="In-progress inspections"
+          >
+            <Text style={[styles.statCount, { color: theme.gold }]}>{inProgressCount}</Text>
+            <Text style={[styles.statLabel, { color: textMuted }]}>IN PROGRESS</Text>
+          </Pressable>
 
+          <Pressable
+            style={[styles.statItem, { backgroundColor: bgSurface }]}
+            onPress={() => router.push("/history")}
+            accessibilityLabel="Submitted inspections"
+          >
+            <Text style={[styles.statCount, { color: theme.actionGreen }]}>{submittedCount}</Text>
+            <Text style={[styles.statLabel, { color: textMuted }]}>SUBMITTED</Text>
+          </Pressable>
+        </View>
+
+        {/* ── Section Label ── */}
+        <Text style={[styles.sectionLabel, { color: textMuted }]}>CURRENT ASSIGNMENT</Text>
+
+        {/* ── Current Assignment Card ── */}
+        {currentTask ? (
+          <View style={[styles.assignmentCard, { backgroundColor: bgSurface, borderColor }]}>
+            <View style={styles.cardHeader}>
               <View
                 style={[
-                  styles.statusPill,
-                  getStatusStyle(item.status),
+                  styles.statusDot,
+                  {
+                    backgroundColor:
+                      currentTask.status === "in_progress"
+                        ? theme.gold
+                        : accentBlue,
+                  },
                 ]}
+              />
+              <Text style={[styles.cardStatusLabel, { color: textMuted }]}>
+                {currentTask.status === "in_progress" ? "IN PROGRESS" : "NEXT ASSIGNMENT"}
+              </Text>
+              <View style={styles.flex1} />
+              <NetramBadge
+                label={currentTask.status.replace(/_/g, " ").toUpperCase()}
+                variant="status"
+                status={currentTask.status}
+                size="sm"
+              />
+            </View>
+
+            <Text style={[styles.facilityName, { color: textPrimary }]} numberOfLines={2}>
+              {isCurrentTaskUnlocked
+                ? currentTask.project_name
+                : "Assigned Facility — Reach Site to Unlock"}
+            </Text>
+
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Icon name="location-outline" size={13} color={textMuted} />
+                <Text style={[styles.metaText, { color: textMuted }]}>
+                  {currentTask.district_id || "District"}
+                </Text>
+              </View>
+              {currentTask.project_code && (
+                <View style={styles.metaItem}>
+                  <Icon name="document-text-outline" size={13} color={textMuted} />
+                  <Text style={[styles.metaText, { color: textMuted }]}>
+                    {currentTask.project_code}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View style={[styles.cardDivider, { backgroundColor: borderColor }]} />
+
+            <View style={styles.actionRow}>
+              <Pressable
+                style={[styles.primaryBtn, { backgroundColor: navyDark }]}
+                onPress={() => router.push(`/inspections/${currentTask.id}`)}
+                accessibilityLabel={
+                  currentTask.status === "in_progress"
+                    ? "Continue inspection"
+                    : "Start inspection"
+                }
               >
-                <Text
-                  style={[
-                    styles.statusText,
-                    getStatusTextStyle(item.status),
-                  ]}
-                >
-                  {item.status.replace("_", " ")}
+                <Icon name="clipboard-outline" size={15} color="#FFFFFF" />
+                <Text style={styles.primaryBtnText}>
+                  {currentTask.status === "in_progress"
+                    ? "Continue Inspection"
+                    : "Start Inspection"}
                 </Text>
-              </View>
-            </View>
+              </Pressable>
 
-            <Text style={styles.projectName}>
-              {item.project_name}
+              <Pressable
+                style={[styles.secondaryBtn, { borderColor }]}
+                onPress={() =>
+                  router.push({
+                    pathname: "/check-in",
+                    params: { inspectionId: currentTask.id },
+                  })
+                }
+                accessibilityLabel="Open map for inspection site"
+              >
+                <Icon name="navigate-outline" size={15} color={navyDark} />
+                <Text style={[styles.secondaryBtnText, { color: navyDark }]}>Map</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.emptyCard, { backgroundColor: bgSurface, borderColor }]}>
+            <Icon name="clipboard-outline" size={28} color={textMuted} />
+            <Text style={[styles.emptyCardText, { color: textMuted }]}>
+              No active assignments
             </Text>
-
-            <View style={styles.idRow}>
-              <Text style={styles.idLabel}>
-                INSPECTION ID
-              </Text>
-
-              <Text style={styles.idValue}>
-                {item.id}
-              </Text>
-            </View>
-
-            <View style={styles.inspectionDivider} />
-
-            <View style={styles.inspectionBottomRow}>
-              <View>
-                <Text style={styles.dateLabel}>
-                  SCHEDULED
-                </Text>
-
-                <Text style={styles.dateValue}>
-                  {item.scheduled_start
-                    ? new Date(
-                      item.scheduled_start
-                    ).toLocaleDateString()
-                    : "Unscheduled"}
-                </Text>
-              </View>
-
-              <View style={styles.openFileButton}>
-                <Text style={styles.openFileText}>
-                  Open field file
-                </Text>
-
-                <Text style={styles.openFileArrow}>
-                  →
-                </Text>
-              </View>
-            </View>
-          </Pressable>
+          </View>
         )}
-        ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <View style={styles.emptyIcon}>
-              <Text style={styles.emptyIconText}>▣</Text>
-            </View>
 
-            <Text style={styles.emptyTitle}>
-              No cached inspections
+        {/* ── Section Label ── */}
+        <Text style={[styles.sectionLabel, { color: textMuted }]}>FIELD SCHEDULE</Text>
+
+        {/* ── All Assignments Navigation ── */}
+        <Pressable
+          style={[styles.navCard, { backgroundColor: bgSurface, borderColor }]}
+          onPress={() => router.push({ pathname: "/inspections", params: { tab: "ASSIGNED" } })}
+          accessibilityLabel="View all field assignments"
+        >
+          <View style={[styles.navIconBox, { backgroundColor: bgSubtle }]}>
+            <Icon name="list-outline" size={20} color={navyDark} />
+          </View>
+          <View style={styles.navCardContent}>
+            <Text style={[styles.navCardTitle, { color: textPrimary }]}>
+              All Field Assignments
             </Text>
-
-            <Text style={styles.emptyText}>
-              Connect to the server and refresh to download your
-              assigned inspections.
+            <Text style={[styles.navCardSub, { color: textMuted }]}>
+              {assignedCount + inProgressCount > 0
+                ? `${assignedCount + inProgressCount} active — tap to view schedule`
+                : "View scheduled inspection tasks"}
             </Text>
+          </View>
+          <Icon name="chevron-forward" size={16} color={textMuted} />
+        </Pressable>
 
+        {/* ── Sync Status ── */}
+        <View style={[styles.syncRow, { backgroundColor: bgSurface, borderColor }]}>
+          <View style={styles.syncLeft}>
+            <Icon
+              name={
+                pendingCount > 0 ? "cloud-upload-outline" : "checkmark-circle-outline"
+              }
+              size={16}
+              color={pendingCount > 0 ? accentBlue : theme.actionGreen}
+            />
+            <Text style={[styles.syncText, { color: textPrimary }]}>
+              {pendingCount > 0
+                ? `${pendingCount} pending offline operation${pendingCount === 1 ? "" : "s"}`
+                : "Offline data synchronised"}
+            </Text>
+          </View>
+
+          {pendingCount > 0 && (
             <Pressable
-              style={styles.emptyButton}
-              onPress={handleFetchFromServer}
-              disabled={refreshing}
+              style={[styles.syncBtn, { backgroundColor: navyDark }]}
+              onPress={handleSyncNow}
+              disabled={syncing}
+              accessibilityLabel="Sync now"
             >
-              {refreshing ? (
-                <ActivityIndicator color="#FFFFFF" />
+              {syncing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.emptyButtonText}>
-                  Refresh from server
-                </Text>
+                <Text style={styles.syncBtnText}>Sync Now</Text>
               )}
             </Pressable>
-          </View>
-        }
-      />
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -455,651 +391,267 @@ export default function InspectorHomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#071A2B",
   },
-
-  listContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 32,
-  },
-
-  /* ---------- TOP BAR ---------- */
-
-  topBar: {
+  // ── Header ──
+  headerBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 28,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-
-  brandRow: {
+  brandGroup: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
   },
-
-  logoMark: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 11,
+  emblemImage: {
+    width: 26,
+    height: 26,
+    tintColor: "#FFFFFF",
   },
-
-  logoText: {
+  appTitle: {
+    fontSize: 15,
+    fontWeight: "800",
     color: "#FFFFFF",
-    fontSize: 25,
-    fontWeight: "800",
+    letterSpacing: 1.2,
   },
-
-  logoCheck: {
+  appSubtitle: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.65)",
+    marginTop: 1,
+    letterSpacing: 0.3,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notifDot: {
     position: "absolute",
-    width: 10,
-    height: 6,
-    borderLeftWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: "#14B8A6",
-    transform: [
-      { rotate: "-45deg" },
-      { translateX: 9 },
-      { translateY: 10 },
-    ],
-  },
-
-  brandName: {
-    color: "#F8FAFC",
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: 2.5,
-  },
-
-  brandSubtitle: {
-    color: "#14B8A6",
-    fontSize: 8,
-    fontWeight: "700",
-    letterSpacing: 1.8,
-    marginTop: 2,
-  },
-
-  profileCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#0D263D",
-    borderWidth: 1,
-    borderColor: "#23415A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  profileInitial: {
-    color: "#F8FAFC",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  /* ---------- WELCOME ---------- */
-
-  welcomeBlock: {
-    marginBottom: 20,
-  },
-
-  eyebrow: {
-    color: "#14B8A6",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.7,
-    marginBottom: 7,
-  },
-
-  welcomeTitle: {
-    color: "#F8FAFC",
-    fontSize: 27,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-
-  welcomeSubtitle: {
-    color: "#94A3B8",
-    fontSize: 13,
-    marginTop: 6,
-  },
-
-  /* ---------- SYNC ---------- */
-
-  syncCard: {
-    backgroundColor: "#0D263D",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#23415A",
-    padding: 16,
-    marginBottom: 14,
-  },
-
-  syncTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-
-  syncIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: "#12324A",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-
-  syncIconText: {
-    color: "#14B8A6",
-    fontSize: 25,
-    fontWeight: "700",
-  },
-
-  syncInfo: {
-    flex: 1,
-  },
-
-  syncTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  syncTitle: {
-    color: "#F8FAFC",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  connectionBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-
-  connectionGood: {
-    backgroundColor: "rgba(34, 197, 94, 0.12)",
-  },
-
-  connectionPending: {
-    backgroundColor: "rgba(245, 158, 11, 0.12)",
-  },
-
-  connectionDot: {
+    top: 7,
+    right: 7,
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 5,
+    backgroundColor: "#EF4444",
   },
-
-  goodDot: {
-    backgroundColor: "#22C55E",
+  avatarBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
   },
-
-  pendingDot: {
-    backgroundColor: "#F59E0B",
+  avatarThumb: {
+    width: "100%",
+    height: "100%",
   },
-
-  connectionText: {
-    fontSize: 8,
+  avatarText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  // ── Scroll Content ──
+  scrollContent: {
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  // ── Stats Strip ──
+  statsRow: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  statItem: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: "center",
+    gap: 3,
+  },
+  statCount: {
+    fontSize: 22,
     fontWeight: "800",
+    fontFamily: typography.mono,
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: "700",
     letterSpacing: 0.8,
-    color: "#CBD5E1",
   },
-
-  syncSubtitle: {
-    color: "#94A3B8",
-    fontSize: 11,
-    marginTop: 5,
-    lineHeight: 16,
+  // ── Section Labels ──
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.0,
+    marginTop: 6,
+    marginBottom: -2,
   },
-
-  primaryButton: {
-    height: 45,
-    borderRadius: 11,
-    backgroundColor: "#2563EB",
+  // ── Assignment Card ──
+  assignmentCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    gap: 8,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  cardStatusLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  flex1: {
+    flex: 1,
+  },
+  facilityName: {
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 22,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+  },
+  cardDivider: {
+    height: 1,
+    marginVertical: 2,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 2,
+  },
+  primaryBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 6,
   },
-
-  primaryButtonDisabled: {
-    backgroundColor: "#23415A",
-  },
-
-  primaryButtonText: {
+  primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "700",
   },
-
-  primaryButtonArrow: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    marginLeft: 8,
-  },
-
-  messageBox: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 9,
-    backgroundColor: "#071A2B",
-    borderWidth: 1,
-    borderColor: "#23415A",
-  },
-
-  messageText: {
-    color: "#94A3B8",
-    fontSize: 10,
-    lineHeight: 15,
-  },
-
-  quickLinks: {
+  secondaryBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 13,
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 6,
+    borderWidth: 1,
   },
-
-  quickLink: {
-    color: "#60A5FA",
-    fontSize: 11,
+  secondaryBtnText: {
+    fontSize: 13,
     fontWeight: "600",
   },
-
-  linkDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: "#23415A",
-    marginHorizontal: 13,
-  },
-
-  /* ---------- QUICK ACTIONS ---------- */
-
-  quickActionRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 28,
-  },
-
-  quickAction: {
-    flex: 1,
-    backgroundColor: "#0D263D",
+  // ── Empty Card ──
+  emptyCard: {
     borderWidth: 1,
-    borderColor: "#23415A",
-    borderRadius: 15,
-    padding: 13,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  actionIconBlue: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(37, 99, 235, 0.16)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 9,
-  },
-
-  actionIconTeal: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(20, 184, 166, 0.13)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 9,
-  },
-
-  actionIconText: {
-    color: "#60A5FA",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-
-  actionTitle: {
-    color: "#F8FAFC",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-
-  actionSubtitle: {
-    color: "#64748B",
-    fontSize: 9,
-    marginTop: 3,
-  },
-
-  /* ---------- SECTION ---------- */
-
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginBottom: 13,
-  },
-
-  sectionEyebrow: {
-    color: "#64748B",
-    fontSize: 8,
-    fontWeight: "800",
-    letterSpacing: 1.4,
-    marginBottom: 4,
-  },
-
-  sectionTitle: {
-    color: "#F8FAFC",
-    fontSize: 19,
-    fontWeight: "800",
-  },
-
-  refreshButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingBottom: 2,
-  },
-
-  refreshIcon: {
-    color: "#14B8A6",
-    fontSize: 16,
-    marginRight: 4,
-  },
-
-  refreshText: {
-    color: "#60A5FA",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-
-  /* ---------- INSPECTION CARD ---------- */
-
-  inspectionCard: {
-    backgroundColor: "#0D263D",
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "#23415A",
-    padding: 15,
-    marginBottom: 11,
-  },
-
-  inspectionCardPressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.99 }],
-  },
-
-  inspectionTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  typeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-
-  typeTag: {
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-  },
-
-  routineTag: {
-    backgroundColor: "rgba(37, 99, 235, 0.15)",
-  },
-
-  surpriseTag: {
-    backgroundColor: "rgba(239, 68, 68, 0.14)",
-  },
-
-  typeTagText: {
-    fontSize: 8,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-  },
-
-  routineText: {
-    color: "#60A5FA",
-  },
-
-  surpriseText: {
-    color: "#FCA5A5",
-  },
-
-  projectCode: {
-    color: "#64748B",
-    fontSize: 10,
-    fontFamily: "monospace",
-    marginLeft: 8,
-  },
-
-  statusPill: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-
-  statusText: {
-    fontSize: 8,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-
-  status_assigned: {
-    backgroundColor: "#1E3348",
-  },
-
-  status_in_progress: {
-    backgroundColor: "rgba(34, 197, 94, 0.13)",
-  },
-
-  status_submitted: {
-    backgroundColor: "rgba(168, 85, 247, 0.13)",
-  },
-
-  status_findings: {
-    backgroundColor: "rgba(245, 158, 11, 0.13)",
-  },
-
-  status_closed: {
-    backgroundColor: "rgba(20, 184, 166, 0.13)",
-  },
-
-  statusAssignedText: {
-    color: "#CBD5E1",
-  },
-
-  statusProgressText: {
-    color: "#86EFAC",
-  },
-
-  statusSubmittedText: {
-    color: "#D8B4FE",
-  },
-
-  statusFindingsText: {
-    color: "#FCD34D",
-  },
-
-  statusClosedText: {
-    color: "#5EEAD4",
-  },
-
-  projectName: {
-    color: "#F8FAFC",
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: 14,
-    lineHeight: 21,
-  },
-
-  idRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-  },
-
-  idLabel: {
-    color: "#526B80",
-    fontSize: 7,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginRight: 7,
-  },
-
-  idValue: {
-    color: "#64748B",
-    fontSize: 9,
-    fontFamily: "monospace",
-  },
-
-  inspectionDivider: {
-    height: 1,
-    backgroundColor: "#1B3A53",
-    marginVertical: 13,
-  },
-
-  inspectionBottomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  dateLabel: {
-    color: "#526B80",
-    fontSize: 7,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-
-  dateValue: {
-    color: "#CBD5E1",
-    fontSize: 10,
-    marginTop: 3,
-  },
-
-  openFileButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(37, 99, 235, 0.12)",
     borderRadius: 8,
-    paddingHorizontal: 9,
-    paddingVertical: 7,
+    paddingVertical: 28,
+    alignItems: "center",
+    gap: 8,
   },
-
-  openFileText: {
-    color: "#60A5FA",
-    fontSize: 9,
-    fontWeight: "700",
-  },
-
-  openFileArrow: {
-    color: "#60A5FA",
+  emptyCardText: {
     fontSize: 13,
-    marginLeft: 5,
+    fontWeight: "500",
   },
-
-  /* ---------- EMPTY ---------- */
-
-  emptyBox: {
+  // ── Nav Card ──
+  navCard: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 25,
-    paddingVertical: 55,
-  },
-
-  emptyIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 17,
-    backgroundColor: "#0D263D",
     borderWidth: 1,
-    borderColor: "#23415A",
+    borderRadius: 8,
+    padding: 12,
+    gap: 10,
+  },
+  navIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 15,
   },
-
-  emptyIconText: {
-    color: "#14B8A6",
-    fontSize: 24,
+  navCardContent: {
+    flex: 1,
+    gap: 2,
   },
-
-  emptyTitle: {
-    color: "#F8FAFC",
-    fontSize: 15,
+  navCardTitle: {
+    fontSize: 14,
     fontWeight: "700",
   },
-
-  emptyText: {
-    color: "#64748B",
-    fontSize: 11,
-    textAlign: "center",
-    lineHeight: 17,
-    marginTop: 7,
+  navCardSub: {
+    fontSize: 12,
   },
-
-  emptyButton: {
-    backgroundColor: "#2563EB",
-    borderRadius: 10,
-    paddingHorizontal: 17,
+  // ── Sync Row ──
+  syncRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    marginTop: 17,
   },
-
-  emptyButtonText: {
+  syncLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  syncText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  syncBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    minWidth: 72,
+    alignItems: "center",
+  },
+  syncBtnText: {
     color: "#FFFFFF",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
   },
 });
-
-const queue = new OfflineInspectionQueue();
-
-function getStatusStyle(status: string) {
-  switch (status) {
-    case "in_progress":
-      return styles.status_in_progress;
-
-    case "submitted":
-      return styles.status_submitted;
-
-    case "findings":
-      return styles.status_findings;
-
-    case "closed":
-      return styles.status_closed;
-
-    default:
-      return styles.status_assigned;
-  }
-}
-
-function getStatusTextStyle(status: string) {
-  switch (status) {
-    case "in_progress":
-      return styles.statusProgressText;
-
-    case "submitted":
-      return styles.statusSubmittedText;
-
-    case "findings":
-      return styles.statusFindingsText;
-
-    case "closed":
-      return styles.statusClosedText;
-
-    default:
-      return styles.statusAssignedText;
-  }
-}

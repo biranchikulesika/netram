@@ -2,7 +2,6 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,276 +12,208 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { loginAsInspector, loginOfflineDemo } from "../src/auth/session";
+import { useAuth } from "../src/auth/auth-context";
+import { Icon, NetramLogo } from "../src/components/ui";
 import { colors, typography } from "../src/theme/colors";
-
-const PRESET_INSPECTORS = [
-  { label: "Inspector 1", email: "inspector.one@dev.netram.in" },
-  { label: "Inspector 2", email: "inspector.two@dev.netram.in" },
-  { label: "Inspector 3", email: "inspector.three@dev.netram.in" },
-];
+import { useSettings } from "../src/theme/settings-context";
+import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState("inspector.one@dev.netram.in");
-  const [passcode, setPasscode] = useState("******");
-  const [apiUrl, setApiUrl] = useState("http://localhost:3001");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showForgotInfo, setShowForgotInfo] = useState(false);
-  const [showPin, setShowPin] = useState(false);
-  const [rememberId, setRememberId] = useState(true);
-  const [biometricBusy, setBiometricBusy] = useState(false);
+  const { login } = useAuth();
+  const { theme, isPureDark } = useSettings();
+
+  const [officerId, setOfficerId] = useState("DOSJE-INSP-2024-8842");
+  const [password, setPassword] = useState("123456");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleBiometricLogin = async () => {
-    setBiometricBusy(true);
-    setErrorMessage(null);
-    try {
-      // Simulate biometric sensor read & verification
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      loginOfflineDemo(email.trim() || "inspector.one@dev.netram.in");
-      router.replace("/");
-    } catch {
-      setErrorMessage("Biometric sensor verification failed. Please enter your PIN.");
-    } finally {
-      setBiometricBusy(false);
-    }
-  };
+  const clearError = () => setErrorMessage(null);
 
-  const handleLogin = async (useOfflineFallback = false) => {
-    if (!email.trim()) {
-      setErrorMessage("Please enter an official inspector email.");
+  const handleLogin = async () => {
+    const trimmed = officerId.trim();
+    if (!trimmed) {
+      setErrorMessage("Please enter your Officer ID.");
+      return;
+    }
+    if (!password) {
+      setErrorMessage("Please enter your password.");
       return;
     }
 
     setBusy(true);
-    setErrorMessage(null);
-
-    if (useOfflineFallback) {
-      try {
-        loginOfflineDemo(email.trim());
-        router.replace("/");
-      } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : String(err));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-
+    clearError();
     try {
-      await loginAsInspector(email.trim(), apiUrl.trim());
+      let targetUser = trimmed;
+      if (
+        trimmed.toUpperCase() === "DOSJE-INSP-2024-8842" ||
+        trimmed.toLowerCase().includes("insp-001") ||
+        trimmed.toLowerCase().includes("inspector.one")
+      ) {
+        targetUser = "inspector.one@dev.netram.in";
+      } else if (
+        trimmed.toLowerCase().includes("insp-002") ||
+        trimmed.toLowerCase().includes("inspector.two")
+      ) {
+        targetUser = "inspector.two@dev.netram.in";
+      }
+
+      await login(targetUser, password);
+      await seedDemoDataIfEmpty();
       router.replace("/");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMessage(`Live sign-in failed: ${msg}. You can tap "Sign In (Offline Mode)" if the backend is not running.`);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bgCanvas }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardContainer}
+        style={[styles.flex, { backgroundColor: theme.bgCanvas }]}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.card}>
-            {/* Header / Emblem */}
-            <View style={styles.header}>
-              <Image
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                source={require("../assets/ashoka_stambh.png")}
-                style={styles.ashokaStambh}
-                resizeMode="contain"
-              />
-              <View style={styles.badgeRow}>
-                <Text style={styles.emblemBadge}>DOSJE • GOVT OF INDIA</Text>
-                <Text style={styles.securityBadge}>SECURE TERMINAL</Text>
-              </View>
-              <Text style={styles.title}>NETRAM</Text>
-              <Text style={styles.subtitle}>Field Inspection &amp; Evidence Terminal</Text>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.bgCanvas }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.container, { backgroundColor: theme.bgCanvas }]}>
+            {/* ── Official Header ── */}
+            <View style={styles.headerArea}>
+              <NetramLogo width={160} height={48} />
+              <Text style={[styles.govSubtext, { color: theme.textMuted }]}>
+                Ministry of Social Justice & Empowerment
+              </Text>
             </View>
 
-            {/* Presets Chips */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Select Inspector</Text>
-              <View style={styles.chipRow}>
-                {PRESET_INSPECTORS.map((preset) => {
-                  const isSelected = email === preset.email;
-                  return (
-                    <Pressable
-                      key={preset.email}
-                      style={[styles.chip, isSelected && styles.chipActive]}
-                      onPress={() => {
-                        setEmail(preset.email);
-                        setErrorMessage(null);
-                      }}
-                    >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                        {preset.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+            {/* ── Title ── */}
+            <View style={styles.titleSection}>
+              <Text style={[styles.pageTitle, { color: theme.navyDark }]}>Officer Login</Text>
             </View>
 
-            {/* Form Fields */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Official Email / Inspector ID</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  setErrorMessage(null);
-                }}
-                placeholder="e.g. inspector.one@dev.netram.in"
-                placeholderTextColor={colors.textSubtle}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Passcode / PIN</Text>
-                <Pressable onPress={() => setShowForgotInfo((prev) => !prev)}>
-                  <Text style={styles.forgotLink}>Forgot PIN?</Text>
-                </Pressable>
+            {/* ── Error Banner ── */}
+            {errorMessage && (
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: theme.errorBg,
+                    borderColor: theme.errorBorder,
+                  },
+                ]}
+              >
+                <Icon name="alert-circle" size={16} color={theme.error} />
+                <Text style={[styles.errorText, { color: theme.error }]}>{errorMessage}</Text>
               </View>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  value={passcode}
-                  onChangeText={setPasscode}
-                  placeholder="Enter field PIN"
-                  placeholderTextColor={colors.textSubtle}
-                  secureTextEntry={!showPin}
-                  keyboardType="numeric"
-                />
-                <Pressable
-                  style={styles.eyeButton}
-                  onPress={() => setShowPin((prev) => !prev)}
-                  hitSlop={10}
-                  accessibilityLabel={showPin ? "Hide PIN" : "Show PIN"}
-                >
-                  <View style={styles.eyeContainer}>
-                    <Text style={styles.eyeIcon}>👁️</Text>
-                    {!showPin && <View style={styles.eyeSlash} />}
-                  </View>
-                </Pressable>
-              </View>
-            </View>
+            )}
 
-            {/* Remember ID Checkbox */}
-            <Pressable
-              style={styles.checkboxRow}
-              onPress={() => setRememberId((prev) => !prev)}
+            {/* ── Authentication Box ── */}
+            <View
+              style={[
+                styles.authCard,
+                {
+                  backgroundColor: theme.bgSurface,
+                  borderColor: theme.borderSubtle,
+                },
+              ]}
             >
-              <View style={[styles.checkbox, rememberId && styles.checkboxChecked]}>
-                {rememberId && <Text style={styles.checkmark}>✓</Text>}
+              {/* Field 1: Officer ID */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.label, { color: theme.textPrimary }]}>Officer ID</Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    {
+                      backgroundColor: isPureDark ? theme.bgSubtle : theme.bgSurface,
+                      borderColor: theme.borderStrong,
+                    },
+                  ]}
+                >
+                  <Icon name="card-outline" size={18} color={theme.textMuted} />
+                  <TextInput
+                    style={[styles.inputMono, { color: theme.textPrimary }]}
+                    value={officerId}
+                    onChangeText={(text) => {
+                      setOfficerId(text);
+                      clearError();
+                    }}
+                    placeholder="e.g. DOSJE-INSP-2024-8842"
+                    placeholderTextColor={theme.textMuted}
+                    autoCapitalize="characters"
+                    editable={!busy}
+                  />
+                </View>
               </View>
-              <Text style={styles.checkboxLabel}>Remember Inspector ID on this terminal</Text>
-            </Pressable>
 
-            {showForgotInfo && (
-              <View style={styles.infoBox}>
-                <View style={styles.infoBoxHeader}>
-                  <Text style={styles.infoBoxTitle}>🔐 PIN Reset Assistance</Text>
-                  <Pressable onPress={() => setShowForgotInfo(false)}>
-                    <Text style={styles.infoBoxClose}>✕</Text>
+              {/* Field 2: Password */}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.label, { color: theme.textPrimary }]}>Password</Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    {
+                      backgroundColor: isPureDark ? theme.bgSubtle : theme.bgSurface,
+                      borderColor: theme.borderStrong,
+                    },
+                  ]}
+                >
+                  <Icon name="key-outline" size={18} color={theme.textMuted} />
+                  <TextInput
+                    style={[styles.input, { color: theme.textPrimary }]}
+                    value={password}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      clearError();
+                    }}
+                    placeholder="Enter your password"
+                    placeholderTextColor={theme.textMuted}
+                    secureTextEntry={!showPassword}
+                    editable={!busy}
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword((prev) => !prev)}
+                    hitSlop={10}
+                    style={styles.eyeButton}
+                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <Icon
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={theme.textMuted}
+                    />
                   </Pressable>
                 </View>
-                <Text style={styles.infoBoxText}>
-                  For institutional security, field terminal PINs are authenticated by your District Officer. Contact your district IT coordinator at{" "}
-                  <Text style={{ fontWeight: "700" }}>admin.social@dev.netram.in</Text> to re-issue credentials.
-                </Text>
               </View>
-            )}
 
-            {/* Advanced API Config Toggle */}
-            <Pressable
-              onPress={() => setShowAdvanced((prev) => !prev)}
-              style={styles.advancedToggle}
-            >
-              <Text style={styles.advancedToggleText}>
-                {showAdvanced ? "▾ Hide Server URL" : "▸ Advanced Server Settings"}
-              </Text>
-            </Pressable>
-
-            {showAdvanced && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Backend API Endpoint</Text>
-                <TextInput
-                  style={styles.input}
-                  value={apiUrl}
-                  onChangeText={setApiUrl}
-                  placeholder="http://localhost:3001"
-                  placeholderTextColor={colors.textSubtle}
-                  autoCapitalize="none"
-                />
-              </View>
-            )}
-
-            {/* Error Display */}
-            {errorMessage && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
-              </View>
-            )}
-
-            {/* Actions */}
-            <View style={styles.actionContainer}>
+              {/* Submit Button */}
               <Pressable
-                style={[styles.primaryButton, busy && styles.buttonDisabled]}
-                onPress={() => handleLogin(false)}
-                disabled={busy || biometricBusy}
+                style={({ pressed }) => [
+                  styles.signInButton,
+                  { backgroundColor: theme.actionGreen },
+                  pressed && { opacity: 0.9, backgroundColor: theme.actionGreenDark },
+                  busy && styles.signInButtonDisabled,
+                ]}
+                onPress={handleLogin}
+                disabled={busy}
               >
                 {busy ? (
-                  <ActivityIndicator color={colors.textInverse} size="small" />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Sign In to Terminal</Text>
+                  <>
+                    <Icon name="lock-closed" size={18} color="#FFFFFF" />
+                    <Text style={styles.signInButtonText}>Sign In</Text>
+                  </>
                 )}
-              </Pressable>
-
-              <Pressable
-                style={[styles.biometricButton, (busy || biometricBusy) && styles.buttonDisabled]}
-                onPress={handleBiometricLogin}
-                disabled={busy || biometricBusy}
-              >
-                {biometricBusy ? (
-                  <ActivityIndicator color={colors.accentBlue} size="small" />
-                ) : (
-                  <Text style={styles.biometricButtonText}>👆 Biometric Quick-Login (Fingerprint)</Text>
-                )}
-              </Pressable>
-
-              <Pressable
-                style={[styles.secondaryButton, busy && styles.buttonDisabled]}
-                onPress={() => handleLogin(true)}
-                disabled={busy || biometricBusy}
-              >
-                <Text style={styles.secondaryButtonText}>⚡ Continue in Offline Mode</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.registerLink}
-                onPress={() => router.push("/signup")}
-              >
-                <Text style={styles.registerLinkText}>
-                  New Field Inspector? <Text style={styles.registerLinkBold}>Register Terminal</Text>
-                </Text>
               </Pressable>
             </View>
 
-            {/* Security Notice */}
-            <View style={styles.footerNotice}>
-              <Text style={styles.footerNoticeText}>
-                🛡️ Tamper-evident logging, GPS geo-stamping, and offline SHA-256 evidence hashing enabled.
+            {/* ── Official Footer ── */}
+            <View style={styles.footerArea}>
+              <Text style={[styles.footerText, { color: theme.textMuted }]}>
+                Government of India
               </Text>
             </View>
           </View>
@@ -295,350 +226,136 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.bgCanvas,
   },
-  keyboardContainer: {
+  flex: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingTop: 32,
+    paddingBottom: 32,
     alignItems: "center",
-    padding: 20,
   },
-  card: {
+  container: {
     width: "100%",
-    maxWidth: 440,
-    backgroundColor: colors.bgSurface,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: colors.navyBrand,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    maxWidth: 400,
   },
-  header: {
+  headerArea: {
     alignItems: "center",
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-  },
-  ashokaStambh: {
-    width: 48,
-    height: 72,
-    tintColor: colors.gold,
-    marginBottom: 10,
-  },
-  badgeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 10,
-  },
-  emblemBadge: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.goldDark,
-    backgroundColor: "#fef3c7",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#fde68a",
-    fontFamily: typography.mono,
-    letterSpacing: 0.5,
-  },
-  securityBadge: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.actionGreen,
-    backgroundColor: "#dcfce7",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#bbf7d0",
-    fontFamily: typography.mono,
-    letterSpacing: 0.5,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "900",
-    color: colors.textPrimary,
-    letterSpacing: 2,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 4,
-    textAlign: "center",
-  },
-  section: {
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.accentBlue,
-    marginBottom: 8,
-    textTransform: "uppercase",
-    fontFamily: typography.mono,
-    letterSpacing: 0.8,
-  },
-  chipRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  chip: {
-    flex: 1,
-    backgroundColor: colors.bgSubtle,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  chipActive: {
-    backgroundColor: colors.navyBrand,
-    borderColor: colors.accentBlue,
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.textMuted,
-  },
-  chipTextActive: {
-    color: colors.textInverse,
-  },
-  formGroup: {
-    marginBottom: 14,
-  },
-  labelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  forgotLink: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.accentBlue,
-  },
-  infoBox: {
-    backgroundColor: colors.bgSubtle,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
-  },
-  infoBoxHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 4,
   },
-  infoBoxTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  infoBoxClose: {
+  govSubtext: {
     fontSize: 13,
-    fontWeight: "700",
-    color: colors.textSubtle,
-    padding: 2,
-  },
-  infoBoxText: {
-    fontSize: 11,
+    fontWeight: "500",
     color: colors.textMuted,
-    lineHeight: 16,
+    textAlign: "center",
+    marginTop: 8,
   },
-  input: {
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: colors.textPrimary,
-    fontSize: 14,
+  titleSection: {
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 16,
   },
-  advancedToggle: {
-    marginVertical: 6,
-  },
-  advancedToggleText: {
-    fontSize: 12,
-    color: colors.accentBlue,
-    fontWeight: "600",
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.navyDark,
   },
   errorBox: {
     backgroundColor: colors.errorBg,
+    borderRadius: 6,
+    borderWidth: 1,
     borderColor: colors.errorBorder,
-    borderWidth: 1,
-    borderRadius: 8,
     padding: 10,
-    marginBottom: 14,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  actionContainer: {
-    gap: 10,
-    marginTop: 8,
-  },
-  primaryButton: {
-    backgroundColor: colors.actionGreen,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    shadowColor: colors.actionGreenDark,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  primaryButtonText: {
-    color: colors.textInverse,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    backgroundColor: colors.bgSubtle,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  secondaryButtonText: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  registerLink: {
-    alignItems: "center",
-    paddingVertical: 8,
-    marginTop: 2,
-  },
-  registerLinkText: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  registerLinkBold: {
-    color: colors.accentBlue,
-    fontWeight: "700",
-  },
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 8,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
-  eyeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  eyeContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  eyeIcon: {
-    fontSize: 16,
-  },
-  eyeSlash: {
-    position: "absolute",
-    width: 20,
-    height: 2,
-    backgroundColor: colors.textSubtle,
-    borderRadius: 1,
-    transform: [{ rotate: "-45deg" }],
-  },
-  checkboxRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginBottom: 14,
-    marginTop: 2,
   },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 1.5,
+  errorText: {
+    flex: 1,
+    color: colors.error,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  authCard: {
+    backgroundColor: colors.bgSurface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: 24,
+    marginBottom: 24,
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  inputRow: {
+    backgroundColor: colors.bgSurface,
+    borderWidth: 1,
     borderColor: colors.borderStrong,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  input: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  inputMono: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 13,
+    fontFamily: typography.mono,
+    fontWeight: "500",
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  eyeButton: {
+    padding: 4,
+  },
+  signInButton: {
+    backgroundColor: colors.actionGreen,
+    borderRadius: 8,
+    height: 48,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.bgSurface,
+    gap: 8,
+    marginTop: 8,
   },
-  checkboxChecked: {
-    backgroundColor: colors.actionGreen,
-    borderColor: colors.actionGreen,
+  signInButtonPressed: {
+    opacity: 0.9,
+    backgroundColor: colors.actionGreenDark,
   },
-  checkmark: {
+  signInButtonDisabled: {
+    opacity: 0.6,
+  },
+  signInButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
     color: colors.textInverse,
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 14,
   },
-  checkboxLabel: {
+  footerArea: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  footerText: {
     fontSize: 12,
     color: colors.textMuted,
-    fontWeight: "500",
-  },
-  biometricButton: {
-    backgroundColor: "#eff6ff",
-    paddingVertical: 11,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
-  },
-  biometricButtonText: {
-    color: colors.accentBlue,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  footerNotice: {
-    marginTop: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
-  },
-  footerNoticeText: {
-    fontSize: 11,
-    color: colors.textSubtle,
     textAlign: "center",
-    lineHeight: 15,
-    fontFamily: typography.mono,
   },
 });
-

@@ -1,100 +1,50 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  type ReactNode,
-} from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Tabs } from "expo-router";
 import { Platform } from "react-native";
-import { NetramApiClient } from "@netram/api-client";
-import { loadMobileEnv } from "@netram/config/env/mobile";
+import { Icon } from "../src/components/ui/Icon";
+import { colors } from "../src/theme/colors";
 
 import SplashScreen from "./SplashScreen";
-import LoginScreen from "./LoginScreen";
+import LoginScreen from "./login";
+import { SyncStatusProvider } from "../src/offline/sync-context";
 
-interface AuthContextValue {
-  token: string | null;
-  client: NetramApiClient | null;
-  user: { email: string } | null;
-  login: (email: string) => Promise<void>;
-}
+import {
+  SessionProvider,
+  AuthProvider,
+  useAuth,
+  type AuthContextValue,
+} from "../src/auth/auth-context";
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export { SessionProvider, AuthProvider, useAuth, type AuthContextValue };
 
-export const AuthProvider = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<{ email: string } | null>(null);
-
-  const apiBase =
-    Platform.OS === "web"
-      ? "http://localhost:3001"
-      : loadMobileEnv().EXPO_PUBLIC_API_URL;
-
-  const client = token
-    ? new NetramApiClient({
-      baseUrl: apiBase,
-      getToken: () => token,
-    })
-    : null;
-
-  const login = async (email: string) => {
-    const api = new NetramApiClient({
-      baseUrl: apiBase,
-    });
-
-    const result = await api.devLogin(email);
-
-    setToken(result.token);
-    setUser(result.user);
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        token,
-        client,
-        user,
-        login,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-
-  if (!ctx) {
-    throw new Error("AuthContext not provided");
-  }
-
-  return ctx;
-};
+import { SettingsProvider, useSettings } from "../src/theme/settings-context";
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootContent />
-    </AuthProvider>
+    <SessionProvider>
+      <SettingsProvider>
+        <SyncStatusWrapper>
+          <RootContent />
+        </SyncStatusWrapper>
+      </SettingsProvider>
+    </SessionProvider>
   );
+}
+
+function SyncStatusWrapper({ children }: { children: ReactNode }) {
+  const { client } = useAuth();
+  return <SyncStatusProvider client={client}>{children}</SyncStatusProvider>;
 }
 
 const RootContent = () => {
   const { token } = useAuth();
-
+  const { isPureDark } = useSettings();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1500);
+    }, 1200);
 
     return () => clearTimeout(timer);
   }, []);
@@ -102,7 +52,6 @@ const RootContent = () => {
   // -------------------------
   // SPLASH
   // -------------------------
-
   if (showSplash) {
     return <SplashScreen />;
   }
@@ -110,7 +59,6 @@ const RootContent = () => {
   // -------------------------
   // LOGIN
   // -------------------------
-
   if (!token) {
     return <LoginScreen />;
   }
@@ -118,103 +66,159 @@ const RootContent = () => {
   // -------------------------
   // MAIN APP
   // -------------------------
-
   return (
     <Tabs
       screenOptions={{
         headerStyle: {
-          backgroundColor: "#071A2B",
+          backgroundColor: isPureDark ? "#0A0A0A" : (colors?.bgSurface ?? "#ffffff"),
+          borderBottomColor: isPureDark ? "#27272A" : (colors?.borderSubtle ?? "#e2e8f0"),
+          borderBottomWidth: 1,
         },
-
-        headerTintColor: "#F8FAFC",
-
+        headerTintColor: isPureDark ? "#FFFFFF" : (colors?.navyDark ?? "#002449"),
         headerTitleStyle: {
           fontWeight: "700",
+          fontSize: 17,
         },
-
         tabBarStyle: {
-          backgroundColor: "#0D263D",
-          borderTopColor: "#23415A",
+          backgroundColor: isPureDark ? "#0A0A0A" : (colors?.bgSurface ?? "#ffffff"),
+          borderTopColor: isPureDark ? "#27272A" : (colors?.borderSubtle ?? "#e2e8f0"),
+          borderTopWidth: 1,
+          height: Platform.OS === "web" ? 56 : 64,
+          paddingTop: 4,
+          paddingBottom: Platform.OS === "web" ? 4 : 8,
+          elevation: 0,
         },
-
-        tabBarActiveTintColor: "#2563EB",
-
-        tabBarInactiveTintColor: "#94A3B8",
-
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: isPureDark ? "#3B82F6" : (colors?.navyDark ?? "#002449"),
+        tabBarInactiveTintColor: isPureDark ? "#71717A" : (colors?.textSubtle ?? "#64748b"),
+        tabBarItemStyle: {
+          justifyContent: "center",
+          alignItems: "center",
+          paddingVertical: 2,
+        },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: "600",
+          letterSpacing: 0.2,
+          marginTop: 1,
+          marginBottom: 0,
         },
-
         tabBarHideOnKeyboard: true,
       }}
     >
-      {/* HOME */}
-
+      {/* 1: DASHBOARD */}
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Dashboard",
           headerShown: false,
-          tabBarLabel: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          tabBarLabel: "Dashboard",
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              name={focused ? "grid" : "grid-outline"}
+              size={20}
+              color={color}
+            />
           ),
         }}
       />
 
-      {/* INSPECTIONS */}
-
+      {/* 2: INSPECTIONS */}
       <Tabs.Screen
         name="inspections"
         options={{
           title: "Inspections",
           headerShown: false,
           tabBarLabel: "Inspections",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="clipboard-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              name={focused ? "list" : "list-outline"}
+              size={20}
+              color={color}
+            />
           ),
         }}
       />
-      {/* SYNC */}
 
+      {/* 3: MAP (Check-in) */}
       <Tabs.Screen
-        name="sync"
+        name="check-in"
         options={{
-          title: "Sync Center",
+          title: "Map",
           headerShown: false,
-          tabBarLabel: "Sync",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sync-outline" size={size} color={color} />
+          tabBarLabel: "Map",
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              name={focused ? "navigate" : "navigate-outline"}
+              size={20}
+              color={color}
+            />
           ),
         }}
       />
 
-      {/* PROFILE */}
+      {/* 4: HISTORY */}
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "History",
+          headerShown: false,
+          tabBarLabel: "History",
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              name={focused ? "time" : "time-outline"}
+              size={20}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      {/* 5: CALLS */}
+      <Tabs.Screen
+        name="videocall"
+        options={{
+          title: "Calls",
+          headerShown: false,
+          tabBarLabel: "Calls",
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              name={focused ? "videocam" : "videocam-outline"}
+              size={22}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      {/* INTERNAL / HIDDEN ROUTES */}
 
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          href: null,
           headerShown: false,
-          tabBarLabel: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
         }}
       />
 
-      {/* INTERNAL ROUTES */}
-
       <Tabs.Screen
-        name="check-in"
+        name="settings"
         options={{
           href: null,
+          headerShown: false,
         }}
       />
 
       <Tabs.Screen
-        name="LoginScreen"
+        name="sync"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+
+      <Tabs.Screen
+        name="notifications"
         options={{
           href: null,
         }}
@@ -222,13 +226,6 @@ const RootContent = () => {
 
       <Tabs.Screen
         name="login"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="signup"
         options={{
           href: null,
         }}
