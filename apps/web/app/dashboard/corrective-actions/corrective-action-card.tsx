@@ -48,7 +48,13 @@ export function getSeverityStyle(severity: string): { bg: string; color: string;
   }
 }
 
-export function CorrectiveActionCard({ ca }: { ca: CorrectiveAction }) {
+export function CorrectiveActionCard({
+  ca,
+  showProjectInfo = true,
+}: {
+  ca: CorrectiveAction;
+  showProjectInfo?: boolean;
+}) {
   const statusMeta = getStatusBadge(ca.status);
   const findingMeta = getSeverityStyle(ca.finding?.severity ?? "low");
   const findingLabel =
@@ -103,18 +109,20 @@ export function CorrectiveActionCard({ ca }: { ca: CorrectiveAction }) {
               </span>
             </dd>
           </div>
-          <div className="facility-card-meta-item">
-            <dt title="Facility" aria-label="Facility">
-              <IconBuilding className="meta-label-icon" />
-            </dt>
-            {ca.project ? (
-              <dd title={`${ca.project.name} (${ca.project.code})`}>
-                {ca.project.name} ({ca.project.code})
-              </dd>
-            ) : (
-              <dd className="meta-placeholder">No facility linked</dd>
-            )}
-          </div>
+          {showProjectInfo && (
+            <div className="facility-card-meta-item">
+              <dt title="Facility" aria-label="Facility">
+                <IconBuilding className="meta-label-icon" />
+              </dt>
+              {ca.project ? (
+                <dd title={`${ca.project.name} (${ca.project.code})`}>
+                  {ca.project.name} ({ca.project.code})
+                </dd>
+              ) : (
+                <dd className="meta-placeholder">No facility linked</dd>
+              )}
+            </div>
+          )}
           <div className="facility-card-meta-item">
             <dt title="District jurisdiction" aria-label="District jurisdiction">
               <IconGavel className="meta-label-icon" />

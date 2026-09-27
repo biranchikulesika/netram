@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ProjectStatus } from "@netram/types";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -12,6 +13,7 @@ import {
   IconVideo,
   IconIndianRupee,
 } from "../../../components/icons";
+import { TransitionButton } from "./transition-button";
 
 interface FacilityNavItem {
   href: string;
@@ -24,6 +26,7 @@ interface FacilityNavItem {
 interface FacilityNavProps {
   projectId: string;
   permissions: string[];
+  currentStatus?: ProjectStatus;
 }
 
 /**
@@ -36,9 +39,15 @@ interface FacilityNavProps {
  * the corresponding page never fetches the data at all (§34 — omission, not
  * hiding).
  */
-export function FacilityNav({ projectId, permissions }: FacilityNavProps) {
+export function FacilityNav({ projectId, permissions, currentStatus }: FacilityNavProps) {
   const pathname = usePathname();
   const base = `/dashboard/projects/${projectId}`;
+
+  const canTransition =
+    Boolean(currentStatus) &&
+    (permissions.includes("project:transition") ||
+      permissions.includes("project:approve") ||
+      permissions.includes("*"));
 
   // Tab order follows the facility lifecycle: identity → money →
   // oversight (inspections, remediation, grievances) → daily operations →
@@ -78,20 +87,27 @@ export function FacilityNav({ projectId, permissions }: FacilityNavProps) {
 
   return (
     <nav className="facility-nav" aria-label="Facility sections">
-      {visible.map((item) => {
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`facility-nav-link ${isActive(item.href) ? "active" : ""}`}
-            aria-current={isActive(item.href) ? "page" : undefined}
-          >
-            <Icon width={13} height={13} />
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
+      <div className="facility-nav-links">
+        {visible.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`facility-nav-link ${isActive(item.href) ? "active" : ""}`}
+              aria-current={isActive(item.href) ? "page" : undefined}
+            >
+              <Icon width={13} height={13} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+      {canTransition && currentStatus && (
+        <div className="facility-nav-transition">
+          <TransitionButton projectId={projectId} currentStatus={currentStatus} />
+        </div>
+      )}
     </nav>
   );
 }

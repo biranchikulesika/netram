@@ -35,6 +35,9 @@ const CorrectiveActionsMap = dynamic(() => import("./corrective-actions-map"), {
 export interface CorrectiveActionsLayoutProps {
   initialActions: CorrectiveAction[];
   totalActions: number;
+  showMap?: boolean;
+  showProjectInfo?: boolean;
+  searchPlaceholder?: string;
 }
 
 type StatusFilter = "ALL" | "PENDING" | "IN_REVIEW" | "OVERDUE" | "ACCEPTED";
@@ -51,11 +54,18 @@ function matchesFilter(a: CorrectiveAction, filter: StatusFilter): boolean {
 export function CorrectiveActionsLayout({
   initialActions,
   totalActions: _totalActions,
+  showMap = true,
+  showProjectInfo = true,
+  searchPlaceholder,
 }: CorrectiveActionsLayoutProps) {
-  const [actionsList] = useState<CorrectiveAction[]>(initialActions);
+  const [actionsList, setActionsList] = useState<CorrectiveAction[]>(initialActions);
   const [filter, setFilter] = useState<StatusFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+
+  React.useEffect(() => {
+    setActionsList(initialActions);
+  }, [initialActions]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -122,7 +132,12 @@ export function CorrectiveActionsLayout({
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
             <input
               type="search"
-              placeholder="Search by action ID, finding ID, ATR code, facility…"
+              placeholder={
+                searchPlaceholder ??
+                (showProjectInfo
+                  ? "Search by action ID, finding ID, ATR code, facility…"
+                  : "Search by action ID, finding ID, ATR code…")
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input-with-icon"
@@ -167,15 +182,17 @@ export function CorrectiveActionsLayout({
               <IconGrid style={{ width: 14, height: 14 }} />
               <span>Cards</span>
             </button>
-            <button
-              type="button"
-              className={`view-btn ${viewMode === "map" ? "active" : ""}`}
-              onClick={() => setViewMode("map")}
-              title="Map"
-            >
-              <IconMapPin style={{ width: 14, height: 14 }} />
-              <span>Map</span>
-            </button>
+            {showMap && (
+              <button
+                type="button"
+                className={`view-btn ${viewMode === "map" ? "active" : ""}`}
+                onClick={() => setViewMode("map")}
+                title="Map"
+              >
+                <IconMapPin style={{ width: 14, height: 14 }} />
+                <span>Map</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -229,9 +246,11 @@ export function CorrectiveActionsLayout({
                           >
                             {findingLabel}
                           </Link>
-                          <div className="muted" style={{ fontSize: "0.72rem" }}>
-                            {ca.project ? `${ca.project.name} (${ca.project.code})` : `Inspection: ${ca.inspectionId.slice(0, 8)}...`}
-                          </div>
+                          {showProjectInfo && (
+                            <div className="muted" style={{ fontSize: "0.72rem" }}>
+                              {ca.project ? `${ca.project.name} (${ca.project.code})` : `Inspection: ${ca.inspectionId.slice(0, 8)}...`}
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -292,7 +311,7 @@ export function CorrectiveActionsLayout({
               {cardColumns.map((column, colIdx) => (
                 <div className="facility-cards-column" key={colIdx}>
                   {column.map((ca) => (
-                    <CorrectiveActionCard ca={ca} key={ca.id} />
+                    <CorrectiveActionCard ca={ca} key={ca.id} showProjectInfo={showProjectInfo} />
                   ))}
                 </div>
               ))}
@@ -302,7 +321,7 @@ export function CorrectiveActionsLayout({
       )}
 
       {/* View: Map */}
-      {viewMode === "map" && (
+      {showMap && viewMode === "map" && (
         <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
           <CorrectiveActionsMap actions={filtered} />
         </div>

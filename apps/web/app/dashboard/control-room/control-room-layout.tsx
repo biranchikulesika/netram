@@ -74,6 +74,10 @@ export function ControlRoomLayout({
     });
   };
 
+  const activeAlertsCount = anomalyList.filter(
+    (a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated",
+  ).length;
+
   const SECTION_TABS: {
     key: ControlRoomTab;
     label: string;
@@ -84,19 +88,19 @@ export function ControlRoomLayout({
       key: "feeds",
       label: "Live Feeds",
       icon: <IconVideo style={{ width: 15, height: 15 }} />,
-      count: 0,
+      count: cameras.length,
     },
     {
       key: "alerts",
       label: "Alerts",
       icon: <IconAlertTriangle style={{ width: 15, height: 15 }} />,
-      count: 0,
+      count: activeAlertsCount,
     },
     {
       key: "status",
       label: "Status",
       icon: <IconBarChart style={{ width: 15, height: 15 }} />,
-      count: 0,
+      count: cameras.length,
     },
   ];
 

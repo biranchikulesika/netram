@@ -22,9 +22,11 @@ import {
   IconRotateCcw,
 } from "../../components/icons";
 
-interface AuditExplorerViewProps {
+export interface AuditExplorerViewProps {
   initialEvents: AuditEvent[];
   initialTotal: number;
+  userNames?: Record<string, string>;
+  headerAction?: React.ReactNode;
 }
 
 type CategoryId =
@@ -99,7 +101,8 @@ export function AuditExplorerView({
   initialEvents,
   initialTotal: _initialTotal,
   userNames,
-}: AuditExplorerViewProps & { userNames?: Record<string, string> }) {
+  headerAction,
+}: AuditExplorerViewProps) {
   const [events] = useState<AuditEvent[]>(initialEvents);
   const [categoryFilter, setCategoryFilter] = useState<CategoryId>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -282,6 +285,8 @@ export function AuditExplorerView({
             marginLeft: "auto",
           }}
         >
+          {headerAction}
+
           {/* Pop-up Date Range Trigger */}
           <button
             type="button"

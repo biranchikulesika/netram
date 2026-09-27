@@ -40,6 +40,9 @@ const ComplaintsMap = dynamic(() => import("./complaints-map"), {
 export interface ComplaintsLayoutProps {
   initialComplaints: Complaint[];
   totalComplaints: number;
+  showMap?: boolean;
+  showProjectInfo?: boolean;
+  searchPlaceholder?: string;
 }
 
 type StatusFilter = "ALL" | "ACTION_REQUIRED" | "ESCALATED" | "RESOLVED";
@@ -65,6 +68,9 @@ function matchesSearch(c: Complaint, q: string): boolean {
 export function ComplaintsLayout({
   initialComplaints,
   totalComplaints: _totalComplaints,
+  showMap = true,
+  showProjectInfo = true,
+  searchPlaceholder,
 }: ComplaintsLayoutProps) {
   const [filter, setFilter] = useState<StatusFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -125,7 +131,12 @@ export function ComplaintsLayout({
             <IconSearch className="search-icon-svg" style={{ width: 16, height: 16 }} />
             <input
               type="search"
-              placeholder="Search by tracking code, facility, keyword…"
+              placeholder={
+                searchPlaceholder ??
+                (showProjectInfo
+                  ? "Search by tracking code, facility, keyword…"
+                  : "Search by tracking code, keyword…")
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input-with-icon"
@@ -170,15 +181,17 @@ export function ComplaintsLayout({
               <IconGrid style={{ width: 14, height: 14 }} />
               <span>Cards</span>
             </button>
-            <button
-              type="button"
-              className={`view-btn ${viewMode === "map" ? "active" : ""}`}
-              onClick={() => setViewMode("map")}
-              title="Map"
-            >
-              <IconMapPin style={{ width: 14, height: 14 }} />
-              <span>Map</span>
-            </button>
+            {showMap && (
+              <button
+                type="button"
+                className={`view-btn ${viewMode === "map" ? "active" : ""}`}
+                onClick={() => setViewMode("map")}
+                title="Map"
+              >
+                <IconMapPin style={{ width: 14, height: 14 }} />
+                <span>Map</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -190,7 +203,7 @@ export function ComplaintsLayout({
             <thead>
               <tr>
                 <th>Tracking Code</th>
-                <th>Facility / Project</th>
+                {showProjectInfo && <th>Facility / Project</th>}
                 <th>Grievance Summary</th>
                 <th>Status</th>
                 <th>Received</th>
@@ -200,7 +213,11 @@ export function ComplaintsLayout({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="muted" style={{ textAlign: "center", padding: "2.5rem" }}>
+                  <td
+                    colSpan={showProjectInfo ? 6 : 5}
+                    className="muted"
+                    style={{ textAlign: "center", padding: "2.5rem" }}
+                  >
                     {emptyState}
                   </td>
                 </tr>
@@ -225,17 +242,19 @@ export function ComplaintsLayout({
                         </Link>
                       </td>
 
-                      <td>
-                        <Link
-                          href={`/dashboard/projects/${c.projectId}`}
-                          style={{ textDecoration: "none", color: "inherit" }}
-                        >
-                          <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{c.projectName}</div>
-                          <div className="muted" style={{ fontSize: "0.75rem" }}>
-                            {c.projectCode}
-                          </div>
-                        </Link>
-                      </td>
+                      {showProjectInfo && (
+                        <td>
+                          <Link
+                            href={`/dashboard/projects/${c.projectId}`}
+                            style={{ textDecoration: "none", color: "inherit" }}
+                          >
+                            <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{c.projectName}</div>
+                            <div className="muted" style={{ fontSize: "0.75rem" }}>
+                              {c.projectCode}
+                            </div>
+                          </Link>
+                        </td>
+                      )}
 
                       <td>
                         <div
@@ -250,11 +269,6 @@ export function ComplaintsLayout({
                         >
                           {c.description}
                         </div>
-                        {c.complainantName && (
-                          <div className="muted" style={{ fontSize: "0.72rem", marginTop: "0.15rem" }}>
-                            By: {c.complainantName}
-                          </div>
-                        )}
                       </td>
 
                       <td>
@@ -320,7 +334,7 @@ export function ComplaintsLayout({
               {cardColumns.map((column, colIdx) => (
                 <div className="facility-cards-column" key={colIdx}>
                   {column.map((c) => (
-                    <ComplaintCard complaint={c} key={c.id} />
+                    <ComplaintCard complaint={c} key={c.id} showProjectInfo={showProjectInfo} />
                   ))}
                 </div>
               ))}
@@ -330,7 +344,7 @@ export function ComplaintsLayout({
       )}
 
       {/* View: Map */}
-      {viewMode === "map" && (
+      {showMap && viewMode === "map" && (
         <div className="map-view-wrapper" style={{ height: "calc(100vh - 205px)", minHeight: "440px" }}>
           <ComplaintsMap complaints={filtered} />
         </div>

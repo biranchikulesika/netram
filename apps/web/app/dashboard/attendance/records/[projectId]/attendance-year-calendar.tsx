@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { AttendanceCalculation } from "@netram/types";
 
@@ -28,6 +28,8 @@ interface AttendanceYearCalendarProps {
   lastYear: number;
   projectName?: string | null;
   projectCode?: string | null;
+  title?: string;
+  hideProjectIdentity?: boolean;
 }
 
 interface Record {
@@ -42,7 +44,15 @@ export function AttendanceYearCalendar({
   lastYear,
   projectName,
   projectCode,
+  title,
+  hideProjectIdentity = false,
 }: AttendanceYearCalendarProps) {
+  const [selectedYear, setSelectedYear] = useState(year);
+
+  useEffect(() => {
+    setSelectedYear(year);
+  }, [year]);
+
   const byDate = useMemo(() => {
     const m = new Map<string, Record>();
     for (const c of calculations) {
@@ -61,18 +71,23 @@ export function AttendanceYearCalendar({
     let recorded = 0;
     let present = 0;
     let absent = 0;
-    for (const r of byDate.values()) {
+    const yearPrefix = `${selectedYear}-`;
+    for (const [date, r] of byDate.entries()) {
+      if (!date.startsWith(yearPrefix)) continue;
       recorded += 1;
       present += r.present;
       absent += r.absent ?? 0;
     }
     const avg = recorded > 0 ? (present / recorded).toFixed(1) : "—";
     return { recorded, present, absent, avg };
-  }, [byDate]);
+  }, [byDate, selectedYear]);
 
   const router = useRouter();
   const pathname = usePathname();
-  const goYear = (target: number) => router.push(`${pathname}?year=${target}`);
+  const goYear = (target: number) => {
+    setSelectedYear(target);
+    router.push(`${pathname}?year=${target}`, { scroll: false });
+  };
 
   const years = Array.from({ length: lastYear - firstYear + 1 }, (_, i) => firstYear + i);
 
@@ -90,30 +105,43 @@ export function AttendanceYearCalendar({
         }}
       >
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "1.15rem",
-              fontWeight: 700,
-              color: "var(--color-navy-brand)",
-            }}
-          >
-            {projectName ?? "Attendance Record"}
-            {projectCode && (
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  color: "var(--text-subtle)",
-                  marginLeft: "0.6rem",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {projectCode}
-              </span>
-            )}
-          </h1>
+          {hideProjectIdentity ? (
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "1.15rem",
+                fontWeight: 700,
+                color: "var(--color-navy-brand)",
+              }}
+            >
+              {title ?? "Attendance Calendar"}
+            </h2>
+          ) : (
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "1.15rem",
+                fontWeight: 700,
+                color: "var(--color-navy-brand)",
+              }}
+            >
+              {title ?? (projectName ?? "Attendance Record")}
+              {projectCode && (
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    color: "var(--text-subtle)",
+                    marginLeft: "0.6rem",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {projectCode}
+                </span>
+              )}
+            </h1>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
@@ -123,8 +151,8 @@ export function AttendanceYearCalendar({
               style={yearArrowStyle}
               title="Previous year"
               aria-label="Previous year"
-              disabled={year <= firstYear}
-              onClick={() => goYear(year - 1)}
+              disabled={selectedYear <= firstYear}
+              onClick={() => goYear(selectedYear - 1)}
             >
               ‹
             </button>
@@ -143,8 +171,8 @@ export function AttendanceYearCalendar({
                   <button
                     key={y}
                     type="button"
-                    style={{ ...yearStripStyle, ...(y === year ? yearStripActiveStyle : {}) }}
-                    aria-pressed={y === year}
+                    style={{ ...yearStripStyle, ...(y === selectedYear ? yearStripActiveStyle : {}) }}
+                    aria-pressed={y === selectedYear}
                     aria-label={`Show ${y} record`}
                     onClick={() => goYear(y)}
                   >
@@ -175,8 +203,8 @@ export function AttendanceYearCalendar({
               style={yearArrowStyle}
               title="Next year"
               aria-label="Next year"
-              disabled={year >= lastYear}
-              onClick={() => goYear(year + 1)}
+              disabled={selectedYear >= lastYear}
+              onClick={() => goYear(selectedYear + 1)}
             >
               ›
             </button>
@@ -189,11 +217,11 @@ export function AttendanceYearCalendar({
         </div>
       </div>
 
-      {/* Year grid: 12 monthly mini-calendars in a 4 x 3 grid */}
+      {/* Year grid: 12 monthly mini-calendars in a responsive grid */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
           gap: "1rem",
         }}
       >
@@ -202,7 +230,7 @@ export function AttendanceYearCalendar({
             key={name}
             name={name}
             monthIdx={monthIdx}
-            year={year}
+            year={selectedYear}
             byDate={byDate}
           />
         ))}

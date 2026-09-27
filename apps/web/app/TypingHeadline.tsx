@@ -13,7 +13,7 @@ export default function TypingHeadline() {
   const [phase, setPhase] = useState<"typing" | "holding" | "deleting">("typing");
 
   useEffect(() => {
-    const currentWord = WORDS[wordIndex];
+    const currentWord = WORDS[wordIndex] ?? "";
 
     if (phase === "typing") {
       if (text.length < currentWord.length) {

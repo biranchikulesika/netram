@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PROJECT_TRANSITIONS } from "@netram/types";
 import type { ProjectStatus } from "@netram/types";
-import { IconChevronRight, IconSettings } from "../../../components/icons";
+import { IconChevronRight, IconSettings, IconAlertTriangle } from "../../../components/icons";
 
-interface TransitionButtonProps {
+export interface TransitionButtonProps {
   projectId: string;
   currentStatus: ProjectStatus;
 }
@@ -30,14 +30,9 @@ const STATUS_NOTES: Record<ProjectStatus, string> = {
 const FORWARD_STATUSES = new Set<ProjectStatus>(["Approved", "Active"]);
 
 /**
- * Lifecycle transition control for the facility status strip. Deliberately
- * unobtrusive (a "⋯" overflow control): a lifecycle transition happens once
- * in the facility's lifetime, so it must not compete with day-to-day readouts.
- * Discoverable via tooltip + aria-label; opens a popover listing only the
- * states the regulatory lifecycle permits from here (§33). Requests are
- * proxied through the Next.js route handler so the httpOnly session token
- * authorizes the call, and the API re-enforces the transition rule
- * server-side.
+ * Lifecycle transition control for the facility banner tab line.
+ * Provides interactive state progression (§33) with audit confirmation,
+ * optional administrative note, and clear feedback.
  */
 export function TransitionButton({ projectId, currentStatus }: TransitionButtonProps) {
   const router = useRouter();
@@ -46,20 +41,24 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [confirmTarget, setConfirmTarget] = useState<ProjectStatus | null>(null);
 
   const allowedNext = PROJECT_TRANSITIONS[currentStatus] || [];
 
-  // Close on outside click or Escape — the previous version only closed via
-  // the trigger, leaving the popover stuck open over page content.
+  // Close on outside click or Escape
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: MouseEvent) {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
         setOpen(false);
+        setConfirmTarget(null);
       }
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        setConfirmTarget(null);
+      }
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -69,10 +68,7 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
     };
   }, [open]);
 
-  async function handleTransition(to: ProjectStatus) {
-    if (!window.confirm(`Transition this facility to '${to}'? This action is audited.`)) {
-      return;
-    }
+  async function executeTransition(to: ProjectStatus) {
     setBusy(true);
     setError(null);
     try {
@@ -91,6 +87,7 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
       }
 
       setNote("");
+      setConfirmTarget(null);
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -108,14 +105,23 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
     <div className="transition-pop" ref={rootRef} style={{ position: "relative" }}>
       <button
         type="button"
-        className="transition-trigger"
+        className="transition-trigger-btn"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Lifecycle transition (administrative action)"
-        title="Lifecycle transition — rare administrative action"
-        onClick={() => setOpen((v) => !v)}
+        title="Change project lifecycle state"
+        onClick={() => {
+          setOpen((v) => !v);
+          setConfirmTarget(null);
+        }}
       >
-        <IconSettings width={14} height={14} />
+        <IconSettings width={13} height={13} />
+        <span>Transition</span>
+        <IconChevronRight
+          width={11}
+          height={11}
+          className={`transition-chevron ${open ? "transition-chevron-open" : ""}`}
+        />
       </button>
 
       {open && (
@@ -124,7 +130,7 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
           aria-label="Project lifecycle transition"
           className="transition-pop-panel"
         >
-          <div className="transition-pop-title">Lifecycle transition</div>
+          <div className="transition-pop-title">Lifecycle Transition</div>
 
           <div className="transition-current-row">
             <span className="transition-current">{currentStatus}</span>
@@ -134,29 +140,73 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
             </span>
           </div>
 
-          <div className="transition-options">
-            {allowedNext.map((nextStatus) => (
-              <button
-                key={nextStatus}
-                type="button"
-                disabled={busy}
-                onClick={() => handleTransition(nextStatus)}
-                className={`transition-option ${FORWARD_STATUSES.has(nextStatus) ? "forward" : ""}`}
-              >
-                <span className="transition-option-name">{nextStatus}</span>
-                <span className="transition-option-desc">{STATUS_NOTES[nextStatus]}</span>
-              </button>
-            ))}
-          </div>
+          {confirmTarget ? (
+            <div className="transition-confirm-box">
+              <div className="transition-confirm-header">
+                <IconAlertTriangle width={15} height={15} style={{ color: "#d97706", flex: "none" }} />
+                <span>Confirm change to <strong>{confirmTarget}</strong>?</span>
+              </div>
+              <p className="transition-confirm-desc">
+                {STATUS_NOTES[confirmTarget]}
+              </p>
+              <div className="transition-confirm-audit">
+                This administrative action will be recorded in the permanent audit trail (§37).
+              </div>
+              {note.trim() && (
+                <div className="transition-confirm-note">
+                  <span className="muted">Note: </span>
+                  <span>{note.trim()}</span>
+                </div>
+              )}
+              <div className="transition-confirm-actions">
+                <button
+                  type="button"
+                  className="btn-primary transition-confirm-btn"
+                  disabled={busy}
+                  onClick={() => executeTransition(confirmTarget)}
+                >
+                  {busy ? "Transitioning…" : `Confirm to ${confirmTarget}`}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={busy}
+                  onClick={() => setConfirmTarget(null)}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="transition-options">
+                {allowedNext.map((nextStatus) => (
+                  <button
+                    key={nextStatus}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setConfirmTarget(nextStatus)}
+                    className={`transition-option ${FORWARD_STATUSES.has(nextStatus) ? "forward" : ""}`}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                      <span className="transition-option-name">{nextStatus}</span>
+                      <IconChevronRight width={12} height={12} style={{ opacity: 0.5 }} />
+                    </div>
+                    <span className="transition-option-desc">{STATUS_NOTES[nextStatus]}</span>
+                  </button>
+                ))}
+              </div>
 
-          <input
-            type="text"
-            placeholder="Optional note / reference (e.g. file number)…"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={500}
-            aria-label="Optional administrative note"
-          />
+              <input
+                type="text"
+                placeholder="Optional note / reference (e.g. file number)…"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={500}
+                aria-label="Optional administrative note"
+              />
+            </>
+          )}
 
           {error && (
             <div role="alert" className="error-banner">

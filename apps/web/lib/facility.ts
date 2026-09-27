@@ -5,6 +5,7 @@ import type {
   Inspection,
   Complaint,
   CorrectiveAction,
+  AttendanceCalculation,
   AttendanceOverviewItem,
   AttendanceAnomaly,
   AIAnomaly,
@@ -164,10 +165,27 @@ export async function getFacilityAttendance(projectId: string): Promise<{
   return { overview: overview.items, anomalies: anomalies.items };
 }
 
-export async function getFacilityAudit(projectId: string): Promise<AuditEvent[]> {
+export async function getFacilityAttendanceCalculations(
+  projectId: string,
+): Promise<AttendanceCalculation[]> {
+  const client = await getClient();
+  const all: AttendanceCalculation[] = [];
+  for (let page = 1; page <= 20; page += 1) {
+    try {
+      const res = await client.listAttendanceCalculations({ projectId, page, pageSize: 100 });
+      all.push(...res.items);
+      if (res.items.length < 100) break;
+    } catch {
+      break;
+    }
+  }
+  return all;
+}
+
+export async function getFacilityAudit(projectId: string, pageSize = 100): Promise<AuditEvent[]> {
   const client = await getClient();
   const page = await client
-    .listAuditEvents({ resourceType: "project", resourceId: projectId, pageSize: 20 })
+    .listAuditEvents({ resourceType: "project", resourceId: projectId, pageSize })
     .catch(() => EMPTY_AUDIT);
   return page.items;
 }
