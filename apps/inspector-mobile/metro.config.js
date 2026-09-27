@@ -53,6 +53,19 @@ defaultConfig.resolver.sourceExts = [
 
 // 5. Custom resolver for ESM .js extension imports pointing to .ts/.tsx files and @netram/* subpaths
 defaultConfig.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Prevent Expo tsconfigPaths from resolving "react" to "@types/react"
+  // (which is used in tsconfig.json for TypeScript type pinning in this React 18 / 19 monorepo)
+  if (
+    moduleName === 'react' ||
+    moduleName.startsWith('react/') ||
+    moduleName === 'react-dom' ||
+    moduleName.startsWith('react-dom/')
+  ) {
+    return {
+      filePath: require.resolve(moduleName, { paths: [projectRoot] }),
+      type: 'sourceFile',
+    };
+  }
   if (moduleName === '@netram/config/env/mobile' || moduleName === '@netram/config/env/mobile.js') {
     return {
       filePath: path.resolve(workspaceRoot, 'packages/config/src/env/mobile.ts'),

@@ -9,6 +9,9 @@
     "web": {
       "bundler": "metro"
     },
+    "experiments": {
+      "tsconfigPaths": false
+    },
     "splash": {
       "backgroundColor": "#002449",
       "resizeMode": "contain"
