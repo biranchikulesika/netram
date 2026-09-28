@@ -10772,7 +10772,8 @@
                 "financial_risk.flag_created",
                 "financial_risk.flag_assigned",
                 "financial_risk.flag_resolved",
-                "financial_risk.flag_dismissed"
+                "financial_risk.flag_dismissed",
+                "project_risk.evaluated"
               ]
             },
             "in": "query",
@@ -10923,7 +10924,8 @@
                               "financial_risk.flag_created",
                               "financial_risk.flag_assigned",
                               "financial_risk.flag_resolved",
-                              "financial_risk.flag_dismissed"
+                              "financial_risk.flag_dismissed",
+                              "project_risk.evaluated"
                             ]
                           },
                           "actorUserId": {
