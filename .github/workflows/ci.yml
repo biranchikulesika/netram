@@ -113,7 +113,7 @@ jobs:
           # No media rig in CI: verify the camera-feed control plane only.
           # With a rig (docker compose --profile facility), leave this unset to
           # verify the full media plane as well.
-          NETRAM_CCTV_VERIFY_NO_RIG: "1"
+          NETRAM_CCTV_VERIFY_NO_RIG: "true"
         run: |
           pnpm --filter @netram/api start &
           sleep 5
