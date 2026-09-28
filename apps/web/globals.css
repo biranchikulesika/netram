@@ -4058,7 +4058,10 @@ a:hover {
   text-decoration: underline;
 }
 
-.cc-fullscreen-btn {
+/* Overlay controls: fullscreen on a tile, close on the live viewer. Identical
+   geometry and legibility treatment, so they share one rule set. */
+.cc-fullscreen-btn,
+.cc-vp-close {
   position: absolute;
   top: 0.4rem;
   right: 0.5rem;
@@ -4082,9 +4085,26 @@ a:hover {
     transform 0.15s ease;
 }
 
-.cc-fullscreen-btn:hover {
+.cc-fullscreen-btn:hover,
+.cc-vp-close:hover {
   color: var(--color-border-subtle);
   transform: scale(1.08);
+}
+
+/* Close gets a real surface — a white cross on transparent video disappears
+   against pale walls and sky. Navy tint reads over any scene and matches the
+   palette; the fullscreen button stays transparent, hence the drop-shadow
+   above that this one no longer needs. */
+.cc-vp-close {
+  background: rgba(0, 36, 73, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  filter: none;
+}
+
+.cc-vp-close:hover {
+  background: rgba(0, 36, 73, 0.92);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
 }
 
 .cc-viewport:fullscreen .cc-fullscreen-btn,
@@ -4180,14 +4200,36 @@ a:hover {
   opacity: 0.75;
 }
 
-.cc-hls-btn {
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  color: var(--color-border-strong);
+/* Full-tile hit area on a playing wall tile. The visible button was removed
+   because it covered the footage, but the action stays a real <button> for
+   keyboard and assistive-tech access. Undone: the global `button` reset
+   (padding/border/background) plus focus ring that a hit area should not have. */
+.cc-tile-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.cc-hls-btn:hover {
-  color: #0c2a52;
+/* A hit area has no surface, so the global green focus ring and the
+   brightness-on-hover would either be invisible or tint the footage. */
+.cc-tile-hit:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -3px;
+  box-shadow: none;
+}
+
+.cc-tile-hit:hover:not(:disabled) {
+  filter: none;
 }
 
 /* Phase 5: real playback states (lib/use-cctv-live-stream) */
@@ -4220,6 +4262,8 @@ a:hover {
   position: absolute;
   top: 0.4rem;
   right: 2.6rem;
+  /* Purely informational: must never swallow a click meant for the tile. */
+  pointer-events: none;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;

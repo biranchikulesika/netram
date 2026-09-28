@@ -95,6 +95,7 @@ coverage/
 # Canonical docs
 !docs/OWNERSHIP.md
 !docs/architecture/README.md
+!docs/architecture/cctv.md
 !docs/contracts/README.md
 !docs/domain/README.md
 !docs/decisions/ADR-001-monorepo.md

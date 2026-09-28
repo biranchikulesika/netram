@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { PublicCctvCamera } from "@netram/types";
 import { useCctvLiveStream } from "../../../lib/use-cctv-live-stream";
+import { IconX } from "../../components/icons";
 
 /**
  * Camera detail / live viewer (Phase 5 PART 10) — an in-Control-Room modal
@@ -42,7 +43,6 @@ export function CameraLiveViewer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const [facility, place] = splitFacilityPlace(camera.name);
   const connecting = live.phase === "creating-session" || live.phase === "connecting";
   const liveNow = live.phase === "live";
 
@@ -53,25 +53,10 @@ export function CameraLiveViewer({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-content" style={{ maxWidth: 960 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
-          <div>
-            <h3 style={{ margin: 0 }}>{camera.name}</h3>
-            <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.82rem" }}>
-              {facility}
-              {place ? ` — ${place}` : ""} · {camera.status === "active" ? "Online" : "Offline"}
-              {liveNow && live.stats ? ` · ${live.stats.framesDecoded} frames` : ""}
-            </p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {liveNow && <span className="cc-live-badge" role="status">LIVE</span>}
-            <button type="button" className="btn-secondary" onClick={onClose}>
-              Close
-            </button>
-          </div>
-        </div>
-
-        <div className="cc-viewport" style={{ borderRadius: 8, marginTop: "0.75rem" }}>
+      {/* Thinner than the shared .modal-content 1.5rem: the 16:9 viewport is the
+          point of this modal, and every rem of chrome steals video pixels. */}
+      <div className="modal-content" style={{ maxWidth: 960, padding: "0.7rem" }}>
+        <div className="cc-viewport" style={{ borderRadius: 8 }}>
           <video
             ref={live.videoRef as React.RefObject<HTMLVideoElement>}
             autoPlay
@@ -81,6 +66,45 @@ export function CameraLiveViewer({
             className="cc-video"
             aria-label={`Live stream: ${camera.name}`}
           />
+
+          {/* Identity sits on the video, not above it: no wasted chrome, and
+              it stays readable over whatever the camera is showing. */}
+          <div className="cc-vp-osd cc-vp-osd-tl">
+            <span
+              style={{
+                fontSize: "0.78rem",
+                fontWeight: 700,
+                color: "#ffffff",
+                textShadow: "0 1px 2px rgba(0,36,73, 0.9)",
+              }}
+            >
+              {camera.name}
+            </span>
+            <span
+              style={{
+                fontSize: "0.68rem",
+                color: "var(--color-border-strong)",
+                textShadow: "0 1px 2px rgba(0,36,73, 0.9)",
+              }}
+            >
+              {camera.status === "active" ? "Online" : "Offline"}
+              {liveNow && live.stats ? ` · ${live.stats.framesDecoded} frames` : ""}
+            </span>
+          </div>
+
+          {/* cc-live-badge sits at right:2.6rem, clearing the 26px close button. */}
+          {liveNow && <span className="cc-live-badge" role="status">LIVE</span>}
+
+          <button
+            type="button"
+            className="cc-vp-close"
+            onClick={onClose}
+            aria-label="Close live viewer"
+            title="Close live viewer"
+          >
+            <IconX style={{ width: 15, height: 15 }} />
+          </button>
+
           {!liveNow && (
             <div className="cc-center" aria-live="polite">
               <span className="cc-status-text">
@@ -101,10 +125,6 @@ export function CameraLiveViewer({
           )}
         </div>
 
-        <p className="muted" style={{ margin: "0.6rem 0 0", fontSize: "0.75rem" }}>
-          Session {live.streamId ?? "—"} · heartbeat every 30 s · closing this viewer ends the
-          stream and disconnects the MediaMTX reader.
-        </p>
         {/* Machine-readable lifecycle status (verification + a11y live region). */}
         <span id="cctv-viewer-status" aria-live="polite" style={{ display: "none" }}>
           {live.phase === "live" ? "playing" : live.phase}: {live.message}
@@ -112,11 +132,4 @@ export function CameraLiveViewer({
       </div>
     </div>
   );
-}
-
-// "Vani Vihar - Dormitory Block" -> ["Vani Vihar", "Dormitory Block"]
-function splitFacilityPlace(name: string): [string, string] {
-  const idx = name.indexOf(" - ");
-  if (idx === -1) return [name, ""];
-  return [name.slice(0, idx), name.slice(idx + 3)];
 }

@@ -69,38 +69,10 @@ export function ControlRoomLayout({
   const [anomalyList, setAnomalyList] = useState<AIAnomaly[]>(anomalies);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AIAnomaly | null>(null);
   const [selectedCamera, setSelectedCamera] = useState<PublicCctvCamera | null>(null);
-  /** Max simultaneous HLS wall sessions (bounded viewership, PART 7). */
-  const MAX_WALL_TILES = 9;
-  /** Camera ids currently playing HLS wall tiles (explicit user enable, PART 7/8). */
-  const [hlsEnabled, setHlsEnabled] = useState<Set<string>>(new Set());
-  const [wallCapMessage, setWallCapMessage] = useState<string | null>(null);
   const [query, setQuery] = useState(initialQuery);
   const [alertView, setAlertView] = useState<"active" | "resolved">(initialAlertView);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatusFilter);
   const [feedColumns, setFeedColumns] = useState<FeedColumns>(initialColumns);
-
-  /**
-   * Bounded concurrent wall viewers (PART 7): each HLS tile is one authorized
-   * MediaMTX session, so the wall never opens more than MAX_WALL_TILES of
-   * them. Users enable tiles explicitly — online cameras never auto-connect.
-   */
-  const toggleHls = (cameraId: string): void => {
-    setWallCapMessage(null);
-    setHlsEnabled((prev) => {
-      const next = new Set(prev);
-      if (next.has(cameraId)) {
-        next.delete(cameraId);
-      } else if (next.size >= MAX_WALL_TILES) {
-        setWallCapMessage(
-          `Wall mode is limited to ${MAX_WALL_TILES} concurrent streams. Disable a tile to enable another.`,
-        );
-        return prev;
-      } else {
-        next.add(cameraId);
-      }
-      return next;
-    });
-  };
 
   const activeAlertsCount = anomalyList.filter(
     (a) => a.status === "new" || a.status === "reviewed" || a.status === "investigated",
@@ -281,20 +253,13 @@ export function ControlRoomLayout({
         )}
       </div>
 
-      {wallCapMessage && (
-        <p className="muted" role="status" style={{ margin: "0 0 0.75rem 0" }}>
-          {wallCapMessage}
-        </p>
-      )}
-
       {activeTab === "feeds" ? (
         <CameraWall
           cameras={cameras}
           query={query}
           columns={feedColumns}
-          hlsEnabled={hlsEnabled}
-          onToggleHls={toggleHls}
           onOpenCamera={(camera) => setSelectedCamera(camera)}
+          suspended={selectedCamera !== null}
         />
       ) : activeTab === "status" ? (
         <CameraStatusView

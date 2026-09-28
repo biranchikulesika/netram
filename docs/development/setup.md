@@ -42,8 +42,12 @@ AI service (Python): `cd services/ai && pip install -e . && uvicorn app.main:app
 The full simulated facility (camera → RTSP → MediaMTX):
 
 ```bash
-docker compose --profile facility up -d   # netram-media + camera-sim + facility-nvr
+pnpm run cctv:up   # netram-media + camera-sim + facility-nvr
 ```
+
+Without this rig, camera feeds fail with `503` from the stream endpoint and
+`{"status":"unavailable","mediamtx":"unreachable"}` on `GET :3003/media/health`.
+Check that health endpoint first when a feed fails.
 
 Then watch a seeded rig camera in the Control Room, or `/dev/cctv-test` for
 debugging. Details: [`../architecture/cctv.md`](../architecture/cctv.md) §10.
