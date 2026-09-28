@@ -40,13 +40,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # MinIO removed its public images from Docker Hub and quay.io (401 on
+  # anonymous pulls since ~2026-09-24). Bitnami's frozen legacy mirror is the
+  # pullable source; MINIO_DEFAULT_BUCKETS replaces the former mc init container.
   minio:
-    image: quay.io/minio/minio:latest
+    image: bitnamilegacy/minio:latest
     container_name: netram-minio
-    command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: netram
       MINIO_ROOT_PASSWORD: netram-secret
+      MINIO_DEFAULT_BUCKETS: netram
+      MINIO_SERVER_PORT: 9000
+      MINIO_CONSOLE_PORT: 9001
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -57,19 +62,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-  minio-init:
-    image: quay.io/minio/mc:latest
-    container_name: netram-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 netram netram-secret &&
-      mc mb --ignore-existing local/netram &&
-      echo 'MinIO bucket ready'
-      "
 
   # =================================================================
   # Application Services (Profile: "full")

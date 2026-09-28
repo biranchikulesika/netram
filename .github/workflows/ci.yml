@@ -92,21 +92,27 @@ jobs:
       - name: OpenAPI export is reproducible
         run: pnpm api:export-openapi && git diff --exit-code -- services/api/openapi
 
+      # MinIO removed its public images from Docker Hub and quay.io (401 on
+      # anonymous pulls since ~2026-09-24). Bitnami's frozen legacy mirror is
+      # the pullable source; MINIO_DEFAULT_BUCKETS replaces the former mc-based
+      # bucket-init container.
       - name: Start MinIO object storage
         run: |
           docker run -d --name netram-minio -p 9000:9000 \
             -e MINIO_ROOT_USER=netram \
             -e MINIO_ROOT_PASSWORD=netram-secret \
-            quay.io/minio/minio:latest server /data
+            -e MINIO_DEFAULT_BUCKETS=netram \
+            bitnamilegacy/minio:latest
           for i in $(seq 1 30); do
             curl -sf http://localhost:9000/minio/health/live && break
             sleep 1
           done
-          docker run --rm --network host --entrypoint /bin/sh quay.io/minio/mc:latest \
-            -c 'mc alias set local http://localhost:9000 netram netram-secret && mc mb -p local/netram'
 
       - name: Runtime verification smoke test
         run: |
           pnpm --filter @netram/api start &
           sleep 5
+          pnpm --filter @netram/cctv-gateway start &
+          sleep 5
           pnpm verify:runtime:mobile
+          pnpm verify:runtime:cctv
