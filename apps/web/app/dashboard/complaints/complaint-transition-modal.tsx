@@ -23,36 +23,36 @@ const TRANSITION_CONFIGS: Record<ComplaintStatus, TransitionConfig> = {
   received: {
     label: "Mark Received",
     description: "Grievance received and registered.",
-    btnColor: "#0284c7",
-    btnHoverColor: "#0369a1",
+    btnColor: "#0c2a52",
+    btnHoverColor: "#0c2a52",
     requireResolution: false,
   },
   under_review: {
     label: "Begin Review",
     description: "Assign to grievance officer for initial scrutiny and fact verification.",
-    btnColor: "#d97706",
-    btnHoverColor: "#b45309",
+    btnColor: "#dd501e",
+    btnHoverColor: "#dd501e",
     requireResolution: false,
   },
   escalated: {
     label: "Escalate Grievance",
     description: "Escalate to state authority or enforcement oversight for formal investigation.",
     btnColor: "#dc2626",
-    btnHoverColor: "#b91c1c",
+    btnHoverColor: "#dc2626",
     requireResolution: false,
   },
   resolved: {
     label: "Mark Resolved",
     description: "Grievance addressed and verified with statutory explanation.",
-    btnColor: "#16a34a",
-    btnHoverColor: "#15803d",
+    btnColor: "#137e3a",
+    btnHoverColor: "#137e3a",
     requireResolution: true,
   },
   closed: {
     label: "Close Without Action",
     description: "Close duplicate, malicious, or non-actionable filing.",
-    btnColor: "#475569",
-    btnHoverColor: "#334155",
+    btnColor: "var(--text-muted)",
+    btnHoverColor: "var(--text-muted)",
     requireResolution: false,
   },
 };
@@ -128,7 +128,7 @@ export function ComplaintTransitionModal({
           width: "100%",
           maxHeight: "90vh",
           overflowY: "auto",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
         }}
       >
         {/* Modal Header */}
@@ -137,7 +137,7 @@ export function ComplaintTransitionModal({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            borderBottom: "1px solid #e2e8f0",
+            borderBottom: "1px solid var(--color-border-subtle)",
             paddingBottom: "0.85rem",
             marginBottom: "1rem",
           }}
@@ -147,10 +147,10 @@ export function ComplaintTransitionModal({
               <span
                 style={{
                   fontSize: "0.72rem",
-                  background: "#f1f5f9",
+                  background: "#edf0f5",
                   padding: "0.15rem 0.4rem",
                   borderRadius: "4px",
-                  color: "#475569",
+                  color: "var(--text-muted)",
                   fontWeight: 600,
                 }}
               >
@@ -183,7 +183,7 @@ export function ComplaintTransitionModal({
               background: "none",
               border: "none",
               fontSize: "1.4rem",
-              color: "#64748b",
+              color: "var(--text-subtle)",
               cursor: "pointer",
               padding: "0.2rem 0.5rem",
               lineHeight: 1,
@@ -198,12 +198,12 @@ export function ComplaintTransitionModal({
         {error && (
           <div
             style={{
-              background: "#fee2e2",
-              border: "1px solid #fca5a5",
+              background: "var(--tint-red)",
+              border: "1px solid var(--tint-red)",
               borderRadius: "6px",
               padding: "0.65rem 0.85rem",
               marginBottom: "1rem",
-              color: "#991b1b",
+              color: "#dc2626",
               fontSize: "0.82rem",
             }}
           >
@@ -217,7 +217,7 @@ export function ComplaintTransitionModal({
             style={{
               padding: "1.5rem",
               textAlign: "center",
-              background: "#f8fafc",
+              background: "#edf0f5",
               borderRadius: "6px",
               marginBottom: "1.25rem",
             }}
@@ -235,7 +235,7 @@ export function ComplaintTransitionModal({
                 display: "block",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "#334155",
+                color: "var(--text-muted)",
                 marginBottom: "0.5rem",
               }}
             >
@@ -260,8 +260,8 @@ export function ComplaintTransitionModal({
                       alignItems: "flex-start",
                       padding: "0.75rem",
                       borderRadius: "6px",
-                      border: `1.5px solid ${isSelected ? config.btnColor : "#e2e8f0"}`,
-                      background: isSelected ? "#f8fafc" : "#ffffff",
+                      border: `1.5px solid ${isSelected ? config.btnColor : "var(--color-border-subtle)"}`,
+                      background: isSelected ? "#edf0f5" : "#ffffff",
                       cursor: "pointer",
                       textAlign: "left",
                       transition: "all 0.15s ease",
@@ -289,7 +289,7 @@ export function ComplaintTransitionModal({
                         style={{
                           fontWeight: 700,
                           fontSize: "0.88rem",
-                          color: isSelected ? config.btnColor : "#1e293b",
+                          color: isSelected ? config.btnColor : "#002449",
                         }}
                       >
                         {config.label}
@@ -321,7 +321,7 @@ export function ComplaintTransitionModal({
                 display: "block",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "#334155",
+                color: "var(--text-muted)",
                 marginBottom: "0.35rem",
               }}
             >
@@ -343,7 +343,7 @@ export function ComplaintTransitionModal({
                 width: "100%",
                 padding: "0.6rem 0.75rem",
                 borderRadius: "6px",
-                border: "1px solid #cbd5e1",
+                border: "1px solid var(--color-border-strong)",
                 fontSize: "0.85rem",
                 fontFamily: "inherit",
                 resize: "vertical",
@@ -359,7 +359,7 @@ export function ComplaintTransitionModal({
             display: "flex",
             justifyContent: "flex-end",
             gap: "0.75rem",
-            borderTop: "1px solid #e2e8f0",
+            borderTop: "1px solid var(--color-border-subtle)",
             paddingTop: "0.85rem",
           }}
         >

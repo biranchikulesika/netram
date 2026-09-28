@@ -262,9 +262,9 @@ export function AdminView({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            background: feedback.type === "success" ? "#dcfce7" : "#fee2e2",
-            border: `1px solid ${feedback.type === "success" ? "#86efac" : "#fca5a5"}`,
-            color: feedback.type === "success" ? "#15803d" : "#991b1b",
+            background: feedback.type === "success" ? "var(--tint-green)" : "var(--tint-red)",
+            border: `1px solid ${feedback.type === "success" ? "var(--tint-green)" : "var(--tint-red)"}`,
+            color: feedback.type === "success" ? "#137e3a" : "#dc2626",
           }}
         >
           <span>{feedback.message}</span>
@@ -506,7 +506,7 @@ export function AdminView({
             style={{
               maxWidth: "640px",
               width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
               maxHeight: "88vh",
               display: "flex",
               flexDirection: "column",
@@ -532,14 +532,14 @@ export function AdminView({
                     width: "44px",
                     height: "44px",
                     borderRadius: "50%",
-                    background: "var(--color-navy-subtle, #eff6ff)",
-                    color: "var(--color-navy-brand, #1e3a8a)",
+                    background: "var(--color-navy-subtle, var(--tint-navy))",
+                    color: "var(--color-navy-brand, #0c2a52)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontWeight: 700,
                     fontSize: "1rem",
-                    border: "1px solid #bfdbfe",
+                    border: "1px solid var(--tint-navy)",
                     flexShrink: 0,
                   }}
                   aria-hidden="true"
@@ -561,8 +561,8 @@ export function AdminView({
                           fontSize: "0.68rem",
                           padding: "0.15rem 0.5rem",
                           borderRadius: "9999px",
-                          background: "#e0f2fe",
-                          color: "#0369a1",
+                          background: "var(--tint-navy)",
+                          color: "#0c2a52",
                           fontWeight: 700,
                           letterSpacing: "0.04em",
                         }}
@@ -604,9 +604,9 @@ export function AdminView({
               style={{
                 marginTop: "1rem",
                 padding: "0.65rem 1rem",
-                background: "var(--bg-subtle, #f8fafc)",
+                background: "var(--bg-subtle, #edf0f5)",
                 borderRadius: "8px",
-                border: "1px solid var(--color-border-subtle, #e2e8f0)",
+                border: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
                 display: "grid",
                 gridTemplateColumns: "repeat(2, 1fr)",
                 gap: "1rem",
@@ -630,7 +630,7 @@ export function AdminView({
                     display: "block",
                     fontSize: "0.82rem",
                     fontWeight: 600,
-                    color: "var(--action-green, #16a34a)",
+                    color: "var(--action-green, #137e3a)",
                     marginTop: "0.15rem",
                   }}
                 >
@@ -696,9 +696,9 @@ export function AdminView({
                       style={{
                         padding: "0.35rem 0.75rem",
                         fontSize: "0.78rem",
-                        background: "#f0fdf4",
-                        borderColor: "#bbf7d0",
-                        color: "#15803d",
+                        background: "var(--tint-green)",
+                        borderColor: "var(--tint-green)",
+                        color: "#137e3a",
                         fontWeight: 600,
                         cursor: "pointer",
                         display: "flex",
@@ -716,11 +716,11 @@ export function AdminView({
                 {groupedRoles.length === 0 ? (
                   <div
                     style={{
-                      border: "1px dashed var(--color-border-subtle, #cbd5e1)",
+                      border: "1px dashed var(--color-border-subtle, var(--color-border-strong))",
                       borderRadius: "8px",
                       padding: "1rem",
                       textAlign: "center",
-                      background: "var(--bg-subtle, #f8fafc)",
+                      background: "var(--bg-subtle, #edf0f5)",
                     }}
                   >
                     <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
@@ -735,8 +735,8 @@ export function AdminView({
                           marginTop: "0.5rem",
                           padding: "0.3rem 0.7rem",
                           fontSize: "0.78rem",
-                          color: "#15803d",
-                          borderColor: "#bbf7d0",
+                          color: "#137e3a",
+                          borderColor: "var(--tint-green)",
                           background: "#ffffff",
                           fontWeight: 600,
                           cursor: "pointer",
@@ -753,10 +753,10 @@ export function AdminView({
                         key={roleGroup.roleCode}
                         style={{
                           background: "var(--bg-surface)",
-                          border: "1px solid var(--color-border-subtle, #e2e8f0)",
+                          border: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
                           borderRadius: "8px",
                           padding: "0.75rem 0.9rem",
-                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
+                          boxShadow: "0 1px 2px rgba(0,36,73, 0.03)",
                         }}
                       >
                         <div
@@ -788,10 +788,10 @@ export function AdminView({
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "space-between",
-                                  background: "var(--bg-subtle, #f8fafc)",
+                                  background: "var(--bg-subtle, #edf0f5)",
                                   padding: "0.4rem 0.65rem",
                                   borderRadius: "6px",
-                                  border: "1px solid var(--color-border-subtle, #f1f5f9)",
+                                  border: "1px solid var(--color-border-subtle, #edf0f5)",
                                 }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
@@ -803,7 +803,7 @@ export function AdminView({
                                         gap: "0.3rem",
                                         fontSize: "0.76rem",
                                         fontWeight: 600,
-                                        color: "#1d4ed8",
+                                        color: "#0c2a52",
                                       }}
                                     >
                                       National Scope
@@ -816,10 +816,10 @@ export function AdminView({
                                         gap: "0.3rem",
                                         fontSize: "0.76rem",
                                         fontWeight: 600,
-                                        color: "#334155",
+                                        color: "var(--text-muted)",
                                       }}
                                     >
-                                      <IconMapPin style={{ width: 12, height: 12, color: "#64748b" }} />
+                                      <IconMapPin style={{ width: 12, height: 12, color: "var(--text-subtle)" }} />
                                       {assignment.jurisdictionName
                                         ? `${assignment.jurisdictionName}${assignment.jurisdictionCode ? ` (${assignment.jurisdictionCode})` : ""}`
                                         : "Jurisdiction"}
@@ -850,7 +850,7 @@ export function AdminView({
                                       cursor: "pointer",
                                     }}
                                     onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = "#fee2e2";
+                                      e.currentTarget.style.background = "var(--tint-red)";
                                     }}
                                     onMouseLeave={(e) => {
                                       e.currentTarget.style.background = "transparent";
@@ -906,14 +906,14 @@ export function AdminView({
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
-                          background: "var(--bg-subtle, #f8fafc)",
-                          border: "1px solid var(--color-border-subtle, #e2e8f0)",
+                          background: "var(--bg-subtle, #edf0f5)",
+                          border: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
                           borderRadius: "5px",
                           padding: "0.3rem 0.6rem",
                           fontSize: "0.75rem",
                           fontWeight: 600,
-                          color: "var(--color-navy-data, #0f172a)",
-                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
+                          color: "var(--color-navy-data, #002449)",
+                          boxShadow: "0 1px 2px rgba(0,36,73, 0.02)",
                           whiteSpace: "nowrap",
                         }}
                         title={perm}
@@ -958,7 +958,7 @@ export function AdminView({
             style={{
               maxWidth: "420px",
               width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
             }}
           >
             <h3
@@ -977,7 +977,7 @@ export function AdminView({
                 display: "flex",
                 justifyContent: "flex-end",
                 gap: "0.75rem",
-                borderTop: "1px solid #e2e8f0",
+                borderTop: "1px solid var(--color-border-subtle)",
                 paddingTop: "0.85rem",
               }}
             >

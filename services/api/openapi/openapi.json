@@ -5628,7 +5628,10 @@
                             "start_inspection",
                             "record_observation",
                             "capture_evidence",
-                            "submit_inspection"
+                            "submit_inspection",
+                            "check_in",
+                            "record_attendance",
+                            "update_checklist_item"
                           ]
                         },
                         "timestamp": {

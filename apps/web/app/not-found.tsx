@@ -13,7 +13,7 @@ export default function NotFound() {
         alignItems: "center",
         justifyContent: "center",
         padding: "2rem 1rem",
-        background: "var(--bg-canvas, #f8fafc)",
+        background: "var(--bg-canvas, #edf0f5)",
         textAlign: "center",
       }}
     >
@@ -27,7 +27,7 @@ export default function NotFound() {
           style={{
             fontSize: "3.25rem",
             fontWeight: 800,
-            color: "var(--color-navy-brand, #0f2d59)",
+            color: "var(--color-navy-brand, #002449)",
             lineHeight: 1,
             letterSpacing: "-0.03em",
             paddingLeft: "0.03em",
@@ -40,7 +40,7 @@ export default function NotFound() {
             margin: "0.7rem 0 0.35rem",
             fontSize: "1.3rem",
             fontWeight: 700,
-            color: "var(--color-navy-brand, #0f2d59)",
+            color: "var(--color-navy-brand, #002449)",
           }}
         >
           Page Not Found
@@ -50,7 +50,7 @@ export default function NotFound() {
           style={{
             fontSize: "0.88rem",
             lineHeight: 1.55,
-            color: "var(--text-muted, #64748b)",
+            color: "var(--text-muted, var(--text-subtle))",
             margin: "0 0 1.1rem",
             maxWidth: "40ch",
             marginLeft: "auto",

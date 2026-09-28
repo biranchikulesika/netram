@@ -20,6 +20,7 @@ describe("Phase 2 — Inspection Workflow (Core) Specifications", () => {
       projectId: "proj-p2-test",
       projectCode: "PRJ-OD-002",
       projectName: "Bhubaneswar Stormwater Drain Upgradation",
+      districtName: "Khordha",
       type: "routine",
       status: "assigned",
       districtId: "Khordha",

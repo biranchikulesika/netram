@@ -14,6 +14,7 @@ describe("Phase 4: Inspections List & Inspection Detail Specifications", () => {
     projectId: "proj-p4-401",
     projectCode: "PRJ-SHELTER-09",
     projectName: "Sambalpur Senior Citizen Rehabilitation Shelter",
+    districtName: "Sambalpur",
     type: "routine",
     trigger: "automatic",
     status: "assigned",

@@ -11,13 +11,13 @@ import { CorrectiveActionCard } from "./corrective-action-card";
 import { IconMapPin, IconChevronRight } from "../../components/icons";
 
 const STATUS_COLORS: Record<CorrectiveActionStatus, string> = {
-  pending: "#64748b",
-  rejected: "#b91c1c",
-  submitted: "#0369a1",
-  under_review: "#b45309",
-  accepted: "#15803d",
-  overdue: "#c2410c",
-  escalated: "#7e22ce",
+  pending: "var(--text-subtle)",
+  rejected: "#dc2626",
+  submitted: "#0c2a52",
+  under_review: "#dd501e",
+  accepted: "#137e3a",
+  overdue: "#dd501e",
+  escalated: "#0c2a52",
 };
 
 const ORDER: Record<CorrectiveActionStatus, number> = {
@@ -135,17 +135,17 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
               flexDirection: "column",
               gap: "0.15rem",
               transition: "all 0.15s ease",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.03)",
               outline: "none",
               minWidth: 0,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#2563eb";
-              e.currentTarget.style.boxShadow = "0 3px 8px rgba(37, 99, 235, 0.1)";
+              e.currentTarget.style.borderColor = "#0c2a52";
+              e.currentTarget.style.boxShadow = "0 3px 8px rgba(12,42,82, 0.1)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "var(--color-border-subtle)";
-              e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
+              e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,36,73, 0.03)";
             }}
           >
             <div
@@ -217,7 +217,7 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
                 {f.districtLabel}
               </span>
               <span style={{ flex: 1 }} />
-              <span title="Open facility details" style={{ color: "#2563eb", display: "inline-flex", flexShrink: 0 }}>
+              <span title="Open facility details" style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}>
                 <IconChevronRight width={13} height={13} />
               </span>
             </div>

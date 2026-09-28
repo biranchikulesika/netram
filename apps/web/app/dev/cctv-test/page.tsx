@@ -153,20 +153,30 @@ export default function DevCctvTestPage() {
   const busy = phase === "connecting";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-6">
+    <main
+      style={{
+        maxWidth: "48rem",
+        margin: "0 auto",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+        padding: "1.5rem",
+      }}
+    >
       <header>
-        <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+        <p style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-subtle)", margin: 0 }}>
           Development only — throwaway rig
         </p>
-        <h1 className="text-xl font-semibold text-neutral-100">CCTV Phase 2: WHEP playback test</h1>
-        <p className="mt-1 text-sm text-neutral-400">
+        <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", margin: "0.25rem 0" }}>CCTV Phase 2: WHEP playback test</h1>
+        <p style={{ marginTop: "0.25rem", fontSize: "0.875rem", color: "var(--text-subtle)", margin: 0 }}>
           RTSP → MediaMTX → WebRTC. Proves the media plane; the production control-room player is
           Phase 3. This page is deleted in Phase 3.
         </p>
       </header>
 
-      <section className="flex flex-wrap items-center gap-2">
-        <label htmlFor="whep-path" className="text-sm text-neutral-300">
+      <section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" }}>
+        <label htmlFor="whep-path" style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginRight: "0.25rem" }}>
           MediaMTX path
         </label>
         <input
@@ -175,13 +185,15 @@ export default function DevCctvTestPage() {
           onChange={(e) => setPath(e.target.value)}
           disabled={busy}
           suppressHydrationWarning
-          className="w-64 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100"
+          className="rounded"
+          style={{ width: "16rem", border: "1px solid var(--color-border-strong)", background: "#ffffff", color: "var(--text-primary)", fontSize: "0.875rem", padding: "0.25rem 0.5rem" }}
         />
         <button
           type="button"
           onClick={start}
           disabled={busy || path.trim().length === 0}
-          className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+          className="rounded disabled:opacity-50"
+          style={{ background: "var(--action-green)", color: "#ffffff", fontSize: "0.875rem", fontWeight: 500, padding: "0.375rem 0.75rem" }}
         >
           Play
         </button>
@@ -189,7 +201,8 @@ export default function DevCctvTestPage() {
           type="button"
           onClick={stop}
           disabled={busy}
-          className="rounded bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-600 disabled:opacity-50"
+          className="rounded disabled:opacity-50"
+          style={{ background: "var(--bg-subtle)", color: "var(--text-primary)", border: "1px solid var(--color-border-strong)", fontSize: "0.875rem", fontWeight: 500, padding: "0.375rem 0.75rem" }}
         >
           Stop
         </button>
@@ -197,44 +210,55 @@ export default function DevCctvTestPage() {
           type="button"
           onClick={() => void start()}
           disabled={busy}
-          className="rounded bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:bg-neutral-600 disabled:opacity-50"
+          className="rounded disabled:opacity-50"
+          style={{ background: "var(--bg-subtle)", color: "var(--text-primary)", border: "1px solid var(--color-border-strong)", fontSize: "0.875rem", fontWeight: 500, padding: "0.375rem 0.75rem" }}
         >
           Restart
         </button>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-neutral-800 bg-black">
+      <section style={{ overflow: "hidden", borderRadius: "0.5rem", border: "1px solid var(--color-border-subtle)", background: "#002449" }}>
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="aspect-video w-full"
+          style={{ aspectRatio: "16 / 9", width: "100%" }}
           aria-label="Live simulated camera stream"
         />
       </section>
 
-      <section aria-live="polite" className="text-sm">
+      <section aria-live="polite" style={{ fontSize: "0.875rem" }}>
         <span
           id="cctv-status"
-          className={
-            phase === "error"
-              ? "text-red-400"
-              : phase === "playing"
-                ? "text-emerald-400"
-                : "text-neutral-400"
-          }
+          style={{
+            color:
+              phase === "error"
+                ? "var(--color-error)"
+                : phase === "playing"
+                  ? "var(--action-green)"
+                  : "var(--text-subtle)",
+          }}
         >
           {phase}: {message || "—"}
         </span>
       </section>
 
-      <section className="rounded border border-neutral-800 bg-neutral-900 p-3 text-xs text-neutral-300">
+      <section
+        style={{
+          borderRadius: "0.25rem",
+          padding: "0.75rem",
+          fontSize: "0.75rem",
+          border: "1px solid var(--color-border-subtle)",
+          background: "var(--bg-subtle)",
+          color: "var(--text-muted)",
+        }}
+      >
         <div id="cctv-stats">
           currentTime={stats.currentTime}s framesDecoded={stats.framesDecoded}
           {stats.latencyMs !== null ? ` jitterBufferLatencyMs=${stats.latencyMs}` : ""}
         </div>
-        <p className="mt-1 text-neutral-500">
+        <p style={{ marginTop: "0.25rem", color: "var(--text-subtle)", margin: 0 }}>
           Latency is the receiver jitter-buffer contribution only. Glass-to-glass measurement uses
           the burned-in clock source (CAMERA_SOURCE=clock) — see the phase doc.
         </p>

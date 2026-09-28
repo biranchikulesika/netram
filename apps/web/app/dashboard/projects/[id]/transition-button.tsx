@@ -143,7 +143,7 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
           {confirmTarget ? (
             <div className="transition-confirm-box">
               <div className="transition-confirm-header">
-                <IconAlertTriangle width={15} height={15} style={{ color: "#d97706", flex: "none" }} />
+                <IconAlertTriangle width={15} height={15} style={{ color: "#dd501e", flex: "none" }} />
                 <span>Confirm change to <strong>{confirmTarget}</strong>?</span>
               </div>
               <p className="transition-confirm-desc">

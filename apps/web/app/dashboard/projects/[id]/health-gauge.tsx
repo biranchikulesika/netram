@@ -49,8 +49,8 @@ export function gradientOffset(score: number): number {
  * the needle, the needle, the hub and the status dot always agree.
  */
 const RAMP_RED = "#dc2626";
-const RAMP_AMBER = "#eab308";
-const RAMP_GREEN = "#16a34a";
+const RAMP_AMBER = "#dd501e";
+const RAMP_GREEN = "#137e3a";
 /** Score 50 sits exactly mid-axis, so this is the ramp's middle stop. */
 const RAMP_MID = gradientOffset(50);
 
@@ -82,7 +82,7 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
   // No snapshot yet: show the gauge as pending, never as a score.
   const risk = snapshot ? Math.round(Math.min(100, Math.max(0, snapshot.totalScore))) : null;
   const health = risk === null ? null : 100 - risk;
-  const color = health === null ? "#94a3b8" : rampColor(health);
+  const color = health === null ? "var(--text-subtle)" : rampColor(health);
 
   // Needle sweep in gauge coordinates: 0 = left, 90 = upright, 180 = right.
   // Rendering offsets by −90° because the unrotated needle points up.

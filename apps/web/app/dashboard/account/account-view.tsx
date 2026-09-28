@@ -11,18 +11,18 @@ export interface AccountViewProps {
 
 /** Permission verbs grouped by what an operator actually wants to know. */
 const ACTION_GROUPS = [
-  { key: "view", label: "View", color: "#0e7490", verbs: ["read", "stream", "list", "view"] },
-  { key: "create", label: "Create", color: "#15803d", verbs: ["create", "register", "upload", "anomaly"] },
+  { key: "view", label: "View", color: "#0c2a52", verbs: ["read", "stream", "list", "view"] },
+  { key: "create", label: "Create", color: "#137e3a", verbs: ["create", "register", "upload", "anomaly"] },
   {
     key: "decide",
     label: "Decide",
-    color: "#b45309",
+    color: "#dd501e",
     verbs: ["approve", "verify", "resolve", "review", "evaluate", "release", "void", "submit"],
   },
   {
     key: "admin",
     label: "Administer",
-    color: "#6d28d9",
+    color: "#0c2a52",
     verbs: ["configure", "allocate", "assign", "transition", "manage", "update"],
   },
 ] as const;
@@ -144,7 +144,7 @@ export function AccountView({ user, permissions }: AccountViewProps) {
             height: "8px",
             borderRadius: "999px",
             overflow: "hidden",
-            background: "#e2e8f0",
+            background: "var(--color-border-subtle)",
           }}
         >
           {mix.map((m) => (

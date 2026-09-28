@@ -90,7 +90,7 @@ const fyArrowStyle: React.CSSProperties = {
   fontSize: "1rem",
   fontWeight: 700,
   lineHeight: 1,
-  color: "#334155",
+  color: "var(--text-muted)",
   cursor: "pointer",
   padding: "0.1rem 0.2rem",
 };
@@ -98,7 +98,7 @@ const fyArrowStyle: React.CSSProperties = {
 const fyStripStyle: React.CSSProperties = {
   fontSize: "0.9rem",
   fontWeight: 600,
-  color: "#64748b",
+  color: "var(--text-subtle)",
   border: "none",
   background: "transparent",
   cursor: "pointer",
@@ -107,7 +107,7 @@ const fyStripStyle: React.CSSProperties = {
 
 const fyStripActiveStyle: React.CSSProperties = {
   color: "#ffffff",
-  background: "#4338ca",
+  background: "#0c2a52",
   borderRadius: "999px",
   fontWeight: 700,
 };
@@ -580,13 +580,13 @@ export function ProjectFundsClient({
           boxShadow: "0 1px 3px rgba(12, 42, 82, 0.03)",
         }}
       >
-        <StatKpi label="Total Sanctioned" value={formatCompact(numAlloc)} color="#2563eb" />
+        <StatKpi label="Total Sanctioned" value={formatCompact(numAlloc)} color="#0c2a52" />
         <StatKpi
           label="Pending Verification"
           value={formatCompact(statsOverview.pending)}
-          color="#f59e0b"
+          color="#dd501e"
         />
-        <StatKpi label="Verified" value={formatCompact(statsOverview.verified)} color="#059669" />
+        <StatKpi label="Verified" value={formatCompact(statsOverview.verified)} color="#137e3a" />
         <StatKpi label="Rejected" value={formatCompact(statsOverview.rejected)} color="#dc2626" />
       </div>
 
@@ -730,7 +730,7 @@ export function ProjectFundsClient({
                           <span
                             key={`sep-${i}`}
                             style={{
-                              color: "#cbd5e1",
+                              color: "var(--color-border-strong)",
                               fontSize: "0.85rem",
                               fontWeight: 600,
                               padding: "0 0.45rem",
@@ -872,16 +872,16 @@ export function ProjectFundsClient({
                           whiteSpace: "nowrap",
                           background:
                             f.riskLevel === "critical" || f.riskLevel === "high"
-                              ? "#fee2e2"
+                              ? "var(--tint-red)"
                               : f.riskLevel === "medium"
-                                ? "#fef3c7"
-                                : "#e0f2fe",
+                                ? "var(--tint-orange)"
+                                : "var(--tint-navy)",
                           color:
                             f.riskLevel === "critical" || f.riskLevel === "high"
-                              ? "#991b1b"
+                              ? "#dc2626"
                               : f.riskLevel === "medium"
-                                ? "#92400e"
-                                : "#0369a1",
+                                ? "#dd501e"
+                                : "#0c2a52",
                           fontWeight: 700,
                         }}
                       >
@@ -1012,7 +1012,7 @@ export function ProjectFundsClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 26, 56, 0.55)",
+            background: "rgba(0,36,73, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1319,7 +1319,7 @@ export function ProjectFundsClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 26, 56, 0.55)",
+            background: "rgba(0,36,73, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1345,7 +1345,7 @@ export function ProjectFundsClient({
                 gap: "1rem",
               }}
             >
-              <h3 style={{ margin: 0, color: "#b91c1c", fontSize: "1.1rem", fontWeight: 750 }}>
+              <h3 style={{ margin: 0, color: "#dc2626", fontSize: "1.1rem", fontWeight: 750 }}>
                 Reject expenditure record
               </h3>
               <button
@@ -1415,7 +1415,7 @@ export function ProjectFundsClient({
                 className="btn-primary"
                 disabled={!rejectReason.trim() || rejecting}
                 onClick={() => void handleRejectExpense()}
-                style={{ background: "#b91c1c", borderColor: "#b91c1c" }}
+                style={{ background: "#dc2626", borderColor: "#dc2626" }}
               >
                 {rejecting ? "Rejecting…" : "Confirm Rejection"}
               </button>
@@ -1433,7 +1433,7 @@ export function ProjectFundsClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 26, 56, 0.55)",
+            background: "rgba(0,36,73, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1459,7 +1459,7 @@ export function ProjectFundsClient({
                 gap: "1rem",
               }}
             >
-              <h3 style={{ margin: 0, color: "#b91c1c", fontSize: "1.1rem", fontWeight: 750 }}>
+              <h3 style={{ margin: 0, color: "#dc2626", fontSize: "1.1rem", fontWeight: 750 }}>
                 Void expenditure record
               </h3>
               <button
@@ -1530,7 +1530,7 @@ export function ProjectFundsClient({
                 className="btn-primary"
                 disabled={!voidReason.trim() || voiding}
                 onClick={handleVoidExpense}
-                style={{ background: "#b91c1c", borderColor: "#b91c1c" }}
+                style={{ background: "#dc2626", borderColor: "#dc2626" }}
               >
                 {voiding ? "Voiding…" : "Confirm Void"}
               </button>
@@ -1548,7 +1548,7 @@ export function ProjectFundsClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 26, 56, 0.55)",
+            background: "rgba(0,36,73, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1817,7 +1817,7 @@ export function ProjectFundsClient({
                   padding: "1rem 1.5rem",
                   background: "rgba(255, 255, 255, 0.97)",
                   borderTop: "1px solid var(--color-border-subtle)",
-                  boxShadow: "0 -8px 20px rgba(15, 23, 42, 0.06)",
+                  boxShadow: "0 -8px 20px rgba(0,36,73, 0.06)",
                 }}
               >
                 <button
@@ -1844,7 +1844,7 @@ export function ProjectFundsClient({
                     padding: "0.7rem 1.2rem",
                     borderRadius: "6px",
                     background:
-                      "linear-gradient(90deg, var(--color-navy-brand), var(--color-accent-blue))",
+                      "var(--color-navy-brand)",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,

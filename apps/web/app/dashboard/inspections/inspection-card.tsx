@@ -16,27 +16,27 @@ export function getInspectionStatusStyle(status: InspectionStatus): {
 } {
   switch (status) {
     case "assigned":
-      return { bg: "#f1f5f9", color: "#475569", label: "ASSIGNED" };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: "ASSIGNED" };
     case "scheduled":
-      return { bg: "#e0e7ff", color: "#4338ca", label: "SCHEDULED" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "SCHEDULED" };
     case "in_progress":
-      return { bg: "#dbeafe", color: "#1d4ed8", label: "IN PROGRESS" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "IN PROGRESS" };
     case "evidence_collection":
-      return { bg: "#e0f2fe", color: "#0369a1", label: "EVIDENCE" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "EVIDENCE" };
     case "submitted":
-      return { bg: "#dcfce7", color: "#15803d", label: "SUBMITTED" };
+      return { bg: "var(--tint-green)", color: "#137e3a", label: "SUBMITTED" };
     case "under_review":
-      return { bg: "#fef3c7", color: "#b45309", label: "UNDER REVIEW" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "UNDER REVIEW" };
     case "findings":
-      return { bg: "#ffedd5", color: "#c2410c", label: "FINDINGS" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "FINDINGS" };
     case "corrective_actions":
-      return { bg: "#f3e8ff", color: "#7e22ce", label: "CORRECTIVE ACTION" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "CORRECTIVE ACTION" };
     case "verification":
-      return { bg: "#fff7ed", color: "#9a3412", label: "VERIFICATION" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "VERIFICATION" };
     case "closed":
-      return { bg: "#dcfce7", color: "#15803d", label: "CLOSED" };
+      return { bg: "var(--tint-green)", color: "#137e3a", label: "CLOSED" };
     default:
-      return { bg: "#f1f5f9", color: "#334155", label: status };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: status };
   }
 }
 

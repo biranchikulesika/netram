@@ -93,7 +93,7 @@ const canTransitionAuthority =
           {project && (
             <div className="inspection-hero-meta">
               <span className="inspection-meta-chip">
-                <IconBuilding width={13} height={13} style={{ color: "#2563eb" }} />
+                <IconBuilding width={13} height={13} style={{ color: "#0c2a52" }} />
                 <Link href={`/dashboard/projects/${project.id}`} style={{ fontWeight: 600 }}>
                   Facility: {project.code}
                 </Link>

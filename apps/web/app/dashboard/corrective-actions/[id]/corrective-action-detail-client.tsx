@@ -42,11 +42,11 @@ const inputStyle = {
   width: "100%",
   padding: "0.55rem 0.75rem",
   borderRadius: "6px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--color-border-strong)",
   fontSize: "0.85rem",
   fontFamily: "inherit",
   boxSizing: "border-box",
-  color: "#1e293b",
+  color: "#002449",
   background: "#fff",
 } as const;
 
@@ -194,7 +194,7 @@ export function CorrectiveActionDetailClient({
             {project && (
               <>
                 <span className="inspection-meta-chip">
-                  <IconGavel width={13} height={13} style={{ color: "#2563eb" }} />
+                  <IconGavel width={13} height={13} style={{ color: "#0c2a52" }} />
                   <Link href={`/dashboard/projects/${project.id}`} style={{ fontWeight: 600 }}>
                     Facility: {project.code}
                   </Link>
@@ -203,7 +203,7 @@ export function CorrectiveActionDetailClient({
               </>
             )}
             <span className="inspection-meta-chip">
-              <IconClipboard width={13} height={13} style={{ color: "#2563eb" }} />
+              <IconClipboard width={13} height={13} style={{ color: "#0c2a52" }} />
               <Link href={`/dashboard/inspections/${action.inspectionId}`} style={{ fontWeight: 600 }}>
                 Inspection #{action.inspectionId.slice(0, 8)}
               </Link>
@@ -340,12 +340,12 @@ export function CorrectiveActionDetailClient({
                   Submitted {formatDateTime(action.submittedAt)}
                 </div>
               )}
-              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#1e293b" }}>
+              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#002449" }}>
                 {action.actionSummary}
               </p>
               {action.atrFiles.length > 0 && (
-                <div style={{ marginTop: "0.85rem", borderTop: "1px solid #e2e8f0", paddingTop: "0.75rem" }}>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                <div style={{ marginTop: "0.85rem", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "0.75rem" }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
                     Supporting Attachments ({action.atrFiles.length})
                   </div>
                   <ul style={{ display: "grid", gap: "0.4rem", margin: 0, padding: 0, listStyle: "none" }}>
@@ -359,23 +359,23 @@ export function CorrectiveActionDetailClient({
                             display: "flex",
                             alignItems: "center",
                             gap: "0.5rem",
-                            background: "#f8fafc",
-                            border: "1px solid #e2e8f0",
+                            background: "#edf0f5",
+                            border: "1px solid var(--color-border-subtle)",
                             borderRadius: "6px",
                             padding: "0.45rem 0.6rem",
                             fontSize: "0.8rem",
-                            color: "#0f172a",
+                            color: "#002449",
                             textDecoration: "none",
                           }}
                         >
-                          <IconClipboard width={14} height={14} style={{ color: "#64748b", flexShrink: 0 }} />
+                          <IconClipboard width={14} height={14} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
                           <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {f.fileName}
                           </span>
                           <span className="muted" style={{ fontSize: "0.72rem", flexShrink: 0 }}>
                             {formatBytes(f.sizeBytes)}
                           </span>
-                          <span style={{ color: "#2563eb", fontSize: "0.72rem", fontWeight: 600, flexShrink: 0 }}>
+                          <span style={{ color: "#0c2a52", fontSize: "0.72rem", fontWeight: 600, flexShrink: 0 }}>
                             Open &rsaquo;
                           </span>
                         </a>
@@ -400,8 +400,8 @@ export function CorrectiveActionDetailClient({
           )}
 
           {canWorkSubmit && (
-            <div style={{ marginTop: "1rem", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
-              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155", marginBottom: "0.5rem" }}>
+            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "1rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: "0.5rem" }}>
                 SUBMIT REMEDIATION EVIDENCE
               </div>
               <p className="muted" style={{ margin: "0 0 0.6rem", fontSize: "0.78rem" }}>
@@ -411,12 +411,12 @@ export function CorrectiveActionDetailClient({
               {actionError && (
                 <div
                   style={{
-                    background: "#fee2e2",
-                    border: "1px solid #fca5a5",
+                    background: "var(--tint-red)",
+                    border: "1px solid var(--tint-red)",
                     borderRadius: "6px",
                     padding: "0.55rem 0.75rem",
                     marginBottom: "0.6rem",
-                    color: "#991b1b",
+                    color: "#dc2626",
                     fontSize: "0.8rem",
                   }}
                 >
@@ -440,14 +440,14 @@ export function CorrectiveActionDetailClient({
                     gap: "0.4rem",
                     padding: "0.55rem 0.75rem",
                     borderRadius: "6px",
-                    border: "1px dashed #94a3b8",
-                    background: "#f8fafc",
+                    border: "1px dashed var(--text-subtle)",
+                    background: "#edf0f5",
                     fontSize: "0.8rem",
-                    color: "#334155",
+                    color: "var(--text-muted)",
                     cursor: "pointer",
                   }}
                 >
-                  <IconCamera width={15} height={15} style={{ color: "#0284c7" }} />
+                  <IconCamera width={15} height={15} style={{ color: "#0c2a52" }} />
                   Attach supporting files (PDF, photos, videos &mdash; up to 5, max 100&nbsp;MB each)
                 </label>
                 <input
@@ -480,14 +480,14 @@ export function CorrectiveActionDetailClient({
                           alignItems: "center",
                           gap: "0.5rem",
                           background: "#fff",
-                          border: "1px solid #e2e8f0",
+                          border: "1px solid var(--color-border-subtle)",
                           borderRadius: "6px",
                           padding: "0.4rem 0.6rem",
                           fontSize: "0.8rem",
-                          color: "#0f172a",
+                          color: "#002449",
                         }}
                       >
-                        <IconClipboard width={13} height={13} style={{ color: "#64748b", flexShrink: 0 }} />
+                        <IconClipboard width={13} height={13} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
                         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {f.name}
                         </span>
@@ -521,7 +521,7 @@ export function CorrectiveActionDetailClient({
                   onClick={handleSubmitAtr}
                   disabled={isSubmitting}
                   className="btn-primary"
-                  style={{ padding: "0.5rem 1.1rem", fontSize: "0.82rem", background: "#0284c7", borderColor: "#0284c7", whiteSpace: "nowrap" }}
+                  style={{ padding: "0.5rem 1.1rem", fontSize: "0.82rem", background: "#0c2a52", borderColor: "#0c2a52", whiteSpace: "nowrap" }}
                 >
                   {isSubmitting ? "Submitting..." : "Submit ATR"}
                 </button>
@@ -537,7 +537,7 @@ export function CorrectiveActionDetailClient({
 
           {action.reviewRemarks ? (
             <div>
-              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#1e293b" }}>
+              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#002449" }}>
                 {action.reviewRemarks}
               </p>
               {(action.verifiedAt || action.verifiedByUserId) && (
@@ -567,8 +567,8 @@ export function CorrectiveActionDetailClient({
           )}
 
           {canWorkReview && (
-            <div style={{ marginTop: "1rem", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
-              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155", marginBottom: "0.5rem" }}>
+            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "1rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: "0.5rem" }}>
                 RECORD AUTHORITY REVIEW
               </div>
               <p className="muted" style={{ margin: "0 0 0.6rem", fontSize: "0.78rem" }}>
@@ -577,12 +577,12 @@ export function CorrectiveActionDetailClient({
               {actionError && (
                 <div
                   style={{
-                    background: "#fee2e2",
-                    border: "1px solid #fca5a5",
+                    background: "var(--tint-red)",
+                    border: "1px solid var(--tint-red)",
                     borderRadius: "6px",
                     padding: "0.55rem 0.75rem",
                     marginBottom: "0.6rem",
-                    color: "#991b1b",
+                    color: "#dc2626",
                     fontSize: "0.8rem",
                   }}
                 >
@@ -606,9 +606,9 @@ export function CorrectiveActionDetailClient({
                         fontSize: "0.8rem",
                         fontWeight: 600,
                         cursor: "pointer",
-                        border: `1.5px solid ${selected ? "#2563eb" : "#cbd5e1"}`,
-                        background: selected ? "#eff6ff" : "#ffffff",
-                        color: selected ? "#1d4ed8" : "#475569",
+                        border: `1.5px solid ${selected ? "#0c2a52" : "var(--color-border-strong)"}`,
+                        background: selected ? "var(--tint-navy)" : "#ffffff",
+                        color: selected ? "#0c2a52" : "var(--text-muted)",
                       }}
                     >
                       {choice.label}
@@ -633,8 +633,8 @@ export function CorrectiveActionDetailClient({
                   style={{
                     padding: "0.5rem 1.1rem",
                     fontSize: "0.82rem",
-                    background: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#16a34a" : "#d97706",
-                    borderColor: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#16a34a" : "#d97706",
+                    background: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#137e3a" : "#dd501e",
+                    borderColor: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#137e3a" : "#dd501e",
                   }}
                 >
                   {isSubmitting

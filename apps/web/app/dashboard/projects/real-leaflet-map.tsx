@@ -61,20 +61,20 @@ function parseWelfareCategory(desc: string | null): string {
 function getStatusColor(status: ProjectStatus): string {
   switch (status) {
     case "Active":
-      return "#16a34a"; // green
+      return "#137e3a"; // green
     case "Approved":
-      return "#2563eb"; // blue
+      return "#0c2a52"; // blue
     case "Pending Verification":
-      return "#d97706"; // amber
+      return "#dd501e"; // amber
     case "Draft":
-      return "#64748b"; // slate
+      return "var(--text-subtle)"; // slate
     case "Suspended":
       return "#dc2626"; // red
     case "Closed":
     case "Archived":
-      return "#94a3b8"; // light slate
+      return "var(--text-subtle)"; // light slate
     default:
-      return "#64748b";
+      return "var(--text-subtle)";
   }
 }
 
@@ -288,11 +288,11 @@ export default function RealLeafletMap({
         const draftIcon = L.divIcon({
           html: `
             <div style="position: relative; width: 30px; height: 42px; display: flex; align-items: center; justify-content: center;">
-              <div style="position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 18px; height: 9px; border-radius: 50%; border: 2px solid #2563eb; opacity: 0.85; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-              <svg viewBox="0 0 28 38" width="30" height="42" style="display: block; filter: drop-shadow(0 2px 6px rgba(37,99,235,0.6));" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 0C6.27 0 0 6.27 0 14C0 24.5 10.5 33.5 14 38C17.5 33.5 28 24.5 28 14C28 6.27 21.73 0 14 0Z" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              <div style="position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 18px; height: 9px; border-radius: 50%; border: 2px solid #0c2a52; opacity: 0.85; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+              <svg viewBox="0 0 28 38" width="30" height="42" style="display: block; filter: drop-shadow(0 2px 6px rgba(12,42,82, 0.6));" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 0C6.27 0 0 6.27 0 14C0 24.5 10.5 33.5 14 38C17.5 33.5 28 24.5 28 14C28 6.27 21.73 0 14 0Z" fill="#0c2a52" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
                 <circle cx="14" cy="14" r="5" fill="#ffffff"/>
-                <circle cx="14" cy="14" r="2.3" fill="#2563eb"/>
+                <circle cx="14" cy="14" r="2.3" fill="#0c2a52"/>
               </svg>
             </div>`,
           className: "leaflet-facility-marker",
@@ -310,15 +310,15 @@ export default function RealLeafletMap({
     if (geofenceMode === "polygon") {
       if (polygonVertices.length >= 3) {
         L.polygon(polygonVertices, {
-          color: "#2563eb",
+          color: "#0c2a52",
           weight: 2.5,
           dashArray: "5, 5",
-          fillColor: "#3b82f6",
+          fillColor: "#0c2a52",
           fillOpacity: 0.2,
         }).addTo(geofenceGroup);
       } else if (polygonVertices.length === 2) {
         L.polyline(polygonVertices, {
-          color: "#2563eb",
+          color: "#0c2a52",
           weight: 2.5,
           dashArray: "5, 5",
         }).addTo(geofenceGroup);
@@ -327,8 +327,8 @@ export default function RealLeafletMap({
       polygonVertices.forEach((pt, i) => {
         L.circleMarker(pt, {
           radius: 6,
-          color: "#1d4ed8",
-          fillColor: i === 0 ? "#16a34a" : "#ffffff",
+          color: "#0c2a52",
+          fillColor: i === 0 ? "#137e3a" : "#ffffff",
           fillOpacity: 1,
           weight: 2,
         })
@@ -337,19 +337,19 @@ export default function RealLeafletMap({
       });
     } else if (currentGeofence.type === "polygon" && currentGeofence.polygonPoints.length >= 3) {
       L.polygon(currentGeofence.polygonPoints, {
-        color: "#16a34a",
+        color: "#137e3a",
         weight: 2.5,
-        fillColor: "#22c55e",
+        fillColor: "#137e3a",
         fillOpacity: 0.2,
       }).addTo(geofenceGroup);
     } else {
       const radius = geofenceMode === "circle" ? circleRadius : currentGeofence.radiusMeters;
       L.circle([lat, lng], {
         radius,
-        color: geofenceMode === "circle" ? "#2563eb" : "#16a34a",
+        color: geofenceMode === "circle" ? "#0c2a52" : "#137e3a",
         weight: 2,
         dashArray: geofenceMode === "circle" ? "5, 5" : undefined,
-        fillColor: geofenceMode === "circle" ? "#3b82f6" : "#22c55e",
+        fillColor: geofenceMode === "circle" ? "#0c2a52" : "#137e3a",
         fillOpacity: 0.18,
       }).addTo(geofenceGroup);
     }
@@ -558,7 +558,7 @@ export default function RealLeafletMap({
         { label: "Active" },
         { label: "Pending" },
         { label: "Draft" },
-        { label: "Geofence", swatch: "#16a34a" },
+        { label: "Geofence", swatch: "#137e3a" },
       ]}
       listTitle="Projects"
       emptyText="No registered projects available."
@@ -600,17 +600,17 @@ export default function RealLeafletMap({
               flexDirection: "column",
               gap: "0.15rem",
               transition: "all 0.15s ease",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.03)",
               outline: "none",
               minWidth: 0,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#2563eb";
-              e.currentTarget.style.boxShadow = "0 3px 8px rgba(37, 99, 235, 0.1)";
+              e.currentTarget.style.borderColor = "#0c2a52";
+              e.currentTarget.style.boxShadow = "0 3px 8px rgba(12,42,82, 0.1)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "var(--color-border-subtle)";
-              e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
+              e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,36,73, 0.03)";
             }}
           >
             <div
@@ -683,7 +683,7 @@ export default function RealLeafletMap({
               <span style={{ flex: 1 }} />
               <span
                 title="Open facility record"
-                style={{ color: "#2563eb", display: "inline-flex", flexShrink: 0 }}
+                style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}
               >
                 <IconChevronRight width={13} height={13} />
               </span>
@@ -702,29 +702,29 @@ export default function RealLeafletMap({
               /* LOCATION PINNING MODE */
               <div
                 style={{
-                  background: "#eff6ff",
-                  border: "1.5px solid #93c5fd",
+                  background: "var(--tint-navy)",
+                  border: "1.5px solid #0c2a52",
                   borderRadius: "8px",
                   padding: "0.8rem",
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.6rem",
-                  boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
+                  boxShadow: "0 2px 8px rgba(12,42,82, 0.08)",
                 }}
               >
                 <div
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
                 >
-                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0c2a52" }}>
                     Set Facility Location
                   </span>
                 </div>
                 <div
                   style={{
                     fontSize: "0.71rem",
-                    color: "#475569",
+                    color: "var(--text-muted)",
                     background: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid var(--color-border-subtle)",
                     borderRadius: "5px",
                     padding: "0.4rem 0.55rem",
                     lineHeight: 1.35,
@@ -749,7 +749,7 @@ export default function RealLeafletMap({
                       fontWeight: 600,
                       color: "var(--text-main)",
                       background: "#ffffff",
-                      border: "1px solid #cbd5e1",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: "5px",
                       outline: "none",
                     }}
@@ -769,14 +769,14 @@ export default function RealLeafletMap({
                       fontWeight: 600,
                       color: "var(--text-main)",
                       background: "#ffffff",
-                      border: "1px solid #cbd5e1",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: "5px",
                       outline: "none",
                     }}
                   />
                 </div>
                 {draftLocation && (
-                  <div style={{ fontSize: "0.68rem", color: "#1d4ed8", fontWeight: 600 }}>
+                  <div style={{ fontSize: "0.68rem", color: "#0c2a52", fontWeight: 600 }}>
                     Draft pin: {draftLocation.lat.toFixed(6)}, {draftLocation.lng.toFixed(6)}
                   </div>
                 )}
@@ -790,8 +790,8 @@ export default function RealLeafletMap({
                       fontSize: "0.74rem",
                       fontWeight: 600,
                       background: "#ffffff",
-                      color: "#475569",
-                      border: "1px solid #cbd5e1",
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: "5px",
                       cursor: "pointer",
                     }}
@@ -807,7 +807,7 @@ export default function RealLeafletMap({
                       padding: "0.4rem 0.6rem",
                       fontSize: "0.74rem",
                       fontWeight: 700,
-                      background: "#2563eb",
+                      background: "#0c2a52",
                       color: "#ffffff",
                       border: "none",
                       borderRadius: "5px",
@@ -826,7 +826,7 @@ export default function RealLeafletMap({
                       padding: "0.4rem 0.6rem",
                       fontSize: "0.74rem",
                       fontWeight: 700,
-                      background: draftLocation ? "#16a34a" : "#94a3b8",
+                      background: draftLocation ? "#137e3a" : "var(--text-subtle)",
                       color: "#ffffff",
                       border: "none",
                       borderRadius: "5px",
@@ -846,31 +846,31 @@ export default function RealLeafletMap({
               /* CIRCLE / RADIUS EDITING MODE */
               <div
                 style={{
-                  background: "#eff6ff",
-                  border: "1.5px solid #93c5fd",
+                  background: "var(--tint-navy)",
+                  border: "1.5px solid #0c2a52",
                   borderRadius: "8px",
                   padding: "0.8rem",
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.6rem",
-                  boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
+                  boxShadow: "0 2px 8px rgba(12,42,82, 0.08)",
                 }}
               >
                 <div
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
                 >
-                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0c2a52" }}>
                     Adjust Circular Radius
                   </span>
                   <span
                     style={{
                       fontSize: "0.78rem",
                       fontWeight: 800,
-                      color: "#1d4ed8",
+                      color: "#0c2a52",
                       background: "#ffffff",
                       padding: "0.15rem 0.5rem",
                       borderRadius: "4px",
-                      border: "1px solid #bfdbfe",
+                      border: "1px solid var(--tint-navy)",
                     }}
                   >
                     {circleRadius}m
@@ -888,9 +888,9 @@ export default function RealLeafletMap({
                         padding: "0.28rem 0",
                         fontSize: "0.72rem",
                         fontWeight: circleRadius === preset ? 700 : 500,
-                        background: circleRadius === preset ? "#2563eb" : "#ffffff",
-                        color: circleRadius === preset ? "#ffffff" : "#334155",
-                        border: circleRadius === preset ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                        background: circleRadius === preset ? "#0c2a52" : "#ffffff",
+                        color: circleRadius === preset ? "#ffffff" : "var(--text-muted)",
+                        border: circleRadius === preset ? "1px solid #0c2a52" : "1px solid var(--color-border-strong)",
                         borderRadius: "4px",
                         cursor: "pointer",
                       }}
@@ -908,7 +908,7 @@ export default function RealLeafletMap({
                     step={25}
                     value={circleRadius}
                     onChange={(e) => setCircleRadius(parseInt(e.target.value, 10))}
-                    style={{ flex: 1, accentColor: "#2563eb", cursor: "pointer" }}
+                    style={{ flex: 1, accentColor: "#0c2a52", cursor: "pointer" }}
                   />
                 </div>
 
@@ -922,8 +922,8 @@ export default function RealLeafletMap({
                       fontSize: "0.74rem",
                       fontWeight: 600,
                       background: "#ffffff",
-                      color: "#475569",
-                      border: "1px solid #cbd5e1",
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: "5px",
                       cursor: "pointer",
                     }}
@@ -938,7 +938,7 @@ export default function RealLeafletMap({
                       padding: "0.4rem 0.6rem",
                       fontSize: "0.74rem",
                       fontWeight: 700,
-                      background: "#16a34a",
+                      background: "#137e3a",
                       color: "#ffffff",
                       border: "none",
                       borderRadius: "5px",
@@ -958,31 +958,31 @@ export default function RealLeafletMap({
               /* POLYGON DRAWING MODE */
               <div
                 style={{
-                  background: "#eff6ff",
-                  border: "1.5px solid #93c5fd",
+                  background: "var(--tint-navy)",
+                  border: "1.5px solid #0c2a52",
                   borderRadius: "8px",
                   padding: "0.8rem",
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.6rem",
-                  boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)",
+                  boxShadow: "0 2px 8px rgba(12,42,82, 0.08)",
                 }}
               >
                 <div
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
                 >
-                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0c2a52" }}>
                     Draw Perimeter
                   </span>
                   <span
                     style={{
                       fontSize: "0.72rem",
                       fontWeight: 700,
-                      color: polygonVertices.length >= 3 ? "#15803d" : "#d97706",
+                      color: polygonVertices.length >= 3 ? "#137e3a" : "#dd501e",
                       background: "#ffffff",
                       padding: "0.12rem 0.45rem",
                       borderRadius: "4px",
-                      border: "1px solid #bfdbfe",
+                      border: "1px solid var(--tint-navy)",
                     }}
                   >
                     {polygonVertices.length} {polygonVertices.length === 1 ? "point" : "points"}{" "}
@@ -993,9 +993,9 @@ export default function RealLeafletMap({
                 <div
                   style={{
                     fontSize: "0.71rem",
-                    color: "#475569",
+                    color: "var(--text-muted)",
                     background: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid var(--color-border-subtle)",
                     borderRadius: "5px",
                     padding: "0.4rem 0.55rem",
                     lineHeight: 1.35,
@@ -1015,8 +1015,8 @@ export default function RealLeafletMap({
                         fontSize: "0.72rem",
                         fontWeight: 600,
                         background: "#ffffff",
-                        color: "#334155",
-                        border: "1px solid #cbd5e1",
+                        color: "var(--text-muted)",
+                        border: "1px solid var(--color-border-strong)",
                         borderRadius: "4px",
                         cursor: "pointer",
                       }}
@@ -1033,7 +1033,7 @@ export default function RealLeafletMap({
                         fontWeight: 600,
                         background: "#ffffff",
                         color: "#dc2626",
-                        border: "1px solid #fca5a5",
+                        border: "1px solid var(--tint-red)",
                         borderRadius: "4px",
                         cursor: "pointer",
                       }}
@@ -1053,8 +1053,8 @@ export default function RealLeafletMap({
                       fontSize: "0.74rem",
                       fontWeight: 600,
                       background: "#ffffff",
-                      color: "#475569",
-                      border: "1px solid #cbd5e1",
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: "5px",
                       cursor: "pointer",
                     }}
@@ -1070,7 +1070,7 @@ export default function RealLeafletMap({
                       padding: "0.4rem 0.6rem",
                       fontSize: "0.74rem",
                       fontWeight: 700,
-                      background: polygonVertices.length < 3 ? "#94a3b8" : "#16a34a",
+                      background: polygonVertices.length < 3 ? "var(--text-subtle)" : "#137e3a",
                       color: "#ffffff",
                       border: "none",
                       borderRadius: "5px",
@@ -1103,7 +1103,7 @@ export default function RealLeafletMap({
                     fontWeight: 600,
                     background: "#ffffff",
                     color: "var(--color-navy-brand)",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--color-border-strong)",
                     borderRadius: "6px",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
@@ -1136,7 +1136,7 @@ export default function RealLeafletMap({
                     fontWeight: 600,
                     background: "#ffffff",
                     color: "var(--color-navy-brand)",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--color-border-strong)",
                     borderRadius: "6px",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
@@ -1170,7 +1170,7 @@ export default function RealLeafletMap({
                     fontWeight: 600,
                     background: "#ffffff",
                     color: "var(--color-navy-brand)",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--color-border-strong)",
                     borderRadius: "6px",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
@@ -1224,13 +1224,13 @@ export default function RealLeafletMap({
                   justifyContent: "center",
                   gap: "0.35rem",
                   padding: "0.55rem 1rem",
-                  background: "linear-gradient(to right, #15803d, #166534)",
+                  background: "#137e3a",
                   color: "#ffffff",
                   borderRadius: "6px",
                   fontWeight: 600,
                   fontSize: "0.8rem",
                   textDecoration: "none",
-                  boxShadow: "0 1px 4px rgba(22, 163, 74, 0.25)",
+                  boxShadow: "0 1px 4px rgba(19, 126, 58, 0.25)",
                 }}
               >
                 <span>Open facility record</span>

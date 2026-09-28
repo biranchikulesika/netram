@@ -277,7 +277,7 @@ export function InspectionsView({
               type="button"
               onClick={() => setScheduleModalOpen(true)}
               style={{
-                background: "var(--color-navy-brand, #1e3a8a)",
+                background: "var(--color-navy-brand, #0c2a52)",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",
@@ -288,7 +288,7 @@ export function InspectionsView({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "0.4rem",
-                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
+                boxShadow: "0 1px 2px rgba(0,36,73, 0.08)",
               }}
             >
               <span>+ Schedule Inspection</span>
@@ -355,7 +355,7 @@ export function InspectionsView({
                             fontWeight: 600,
                             fontSize: "0.8rem",
                             textTransform: "uppercase",
-                            color: isSurprise ? "#b45309" : "var(--text-primary)",
+                            color: isSurprise ? "#dd501e" : "var(--text-primary)",
                           }}
                         >
                           {i.type}

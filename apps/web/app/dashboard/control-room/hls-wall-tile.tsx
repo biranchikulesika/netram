@@ -170,7 +170,7 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
               fontSize: "0.72rem",
               fontWeight: 700,
               color: "#ffffff",
-              textShadow: "0 1px 2px rgba(2, 6, 23, 0.9)",
+              textShadow: "0 1px 2px rgba(0,36,73, 0.9)",
             }}
           >
             {facility}
@@ -179,8 +179,8 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
             <span
               style={{
                 fontSize: "0.68rem",
-                color: "#cbd5e1",
-                textShadow: "0 1px 2px rgba(2, 6, 23, 0.9)",
+                color: "var(--color-border-strong)",
+                textShadow: "0 1px 2px rgba(0,36,73, 0.9)",
               }}
             >
               {place}

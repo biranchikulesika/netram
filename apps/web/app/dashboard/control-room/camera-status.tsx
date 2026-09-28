@@ -156,10 +156,10 @@ export function CameraStatusView({
                             fontWeight: 600,
                             color:
                               r.cam.status === "active"
-                                ? "#15803d"
+                                ? "#137e3a"
                                 : r.cam.status === "inactive"
-                                  ? "#b91c1c"
-                                  : "#b45309",
+                                  ? "#dc2626"
+                                  : "#dd501e",
                           }}
                         >
                           <span
@@ -169,10 +169,10 @@ export function CameraStatusView({
                               borderRadius: "50%",
                               backgroundColor:
                                 r.cam.status === "active"
-                                  ? "#16a34a"
+                                  ? "#137e3a"
                                   : r.cam.status === "inactive"
                                     ? "#dc2626"
-                                    : "#d97706",
+                                    : "#dd501e",
                             }}
                           />
                           {r.cam.status === "active" ? "Live" : r.cam.status === "inactive" ? "Offline" : "Maintenance"}

@@ -50,12 +50,12 @@ export function formatDate(iso: string | null | undefined): string {
 
 /** One current lifecycle state per expense; buckets below are disjoint. */
 export const expenseStatusMeta = [
-  { value: "submitted", label: "Pending Verification", color: "#f59e0b" },
-  { value: "under_review", label: "Under Review", color: "#0ea5e9" },
-  { value: "verified", label: "Verified", color: "#059669" },
+  { value: "submitted", label: "Pending Verification", color: "#dd501e" },
+  { value: "under_review", label: "Under Review", color: "#0c2a52" },
+  { value: "verified", label: "Verified", color: "#137e3a" },
   { value: "rejected", label: "Rejected", color: "#dc2626" },
-  { value: "voided", label: "Voided", color: "#64748b" },
-  { value: "draft", label: "Draft", color: "#8b5cf6" },
+  { value: "voided", label: "Voided", color: "var(--text-subtle)" },
+  { value: "draft", label: "Draft", color: "#0c2a52" },
 ];
 
 export function expenseStatusLabel(status: Expense["status"]): string {
@@ -146,7 +146,7 @@ export function FundsModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0, 0, 0, 0.5)",
+        background: "rgba(0,36,73, 0.5)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -313,20 +313,20 @@ export function ExpenseDetailModal({
             whiteSpace: "nowrap",
             color:
               expense.status === "verified"
-                ? "#166534"
+                ? "#137e3a"
                 : expense.status === "rejected" || expense.status === "voided"
-                  ? "#991b1b"
+                  ? "#dc2626"
                   : expense.status === "draft"
-                    ? "#6b21a8"
-                    : "#92400e",
+                    ? "#0c2a52"
+                    : "#dd501e",
             background:
               expense.status === "verified"
-                ? "#dcfce7"
+                ? "var(--tint-green)"
                 : expense.status === "rejected" || expense.status === "voided"
-                  ? "#fee2e2"
+                  ? "var(--tint-red)"
                   : expense.status === "draft"
-                    ? "#f3e8ff"
-                    : "#fef3c7",
+                    ? "var(--tint-navy)"
+                    : "var(--tint-orange)",
           }}
         >
           {expenseStatusLabel(expense.status)}
@@ -342,7 +342,7 @@ export function ExpenseDetailModal({
               gap: "1rem",
               padding: "1.1rem",
               borderRadius: "8px",
-              background: "linear-gradient(135deg, #f8fafc, #eef2ff)",
+              background: "var(--bg-subtle)",
               border: "1px solid var(--color-border-subtle)",
             }}
           >
@@ -546,9 +546,9 @@ export function ExpenseDetailModal({
               style={{
                 padding: "0.8rem",
                 borderRadius: "7px",
-                background: "#fee2e2",
-                border: "1px solid #fca5a5",
-                color: "#991b1b",
+                background: "var(--tint-red)",
+                border: "1px solid var(--tint-red)",
+                color: "#dc2626",
                 fontSize: "0.8rem",
               }}
             >
@@ -584,8 +584,8 @@ export function ExpenseDetailModal({
                       padding: "0.5rem 0.9rem",
                       borderRadius: "6px",
                       background: "#ffffff",
-                      border: "1px solid #fca5a5",
-                      color: "#991b1b",
+                      border: "1px solid var(--tint-red)",
+                      color: "#dc2626",
                       fontSize: "0.8rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -602,7 +602,7 @@ export function ExpenseDetailModal({
                       gap: "0.35rem",
                       padding: "0.5rem 0.9rem",
                       borderRadius: "6px",
-                      background: "linear-gradient(90deg, var(--action-green), var(--action-green-dark))",
+                      background: "var(--action-green)",
                       border: "none",
                       color: "#ffffff",
                       fontSize: "0.8rem",
@@ -717,7 +717,7 @@ export function FlagDetailModal({
         {flag.resolution && <DetailRow label="Resolution">{flag.resolution}</DetailRow>}
         {flag.dismissedReason && (
           <DetailRow label="Dismissal Reason">
-            <span style={{ color: "#991b1b" }}>{flag.dismissedReason}</span>
+            <span style={{ color: "#dc2626" }}>{flag.dismissedReason}</span>
           </DetailRow>
         )}
         <DetailRow label="Raised On">{formatDate(flag.createdAt)}</DetailRow>
@@ -750,8 +750,8 @@ export function FlagDetailModal({
                   onClick={onDismiss}
                   style={{
                     ...alertButton,
-                    color: "#991b1b",
-                    border: "1px solid #fca5a5",
+                    color: "#dc2626",
+                    border: "1px solid var(--tint-red)",
                     marginLeft: "auto",
                   }}
                 >
@@ -825,7 +825,7 @@ export function FlagActionModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0, 0, 0, 0.5)",
+        background: "rgba(0,36,73, 0.5)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -912,7 +912,7 @@ export function ScheduleInspectionModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0, 0, 0, 0.5)",
+        background: "rgba(0,36,73, 0.5)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

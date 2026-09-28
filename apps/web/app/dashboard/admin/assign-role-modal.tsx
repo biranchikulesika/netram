@@ -112,7 +112,7 @@ export function AssignRoleModal({
         style={{
           maxWidth: "440px",
           width: "100%",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
           borderRadius: "10px",
           padding: "1.25rem",
         }}
@@ -123,7 +123,7 @@ export function AssignRoleModal({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            borderBottom: "1px solid var(--color-border-subtle, #e2e8f0)",
+            borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
             paddingBottom: "0.85rem",
             marginBottom: "1.2rem",
           }}
@@ -152,7 +152,7 @@ export function AssignRoleModal({
               background: "transparent",
               border: "none",
               fontSize: "1.35rem",
-              color: "var(--text-muted, #64748b)",
+              color: "var(--text-muted, var(--text-subtle))",
               cursor: "pointer",
               padding: "0.2rem 0.4rem",
               lineHeight: 1,
@@ -168,12 +168,12 @@ export function AssignRoleModal({
         {error && (
           <div
             style={{
-              background: "#fee2e2",
-              border: "1px solid #fca5a5",
+              background: "var(--tint-red)",
+              border: "1px solid var(--tint-red)",
               borderRadius: "6px",
               padding: "0.6rem 0.85rem",
               marginBottom: "1rem",
-              color: "#991b1b",
+              color: "#dc2626",
               fontSize: "0.82rem",
             }}
           >
@@ -190,7 +190,7 @@ export function AssignRoleModal({
                 display: "block",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "var(--color-navy-brand, #0f2d59)",
+                color: "var(--color-navy-brand, #002449)",
                 marginBottom: "0.4rem",
               }}
             >
@@ -205,10 +205,10 @@ export function AssignRoleModal({
                   width: "100%",
                   padding: "0.6rem 2.25rem 0.6rem 0.85rem",
                   borderRadius: "7px",
-                  border: "1px solid var(--color-border-subtle, #cbd5e1)",
+                  border: "1px solid var(--color-border-subtle, var(--color-border-strong))",
                   fontSize: "0.875rem",
                   fontWeight: 500,
-                  color: "var(--text-primary, #0f172a)",
+                  color: "var(--text-primary, #002449)",
                   background: "var(--bg-surface, #ffffff)",
                   boxSizing: "border-box",
                   appearance: "none",
@@ -229,7 +229,7 @@ export function AssignRoleModal({
                   top: "50%",
                   transform: "translateY(-50%)",
                   pointerEvents: "none",
-                  color: "var(--text-muted, #64748b)",
+                  color: "var(--text-muted, var(--text-subtle))",
                   display: "flex",
                   alignItems: "center",
                 }}
@@ -252,7 +252,7 @@ export function AssignRoleModal({
                 display: "block",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "var(--color-navy-brand, #0f2d59)",
+                color: "var(--color-navy-brand, #002449)",
                 marginBottom: "0.4rem",
               }}
             >
@@ -262,10 +262,10 @@ export function AssignRoleModal({
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
-                background: "var(--bg-subtle, #f1f5f9)",
+                background: "var(--bg-subtle, #edf0f5)",
                 padding: "0.25rem",
                 borderRadius: "8px",
-                border: "1px solid var(--color-border-subtle, #e2e8f0)",
+                border: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
                 gap: "0.25rem",
               }}
             >
@@ -282,9 +282,9 @@ export function AssignRoleModal({
                   background: scope === "jurisdiction" ? "#ffffff" : "transparent",
                   color:
                     scope === "jurisdiction"
-                      ? "var(--color-navy-brand, #0f2d59)"
-                      : "var(--text-secondary, #64748b)",
-                  boxShadow: scope === "jurisdiction" ? "0 1px 3px rgba(0, 0, 0, 0.08)" : "none",
+                      ? "var(--color-navy-brand, #002449)"
+                      : "var(--text-secondary, var(--text-subtle))",
+                  boxShadow: scope === "jurisdiction" ? "0 1px 3px rgba(0,36,73, 0.08)" : "none",
                   transition: "all 0.15s ease",
                 }}
               >
@@ -303,9 +303,9 @@ export function AssignRoleModal({
                   background: scope === "national" ? "#ffffff" : "transparent",
                   color:
                     scope === "national"
-                      ? "var(--color-navy-brand, #0f2d59)"
-                      : "var(--text-secondary, #64748b)",
-                  boxShadow: scope === "national" ? "0 1px 3px rgba(0, 0, 0, 0.08)" : "none",
+                      ? "var(--color-navy-brand, #002449)"
+                      : "var(--text-secondary, var(--text-subtle))",
+                  boxShadow: scope === "national" ? "0 1px 3px rgba(0,36,73, 0.08)" : "none",
                   transition: "all 0.15s ease",
                 }}
               >
@@ -323,7 +323,7 @@ export function AssignRoleModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "var(--color-navy-brand, #0f2d59)",
+                  color: "var(--color-navy-brand, #002449)",
                   marginBottom: "0.4rem",
                 }}
               >
@@ -338,10 +338,10 @@ export function AssignRoleModal({
                     width: "100%",
                     padding: "0.6rem 2.25rem 0.6rem 0.85rem",
                     borderRadius: "7px",
-                    border: "1px solid var(--color-border-subtle, #cbd5e1)",
+                    border: "1px solid var(--color-border-subtle, var(--color-border-strong))",
                     fontSize: "0.875rem",
                     fontWeight: 500,
-                    color: "var(--text-primary, #0f172a)",
+                    color: "var(--text-primary, #002449)",
                     background: "var(--bg-surface, #ffffff)",
                     boxSizing: "border-box",
                     appearance: "none",
@@ -362,7 +362,7 @@ export function AssignRoleModal({
                     top: "50%",
                     transform: "translateY(-50%)",
                     pointerEvents: "none",
-                    color: "var(--text-muted, #64748b)",
+                    color: "var(--text-muted, var(--text-subtle))",
                     display: "flex",
                     alignItems: "center",
                   }}
@@ -385,7 +385,7 @@ export function AssignRoleModal({
               display: "flex",
               justifyContent: "flex-end",
               gap: "0.6rem",
-              borderTop: "1px solid var(--color-border-subtle, #e2e8f0)",
+              borderTop: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
               paddingTop: "0.85rem",
               marginTop: "0.5rem",
             }}
@@ -411,8 +411,8 @@ export function AssignRoleModal({
                 padding: "0.45rem 1.25rem",
                 fontSize: "0.82rem",
                 borderRadius: "6px",
-                background: "var(--color-navy-brand, #0f2d59)",
-                borderColor: "var(--color-navy-brand, #0f2d59)",
+                background: "var(--color-navy-brand, #002449)",
+                borderColor: "var(--color-navy-brand, #002449)",
               }}
             >
               {isSubmitting ? "Assigning..." : "Assign Role"}

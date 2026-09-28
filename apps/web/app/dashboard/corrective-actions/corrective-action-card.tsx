@@ -15,36 +15,36 @@ export function getStatusBadge(status: CorrectiveActionStatus): {
 } {
   switch (status) {
     case "pending":
-      return { bg: "#f1f5f9", color: "#475569", label: "PENDING" };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: "PENDING" };
     case "submitted":
-      return { bg: "#e0f2fe", color: "#0369a1", label: "SUBMITTED" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "SUBMITTED" };
     case "under_review":
-      return { bg: "#fef3c7", color: "#b45309", label: "UNDER REVIEW" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "UNDER REVIEW" };
     case "accepted":
-      return { bg: "#dcfce7", color: "#15803d", label: "ACCEPTED" };
+      return { bg: "var(--tint-green)", color: "#137e3a", label: "ACCEPTED" };
     case "rejected":
-      return { bg: "#fee2e2", color: "#b91c1c", label: "REJECTED" };
+      return { bg: "var(--tint-red)", color: "#dc2626", label: "REJECTED" };
     case "overdue":
-      return { bg: "#ffedd5", color: "#c2410c", label: "OVERDUE" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "OVERDUE" };
     case "escalated":
-      return { bg: "#f3e8ff", color: "#7e22ce", label: "ESCALATED" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "ESCALATED" };
     default:
-      return { bg: "#f1f5f9", color: "#334155", label: status };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: status };
   }
 }
 
 export function getSeverityStyle(severity: string): { bg: string; color: string; label: string } {
   switch (severity) {
     case "critical":
-      return { bg: "#fee2e2", color: "#b91c1c", label: "CRITICAL" };
+      return { bg: "var(--tint-red)", color: "#dc2626", label: "CRITICAL" };
     case "high":
-      return { bg: "#ffedd5", color: "#c2410c", label: "HIGH" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "HIGH" };
     case "medium":
-      return { bg: "#fef3c7", color: "#b45309", label: "MEDIUM" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "MEDIUM" };
     case "low":
-      return { bg: "#f1f5f9", color: "#475569", label: "LOW" };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: "LOW" };
     default:
-      return { bg: "#f1f5f9", color: "#334155", label: severity.toUpperCase() };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: severity.toUpperCase() };
   }
 }
 

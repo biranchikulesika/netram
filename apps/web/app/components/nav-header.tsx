@@ -463,7 +463,7 @@ export function NavHeader({
                             width: "9px",
                             height: "9px",
                             borderRadius: "50%",
-                            background: "#b45309",
+                            background: "#dd501e",
                             border: "1.5px solid var(--color-surface, #ffffff)",
                           }}
                         />
@@ -492,7 +492,7 @@ export function NavHeader({
                               width: "9px",
                               height: "9px",
                               borderRadius: "50%",
-                              background: "#b45309",
+                              background: "#dd501e",
                               flexShrink: 0,
                             }}
                           />

@@ -16,17 +16,17 @@ export function getComplaintStatusBadge(status: ComplaintStatus): {
 } {
   switch (status) {
     case "received":
-      return { bg: "#e0f2fe", color: "#0369a1", label: "RECEIVED" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "RECEIVED" };
     case "under_review":
-      return { bg: "#fef3c7", color: "#b45309", label: "UNDER REVIEW" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "UNDER REVIEW" };
     case "escalated":
-      return { bg: "#fee2e2", color: "#dc2626", label: "ESCALATED" };
+      return { bg: "var(--tint-red)", color: "#dc2626", label: "ESCALATED" };
     case "resolved":
-      return { bg: "#dcfce7", color: "#15803d", label: "RESOLVED" };
+      return { bg: "var(--tint-green)", color: "#137e3a", label: "RESOLVED" };
     case "closed":
-      return { bg: "#f1f5f9", color: "#475569", label: "CLOSED" };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: "CLOSED" };
     default:
-      return { bg: "#f1f5f9", color: "#334155", label: String(status).toUpperCase() };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: String(status).toUpperCase() };
   }
 }
 

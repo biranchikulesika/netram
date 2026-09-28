@@ -550,7 +550,7 @@ export function ProjectRegistrationView({
 
       {success && (
         <div className="reg-success" role="status">
-          <IconCheck width={16} height={16} style={{ color: "#16a34a", flexShrink: 0 }} />
+          <IconCheck width={16} height={16} style={{ color: "#137e3a", flexShrink: 0 }} />
           <span>{success}</span>
         </div>
       )}

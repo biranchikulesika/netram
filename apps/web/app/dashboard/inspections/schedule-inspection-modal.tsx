@@ -108,7 +108,7 @@ export function ScheduleInspectionModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.7)",
+        backgroundColor: "rgba(0,36,73, 0.7)",
         backdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
@@ -123,8 +123,8 @@ export function ScheduleInspectionModal({
           borderRadius: "12px",
           width: "100%",
           maxWidth: "560px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)",
-          border: "1px solid var(--color-border-strong, #cbd5e1)",
+          boxShadow: "0 20px 25px -5px rgba(0,36,73, 0.2), 0 10px 10px -5px rgba(0,36,73, 0.1)",
+          border: "1px solid var(--color-border-strong, var(--color-border-strong))",
           overflow: "hidden",
         }}
       >
@@ -132,8 +132,8 @@ export function ScheduleInspectionModal({
         <div
           style={{
             padding: "1.25rem 1.5rem",
-            borderBottom: "1px solid var(--color-border, #e2e8f0)",
-            background: "var(--bg-surface-subtle, #f8fafc)",
+            borderBottom: "1px solid var(--color-border, var(--color-border-subtle))",
+            background: "var(--bg-surface-subtle, #edf0f5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -144,7 +144,7 @@ export function ScheduleInspectionModal({
               style={{
                 fontSize: "0.75rem",
                 fontWeight: 700,
-                color: "var(--color-navy-brand, #1e3a8a)",
+                color: "var(--color-navy-brand, #0c2a52)",
                 letterSpacing: "0.05em",
                 textTransform: "uppercase",
               }}
@@ -157,7 +157,7 @@ export function ScheduleInspectionModal({
                 margin: "0.25rem 0 0 0",
                 fontSize: "1.15rem",
                 fontWeight: 700,
-                color: "var(--text-primary, #0f172a)",
+                color: "var(--text-primary, #002449)",
               }}
             >
               Schedule New Inspection
@@ -171,7 +171,7 @@ export function ScheduleInspectionModal({
               border: "none",
               fontSize: "1.5rem",
               cursor: "pointer",
-              color: "var(--text-muted, #64748b)",
+              color: "var(--text-muted, var(--text-subtle))",
               lineHeight: 1,
               padding: "0.25rem",
             }}
@@ -186,10 +186,10 @@ export function ScheduleInspectionModal({
             <div
               style={{
                 padding: "0.75rem 1rem",
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
+                background: "var(--tint-red)",
+                border: "1px solid var(--tint-red)",
                 borderRadius: "6px",
-                color: "#991b1b",
+                color: "#dc2626",
                 fontSize: "0.85rem",
                 marginBottom: "1.25rem",
               }}
@@ -206,7 +206,7 @@ export function ScheduleInspectionModal({
                 display: "block",
                 fontSize: "0.8rem",
                 fontWeight: 600,
-                color: "var(--text-secondary, #334155)",
+                color: "var(--text-secondary, var(--text-muted))",
                 marginBottom: "0.4rem",
               }}
             >
@@ -222,9 +222,9 @@ export function ScheduleInspectionModal({
                 padding: "0.6rem 0.8rem",
                 fontSize: "0.85rem",
                 borderRadius: "6px",
-                border: "1px solid var(--color-border-strong, #cbd5e1)",
+                border: "1px solid var(--color-border-strong, var(--color-border-strong))",
                 background: "var(--bg-surface, #ffffff)",
-                color: "var(--text-primary, #0f172a)",
+                color: "var(--text-primary, #002449)",
               }}
             >
               {availableProjects.length === 0 ? (
@@ -248,7 +248,7 @@ export function ScheduleInspectionModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "var(--text-secondary, #334155)",
+                  color: "var(--text-secondary, var(--text-muted))",
                   marginBottom: "0.4rem",
                 }}
               >
@@ -263,9 +263,9 @@ export function ScheduleInspectionModal({
                   padding: "0.6rem 0.8rem",
                   fontSize: "0.85rem",
                   borderRadius: "6px",
-                  border: "1px solid var(--color-border-strong, #cbd5e1)",
+                  border: "1px solid var(--color-border-strong, var(--color-border-strong))",
                   background: "var(--bg-surface, #ffffff)",
-                  color: "var(--text-primary, #0f172a)",
+                  color: "var(--text-primary, #002449)",
                 }}
               >
                 {INSPECTION_TYPES.map((t) => (
@@ -278,7 +278,7 @@ export function ScheduleInspectionModal({
                 style={{
                   display: "block",
                   fontSize: "0.72rem",
-                  color: "var(--text-muted, #64748b)",
+                  color: "var(--text-muted, var(--text-subtle))",
                   marginTop: "0.3rem",
                   lineHeight: 1.3,
                 }}
@@ -294,7 +294,7 @@ export function ScheduleInspectionModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "var(--text-secondary, #334155)",
+                  color: "var(--text-secondary, var(--text-muted))",
                   marginBottom: "0.4rem",
                 }}
               >
@@ -309,9 +309,9 @@ export function ScheduleInspectionModal({
                   padding: "0.6rem 0.8rem",
                   fontSize: "0.85rem",
                   borderRadius: "6px",
-                  border: "1px solid var(--color-border-strong, #cbd5e1)",
+                  border: "1px solid var(--color-border-strong, var(--color-border-strong))",
                   background: "var(--bg-surface, #ffffff)",
-                  color: "var(--text-primary, #0f172a)",
+                  color: "var(--text-primary, #002449)",
                 }}
               >
                 {INSPECTION_TRIGGERS.map((tr) => (
@@ -324,7 +324,7 @@ export function ScheduleInspectionModal({
                 style={{
                   display: "block",
                   fontSize: "0.72rem",
-                  color: "var(--text-muted, #64748b)",
+                  color: "var(--text-muted, var(--text-subtle))",
                   marginTop: "0.3rem",
                   lineHeight: 1.3,
                 }}
@@ -343,7 +343,7 @@ export function ScheduleInspectionModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "var(--text-secondary, #334155)",
+                  color: "var(--text-secondary, var(--text-muted))",
                   marginBottom: "0.4rem",
                 }}
               >
@@ -359,9 +359,9 @@ export function ScheduleInspectionModal({
                   padding: "0.6rem 0.8rem",
                   fontSize: "0.85rem",
                   borderRadius: "6px",
-                  border: "1px solid var(--color-border-strong, #cbd5e1)",
+                  border: "1px solid var(--color-border-strong, var(--color-border-strong))",
                   background: "var(--bg-surface, #ffffff)",
-                  color: "var(--text-primary, #0f172a)",
+                  color: "var(--text-primary, #002449)",
                   boxSizing: "border-box",
                 }}
               />
@@ -374,7 +374,7 @@ export function ScheduleInspectionModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "var(--text-secondary, #334155)",
+                  color: "var(--text-secondary, var(--text-muted))",
                   marginBottom: "0.4rem",
                 }}
               >
@@ -390,9 +390,9 @@ export function ScheduleInspectionModal({
                   padding: "0.6rem 0.8rem",
                   fontSize: "0.85rem",
                   borderRadius: "6px",
-                  border: "1px solid var(--color-border-strong, #cbd5e1)",
+                  border: "1px solid var(--color-border-strong, var(--color-border-strong))",
                   background: "var(--bg-surface, #ffffff)",
-                  color: "var(--text-primary, #0f172a)",
+                  color: "var(--text-primary, #002449)",
                   boxSizing: "border-box",
                 }}
               />
@@ -405,7 +405,7 @@ export function ScheduleInspectionModal({
               display: "flex",
               justifyContent: "flex-end",
               gap: "0.75rem",
-              borderTop: "1px solid var(--color-border, #e2e8f0)",
+              borderTop: "1px solid var(--color-border, var(--color-border-subtle))",
               paddingTop: "1rem",
             }}
           >
@@ -422,7 +422,7 @@ export function ScheduleInspectionModal({
               type="submit"
               disabled={isSubmitting || !projectId}
               style={{
-                background: "var(--color-navy-brand, #1e3a8a)",
+                background: "var(--color-navy-brand, #0c2a52)",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",

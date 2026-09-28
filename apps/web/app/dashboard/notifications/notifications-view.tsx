@@ -73,28 +73,28 @@ function getNotificationVisual(type: string): {
   if (t.includes("inspection")) {
     return {
       icon: IconClipboard,
-      bg: "#eff6ff",
-      color: "#2563eb",
+      bg: "var(--tint-navy)",
+      color: "#0c2a52",
     };
   }
   if (t.includes("corrective_action") || t.includes("overdue") || t.includes("action")) {
     return {
       icon: IconShieldCheck,
-      bg: "#fef2f2",
+      bg: "var(--tint-red)",
       color: "#dc2626",
     };
   }
   if (t.includes("anomaly") || t.includes("ai") || t.includes("cctv")) {
     return {
       icon: IconAlertTriangle,
-      bg: "#fffbeb",
-      color: "#d97706",
+      bg: "var(--tint-orange)",
+      color: "#dd501e",
     };
   }
   return {
     icon: IconBell,
-    bg: "#f1f5f9",
-    color: "#475569",
+    bg: "#edf0f5",
+    color: "var(--text-muted)",
   };
 }
 
@@ -183,8 +183,8 @@ export function NotificationsView({
           {unreadCount > 0 && (
             <span
               style={{
-                background: "#dbeafe",
-                color: "#1d4ed8",
+                background: "var(--tint-navy)",
+                color: "#0c2a52",
                 fontSize: "0.75rem",
                 fontWeight: 700,
                 padding: "0.15rem 0.55rem",
@@ -208,7 +208,7 @@ export function NotificationsView({
               gap: "0.35rem",
               fontSize: "0.825rem",
               padding: "0.35rem 0.65rem",
-              color: "var(--color-accent-blue, #2563eb)",
+              color: "var(--color-accent-blue, #0c2a52)",
               cursor: "pointer",
               fontWeight: 600,
             }}
@@ -235,8 +235,8 @@ export function NotificationsView({
               width: "48px",
               height: "48px",
               borderRadius: "50%",
-              background: "var(--bg-subtle, #f1f5f9)",
-              color: "var(--text-muted, #94a3b8)",
+              background: "var(--bg-subtle, #edf0f5)",
+              color: "var(--text-muted, var(--text-subtle))",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -266,7 +266,7 @@ export function NotificationsView({
             padding: 0,
             overflow: "hidden",
             borderRadius: "10px",
-            border: "1px solid var(--color-border-subtle, #e2e8f0)",
+            border: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
           }}
         >
           {notifications.map((n, idx) => {
@@ -284,10 +284,10 @@ export function NotificationsView({
                   alignItems: "flex-start",
                   gap: "0.9rem",
                   padding: "1rem 1.25rem",
-                  background: isUnread ? "rgba(59, 130, 246, 0.03)" : "var(--bg-surface)",
+                  background: isUnread ? "rgba(12, 42, 82, 0.03)" : "var(--bg-surface)",
                   borderBottom:
                     idx < notifications.length - 1
-                      ? "1px solid var(--color-border-subtle, #f1f5f9)"
+                      ? "1px solid var(--color-border-subtle, #edf0f5)"
                       : "none",
                 }}
               >
@@ -297,7 +297,7 @@ export function NotificationsView({
                     width: "8px",
                     height: "8px",
                     borderRadius: "50%",
-                    background: isUnread ? "#2563eb" : "transparent",
+                    background: isUnread ? "#0c2a52" : "transparent",
                     marginTop: "0.55rem",
                     flexShrink: 0,
                   }}
@@ -347,7 +347,7 @@ export function NotificationsView({
                         fontWeight: isUnread ? 700 : 600,
                         color: isUnread
                           ? "var(--color-navy-brand, #0c2a52)"
-                          : "var(--text-primary, #1e293b)",
+                          : "var(--text-primary, #002449)",
                         lineHeight: 1.4,
                       }}
                     >
@@ -373,7 +373,7 @@ export function NotificationsView({
                         margin: 0,
                         fontSize: "0.85rem",
                         lineHeight: 1.5,
-                        color: "var(--text-secondary, #475569)",
+                        color: "var(--text-secondary, var(--text-muted))",
                       }}
                     >
                       {n.body}
@@ -393,7 +393,7 @@ export function NotificationsView({
                           gap: "0.25rem",
                           fontSize: "0.8rem",
                           fontWeight: 600,
-                          color: "var(--color-accent-blue, #2563eb)",
+                          color: "var(--color-accent-blue, #0c2a52)",
                           textDecoration: "none",
                         }}
                       >
@@ -419,7 +419,7 @@ export function NotificationsView({
                       cursor: "pointer",
                       flexShrink: 0,
                       marginLeft: "0.25rem",
-                      color: "var(--text-muted, #94a3b8)",
+                      color: "var(--text-muted, var(--text-subtle))",
                     }}
                   >
                     <IconCheck style={{ width: 16, height: 16 }} />

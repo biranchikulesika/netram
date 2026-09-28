@@ -22,11 +22,11 @@ interface AttendanceOverviewProps {
 function severityColor(severity: string): string {
   return (
     {
-      LOW: "#22c55e",
-      MEDIUM: "#eab308",
-      HIGH: "#f97316",
-      CRITICAL: "#ef4444",
-    }[severity] ?? "#6b7280"
+      LOW: "#137e3a",
+      MEDIUM: "#dd501e",
+      HIGH: "#dd501e",
+      CRITICAL: "#dc2626",
+    }[severity] ?? "var(--text-muted)"
   );
 }
 
@@ -34,19 +34,19 @@ function severityColor(severity: string): string {
 function stateStyle(state: string): { bg: string; color: string } {
   switch (state) {
     case "NEW":
-      return { bg: "#fee2e2", color: "#b91c1c" };
+      return { bg: "var(--tint-red)", color: "#dc2626" };
     case "REVIEWED":
-      return { bg: "#ede9fe", color: "#6d28d9" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52" };
     case "INVESTIGATING":
-      return { bg: "#ffedd5", color: "#c2410c" };
+      return { bg: "var(--tint-orange)", color: "#dd501e" };
     case "ACTIONED":
-      return { bg: "#dcfce7", color: "#15803d" };
+      return { bg: "var(--tint-green)", color: "#137e3a" };
     case "FALSE_POSITIVE":
-      return { bg: "#e0f2fe", color: "#0369a1" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52" };
     case "DISMISSED":
-      return { bg: "#f1f5f9", color: "#64748b" };
+      return { bg: "#edf0f5", color: "var(--text-subtle)" };
     default:
-      return { bg: "#f1f5f9", color: "#334155" };
+      return { bg: "#edf0f5", color: "var(--text-muted)" };
   }
 }
 
@@ -232,7 +232,7 @@ export function AttendanceOverviewSection({
                 textAlign: "center",
                 background: "#ffffff",
                 borderRadius: "8px",
-                border: "1px solid #e2e8f0",
+                border: "1px solid var(--color-border-subtle)",
               }}
             >
               <IconAlertTriangle
@@ -272,7 +272,7 @@ export function AttendanceOverviewSection({
                     width: "100%",
                     textAlign: "left",
                     background: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid var(--color-border-subtle)",
                     borderRadius: "8px",
                     padding: "0.7rem 0.85rem",
                     cursor: "pointer",
@@ -301,7 +301,7 @@ export function AttendanceOverviewSection({
                         display: "block",
                         fontWeight: 600,
                         fontSize: "0.84rem",
-                        color: "#0f172a",
+                        color: "#002449",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -315,7 +315,7 @@ export function AttendanceOverviewSection({
                       style={{
                         display: "block",
                         fontSize: "0.72rem",
-                        color: "#64748b",
+                        color: "var(--text-subtle)",
                         marginTop: 2,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
@@ -378,7 +378,7 @@ export function AttendanceOverviewSection({
               maxWidth: "620px",
               maxHeight: "90vh",
               overflowY: "auto",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
             }}
           >
             <AnomalyReviewPanel
@@ -400,7 +400,7 @@ export function AttendanceOverviewSection({
               textAlign: "center",
               background: "#ffffff",
               borderRadius: "8px",
-              border: "1px solid #e2e8f0",
+              border: "1px solid var(--color-border-subtle)",
             }}
           >
             <h3>No Attendance Data</h3>
@@ -475,10 +475,10 @@ export function AttendanceOverviewSection({
                             fontWeight: 600,
                             color:
                               calc.coverage === "COMPLETE"
-                                ? "#16a34a"
+                                ? "#137e3a"
                                 : calc.coverage === "PARTIAL"
-                                  ? "#d97706"
-                                  : "#6b7280",
+                                  ? "#dd501e"
+                                  : "var(--text-muted)",
                           }}
                         >
                           {calc.present}

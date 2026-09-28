@@ -30,7 +30,7 @@ export default function GlobalErrorBoundary({
         alignItems: "center",
         justifyContent: "center",
         padding: "2rem 1rem",
-        background: "var(--bg-canvas, #f8fafc)",
+        background: "var(--bg-canvas, #edf0f5)",
         textAlign: "center",
       }}
     >
@@ -45,8 +45,8 @@ export default function GlobalErrorBoundary({
             width: "48px",
             height: "48px",
             borderRadius: "50%",
-            background: isForbidden ? "#fee2e2" : "#fef3c7",
-            color: isForbidden ? "#dc2626" : "#d97706",
+            background: isForbidden ? "var(--tint-red)" : "var(--tint-orange)",
+            color: isForbidden ? "#dc2626" : "#dd501e",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

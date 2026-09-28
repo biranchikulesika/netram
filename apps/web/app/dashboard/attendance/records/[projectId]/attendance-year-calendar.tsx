@@ -184,7 +184,7 @@ export function AttendanceYearCalendar({
                         <span
                           key={`sep-${i}`}
                           style={{
-                            color: "#cbd5e1",
+                            color: "var(--color-border-strong)",
                             fontSize: "0.85rem",
                             fontWeight: 600,
                             padding: "0 0.45rem",
@@ -209,8 +209,8 @@ export function AttendanceYearCalendar({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
-            <Stat num={summary.recorded} label="days recorded" color="#334155" />
-            <Stat num={summary.avg} label="avg present/day" color="#334155" decimal />
+            <Stat num={summary.recorded} label="days recorded" color="var(--text-muted)" />
+            <Stat num={summary.avg} label="avg present/day" color="var(--text-muted)" decimal />
           </div>
         </div>
       </div>
@@ -248,10 +248,10 @@ export function AttendanceYearCalendar({
           color: "var(--text-muted)",
         }}
       >
-        <LegendDot color="#dcfce7" label="High attendance (≥ 90%)" />
-        <LegendDot color="#fef9c3" label="Reduced (70–89%)" />
-        <LegendDot color="#fee2e2" label="Low (< 70%)" />
-        <LegendDot color="#f1f5f9" label="No record" />
+        <LegendDot color="var(--tint-green)" label="High attendance (≥ 90%)" />
+        <LegendDot color="var(--tint-orange)" label="Reduced (70–89%)" />
+        <LegendDot color="var(--tint-red)" label="Low (< 70%)" />
+        <LegendDot color="#edf0f5" label="No record" />
       </div>
     </div>
   );
@@ -266,7 +266,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
           height: 12,
           borderRadius: 3,
           background: color,
-          border: "1px solid #e2e8f0",
+          border: "1px solid var(--color-border-subtle)",
           display: "inline-block",
         }}
       />
@@ -311,7 +311,7 @@ function MonthGrid({
     <div
       style={{
         background: "#ffffff",
-        border: "1px solid #e2e8f0",
+        border: "1px solid var(--color-border-subtle)",
         borderRadius: "8px",
         padding: "0.85rem",
       }}
@@ -369,10 +369,10 @@ function MonthGrid({
                   ? "reduced"
                   : "low";
           const meta = {
-            high: { bg: "#dcfce7", border: "#bbf7d0", text: "#166534" },
-            reduced: { bg: "#fef9c3", border: "#fde68a", text: "#a16207" },
-            low: { bg: "#fee2e2", border: "#fecaca", text: "#b91c1c" },
-            none: { bg: "#f1f5f9", border: "#e2e8f0", text: "#94a3b8" },
+            high: { bg: "var(--tint-green)", border: "var(--tint-green)", text: "#137e3a" },
+            reduced: { bg: "var(--tint-orange)", border: "var(--tint-orange)", text: "#dd501e" },
+            low: { bg: "var(--tint-red)", border: "var(--tint-red)", text: "#dc2626" },
+            none: { bg: "#edf0f5", border: "var(--color-border-subtle)", text: "var(--text-subtle)" },
           }[severity];
           const cellStyle: React.CSSProperties = {
             aspectRatio: "1",
@@ -397,7 +397,7 @@ function MonthGrid({
                   left: 4,
                   fontSize: "0.52rem",
                   fontWeight: 600,
-                  color: "#94a3b8",
+                  color: "var(--text-subtle)",
                   lineHeight: 1,
                 }}
               >
@@ -417,7 +417,7 @@ function MonthGrid({
                   {present}
                 </span>
               ) : (
-                <span style={{ fontSize: "0.55rem", color: "#94a3b8", marginTop: "0.2rem" }}>—</span>
+                <span style={{ fontSize: "0.55rem", color: "var(--text-subtle)", marginTop: "0.2rem" }}>—</span>
               )}
             </>
           );
@@ -458,7 +458,7 @@ const yearArrowStyle: React.CSSProperties = {
   fontSize: "1rem",
   fontWeight: 700,
   lineHeight: 1,
-  color: "#334155",
+  color: "var(--text-muted)",
   cursor: "pointer",
   padding: "0.1rem 0.2rem",
 };
@@ -466,7 +466,7 @@ const yearArrowStyle: React.CSSProperties = {
 const yearStripStyle: React.CSSProperties = {
   fontSize: "0.9rem",
   fontWeight: 600,
-  color: "#64748b",
+  color: "var(--text-subtle)",
   border: "none",
   background: "transparent",
   cursor: "pointer",
@@ -475,7 +475,7 @@ const yearStripStyle: React.CSSProperties = {
 
 const yearStripActiveStyle: React.CSSProperties = {
   color: "#ffffff",
-  background: "#4338ca",
+  background: "#0c2a52",
   borderRadius: "999px",
   fontWeight: 700,
 };

@@ -3,8 +3,8 @@ import { gradientOffset, rampColor } from "./health-gauge";
 
 /** The three stops the SVG track is painted with, in gradient-axis offsets. */
 const STOP_LOW = { offset: 0, color: "#dc2626" } as const;
-const STOP_MID = { offset: gradientOffset(50), color: "#eab308" } as const;
-const STOP_HIGH = { offset: 1, color: "#16a34a" } as const;
+const STOP_MID = { offset: gradientOffset(50), color: "#dd501e" } as const;
+const STOP_HIGH = { offset: 1, color: "#137e3a" } as const;
 
 function channels(hex: string): [number, number, number] {
   return [
@@ -43,8 +43,8 @@ describe("health gauge colour ramp", () => {
 
   it("runs red at 0 through amber at 50 to green at 100", () => {
     expect(rampColor(0)).toBe("#dc2626");
-    expect(rampColor(50)).toBe("#eab308");
-    expect(rampColor(100)).toBe("#16a34a");
+    expect(rampColor(50)).toBe("#dd501e");
+    expect(rampColor(100)).toBe("#137e3a");
   });
 
   it("rises monotonically, so higher health is never a duller colour", () => {

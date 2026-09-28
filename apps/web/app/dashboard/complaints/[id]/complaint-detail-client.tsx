@@ -92,7 +92,7 @@ export function ComplaintDetailClient({
           <h1 className="inspection-hero-title">{complaint.projectName}</h1>
           <div className="inspection-hero-meta">
             <span className="inspection-meta-chip">
-              <IconGavel width={13} height={13} style={{ color: "#2563eb" }} />
+              <IconGavel width={13} height={13} style={{ color: "#0c2a52" }} />
               <Link href={`/dashboard/projects/${complaint.projectId}`} style={{ fontWeight: 600 }}>
                 Facility: {complaint.projectCode}
               </Link>
@@ -185,7 +185,7 @@ export function ComplaintDetailClient({
         <div className="section-title-row">
           <h3>Grievance Narrative</h3>
         </div>
-        <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#1e293b", whiteSpace: "pre-wrap" }}>
+        <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#002449", whiteSpace: "pre-wrap" }}>
           {complaint.description}
         </p>
       </section>
@@ -204,7 +204,7 @@ export function ComplaintDetailClient({
                   Recorded {formatDateTime(complaint.resolvedAt)}
                 </div>
               )}
-              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#1e293b", whiteSpace: "pre-wrap" }}>
+              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#002449", whiteSpace: "pre-wrap" }}>
                 {complaint.resolutionText}
               </p>
             </div>
@@ -229,7 +229,7 @@ export function ComplaintDetailClient({
           <div className="section-title-row">
             <h3>Supporting Attachments</h3>
             {complaint.files.length > 0 && (
-              <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
+              <span style={{ fontSize: "0.72rem", color: "var(--text-subtle)", fontWeight: 600 }}>
                 {complaint.files.length} file{complaint.files.length === 1 ? "" : "s"}
               </span>
             )}
@@ -251,12 +251,12 @@ export function ComplaintDetailClient({
                       display: "flex",
                       alignItems: "center",
                       gap: "0.5rem",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
+                      background: "#edf0f5",
+                      border: "1px solid var(--color-border-subtle)",
                       borderRadius: "6px",
                       padding: "0.45rem 0.6rem",
                       fontSize: "0.8rem",
-                      color: "#0f172a",
+                      color: "#002449",
                       textDecoration: "none",
                     }}
                   >
@@ -282,17 +282,17 @@ export function ComplaintDetailClient({
           </div>
 
           <div style={{ marginBottom: "0.75rem" }}>
-            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>NAME</div>
-            <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1e293b" }}>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", fontWeight: 600 }}>NAME</div>
+            <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#002449" }}>
               {complaint.complainantName || "Anonymous Citizen"}
             </div>
           </div>
 
           <div style={{ marginBottom: "0.75rem" }}>
-            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", fontWeight: 600 }}>
               CONTACT / TELECOM
             </div>
-            <div style={{ fontSize: "0.85rem", color: "#334155" }}>
+            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
               {complaint.contactInfo || "Not provided"}
             </div>
           </div>

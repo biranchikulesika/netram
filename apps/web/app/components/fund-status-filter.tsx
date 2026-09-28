@@ -131,7 +131,7 @@ export function StatusFilter({
               background: "#ffffff",
               border: "1px solid var(--color-border-subtle)",
               borderRadius: "10px",
-              boxShadow: "0 12px 32px rgba(15, 23, 42, 0.18)",
+              boxShadow: "0 12px 32px rgba(0,36,73, 0.18)",
               padding: "0.4rem",
               display: "flex",
               flexDirection: "column",
@@ -167,7 +167,7 @@ export function StatusFilter({
                       width: 15,
                       height: 15,
                       cursor: isLastRemaining ? "not-allowed" : "pointer",
-                      accentColor: "#4338ca",
+                      accentColor: "#0c2a52",
                     }}
                   />
                   <span>{opt.label}</span>

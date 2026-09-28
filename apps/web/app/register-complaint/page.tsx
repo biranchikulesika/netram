@@ -444,7 +444,7 @@ function RegisterComplaintContent() {
                   type="checkbox"
                   checked={declared}
                   onChange={(e) => setDeclared(e.target.checked)}
-                  style={{ accentColor: "#157a3d" }}
+                  style={{ accentColor: "#137e3a" }}
                 />
                 <span>
                   I declare that the information above is true and correct to the best of my knowledge,

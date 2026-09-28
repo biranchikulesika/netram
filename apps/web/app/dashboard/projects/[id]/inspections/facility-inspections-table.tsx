@@ -184,7 +184,7 @@ export function FacilityInspectionsTable({
                           fontWeight: 600,
                           fontSize: "0.8rem",
                           textTransform: "uppercase",
-                          color: isSurprise ? "#b45309" : "var(--text-primary)",
+                          color: isSurprise ? "#dd501e" : "var(--text-primary)",
                         }}
                       >
                         {i.type}

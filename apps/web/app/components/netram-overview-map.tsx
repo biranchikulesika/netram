@@ -366,7 +366,7 @@ const NetramOverviewMap = function NetramOverviewMap({
                     width: 12px;
                     height: 5px;
                     border-radius: 50%;
-                    background: rgba(0, 0, 0, 0.35);
+                    background: rgba(0,36,73, 0.35);
                   "></div>`
                 : `<div style="
                     position: absolute;
@@ -376,14 +376,14 @@ const NetramOverviewMap = function NetramOverviewMap({
                     width: 10px;
                     height: 4px;
                     border-radius: 50%;
-                    background: rgba(0, 0, 0, 0.22);
+                    background: rgba(0,36,73, 0.22);
                   "></div>`
             }
             <svg
               viewBox="0 0 28 38"
               width="${width}"
               height="${height}"
-              style="display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));"
+              style="display: block; filter: drop-shadow(0 2px 4px rgba(0,36,73, 0.35));"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
@@ -464,9 +464,9 @@ const NetramOverviewMap = function NetramOverviewMap({
           borderRadius: "12px",
           overflow: "hidden",
           border: "1px solid var(--color-border-strong)",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+          boxShadow: "0 2px 12px rgba(0,36,73, 0.08)",
           marginBottom: 0,
-          background: "#e2e8f0",
+          background: "var(--color-border-subtle)",
         }}
       >
         {/* 1. Complete Leaflet Map DOM Canvas */}
@@ -495,7 +495,7 @@ const NetramOverviewMap = function NetramOverviewMap({
               backdropFilter: "blur(10px)",
               color: "var(--color-navy-brand)",
               borderRadius: "8px",
-              border: "1px solid rgba(0, 26, 56, 0.15)",
+              border: "1px solid rgba(0,36,73, 0.15)",
               boxShadow: "0 4px 14px rgba(12, 42, 82, 0.12)",
               padding: "0.45rem 0.85rem",
               fontSize: "0.78rem",
@@ -508,7 +508,7 @@ const NetramOverviewMap = function NetramOverviewMap({
             }}
             title={selectedFacility ? reopenLabel : listTitle}
           >
-            <IconMapPin width={14} height={14} style={{ color: "#2563eb" }} />
+            <IconMapPin width={14} height={14} style={{ color: "#0c2a52" }} />
             <span>View {reopenLabel}</span>
           </button>
         )}
@@ -532,8 +532,8 @@ const NetramOverviewMap = function NetramOverviewMap({
               background: "rgba(255, 255, 255, 0.96)",
               backdropFilter: "blur(8px)",
               borderRadius: "6px",
-              border: "1px solid rgba(0,0,0,0.12)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              border: "1px solid rgba(0,36,73, 0.12)",
+              boxShadow: "0 2px 8px rgba(0,36,73, 0.1)",
               padding: "0.2rem",
             }}
           >
@@ -580,8 +580,8 @@ const NetramOverviewMap = function NetramOverviewMap({
               background: "rgba(255, 255, 255, 0.96)",
               backdropFilter: "blur(8px)",
               borderRadius: "6px",
-              border: "1px solid rgba(0,0,0,0.12)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              border: "1px solid rgba(0,36,73, 0.12)",
+              boxShadow: "0 2px 8px rgba(0,36,73, 0.1)",
               padding: "0.32rem 0.65rem",
               fontSize: "0.74rem",
               fontWeight: 600,
@@ -621,15 +621,15 @@ const NetramOverviewMap = function NetramOverviewMap({
               width: "34px",
               height: "34px",
               borderRadius: "6px",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--color-border-strong)",
               background: "#ffffff",
-              color: "#0f172a",
+              color: "#002449",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               padding: 0,
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.15)",
             }}
             title="Pan Left (West)"
             aria-label="Pan Left"
@@ -646,15 +646,15 @@ const NetramOverviewMap = function NetramOverviewMap({
               width: "34px",
               height: "34px",
               borderRadius: "6px",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--color-border-strong)",
               background: "#ffffff",
-              color: "#0f172a",
+              color: "#002449",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               padding: 0,
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.15)",
             }}
             title="Pan Right (East)"
             aria-label="Pan Right"
@@ -671,15 +671,15 @@ const NetramOverviewMap = function NetramOverviewMap({
               width: "34px",
               height: "34px",
               borderRadius: "6px",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--color-border-strong)",
               background: "#ffffff",
-              color: "#0f172a",
+              color: "#002449",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               padding: 0,
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.15)",
             }}
             title="Zoom In"
             aria-label="Zoom In"
@@ -697,15 +697,15 @@ const NetramOverviewMap = function NetramOverviewMap({
               width: "34px",
               height: "34px",
               borderRadius: "6px",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--color-border-strong)",
               background: "#ffffff",
-              color: "#0f172a",
+              color: "#002449",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               padding: 0,
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.15)",
             }}
             title="Pan Up (North)"
             aria-label="Pan Up"
@@ -722,15 +722,15 @@ const NetramOverviewMap = function NetramOverviewMap({
               width: "34px",
               height: "34px",
               borderRadius: "6px",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--color-border-strong)",
               background: "#ffffff",
-              color: "#0f172a",
+              color: "#002449",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               padding: 0,
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.15)",
             }}
             title="Pan Down (South)"
             aria-label="Pan Down"
@@ -747,15 +747,15 @@ const NetramOverviewMap = function NetramOverviewMap({
               width: "34px",
               height: "34px",
               borderRadius: "6px",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--color-border-strong)",
               background: "#ffffff",
-              color: "#0f172a",
+              color: "#002449",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               padding: 0,
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.15)",
             }}
             title="Zoom Out"
             aria-label="Zoom Out"
@@ -777,8 +777,8 @@ const NetramOverviewMap = function NetramOverviewMap({
               background: "rgba(255, 255, 255, 0.94)",
               backdropFilter: "blur(6px)",
               borderRadius: "6px",
-              border: "1px solid rgba(0,0,0,0.1)",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0,36,73, 0.1)",
+              boxShadow: "0 2px 6px rgba(0,36,73, 0.08)",
               padding: "0.35rem 0.6rem",
               display: "flex",
               alignItems: "center",
@@ -797,7 +797,7 @@ const NetramOverviewMap = function NetramOverviewMap({
                       height: 8,
                       borderRadius: "2px",
                       border: `1px solid ${item.swatch}`,
-                      background: "rgba(34, 197, 94, 0.25)",
+                      background: "rgba(19, 126, 58, 0.25)",
                       display: "inline-block",
                     }}
                   />
@@ -826,7 +826,7 @@ const NetramOverviewMap = function NetramOverviewMap({
               bottom: "1.5rem",
               left: showDrawer ? "calc(50% + 190px)" : "50%",
               transform: "translateX(-50%)",
-              background: "rgba(15, 23, 42, 0.95)",
+              background: "rgba(0,36,73, 0.95)",
               color: "#ffffff",
               padding: "0.5rem 1rem",
               borderRadius: "6px",
@@ -835,12 +835,12 @@ const NetramOverviewMap = function NetramOverviewMap({
               display: "flex",
               alignItems: "center",
               gap: "0.4rem",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+              boxShadow: "0 4px 16px rgba(0,36,73, 0.25)",
               zIndex: 1100,
               transition: "left 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            <IconCheck width={14} height={14} style={{ color: "#22c55e" }} />
+            <IconCheck width={14} height={14} style={{ color: "#137e3a" }} />
             <span>{toastMessage}</span>
           </div>
         )}
@@ -856,9 +856,9 @@ const NetramOverviewMap = function NetramOverviewMap({
             maxWidth: "calc(100% - 1.5rem)",
             background: "rgba(255, 255, 255, 0.98)",
             backdropFilter: "blur(14px)",
-            border: "1px solid rgba(0, 26, 56, 0.14)",
+            border: "1px solid rgba(0,36,73, 0.14)",
             borderRadius: "12px",
-            boxShadow: "0 8px 32px rgba(12, 42, 82, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08)",
+            boxShadow: "0 8px 32px rgba(12, 42, 82, 0.16), 0 2px 8px rgba(0,36,73, 0.08)",
             zIndex: 1001,
             display: "flex",
             flexDirection: "column",
@@ -880,7 +880,7 @@ const NetramOverviewMap = function NetramOverviewMap({
               <div
                 style={{
                   padding: "0.45rem 0.5rem 0.45rem 0.65rem",
-                  background: "#f8fafc",
+                  background: "#edf0f5",
                   borderBottom: "1px solid var(--color-border-subtle)",
                   display: "flex",
                   alignItems: "center",
@@ -909,7 +909,7 @@ const NetramOverviewMap = function NetramOverviewMap({
                       transition: "all 0.15s ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#e2e8f0";
+                      e.currentTarget.style.background = "var(--color-border-subtle)";
                       e.currentTarget.style.color = "var(--color-navy-brand)";
                     }}
                     onMouseLeave={(e) => {
@@ -952,7 +952,7 @@ const NetramOverviewMap = function NetramOverviewMap({
               <div
                 style={{
                   padding: "0.45rem 0.5rem 0.45rem 0.65rem",
-                  background: "#f8fafc",
+                  background: "#edf0f5",
                   borderBottom: "1px solid var(--color-border-subtle)",
                   display: "flex",
                   alignItems: "center",
@@ -961,7 +961,7 @@ const NetramOverviewMap = function NetramOverviewMap({
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
-                  <IconMapPin width={13} height={13} style={{ color: "#2563eb", flexShrink: 0 }} />
+                  <IconMapPin width={13} height={13} style={{ color: "#0c2a52", flexShrink: 0 }} />
                   <span
                     style={{
                       fontSize: "0.72rem",
@@ -1037,17 +1037,17 @@ const NetramOverviewMap = function NetramOverviewMap({
                         flexDirection: "column",
                         gap: "0.15rem",
                         transition: "all 0.15s ease",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+                        boxShadow: "0 1px 3px rgba(0,36,73, 0.03)",
                         outline: "none",
                         minWidth: 0,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "#2563eb";
-                        e.currentTarget.style.boxShadow = "0 3px 8px rgba(37, 99, 235, 0.1)";
+                        e.currentTarget.style.borderColor = "#0c2a52";
+                        e.currentTarget.style.boxShadow = "0 3px 8px rgba(12,42,82, 0.1)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = "var(--color-border-subtle)";
-                        e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
+                        e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,36,73, 0.03)";
                       }}
                     >
                       <div
@@ -1119,7 +1119,7 @@ const NetramOverviewMap = function NetramOverviewMap({
                           {f.districtLabel}
                         </span>
                         <span style={{ flex: 1 }} />
-                        <span title="Open details" style={{ color: "#2563eb", display: "inline-flex", flexShrink: 0 }}>
+                        <span title="Open details" style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}>
                           <IconChevronLeft width={13} height={13} style={{ transform: "rotate(180deg)" }} />
                         </span>
                       </div>

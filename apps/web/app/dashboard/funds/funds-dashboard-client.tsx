@@ -102,7 +102,7 @@ const fyArrowStyle: React.CSSProperties = {
   fontSize: "1rem",
   fontWeight: 700,
   lineHeight: 1,
-  color: "#334155",
+  color: "var(--text-muted)",
   cursor: "pointer",
   padding: "0.1rem 0.2rem",
 };
@@ -110,7 +110,7 @@ const fyArrowStyle: React.CSSProperties = {
 const fyStripStyle: React.CSSProperties = {
   fontSize: "0.9rem",
   fontWeight: 600,
-  color: "#64748b",
+  color: "var(--text-subtle)",
   border: "none",
   background: "transparent",
   cursor: "pointer",
@@ -119,7 +119,7 @@ const fyStripStyle: React.CSSProperties = {
 
 const fyStripActiveStyle: React.CSSProperties = {
   color: "#ffffff",
-  background: "#4338ca",
+  background: "#0c2a52",
   borderRadius: "999px",
   fontWeight: 700,
 };
@@ -160,16 +160,16 @@ function formatCompact(val: number): string {
 }
 
 const PIE_PALETTE = [
-  "#2563eb",
-  "#f59e0b",
-  "#059669",
-  "#8b5cf6",
+  "#0c2a52",
+  "#dd501e",
+  "#137e3a",
+  "#0c2a52",
   "#dc2626",
-  "#0ea5e9",
-  "#ec4899",
-  "#84cc16",
-  "#f97316",
-  "#64748b",
+  "#0c2a52",
+  "#0c2a52",
+  "#137e3a",
+  "#dd501e",
+  "var(--text-subtle)",
 ];
 
 function StatDonut({ data }: { data: { label: string; value: number }[] }) {
@@ -315,7 +315,7 @@ function StatHBar({
             style={{
               flex: 1,
               height: 18,
-              background: "rgba(148, 163, 184, 0.15)",
+              background: "rgba(69, 85, 108, 0.15)",
               borderRadius: 4,
               overflow: "hidden",
             }}
@@ -1108,7 +1108,7 @@ export function FundsDashboardClient({
                 aria-expanded={showAddMenu}
                 title="Add expenditure or allocate fund"
                 style={{
-                  background: "#4338ca",
+                  background: "#0c2a52",
                   color: "#ffffff",
                   border: "none",
                   padding: "0.5rem 0.9rem",
@@ -1119,7 +1119,7 @@ export function FundsDashboardClient({
                   alignItems: "center",
                   gap: "0.45rem",
                   borderRadius: "6px",
-                  boxShadow: "0 2px 6px rgba(67, 56, 202, 0.35)",
+                  boxShadow: "0 2px 6px rgba(12, 42, 82, 0.35)",
                 }}
               >
                 <IconPlus width={15} height={15} />
@@ -1150,7 +1150,7 @@ export function FundsDashboardClient({
                       background: "#ffffff",
                       border: "1px solid var(--color-border-subtle)",
                       borderRadius: "10px",
-                      boxShadow: "0 12px 32px rgba(15, 23, 42, 0.18)",
+                      boxShadow: "0 12px 32px rgba(0,36,73, 0.18)",
                       padding: "0.4rem",
                       display: "flex",
                       flexDirection: "column",
@@ -1191,8 +1191,8 @@ export function FundsDashboardClient({
                           width: 30,
                           height: 30,
                           borderRadius: "8px",
-                          background: "rgba(217, 119, 6, 0.14)",
-                          color: "#b45309",
+                          background: "rgba(221, 80, 30, 0.14)",
+                          color: "#dd501e",
                           flexShrink: 0,
                         }}
                       >
@@ -1233,8 +1233,8 @@ export function FundsDashboardClient({
                           width: 30,
                           height: 30,
                           borderRadius: "8px",
-                          background: "rgba(67, 56, 202, 0.12)",
-                          color: "#4338ca",
+                          background: "rgba(12, 42, 82, 0.12)",
+                          color: "#0c2a52",
                           flexShrink: 0,
                         }}
                       >
@@ -1265,7 +1265,7 @@ export function FundsDashboardClient({
                   onClick={openExpenseModal}
                   className="btn"
                   style={{
-                    background: "#d97706",
+                    background: "#dd501e",
                     color: "#ffffff",
                     border: "none",
                     padding: "0.5rem 1rem",
@@ -1355,7 +1355,7 @@ export function FundsDashboardClient({
                           <span
                             key={`sep-${i}`}
                             style={{
-                              color: "#cbd5e1",
+                              color: "var(--color-border-strong)",
                               fontSize: "0.85rem",
                               fontWeight: 600,
                               padding: "0 0.45rem",
@@ -1404,17 +1404,17 @@ export function FundsDashboardClient({
                 <StatKpi
                   label="Total Sanctioned"
                   value={formatCompact(statsOverview.sanctioned)}
-                  color="#2563eb"
+                  color="#0c2a52"
                 />
                 <StatKpi
                   label="Pending Verification"
                   value={formatCompact(statsOverview.pending)}
-                  color="#f59e0b"
+                  color="#dd501e"
                 />
                 <StatKpi
                   label="Verified"
                   value={formatCompact(statsOverview.verified)}
-                  color="#059669"
+                  color="#137e3a"
                 />
                 <StatKpi
                   label="Rejected"
@@ -1708,16 +1708,16 @@ export function FundsDashboardClient({
                               whiteSpace: "nowrap",
                               background:
                                 f.riskLevel === "critical" || f.riskLevel === "high"
-                                  ? "#fee2e2"
+                                  ? "var(--tint-red)"
                                   : f.riskLevel === "medium"
-                                    ? "#fef3c7"
-                                    : "#e0f2fe",
+                                    ? "var(--tint-orange)"
+                                    : "var(--tint-navy)",
                               color:
                                 f.riskLevel === "critical" || f.riskLevel === "high"
-                                  ? "#991b1b"
+                                  ? "#dc2626"
                                   : f.riskLevel === "medium"
-                                    ? "#92400e"
-                                    : "#0369a1",
+                                    ? "#dd501e"
+                                    : "#0c2a52",
                               fontWeight: 700,
                             }}
                           >
@@ -1770,7 +1770,7 @@ export function FundsDashboardClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 0, 0, 0.5)",
+            background: "rgba(0,36,73, 0.5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2054,7 +2054,7 @@ export function FundsDashboardClient({
                   padding: "1rem 1.5rem",
                   background: "rgba(255, 255, 255, 0.97)",
                   borderTop: "1px solid var(--color-border-subtle)",
-                  boxShadow: "0 -8px 20px rgba(15, 23, 42, 0.06)",
+                  boxShadow: "0 -8px 20px rgba(0,36,73, 0.06)",
                 }}
               >
                 <button
@@ -2081,7 +2081,7 @@ export function FundsDashboardClient({
                     padding: "0.7rem 1.2rem",
                     borderRadius: "6px",
                     background:
-                      "linear-gradient(90deg, var(--color-navy-brand), var(--color-accent-blue))",
+                      "var(--color-navy-brand)",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,
@@ -2104,7 +2104,7 @@ export function FundsDashboardClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.58)",
+            background: "rgba(0,36,73, 0.58)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2124,7 +2124,7 @@ export function FundsDashboardClient({
               padding: 0,
               background: "#ffffff",
               borderRadius: "16px",
-              boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+              boxShadow: "0 24px 70px rgba(0,36,73, 0.28)",
               boxSizing: "border-box",
             }}
           >
@@ -2146,7 +2146,7 @@ export function FundsDashboardClient({
                     width: "2.25rem",
                     height: "2.25rem",
                     borderRadius: "10px",
-                    background: "rgba(67, 56, 202, 0.1)",
+                    background: "rgba(12, 42, 82, 0.1)",
                     color: "var(--color-navy-brand)",
                     flexShrink: 0,
                   }}
@@ -2382,7 +2382,7 @@ export function FundsDashboardClient({
                           width: "0.2rem",
                           height: "1rem",
                           borderRadius: "999px",
-                          background: "#d97706",
+                          background: "#dd501e",
                         }}
                       />
                       <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 750 }}>Payee</h3>
@@ -2472,8 +2472,8 @@ export function FundsDashboardClient({
                     marginTop: "1rem",
                     padding: "0.7rem 0.8rem",
                     borderRadius: "7px",
-                    background: "#fff7ed",
-                    color: "#9a3412",
+                    background: "var(--tint-orange)",
+                    color: "#dd501e",
                     fontSize: "0.8rem",
                   }}
                 >
@@ -2534,7 +2534,7 @@ export function FundsDashboardClient({
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,
-                    boxShadow: "0 4px 12px rgba(14, 122, 52, 0.2)",
+                    boxShadow: "0 4px 12px rgba(19,126,58, 0.2)",
                     cursor:
                       submittingExpense || workflowEstablishments.length === 0
                         ? "not-allowed"
@@ -2564,7 +2564,7 @@ export function FundsDashboardClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 0, 0, 0.55)",
+            background: "rgba(0,36,73, 0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2676,7 +2676,7 @@ export function FundsDashboardClient({
                 }}
               />
               {confirmationError && (
-                <div role="alert" style={{ color: "#991b1b", fontSize: "0.78rem" }}>
+                <div role="alert" style={{ color: "#dc2626", fontSize: "0.78rem" }}>
                   {confirmationError}
                 </div>
               )}
@@ -2711,7 +2711,7 @@ export function FundsDashboardClient({
                     padding: "0.65rem 1rem",
                     borderRadius: "6px",
                     background:
-                      "linear-gradient(90deg, var(--action-green), var(--action-green-dark))",
+                      "var(--action-green)",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,
@@ -2736,7 +2736,7 @@ export function FundsDashboardClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 0, 0, 0.5)",
+            background: "rgba(0,36,73, 0.5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2752,7 +2752,7 @@ export function FundsDashboardClient({
               borderRadius: "8px",
             }}
           >
-            <h3 style={{ margin: "0 0 0.75rem 0", color: "#991b1b" }}>Reject Expenditure</h3>
+            <h3 style={{ margin: "0 0 0.75rem 0", color: "#dc2626" }}>Reject Expenditure</h3>
             <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0 0 1rem 0" }}>
               Provide the specific non-compliance, documentary omission, or discrepancy rationale.
               This note will be recorded in the official audit register.

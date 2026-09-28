@@ -7,9 +7,9 @@ import { formatDateTime } from "../../../lib/presentation";
 
 const SEVERITY_META: Record<AnomalySeverity, { rank: number; color: string; label: string }> = {
   critical: { rank: 0, color: "#dc2626", label: "Critical" },
-  high: { rank: 1, color: "#ea580c", label: "High" },
-  medium: { rank: 2, color: "#ca8a04", label: "Medium" },
-  low: { rank: 3, color: "#0d9488", label: "Low" },
+  high: { rank: 1, color: "#dd501e", label: "High" },
+  medium: { rank: 2, color: "#dd501e", label: "Medium" },
+  low: { rank: 3, color: "#0c2a52", label: "Low" },
 };
 
 const OPEN_STATUSES: AnomalyStatus[] = ["new", "reviewed", "investigated"];
@@ -17,17 +17,17 @@ const OPEN_STATUSES: AnomalyStatus[] = ["new", "reviewed", "investigated"];
 export function getStatusStyle(status: AnomalyStatus): { bg: string; color: string; label: string } {
   switch (status) {
     case "new":
-      return { bg: "#fee2e2", color: "#b91c1c", label: "NEW" };
+      return { bg: "var(--tint-red)", color: "#dc2626", label: "NEW" };
     case "reviewed":
-      return { bg: "#ede9fe", color: "#6d28d9", label: "REVIEWED" };
+      return { bg: "var(--tint-navy)", color: "#0c2a52", label: "REVIEWED" };
     case "investigated":
-      return { bg: "#ffedd5", color: "#c2410c", label: "INVESTIGATING" };
+      return { bg: "var(--tint-orange)", color: "#dd501e", label: "INVESTIGATING" };
     case "acted_upon":
-      return { bg: "#dcfce7", color: "#15803d", label: "ACTED UPON" };
+      return { bg: "var(--tint-green)", color: "#137e3a", label: "ACTED UPON" };
     case "dismissed":
-      return { bg: "#f1f5f9", color: "#64748b", label: "DISMISSED" };
+      return { bg: "#edf0f5", color: "var(--text-subtle)", label: "DISMISSED" };
     default:
-      return { bg: "#f1f5f9", color: "#334155", label: String(status).toUpperCase() };
+      return { bg: "#edf0f5", color: "var(--text-muted)", label: String(status).toUpperCase() };
   }
 }
 
@@ -130,7 +130,7 @@ export function AlertsScreen({
             textAlign: "center",
             background: "#ffffff",
             borderRadius: "8px",
-            border: "1px solid #e2e8f0",
+            border: "1px solid var(--color-border-subtle)",
           }}
         >
           <IconVideo style={{ width: 30, height: 30, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
@@ -169,7 +169,7 @@ export function AlertsScreen({
                     width: "100%",
                     textAlign: "left",
                     background: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid var(--color-border-subtle)",
                     borderRadius: "8px",
                     padding: "0.7rem 0.85rem",
                     cursor: "pointer",
@@ -198,7 +198,7 @@ export function AlertsScreen({
                         display: "block",
                         fontWeight: 600,
                         fontSize: "0.84rem",
-                        color: "#0f172a",
+                        color: "#002449",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -210,7 +210,7 @@ export function AlertsScreen({
                       style={{
                         display: "block",
                         fontSize: "0.72rem",
-                        color: "#64748b",
+                        color: "var(--text-subtle)",
                         marginTop: 2,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
@@ -258,7 +258,7 @@ export function AlertsScreen({
                   width: "100%",
                   textAlign: "left",
                   background: "#ffffff",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid var(--color-border-subtle)",
                   borderRadius: "8px",
                   padding: "0.7rem 0.85rem",
                   cursor: "pointer",
@@ -271,7 +271,7 @@ export function AlertsScreen({
                     height: 34,
                     flexShrink: 0,
                     borderRadius: "6px",
-                    background: isMaintenance ? "#ca8a04" : "#b91c1c",
+                    background: isMaintenance ? "#dd501e" : "#dc2626",
                     color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
@@ -287,7 +287,7 @@ export function AlertsScreen({
                       display: "block",
                       fontWeight: 600,
                       fontSize: "0.84rem",
-                      color: "#0f172a",
+                      color: "#002449",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -299,14 +299,14 @@ export function AlertsScreen({
                     style={{
                       display: "block",
                       fontSize: "0.72rem",
-                      color: "#64748b",
+                      color: "var(--text-subtle)",
                       marginTop: 2,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                     }}
                   >
-                    <strong style={{ color: isMaintenance ? "#ca8a04" : "#b91c1c" }}>
+                    <strong style={{ color: isMaintenance ? "#dd501e" : "#dc2626" }}>
                       {isMaintenance ? "MAINTENANCE" : "OFFLINE"}
                     </strong>
                     {` · ${cam.name}`}
@@ -322,8 +322,8 @@ export function AlertsScreen({
                     fontWeight: 700,
                     padding: "0.15rem 0.45rem",
                     borderRadius: "999px",
-                    background: isMaintenance ? "#fef3c7" : "#fee2e2",
-                    color: isMaintenance ? "#b45309" : "#b91c1c",
+                    background: isMaintenance ? "var(--tint-orange)" : "var(--tint-red)",
+                    color: isMaintenance ? "#dd501e" : "#dc2626",
                     textTransform: "uppercase",
                   }}
                 >
@@ -352,7 +352,7 @@ export function AlertsScreen({
             style={{
               maxWidth: "420px",
               width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
             }}
           >
             <div
@@ -360,7 +360,7 @@ export function AlertsScreen({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                borderBottom: "1px solid #e2e8f0",
+                borderBottom: "1px solid var(--color-border-subtle)",
                 paddingBottom: "0.85rem",
                 marginBottom: "1rem",
               }}
@@ -383,7 +383,7 @@ export function AlertsScreen({
                   background: "none",
                   border: "none",
                   fontSize: "1.4rem",
-                  color: "#64748b",
+                  color: "var(--text-subtle)",
                   cursor: "pointer",
                   padding: "0.2rem 0.5rem",
                   lineHeight: 1,
@@ -399,7 +399,7 @@ export function AlertsScreen({
                 display: "grid",
                 gap: "0.65rem",
                 fontSize: "0.84rem",
-                color: "#334155",
+                color: "var(--text-muted)",
                 marginBottom: "1.25rem",
               }}
             >

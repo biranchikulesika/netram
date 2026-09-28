@@ -33,48 +33,48 @@ const TRANSITION_CONFIGS: Record<InspectionStatus, TransitionConfig> = {
     label: "Assign Inspection Team",
     badgeText: "Assigned",
     description: "Assign inspector or team to lead the facility inspection.",
-    btnColor: "#475569",
-    btnHoverColor: "#334155",
+    btnColor: "var(--text-muted)",
+    btnHoverColor: "var(--text-muted)",
     placeholder: "Assignment docket notes...",
   },
   scheduled: {
     label: "Set Window & Schedule",
     badgeText: "Scheduled",
     description: "Formalize inspection window and notify participating inspection officers.",
-    btnColor: "#2563eb",
-    btnHoverColor: "#1d4ed8",
+    btnColor: "#0c2a52",
+    btnHoverColor: "#0c2a52",
     placeholder: "Enter scheduling coordination notes or itinerary...",
   },
   in_progress: {
     label: "Start Field Verification",
     badgeText: "Field Operations Active",
     description: "Inspectors arrive on site and commence active field verification and physical checks.",
-    btnColor: "#0284c7",
-    btnHoverColor: "#0369a1",
+    btnColor: "#0c2a52",
+    btnHoverColor: "#0c2a52",
     placeholder: "Record site arrival time, physical conditions, or initial inspection notice...",
   },
   evidence_collection: {
     label: "Initiate Evidence Collection",
     badgeText: "Evidence Gathering",
     description: "Active capture of photographic, document, and forensic evidence with tamper-proof hashing.",
-    btnColor: "#0891b2",
-    btnHoverColor: "#0e7490",
+    btnColor: "#0c2a52",
+    btnHoverColor: "#0c2a52",
     placeholder: "Specify focus areas for evidence collection, interviews, or sampling...",
   },
   submitted: {
     label: "Submit Inspection",
     badgeText: "Field Submission",
     description: "Inspectors conclude field operations and formally submit observations and evidence to the Authority.",
-    btnColor: "#059669",
-    btnHoverColor: "#047857",
+    btnColor: "#137e3a",
+    btnHoverColor: "#137e3a",
     placeholder: "Summarize field findings, observations, and inspector sign-off justification...",
   },
   under_review: {
     label: "Commence Authority Scrutiny",
     badgeText: "Under Authority Review",
     description: "Supervisory authority scrutinizes field evidence, observations, and statutory compliance standards.",
-    btnColor: "#d97706",
-    btnHoverColor: "#b45309",
+    btnColor: "#dd501e",
+    btnHoverColor: "#dd501e",
     placeholder: "Enter regulatory review comments, compliance assessments, or hearing recommendations...",
   },
   findings: {
@@ -82,31 +82,31 @@ const TRANSITION_CONFIGS: Record<InspectionStatus, TransitionConfig> = {
     badgeText: "Deficiencies Documented",
     description: "Authority formulates and records binding regulatory non-compliance findings and deficiencies.",
     btnColor: "#dc2626",
-    btnHoverColor: "#b91c1c",
+    btnHoverColor: "#dc2626",
     placeholder: "Detail statutory violations, non-compliant standards, or required remedial measures...",
   },
   corrective_actions: {
     label: "Order Corrective Remediation",
     badgeText: "Remediation Ordered",
     description: "Order facility management to execute binding corrective actions with strict compliance SLA.",
-    btnColor: "#ea580c",
-    btnHoverColor: "#c2410c",
+    btnColor: "#dd501e",
+    btnHoverColor: "#dd501e",
     placeholder: "Specify mandatory corrective actions, deadlines, and technical verification criteria...",
   },
   verification: {
     label: "Initiate Remediation Verification",
     badgeText: "Verification Phase",
     description: "Verify that facility management has executed all ordered corrective actions to compliance standards.",
-    btnColor: "#7c3aed",
-    btnHoverColor: "#6d28d9",
+    btnColor: "#0c2a52",
+    btnHoverColor: "#0c2a52",
     placeholder: "Document verification inspection results, compliance evidence, or follow-up observations...",
   },
   closed: {
     label: "Finalize & Close Inspection",
     badgeText: "Case Concluded",
     description: "Complete all supervisory workflows and archive the inspection in the official state registry.",
-    btnColor: "#15803d",
-    btnHoverColor: "#166534",
+    btnColor: "#137e3a",
+    btnHoverColor: "#137e3a",
     placeholder: "Enter official closure docket entry, executive approval summary, or final verdict...",
   },
 };
@@ -179,7 +179,7 @@ export function InspectionTransitionModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.7)",
+        backgroundColor: "rgba(0,36,73, 0.7)",
         backdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
@@ -194,8 +194,8 @@ export function InspectionTransitionModal({
           borderRadius: "12px",
           width: "100%",
           maxWidth: "580px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)",
-          border: "1px solid var(--color-border-strong, #cbd5e1)",
+          boxShadow: "0 20px 25px -5px rgba(0,36,73, 0.2), 0 10px 10px -5px rgba(0,36,73, 0.1)",
+          border: "1px solid var(--color-border-strong, var(--color-border-strong))",
           overflow: "hidden",
         }}
       >
@@ -203,8 +203,8 @@ export function InspectionTransitionModal({
         <div
           style={{
             padding: "1.25rem 1.5rem",
-            borderBottom: "1px solid var(--color-border, #e2e8f0)",
-            background: "var(--bg-surface-subtle, #f8fafc)",
+            borderBottom: "1px solid var(--color-border, var(--color-border-subtle))",
+            background: "var(--bg-surface-subtle, #edf0f5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -215,7 +215,7 @@ export function InspectionTransitionModal({
               style={{
                 fontSize: "0.75rem",
                 fontWeight: 700,
-                color: "var(--color-navy-brand, #1e3a8a)",
+                color: "var(--color-navy-brand, #0c2a52)",
                 letterSpacing: "0.05em",
                 textTransform: "uppercase",
               }}
@@ -228,7 +228,7 @@ export function InspectionTransitionModal({
                 margin: "0.25rem 0 0 0",
                 fontSize: "1.15rem",
                 fontWeight: 700,
-                color: "var(--text-primary, #0f172a)",
+                color: "var(--text-primary, #002449)",
               }}
             >
               Advance Inspection State
@@ -242,7 +242,7 @@ export function InspectionTransitionModal({
               border: "none",
               fontSize: "1.5rem",
               cursor: "pointer",
-              color: "var(--text-muted, #64748b)",
+              color: "var(--text-muted, var(--text-subtle))",
               lineHeight: 1,
               padding: "0.25rem",
             }}
@@ -260,20 +260,20 @@ export function InspectionTransitionModal({
               alignItems: "center",
               gap: "0.75rem",
               padding: "0.75rem 1rem",
-              background: "var(--bg-surface, #f1f5f9)",
+              background: "var(--bg-surface, #edf0f5)",
               borderRadius: "8px",
               marginBottom: "1.25rem",
               fontSize: "0.85rem",
             }}
           >
-            <span style={{ color: "var(--text-muted, #64748b)" }}>Current Status:</span>
+            <span style={{ color: "var(--text-muted, var(--text-subtle))" }}>Current Status:</span>
             <span
               className={`status status-${inspection.status}`}
               style={{ fontWeight: 600, textTransform: "capitalize" }}
             >
               {inspection.status.replace(/_/g, " ")}
             </span>
-            <span style={{ color: "var(--text-muted, #64748b)", marginLeft: "auto", fontSize: "0.78rem" }}>
+            <span style={{ color: "var(--text-muted, var(--text-subtle))", marginLeft: "auto", fontSize: "0.78rem" }}>
               ID: {inspection.id.slice(0, 8)}…
             </span>
           </div>
@@ -282,10 +282,10 @@ export function InspectionTransitionModal({
             <div
               style={{
                 padding: "0.75rem 1rem",
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
+                background: "var(--tint-red)",
+                border: "1px solid var(--tint-red)",
                 borderRadius: "6px",
-                color: "#991b1b",
+                color: "#dc2626",
                 fontSize: "0.85rem",
                 marginBottom: "1.25rem",
               }}
@@ -295,7 +295,7 @@ export function InspectionTransitionModal({
           )}
 
           {allowedTransitions.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "1.5rem 0", color: "var(--text-muted, #64748b)" }}>
+            <div style={{ textAlign: "center", padding: "1.5rem 0", color: "var(--text-muted, var(--text-subtle))" }}>
               No transitions are permitted from this status under current authority permissions.
             </div>
           ) : (
@@ -307,7 +307,7 @@ export function InspectionTransitionModal({
                     display: "block",
                     fontSize: "0.8rem",
                     fontWeight: 600,
-                    color: "var(--text-secondary, #334155)",
+                    color: "var(--text-secondary, var(--text-muted))",
                     marginBottom: "0.5rem",
                   }}
                 >
@@ -328,8 +328,8 @@ export function InspectionTransitionModal({
                           gap: "0.75rem",
                           padding: "0.75rem 1rem",
                           borderRadius: "8px",
-                          border: `2px solid ${isSelected ? c.btnColor : "var(--color-border, #e2e8f0)"}`,
-                          background: isSelected ? "var(--bg-surface-subtle, #f8fafc)" : "var(--bg-surface, #ffffff)",
+                          border: `2px solid ${isSelected ? c.btnColor : "var(--color-border, var(--color-border-subtle))"}`,
+                          background: isSelected ? "var(--bg-surface-subtle, #edf0f5)" : "var(--bg-surface, #ffffff)",
                           textAlign: "left",
                           cursor: "pointer",
                           transition: "all 0.15s ease",
@@ -344,7 +344,7 @@ export function InspectionTransitionModal({
                         />
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.2rem" }}>
-                            <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text-primary, #0f172a)" }}>
+                            <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text-primary, #002449)" }}>
                               {c.label}
                             </span>
                             <span
@@ -361,7 +361,7 @@ export function InspectionTransitionModal({
                               {c.badgeText}
                             </span>
                           </div>
-                          <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #64748b)", lineHeight: 1.4 }}>
+                          <div style={{ fontSize: "0.8rem", color: "var(--text-muted, var(--text-subtle))", lineHeight: 1.4 }}>
                             {c.description}
                           </div>
                         </div>
@@ -379,7 +379,7 @@ export function InspectionTransitionModal({
                     display: "block",
                     fontSize: "0.8rem",
                     fontWeight: 600,
-                    color: "var(--text-secondary, #334155)",
+                    color: "var(--text-secondary, var(--text-muted))",
                     marginBottom: "0.4rem",
                   }}
                 >
@@ -396,9 +396,9 @@ export function InspectionTransitionModal({
                     padding: "0.6rem 0.8rem",
                     fontSize: "0.85rem",
                     borderRadius: "6px",
-                    border: "1px solid var(--color-border-strong, #cbd5e1)",
+                    border: "1px solid var(--color-border-strong, var(--color-border-strong))",
                     background: "var(--bg-surface, #ffffff)",
-                    color: "var(--text-primary, #0f172a)",
+                    color: "var(--text-primary, #002449)",
                     resize: "vertical",
                     boxSizing: "border-box",
                   }}
@@ -407,7 +407,7 @@ export function InspectionTransitionModal({
                   style={{
                     display: "block",
                     fontSize: "0.72rem",
-                    color: "var(--text-muted, #64748b)",
+                    color: "var(--text-muted, var(--text-subtle))",
                     marginTop: "0.25rem",
                   }}
                 >
@@ -423,7 +423,7 @@ export function InspectionTransitionModal({
               display: "flex",
               justifyContent: "flex-end",
               gap: "0.75rem",
-              borderTop: "1px solid var(--color-border, #e2e8f0)",
+              borderTop: "1px solid var(--color-border, var(--color-border-subtle))",
               paddingTop: "1rem",
             }}
           >

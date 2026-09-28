@@ -11,9 +11,9 @@ import { relativeAge } from "./overview-model";
 
 /** Severity dot colours, matching the attention rows on the project page. */
 const SEVERITY_TONE: Record<AttentionSeverity, string> = {
-  critical: "#b91c1c",
-  high: "#ea580c",
-  medium: "#d97706",
+  critical: "#dc2626",
+  high: "#dd501e",
+  medium: "#dd501e",
 };
 
 export interface DashboardOverviewViewProps {

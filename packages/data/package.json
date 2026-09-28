@@ -22,7 +22,7 @@
   "dependencies": {
     "@netram/types": "workspace:*",
     "@netram/config": "workspace:*",
-    "drizzle-orm": "^0.44.2",
+    "drizzle-orm": "^0.45.3",
     "postgres": "^3.4.5"
   },
   "devDependencies": {
@@ -31,6 +31,6 @@
     "eslint": "^9.17.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.3"
+    "vitest": "^5.0.1"
   }
 }

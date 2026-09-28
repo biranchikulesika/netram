@@ -108,7 +108,7 @@ export default async function FacilityOverviewPage({
     for (const i of activeInspections.slice(0, 3)) {
       rows.push({
         key: `inspect-${i.id}`,
-        tone: "#2563eb",
+        tone: "#0c2a52",
         title: `${i.type === "surprise" ? "Surprise" : "Routine"} inspection in the field`,
         sub: `Started ${formatShortDate(i.startedAt ?? i.scheduledStart)} · ${i.trigger.replace(/_/g, " ")}`,
         pill: "In the field",
@@ -120,7 +120,7 @@ export default async function FacilityOverviewPage({
     for (const i of reviewInspections.slice(0, 2)) {
       rows.push({
         key: `review-${i.id}`,
-        tone: "#d97706",
+        tone: "#dd501e",
         title: `${i.type === "surprise" ? "Surprise" : "Routine"} inspection awaiting review`,
         sub: `Submitted ${formatShortDate(i.submittedAt ?? i.updatedAt)}`,
         pill: "Awaiting review",
@@ -134,7 +134,7 @@ export default async function FacilityOverviewPage({
     for (const c of openComplaints.slice(0, 3)) {
       rows.push({
         key: `comp-${c.id}`,
-        tone: "#b91c1c",
+        tone: "#dc2626",
         title: `Complaint ${c.trackingCode}`,
         sub: `${c.description}`,
         pill: c.status.replace(/_/g, " "),
@@ -148,7 +148,7 @@ export default async function FacilityOverviewPage({
     for (const a of openAttendanceAnomalies.slice(0, 3)) {
       rows.push({
         key: `att-${a.id}`,
-        tone: "#ea580c",
+        tone: "#dd501e",
         title: `Attendance signal: ${a.anomalyType.replace(/_/g, " ").toLowerCase()}`,
         sub: `Observed ${formatShortDate(a.observationStart)} · ${Math.round(a.score * 100)}% score`,
         pill: a.state.replace(/_/g, " "),

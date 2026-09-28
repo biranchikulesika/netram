@@ -20,7 +20,7 @@
     "@fastify/cors": "^10.0.2",
     "@fastify/multipart": "^10.1.1",
     "@fastify/swagger": "^9.4.2",
-    "@fastify/swagger-ui": "^5.2.0",
+    "@fastify/swagger-ui": "^6.1.1",
     "@netram/config": "workspace:*",
     "@netram/data": "workspace:*",
     "@netram/types": "workspace:*",
@@ -37,6 +37,6 @@
     "eslint": "^9.17.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.3"
+    "vitest": "^5.0.1"
   }
 }

@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: var(--bg-canvas, #f6f8fc);
+  background-color: var(--bg-canvas, #edf0f5);
   color: var(--text-primary, #0c2a52);
   padding: 2rem 1.25rem;
   box-sizing: border-box;
@@ -58,7 +58,7 @@
   font-size: 1.0625rem;
   line-height: 1.3;
   text-wrap: balance;
-  color: var(--color-text-primary, var(--text-primary, #1e3a8a));
+  color: var(--color-text-primary, var(--text-primary, #0c2a52));
 }
 
 .mastheadName span {
@@ -66,7 +66,7 @@
   font-size: 0.8125rem;
   line-height: 1.3;
   margin-top: 0.2rem;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--text-subtle));
 }
 
 .mastheadEnd {
@@ -90,7 +90,7 @@
 .crossLinks {
   margin-top: 1.35rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--color-border-subtle, #e2e8f0);
+  border-top: 1px solid var(--color-border-subtle, var(--color-border-subtle));
   display: flex;
   justify-content: center;
   align-items: baseline;
@@ -99,7 +99,7 @@
 }
 
 .crossBtn {
-  color: var(--color-accent-blue, #1e3a8a);
+  color: var(--color-accent-blue, #0c2a52);
   font-size: 0.8rem;
   font-weight: 600;
   text-decoration: none;
@@ -108,7 +108,7 @@
 .crossBtn + .crossBtn {
   padding-left: 1rem;
   margin-left: 0.6rem;
-  border-left: 1px solid var(--color-border-subtle, #cbd5e1);
+  border-left: 1px solid var(--color-border-subtle, var(--color-border-strong));
 }
 
 .crossBtn:hover,
@@ -125,7 +125,7 @@
 
 .loginCard {
   background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--color-border-subtle, #e2e8f0);
+  border: 1px solid var(--color-border-subtle, var(--color-border-subtle));
   border-radius: 12px;
   padding: 2.25rem 2rem;
   box-shadow:
@@ -153,7 +153,7 @@
 
 .brandSubtitle {
   font-size: 0.825rem;
-  color: var(--text-muted, #475569);
+  color: var(--text-muted, var(--text-muted));
   font-weight: 500;
   margin: 0;
   line-height: 1.45;
@@ -185,7 +185,7 @@
 .inputPrefixIcon {
   position: absolute;
   left: 0.85rem;
-  color: var(--text-subtle, #64748b);
+  color: var(--text-subtle, var(--text-subtle));
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -198,7 +198,7 @@
   font-size: 0.925rem;
   color: var(--text-primary, #0c2a52);
   background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--color-border-strong, #cbd5e1);
+  border: 1px solid var(--color-border-strong, var(--color-border-strong));
   border-radius: 8px;
   padding: 0.65rem 0.85rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -214,22 +214,22 @@
 }
 
 .input::placeholder {
-  color: var(--text-subtle, #94a3b8);
+  color: var(--text-subtle, var(--text-subtle));
 }
 
 .input:hover {
-  border-color: var(--color-accent-blue, #3a488b);
+  border-color: var(--color-accent-blue, #0c2a52);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--color-accent-blue, #3a488b);
-  box-shadow: 0 0 0 3px rgba(58, 72, 139, 0.18);
+  border-color: var(--color-accent-blue, #0c2a52);
+  box-shadow: 0 0 0 3px rgba(12,42,82, 0.18);
 }
 
 .inputError {
   border-color: var(--color-error, #dc2626) !important;
-  background: #fffcfc;
+  background: #ffffff;
 }
 
 .inputError:focus {
@@ -260,7 +260,7 @@
   border: none;
   background: transparent;
   box-shadow: none;
-  color: var(--text-muted, #475569);
+  color: var(--text-muted, var(--text-muted));
   cursor: pointer;
   padding: 0;
   transition: color 0.15s ease;
@@ -271,7 +271,7 @@
 }
 
 .togglePasswordButton:focus-visible {
-  outline: 2px solid var(--color-accent-blue, #3a488b);
+  outline: 2px solid var(--color-accent-blue, #0c2a52);
   outline-offset: 1px;
   box-shadow: none;
 }
@@ -281,11 +281,11 @@
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--tint-red);
+  border: 1px solid var(--tint-red);
   border-radius: 8px;
   padding: 0.75rem 0.9rem;
-  color: #991b1b;
+  color: #dc2626;
   font-size: 0.8125rem;
   line-height: 1.45;
   margin-bottom: 1rem;
@@ -309,7 +309,7 @@
 .alertCloseButton {
   background: none;
   border: none;
-  color: #991b1b;
+  color: #dc2626;
   cursor: pointer;
   padding: 0.2rem;
   line-height: 1;
@@ -327,7 +327,7 @@
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  background: linear-gradient(to right, var(--action-green, #15803d), var(--action-green-dark, #0e7a34));
+  background: var(--action-green);
   color: #ffffff;
   font-family: inherit;
   font-size: 0.925rem;
@@ -337,18 +337,18 @@
   border-radius: 8px;
   cursor: pointer;
   transition: filter 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 1px 3px 0 rgba(14, 122, 52, 0.25);
+  box-shadow: 0 1px 3px 0 rgba(19,126,58, 0.25);
   margin-top: 0.35rem;
 }
 
 .submitButton:hover:not(:disabled) {
   filter: brightness(1.08);
-  box-shadow: 0 2px 6px 0 rgba(14, 122, 52, 0.35);
+  box-shadow: 0 2px 6px 0 rgba(19,126,58, 0.35);
 }
 
 .submitButton:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #86efac, 0 0 0 4px #ffffff;
+  box-shadow: 0 0 0 2px var(--tint-green), 0 0 0 4px #ffffff;
 }
 
 .submitButton:disabled {
@@ -377,7 +377,7 @@
 .devSection {
   margin-top: 0.9rem;
   padding-top: 0.9rem;
-  border-top: 1px dashed var(--color-border-strong, #cbd5e1);
+  border-top: 1px dashed var(--color-border-strong, var(--color-border-strong));
 }
 
 .devToggle {
@@ -391,7 +391,7 @@
   gap: 0.3rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted, #475569);
+  color: var(--text-muted, var(--text-muted));
   cursor: pointer;
   text-align: center;
 }
@@ -401,7 +401,7 @@
 }
 
 .devToggle:focus-visible {
-  outline: 2px solid var(--color-accent-blue, #3a488b);
+  outline: 2px solid var(--color-accent-blue, #0c2a52);
   outline-offset: 2px;
   box-shadow: none;
 }
@@ -426,32 +426,32 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: var(--bg-subtle, #f3f6fb);
+  background: var(--bg-subtle, #edf0f5);
   border: 1px solid transparent;
   box-shadow: none;
   border-radius: 999px;
   padding: 0.25rem 0.6rem;
   font-size: 0.7rem;
-  color: var(--text-muted, #475569);
+  color: var(--text-muted, var(--text-muted));
   cursor: pointer;
   white-space: nowrap;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .devAccountButton:hover {
-  background: var(--bg-hover, #edf2fa);
+  background: var(--bg-hover, #edf0f5);
   color: var(--text-primary, #0c2a52);
 }
 
 .devAccountButton:focus-visible {
-  outline: 2px solid var(--color-accent-blue, #3a488b);
+  outline: 2px solid var(--color-accent-blue, #0c2a52);
   outline-offset: 1px;
   box-shadow: none;
 }
 
 /* Seeded account currently sitting in the email field. */
 .devAccountActive {
-  background: rgba(58, 72, 139, 0.12);
+  background: rgba(12,42,82, 0.12);
   color: var(--text-primary, #0c2a52);
 }
 

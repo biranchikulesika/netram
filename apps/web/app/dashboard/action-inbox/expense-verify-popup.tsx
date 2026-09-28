@@ -83,8 +83,8 @@ export function ExpenseVerifyPopup({
           width: "100%",
           maxHeight: "85vh",
           overflowY: "auto",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          borderTop: "3px solid #16a34a",
+          boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
+          borderTop: "3px solid #137e3a",
         }}
       >
         {/* Header */}
@@ -116,7 +116,7 @@ export function ExpenseVerifyPopup({
             gap: "1rem",
             padding: "1rem",
             borderRadius: 8,
-            background: "linear-gradient(135deg, #f8fafc, #eef2ff)",
+            background: "var(--bg-subtle)",
             border: "1px solid var(--color-border-subtle)",
             marginBottom: "0.9rem",
           }}
@@ -242,12 +242,12 @@ export function ExpenseVerifyPopup({
           <div
             role="alert"
             style={{
-              background: "#fee2e2",
-              border: "1px solid #fca5a5",
+              background: "var(--tint-red)",
+              border: "1px solid var(--tint-red)",
               borderRadius: 6,
               padding: "0.55rem 0.75rem",
               marginBottom: "0.9rem",
-              color: "#991b1b",
+              color: "#dc2626",
               fontSize: "0.8rem",
             }}
           >
@@ -272,7 +272,7 @@ export function ExpenseVerifyPopup({
           <button
             type="button"
             className="btn-secondary"
-            style={{ borderColor: "#fca5a5", color: "#991b1b" }}
+            style={{ borderColor: "var(--tint-red)", color: "#dc2626" }}
             disabled={!canReject}
             onClick={() => onReject(item, reason.trim())}
           >

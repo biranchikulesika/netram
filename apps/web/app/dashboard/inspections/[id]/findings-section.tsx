@@ -72,7 +72,7 @@ export function FindingsSection({
                     style={{
                       marginTop: "0.85rem",
                       paddingTop: "0.65rem",
-                      borderTop: "1px dashed #e2e8f0",
+                      borderTop: "1px dashed var(--color-border-subtle)",
                       display: "flex",
                       justifyContent: "flex-end",
                     }}

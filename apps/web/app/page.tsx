@@ -21,19 +21,19 @@ export default async function HomePage() {
         minHeight: "100vh",
         boxSizing: "border-box",
         width: "100%",
-        background: "#f6f8fc",
+        background: "#edf0f5",
         display: "flex",
         flexDirection: "column",
       }}
     >
       <style>{`
         :root {
-          --navy: #1e3a8a;
-          --saffron: #e8590c;
-          --green: #157a3d;
-          --green-hover: #0f5f2f;
-          --muted: #64748b;
-          --line: #e2e8f0;
+          --navy: #0c2a52;
+          --saffron: #dd501e;
+          --green: #137e3a;
+          --green-hover: #137e3a;
+          --muted: var(--text-subtle);
+          --line: var(--color-border-subtle);
           /* type scale — one size per level, no ad-hoc values */
           --fs-display: 5.5rem;
           --fs-tagline: 2rem;
@@ -71,13 +71,13 @@ export default async function HomePage() {
           font-size: var(--fs-cta);
           font-weight: 700;
           padding: 0.7rem 1.6rem;
-          box-shadow: 0 1px 2px rgba(14, 122, 52, .25), 0 6px 16px -6px rgba(14, 122, 52, .45);
+          box-shadow: 0 1px 2px rgba(19,126,58, .25), 0 6px 16px -6px rgba(19,126,58, .45);
         }
         .nav-btn-primary:hover { background: var(--green-hover); color: #fff; }
         .nav-btn-quiet {
           background: transparent;
           color: var(--muted);
-          border: 1px solid #cbd5e1;
+          border: 1px solid var(--color-border-strong);
         }
         .nav-btn-quiet:hover {
           background: #fff;
@@ -106,11 +106,9 @@ export default async function HomePage() {
         }
         .hero-grid {
           background-image:
-            linear-gradient(rgba(30, 58, 138, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(30, 58, 138, 0.06) 1px, transparent 1px);
+            linear-gradient(rgba(12, 42, 82, 0.06) 1px, transparent 1px);
           background-size: 64px 64px;
-          -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
-          mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
+          
         }
         .action-row {
           display: flex;

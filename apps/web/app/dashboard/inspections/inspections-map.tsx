@@ -8,16 +8,16 @@ import { InspectionCard } from "./inspection-card";
 import { IconChevronRight, IconMapPin } from "../../components/icons";
 
 const STATUS_COLORS: Record<InspectionStatus, string> = {
-  closed: "#15803d",
-  under_review: "#b45309",
-  in_progress: "#1d4ed8",
-  evidence_collection: "#0369a1",
-  submitted: "#15803d",
-  findings: "#c2410c",
-  corrective_actions: "#7e22ce",
-  verification: "#9a3412",
-  scheduled: "#4338ca",
-  assigned: "#475569",
+  closed: "#137e3a",
+  under_review: "#dd501e",
+  in_progress: "#0c2a52",
+  evidence_collection: "#0c2a52",
+  submitted: "#137e3a",
+  findings: "#dd501e",
+  corrective_actions: "#0c2a52",
+  verification: "#dd501e",
+  scheduled: "#0c2a52",
+  assigned: "var(--text-muted)",
 };
 
 const ORDER: Record<InspectionStatus, number> = {
@@ -137,17 +137,17 @@ export default function InspectionsMap({ inspections }: InspectionsMapProps) {
               flexDirection: "column",
               gap: "0.15rem",
               transition: "all 0.15s ease",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+              boxShadow: "0 1px 3px rgba(0,36,73, 0.03)",
               outline: "none",
               minWidth: 0,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#2563eb";
-              e.currentTarget.style.boxShadow = "0 3px 8px rgba(37, 99, 235, 0.1)";
+              e.currentTarget.style.borderColor = "#0c2a52";
+              e.currentTarget.style.boxShadow = "0 3px 8px rgba(12,42,82, 0.1)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "var(--color-border-subtle)";
-              e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
+              e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,36,73, 0.03)";
             }}
           >
             <div
@@ -206,7 +206,7 @@ export default function InspectionsMap({ inspections }: InspectionsMapProps) {
                 {f.districtLabel}
               </span>
               <span style={{ flex: 1 }} />
-              <span title="Open district inspections" style={{ color: "#2563eb", display: "inline-flex", flexShrink: 0 }}>
+              <span title="Open district inspections" style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}>
                 <IconChevronRight width={13} height={13} />
               </span>
             </div>

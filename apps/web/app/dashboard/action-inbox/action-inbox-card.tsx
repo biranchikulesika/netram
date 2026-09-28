@@ -137,7 +137,7 @@ export function ActionInboxCard({
 
         {remediation && (
           <p className="facility-card-desc" style={{ marginTop: "-0.35rem" }}>
-            <span style={{ fontWeight: 600, color: "#334155" }}>Required remediation:</span>{" "}
+            <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Required remediation:</span>{" "}
             {remediation}
           </p>
         )}
@@ -166,9 +166,9 @@ export function ActionInboxCard({
           {item.amountInr !== null && (
             <div className="facility-card-meta-item">
               <dt title="Amount (INR)" aria-label="Amount in Indian rupees">
-                <IconIndianRupee className="meta-label-icon" style={{ color: "#15803d" }} />
+                <IconIndianRupee className="meta-label-icon" style={{ color: "#137e3a" }} />
               </dt>
-              <dd style={{ fontWeight: 700, color: "#15803d" }}>
+              <dd style={{ fontWeight: 700, color: "#137e3a" }}>
                 {item.amountInr.toLocaleString("en-IN")}
               </dd>
             </div>

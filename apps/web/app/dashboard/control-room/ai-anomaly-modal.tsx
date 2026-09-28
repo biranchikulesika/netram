@@ -22,27 +22,27 @@ const ACTION_OPTIONS: Record<
   new: {
     label: "Mark New",
     description: "Reset status to newly detected signal",
-    btnColor: "#0284c7",
+    btnColor: "#0c2a52",
   },
   reviewed: {
     label: "Acknowledge & Mark Reviewed",
     description: "Authority officer has examined the signal. Regular monitoring continues.",
-    btnColor: "#7c3aed",
+    btnColor: "#0c2a52",
   },
   investigated: {
     label: "Escalate for Field Investigation",
     description: "Creates a follow-up inspection on the project and assigns you as lead for on-site verification.",
-    btnColor: "#d97706",
+    btnColor: "#dd501e",
   },
   acted_upon: {
     label: "Record Action Taken / Resolved",
     description: "Administrative action, formal notice, or operational remedy has been instituted.",
-    btnColor: "#16a34a",
+    btnColor: "#137e3a",
   },
   dismissed: {
     label: "Dismiss Alert",
     description: "Signal reviewed and confirmed as benign lighting, angle variation, or false positive.",
-    btnColor: "#64748b",
+    btnColor: "var(--text-subtle)",
   },
 };
 
@@ -121,7 +121,7 @@ export function AIAnomalyModal({
           width: "100%",
           maxHeight: "90vh",
           overflowY: "auto",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
         }}
       >
         {/* Modal Header */}
@@ -130,7 +130,7 @@ export function AIAnomalyModal({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            borderBottom: "1px solid #e2e8f0",
+            borderBottom: "1px solid var(--color-border-subtle)",
             paddingBottom: "0.85rem",
             marginBottom: "1rem",
           }}
@@ -199,7 +199,7 @@ export function AIAnomalyModal({
               background: "none",
               border: "none",
               fontSize: "1.4rem",
-              color: "#64748b",
+              color: "var(--text-subtle)",
               cursor: "pointer",
               padding: "0.2rem 0.5rem",
               lineHeight: 1,
@@ -214,12 +214,12 @@ export function AIAnomalyModal({
         {error && (
           <div
             style={{
-              background: "#fee2e2",
-              border: "1px solid #fca5a5",
+              background: "var(--tint-red)",
+              border: "1px solid var(--tint-red)",
               borderRadius: "6px",
               padding: "0.65rem 0.85rem",
               marginBottom: "1rem",
-              color: "#991b1b",
+              color: "#dc2626",
               fontSize: "0.82rem",
             }}
           >
@@ -230,8 +230,8 @@ export function AIAnomalyModal({
         {/* Signal Details */}
         <div
           style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "#edf0f5",
+            border: "1px solid var(--color-border-subtle)",
             borderRadius: "6px",
             padding: "0.75rem 1rem",
             marginBottom: "1rem",
@@ -264,13 +264,13 @@ export function AIAnomalyModal({
               display: "block",
               fontSize: "0.8rem",
               fontWeight: 600,
-              color: "#334155",
+              color: "var(--text-muted)",
               marginBottom: "0.3rem",
             }}
           >
             Model Explanation:
           </label>
-          <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.5, color: "#334155" }}>
+          <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.5, color: "var(--text-muted)" }}>
             {anomaly.explanation || "No extended explanation provided."}
           </p>
         </div>
@@ -281,7 +281,7 @@ export function AIAnomalyModal({
             style={{
               padding: "1.25rem",
               textAlign: "center",
-              background: "#f8fafc",
+              background: "#edf0f5",
               borderRadius: "6px",
               marginBottom: "1.25rem",
             }}
@@ -296,10 +296,10 @@ export function AIAnomalyModal({
           <div
             style={{
               padding: "0.85rem",
-              background: "#fef3c7",
+              background: "var(--tint-orange)",
               borderRadius: "6px",
               fontSize: "0.82rem",
-              color: "#92400e",
+              color: "#dd501e",
               marginBottom: "1.25rem",
             }}
           >
@@ -314,7 +314,7 @@ export function AIAnomalyModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "#334155",
+                  color: "var(--text-muted)",
                   marginBottom: "0.5rem",
                 }}
               >
@@ -336,8 +336,8 @@ export function AIAnomalyModal({
                         alignItems: "flex-start",
                         padding: "0.75rem",
                         borderRadius: "6px",
-                        border: `1.5px solid ${isSelected ? meta.btnColor : "#e2e8f0"}`,
-                        background: isSelected ? "#f8fafc" : "#ffffff",
+                        border: `1.5px solid ${isSelected ? meta.btnColor : "var(--color-border-subtle)"}`,
+                        background: isSelected ? "#edf0f5" : "#ffffff",
                         cursor: "pointer",
                         textAlign: "left",
                         transition: "all 0.15s ease",
@@ -362,7 +362,7 @@ export function AIAnomalyModal({
                           style={{
                             fontWeight: 700,
                             fontSize: "0.86rem",
-                            color: isSelected ? meta.btnColor : "#1e293b",
+                            color: isSelected ? meta.btnColor : "#002449",
                           }}
                         >
                           {meta.label}
@@ -392,7 +392,7 @@ export function AIAnomalyModal({
                   display: "block",
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "#334155",
+                  color: "var(--text-muted)",
                   marginBottom: "0.35rem",
                 }}
               >
@@ -408,7 +408,7 @@ export function AIAnomalyModal({
                   width: "100%",
                   padding: "0.6rem 0.75rem",
                   borderRadius: "6px",
-                  border: "1px solid #cbd5e1",
+                  border: "1px solid var(--color-border-strong)",
                   fontSize: "0.85rem",
                   fontFamily: "inherit",
                   resize: "vertical",
@@ -423,7 +423,7 @@ export function AIAnomalyModal({
                 display: "flex",
                 justifyContent: "flex-end",
                 gap: "0.75rem",
-                borderTop: "1px solid #e2e8f0",
+                borderTop: "1px solid var(--color-border-subtle)",
                 paddingTop: "0.85rem",
               }}
             >

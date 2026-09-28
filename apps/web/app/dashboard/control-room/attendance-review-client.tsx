@@ -62,8 +62,8 @@ export function AnomalyReviewClient({ anomalies }: Props) {
         <button
           onClick={openReview}
           style={{
-            background: "#3b82f6",
-            color: "white",
+            background: "#0c2a52",
+            color: "#ffffff",
             border: "none",
             borderRadius: "6px",
             padding: "0.4rem 0.75rem",

@@ -39,7 +39,7 @@ export default async function AuditPage() {
               width: "44px",
               height: "44px",
               borderRadius: "50%",
-              background: "#fee2e2",
+              background: "var(--tint-red)",
               color: "#dc2626",
               display: "flex",
               alignItems: "center",

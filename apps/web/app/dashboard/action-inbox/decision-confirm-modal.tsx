@@ -49,7 +49,7 @@ export function DecisionConfirmModal({
 
   if (!item || !action) return null;
 
-  const accent = isReject ? "#dc2626" : "#16a34a";
+  const accent = isReject ? "#dc2626" : "#137e3a";
 
   return (
     <div
@@ -67,7 +67,7 @@ export function DecisionConfirmModal({
         style={{
           maxWidth: 480,
           width: "100%",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          boxShadow: "0 25px 50px -12px rgba(0,36,73, 0.25)",
           borderTop: `3px solid ${accent}`,
         }}
       >
@@ -94,14 +94,14 @@ export function DecisionConfirmModal({
         {/* Explanation of what the decision does */}
         <div
           style={{
-            background: isReject ? "#fef2f2" : "#f0fdf4",
-            border: `1px solid ${isReject ? "#fecaca" : "#bbf7d0"}`,
+            background: isReject ? "var(--tint-red)" : "var(--tint-green)",
+            border: `1px solid ${isReject ? "var(--tint-red)" : "var(--tint-green)"}`,
             borderRadius: 6,
             padding: "0.6rem 0.8rem",
             marginBottom: "0.9rem",
             fontSize: "0.8rem",
             lineHeight: 1.45,
-            color: isReject ? "#991b1b" : "#166534",
+            color: isReject ? "#dc2626" : "#137e3a",
           }}
         >
           {isReject ? (
@@ -127,7 +127,7 @@ export function DecisionConfirmModal({
           Type{" "}
           <span
             style={{
-              background: "#f1f5f9",
+              background: "#edf0f5",
               padding: "0.1rem 0.4rem",
               borderRadius: 4,
               fontWeight: 700,
@@ -166,12 +166,12 @@ export function DecisionConfirmModal({
           <div
             role="alert"
             style={{
-              background: "#fee2e2",
-              border: "1px solid #fca5a5",
+              background: "var(--tint-red)",
+              border: "1px solid var(--tint-red)",
               borderRadius: 6,
               padding: "0.55rem 0.75rem",
               marginBottom: "0.9rem",
-              color: "#991b1b",
+              color: "#dc2626",
               fontSize: "0.8rem",
             }}
           >

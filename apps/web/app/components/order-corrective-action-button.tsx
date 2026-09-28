@@ -111,7 +111,7 @@ export function OrderCorrectiveActionButton({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                borderBottom: "1px solid #e2e8f0",
+                borderBottom: "1px solid var(--color-border-subtle)",
                 paddingBottom: "0.85rem",
                 marginBottom: "1.25rem",
               }}
@@ -131,7 +131,7 @@ export function OrderCorrectiveActionButton({
                   background: "none",
                   border: "none",
                   fontSize: "1.4rem",
-                  color: "#64748b",
+                  color: "var(--text-subtle)",
                   cursor: "pointer",
                   padding: "0.2rem 0.5rem",
                   lineHeight: 1,
@@ -145,11 +145,11 @@ export function OrderCorrectiveActionButton({
             {/* Finding context */}
             <div
               style={{
-                border: "1px solid #e2e8f0",
+                border: "1px solid var(--color-border-subtle)",
                 borderRadius: "8px",
                 padding: "0.85rem 1rem",
                 marginBottom: "1rem",
-                background: "#f8fafc",
+                background: "#edf0f5",
               }}
             >
               <div style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.04em", marginBottom: "0.4rem" }}>
@@ -160,7 +160,7 @@ export function OrderCorrectiveActionButton({
               </div>
               {finding.remediation && (
                 <div className="muted" style={{ fontSize: "0.8rem", marginBottom: "0.3rem" }}>
-                  <span style={{ fontWeight: 600, color: "#334155" }}>Required remediation:</span>{" "}
+                  <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Required remediation:</span>{" "}
                   {finding.remediation}
                 </div>
               )}
@@ -173,12 +173,12 @@ export function OrderCorrectiveActionButton({
             {error && (
               <div
                 style={{
-                  background: "#fee2e2",
-                  border: "1px solid #fca5a5",
+                  background: "var(--tint-red)",
+                  border: "1px solid var(--tint-red)",
                   borderRadius: "6px",
                   padding: "0.65rem 0.85rem",
                   marginBottom: "1rem",
-                  color: "#991b1b",
+                  color: "#dc2626",
                   fontSize: "0.82rem",
                 }}
               >
@@ -195,7 +195,7 @@ export function OrderCorrectiveActionButton({
                     display: "block",
                     fontSize: "0.8rem",
                     fontWeight: 600,
-                    color: "#334155",
+                    color: "var(--text-muted)",
                     marginBottom: "0.35rem",
                   }}
                 >
@@ -210,7 +210,7 @@ export function OrderCorrectiveActionButton({
                       width: "100%",
                       padding: "0.55rem 0.75rem",
                       borderRadius: "6px",
-                      border: "1px solid #cbd5e1",
+                      border: "1px solid var(--color-border-strong)",
                       fontSize: "0.85rem",
                       boxSizing: "border-box",
                       background: "#fff",
@@ -241,7 +241,7 @@ export function OrderCorrectiveActionButton({
                     display: "block",
                     fontSize: "0.8rem",
                     fontWeight: 600,
-                    color: "#334155",
+                    color: "var(--text-muted)",
                     marginBottom: "0.35rem",
                   }}
                 >
@@ -256,7 +256,7 @@ export function OrderCorrectiveActionButton({
                     width: "100%",
                     padding: "0.55rem 0.75rem",
                     borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--color-border-strong)",
                     fontSize: "0.85rem",
                     boxSizing: "border-box",
                   }}
@@ -271,7 +271,7 @@ export function OrderCorrectiveActionButton({
                   display: "flex",
                   justifyContent: "flex-end",
                   gap: "0.75rem",
-                  borderTop: "1px solid #e2e8f0",
+                  borderTop: "1px solid var(--color-border-subtle)",
                   paddingTop: "0.85rem",
                 }}
               >
