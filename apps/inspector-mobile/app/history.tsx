@@ -1,24 +1,47 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { typography } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { Icon } from "../src/components/ui/Icon";
-import { NetramBadge } from "../src/components/ui/NetramBadge";
 import { NetramCard } from "../src/components/ui/NetramCard";
 import { EmptyState } from "../src/components/ui/EmptyState";
 import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
+import { CustomDatePicker } from "../src/components/CustomDatePicker";
+import { formatInspectionType } from "../src/utils/formatters";
 
 type HistoryFilter = "ALL" | "SUBMITTED" | "CLOSED" | "IN_PROGRESS";
+type DateFilter = "all" | "7d" | "month" | "year" | "lastyear" | "custom";
+
+const DATE_PILLS: { key: DateFilter; label: string }[] = [
+  { key: "all", label: "All Time" },
+  { key: "7d", label: "Last 7 Days" },
+  { key: "month", label: "This Month" },
+  { key: "year", label: "Current Year" },
+  { key: "lastyear", label: "Last Year" },
+  { key: "custom", label: "Custom" },
+];
+
+interface InspectionType { key: string; label: string }
+
+const TYPE_OPTIONS: InspectionType[] = [
+  { key: "ALL", label: "All" },
+  { key: "routine", label: "Routine" },
+  { key: "surprise", label: "Surprise" },
+  { key: "special", label: "Special" },
+  { key: "social_audit", label: "Social audit" },
+];
 
 export default function HistoryScreen() {
   const router = useRouter();
@@ -29,6 +52,49 @@ export default function HistoryScreen() {
   const [selectedFilter, setSelectedFilter] = useState<HistoryFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [sheetTab, setSheetTab] = useState<"date" | "status" | "type">("date");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("ALL");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
+  const hasActiveFilter = dateFilter !== "all" || selectedFilter !== "ALL" || typeFilter !== "ALL";
+
+  useEffect(() => {
+    if (!hasActiveFilter) return;
+    const t = setTimeout(() => {
+      setDateFilter("all");
+      setSelectedFilter("ALL");
+      setTypeFilter("ALL");
+      setCustomFrom("");
+      setCustomTo("");
+    }, 5 * 60 * 1000);
+    return () => clearTimeout(t);
+  }, [hasActiveFilter]);
+
+  const fmtDate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  const fmtDisplay = (s: string) =>
+    s ? new Date(`${s}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "Select date";
+
+  const isInvalidRange = Boolean(customFrom && customTo && customTo < customFrom);
+
+  const handlePickerSelect = (value: string) => {
+    if (pickerTarget === "from") {
+      setCustomFrom(value);
+      if (customTo && customTo < value) {
+        setCustomTo(value);
+      }
+    } else {
+      if (customFrom && value < customFrom) {
+        setCustomTo(customFrom);
+      } else {
+        setCustomTo(value);
+      }
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -59,8 +125,47 @@ export default function HistoryScreen() {
   const filteredInspections = useMemo(() => {
     let list = inspections;
 
+    if (typeFilter !== "ALL") {
+      list = list.filter((i) => (i.type || "routine").toLowerCase() === typeFilter.toLowerCase());
+    }
+
     if (selectedFilter !== "ALL") {
       list = list.filter((i) => i.status === selectedFilter.toLowerCase());
+    }
+
+    if (dateFilter !== "all") {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      list = list.filter((i) => {
+        const raw = i.submitted_at || i.started_at || i.scheduled_start;
+        const dt = raw ? new Date(raw) : null;
+        if (!dt || isNaN(dt.getTime())) {
+          return dateFilter === "custom" && !customFrom && !customTo;
+        }
+        if (dateFilter === "7d") {
+          return dt >= new Date(startOfToday.getTime() - 6 * 86400000);
+        }
+        if (dateFilter === "month") {
+          return (
+            dt.getFullYear() === now.getFullYear() &&
+            dt.getMonth() === now.getMonth()
+          );
+        }
+        if (dateFilter === "year") {
+          return dt.getFullYear() === now.getFullYear();
+        }
+        if (dateFilter === "lastyear") {
+          return dt.getFullYear() === now.getFullYear() - 1;
+        }
+        if (dateFilter === "custom") {
+          if (!customFrom || !customTo || customTo < customFrom) return false;
+          const from = new Date(`${customFrom}T00:00:00`);
+          const to = new Date(`${customTo}T23:59:59.999`);
+          if (isNaN(from.getTime()) || isNaN(to.getTime())) return false;
+          return dt >= from && dt <= to;
+        }
+        return true;
+      });
     }
 
     const q = searchQuery.trim().toLowerCase();
@@ -74,65 +179,24 @@ export default function HistoryScreen() {
     }
 
     return list;
-  }, [inspections, selectedFilter, searchQuery]);
+  }, [inspections, selectedFilter, searchQuery, dateFilter, typeFilter, customFrom, customTo]);
 
-  const counts = useMemo(() => {
-    return {
-      all: inspections.length,
-      submitted: inspections.filter((i) => i.status === "submitted").length,
-      closed: inspections.filter((i) => i.status === "closed").length,
-      inProgress: inspections.filter((i) => i.status === "in_progress").length,
-    };
-  }, [inspections]);
-
-  const filters: { key: HistoryFilter; label: string; count: number }[] = [
-    { key: "ALL", label: "ALL AUDITED", count: counts.all },
-    { key: "SUBMITTED", label: "SUBMITTED", count: counts.submitted },
-    { key: "CLOSED", label: "CLOSED", count: counts.closed },
-    { key: "IN_PROGRESS", label: "IN FIELD", count: counts.inProgress },
+  const filters: { key: HistoryFilter; label: string }[] = [
+    { key: "ALL", label: "ALL AUDITED" },
+    { key: "SUBMITTED", label: "SUBMITTED" },
+    { key: "CLOSED", label: "CLOSED" },
+    { key: "IN_PROGRESS", label: "IN FIELD" },
   ];
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bgCanvas }]}>
-      {/* ── Top Bar ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.bgSurface, borderBottomColor: theme.borderSubtle }]}>
-        {router.canGoBack() ? (
-          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
-            <Icon name="arrow-back" size={20} color={theme.navyDark} />
-            <Text style={[styles.backText, { color: theme.navyDark }]}>Back</Text>
-          </Pressable>
-        ) : (
-          <View style={{ width: 50 }} />
-        )}
-        <Text style={[styles.topBarTitle, { color: theme.navyDark }]}>Past Inspections</Text>
-        <View style={{ width: 50 }} />
-      </View>
-
-      {/* ── Summary KPI Bar ── */}
-      <View style={[styles.kpiStrip, { backgroundColor: theme.bgSurface, borderColor: theme.borderSubtle }]}>
-        <View style={styles.kpiItem}>
-          <Text style={[styles.kpiValue, { color: theme.navyDark }]}>{counts.all}</Text>
-          <Text style={[styles.kpiLabel, { color: theme.textMuted }]}>Total</Text>
-        </View>
-        <View style={[styles.kpiDivider, { backgroundColor: theme.borderSubtle }]} />
-        <View style={styles.kpiItem}>
-          <Text style={[styles.kpiValue, { color: theme.actionGreen }]}>{counts.submitted}</Text>
-          <Text style={[styles.kpiLabel, { color: theme.textMuted }]}>Submitted</Text>
-        </View>
-        <View style={[styles.kpiDivider, { backgroundColor: theme.borderSubtle }]} />
-        <View style={styles.kpiItem}>
-          <Text style={[styles.kpiValue, { color: theme.textMuted }]}>{counts.closed}</Text>
-          <Text style={[styles.kpiLabel, { color: theme.textMuted }]}>Completed</Text>
-        </View>
-      </View>
-
-      {/* ── Search Input ── */}
-      <View style={styles.searchBoxContainer}>
+      {/* ── Search Row (search bar + filter chip) ── */}
+      <View style={styles.searchRow}>
         <View style={[styles.searchBar, { backgroundColor: theme.bgSurface, borderColor: theme.borderSubtle }]}>
           <Icon name="search-outline" size={17} color={theme.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: theme.textPrimary }]}
-            placeholder="Search inspected facilities or districts…"
+            placeholder="Search"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor={theme.textSubtle}
@@ -144,36 +208,236 @@ export default function HistoryScreen() {
             </Pressable>
           ) : null}
         </View>
+
+        <Pressable
+          style={[
+            styles.filterBtn,
+            { borderColor: hasActiveFilter ? theme.navyDark : theme.borderSubtle },
+          ]}
+          onPress={() => setShowFilterSheet(true)}
+          accessibilityLabel="Open history filters"
+        >
+          <Icon name="funnel-outline" size={16} color={hasActiveFilter ? theme.navyDark : theme.textMuted} />
+        </Pressable>
       </View>
 
-      {/* ── Filter Chips ── */}
-      <View style={styles.filterChipContainer}>
-        {filters.map((f) => {
-          const active = selectedFilter === f.key;
-          return (
-            <Pressable
-              key={f.key}
-              style={[
-                styles.filterChip,
-                {
-                  backgroundColor: active ? theme.navyDark : theme.bgSubtle,
-                  borderColor: active ? theme.navyDark : theme.borderSubtle,
-                },
-              ]}
-              onPress={() => setSelectedFilter(f.key)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  { color: active ? "#FFFFFF" : theme.textMuted },
-                ]}
-              >
-                {f.label} ({f.count})
-              </Text>
-            </Pressable>
-          );
-        })}
+      {/* ── Filter Bottom Sheet ── */}
+      <Modal
+        visible={showFilterSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFilterSheet(false)}
+      >
+        <View style={styles.sheetModalRoot}>
+          <Pressable
+            style={styles.sheetBackdrop}
+            onPress={() => setShowFilterSheet(false)}
+          />
+          <View style={[styles.sheet, { backgroundColor: theme.bgSurface }]}>
+            <View style={[styles.sheetHandle, { backgroundColor: theme.borderSubtle }]} />
+            <Text style={[styles.sheetHeader, { color: theme.textMuted }]}>Filters</Text>
+            <View style={styles.sheetBody}>
+              {/* ── Left rail: filter tabs ── */}
+              <View style={styles.sheetRail}>
+                <Pressable
+                  style={[styles.sheetRailTab, sheetTab === "date" && styles.sheetRailTabActive]}
+                  onPress={() => setSheetTab("date")}
+                >
+                  <Text style={[styles.sheetTabText, { color: sheetTab === "date" ? "#FFFFFF" : theme.textMuted }]}>
+                    DATE
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.sheetRailTab, sheetTab === "status" && styles.sheetRailTabActive]}
+                  onPress={() => setSheetTab("status")}
+                >
+                  <Text style={[styles.sheetTabText, { color: sheetTab === "status" ? "#FFFFFF" : theme.textMuted }]}>
+                    STATUS
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.sheetRailTab, sheetTab === "type" && styles.sheetRailTabActive]}
+                  onPress={() => setSheetTab("type")}
+                >
+                  <Text style={[styles.sheetTabText, { color: sheetTab === "type" ? "#FFFFFF" : theme.textMuted }]}>
+                    TYPE
+                  </Text>
+                </Pressable>
+              </View>
+
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
+                {sheetTab === "date" ? (
+                  <>
+                    <View style={styles.sheetPillWrap}>
+                      {DATE_PILLS.map((p) => {
+                        const active = dateFilter === p.key;
+                        return (
+                          <Pressable
+                            key={p.key}
+                            style={[
+                              styles.sheetPill,
+                              {
+                                backgroundColor: active ? theme.navyDark : theme.bgSubtle,
+                                borderColor: active ? theme.navyDark : theme.borderSubtle,
+                              },
+                            ]}
+                            onPress={() => {
+                              setDateFilter(p.key);
+                              if (p.key === "custom") {
+                                setCustomFrom(fmtDate(new Date(Date.now() - 7 * 86400000)));
+                                setCustomTo(fmtDate(new Date()));
+                              } else {
+                                setCustomFrom("");
+                                setCustomTo("");
+                              }
+                            }}
+                          >
+                            <Text
+                              style={[styles.sheetPillText, { color: active ? "#FFFFFF" : theme.textMuted }]}
+                            >
+                              {p.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+
+{dateFilter === "custom" ? (
+    <View style={styles.customRangeContainer}>
+      <View style={styles.customRange}>
+        <Pressable
+          style={[styles.outerBox, { borderColor: theme.borderSubtle }]}
+          onPress={() => setPickerTarget("from")}
+        >
+          <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>FROM</Text>
+          <Text style={[styles.customValue, { color: customFrom ? theme.textPrimary : theme.textSubtle }]}>
+            {fmtDisplay(customFrom)}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            styles.outerBox,
+            { borderColor: isInvalidRange ? theme.error : theme.borderSubtle },
+          ]}
+          onPress={() => setPickerTarget("to")}
+        >
+          <Text style={[styles.fieldLabel, { color: isInvalidRange ? theme.error : theme.textMuted }]}>TO</Text>
+          <Text style={[styles.customValue, { color: customTo ? (isInvalidRange ? theme.error : theme.textPrimary) : theme.textSubtle }]}>
+            {fmtDisplay(customTo)}
+          </Text>
+        </Pressable>
       </View>
+      {isInvalidRange && (
+        <Text style={[styles.rangeErrorText, { color: theme.error }]}>
+          "To" date cannot be earlier than "From" date.
+        </Text>
+      )}
+    </View>
+  ) : null}
+                  </>
+                ) : sheetTab === "status" ? (
+                  <View style={styles.sheetPillWrap}>
+                    {filters.map((f) => {
+                      const active = selectedFilter === f.key;
+                      return (
+                        <Pressable
+                          key={f.key}
+                          style={[
+                            styles.sheetPill,
+                            {
+                              backgroundColor: active ? theme.navyDark : theme.bgSubtle,
+                              borderColor: active ? theme.navyDark : theme.borderSubtle,
+                            },
+                          ]}
+                          onPress={() => setSelectedFilter(f.key)}
+                        >
+                          <Text
+                            style={[styles.sheetPillText, { color: active ? "#FFFFFF" : theme.textMuted }]}
+                          >
+                            {f.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.sheetPillWrap}>
+                    {TYPE_OPTIONS.map((t) => {
+                      const active = typeFilter === t.key;
+                      return (
+                        <Pressable
+                          key={t.key}
+                          style={[
+                            styles.sheetPill,
+                            {
+                              backgroundColor: active ? theme.navyDark : theme.bgSubtle,
+                              borderColor: active ? theme.navyDark : theme.borderSubtle,
+                            },
+                          ]}
+                          onPress={() => setTypeFilter(t.key)}
+                        >
+                          <Text
+                            style={[styles.sheetPillText, { color: active ? "#FFFFFF" : theme.textMuted }]}
+                          >
+                            {t.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+
+            <View style={styles.sheetFooter}>
+              <Pressable
+                style={[
+                  styles.footerBtn,
+                  {
+                    backgroundColor: theme.bgSurface,
+                    borderColor: hasActiveFilter ? theme.navyDark : theme.borderSubtle,
+                  },
+                ]}
+                disabled={!hasActiveFilter}
+                onPress={() => {
+                  setDateFilter("all");
+                  setSelectedFilter("ALL");
+                  setTypeFilter("ALL");
+                  setCustomFrom("");
+                  setCustomTo("");
+                  setShowFilterSheet(false);
+                }}
+              >
+                <Text style={[styles.footerBtnText, { color: hasActiveFilter ? theme.navyDark : theme.textMuted }]}>
+                  Clear All
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.footerBtn,
+                  styles.footerBtnPrimary,
+                  { backgroundColor: isInvalidRange ? theme.borderSubtle : theme.navyDark },
+                ]}
+                disabled={isInvalidRange}
+                onPress={() => {
+                  if (!isInvalidRange) setShowFilterSheet(false);
+                }}
+              >
+                <Text style={styles.footerBtnTextPrimary}>Show Results</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <CustomDatePicker
+        visible={pickerTarget !== null}
+        initialValue={pickerTarget === "from" ? customFrom : customTo}
+        minDate={pickerTarget === "to" ? customFrom : undefined}
+        maxDate={pickerTarget === "from" && customTo ? customTo : undefined}
+        onSelect={handlePickerSelect}
+        onClose={() => setPickerTarget(null)}
+      />
 
       {/* ── Inspected List ── */}
       <FlatList
@@ -198,6 +462,8 @@ export default function HistoryScreen() {
               })
             : "Recent";
 
+          const statusLabel = item.status.replace(/_/g, " ").toUpperCase();
+
           return (
             <NetramCard
               style={[
@@ -214,14 +480,13 @@ export default function HistoryScreen() {
                 })
               }
             >
-              <View style={styles.cardTopRow}>
-                <NetramBadge label={item.project_code || "PRJ"} variant="id" size="sm" />
-                <NetramBadge
-                  label={item.status.replace(/_/g, " ").toUpperCase()}
-                  variant="status"
-                  status={item.status}
-                  size="sm"
-                />
+              <View style={styles.cardHeader}>
+                <Text style={[styles.cardStatusLabel, { color: theme.textMuted }]}>
+                  {statusLabel}
+                </Text>
+                <Text style={[styles.headerType, { color: theme.textMuted }]}>
+                  {formatInspectionType(item.type)}
+                </Text>
               </View>
 
               <Text style={[styles.facilityName, { color: theme.textPrimary }]} numberOfLines={2}>
@@ -230,32 +495,23 @@ export default function HistoryScreen() {
 
               <View style={styles.metaRow}>
                 <View style={styles.metaItem}>
-                  <Icon name="location-outline" size={13} color={theme.textMuted} />
-                  <Text style={[styles.metaText, { color: theme.textMuted }]}>{item.district_id || "Khordha"}</Text>
-                </View>
-
-                <View style={styles.metaItem}>
-                  <Icon name="calendar-outline" size={13} color={theme.textMuted} />
-                  <Text style={[styles.metaText, { color: theme.textMuted }]}>{dateStr}</Text>
-                </View>
-
-                <View style={styles.metaItem}>
-                  <Icon name="shield-checkmark-outline" size={13} color={theme.textMuted} />
+                  <Icon name="location-outline" size={13} color={theme.textMuted} style={styles.metaIcon} />
                   <Text style={[styles.metaText, { color: theme.textMuted }]}>
-                    {(item.type || "routine").toUpperCase()}
+                    {item.district_id || "Khordha"}
                   </Text>
                 </View>
-              </View>
 
-              <View style={[styles.cardFooter, { borderTopColor: theme.borderSubtle }]}>
-                <Text style={[styles.auditProofText, { color: theme.actionGreen }]}>
-                  {item.status === "submitted"
-                    ? "✓ Inspection submitted"
-                    : item.status === "closed"
-                    ? "✓ Inspection completed"
-                    : "• Inspection in progress"}
-                </Text>
-                <Text style={[styles.viewLink, { color: theme.accentBlue }]}>View Record →</Text>
+                <View style={styles.metaItem}>
+                  <Icon name="document-text-outline" size={13} color={theme.textMuted} style={styles.metaIcon} />
+                  <Text style={[styles.metaText, { color: theme.textMuted }]}>
+                    {item.project_code}
+                  </Text>
+                </View>
+
+                <View style={styles.metaItem}>
+                  <Icon name="calendar-outline" size={13} color={theme.textMuted} style={styles.metaIcon} />
+                  <Text style={[styles.metaText, { color: theme.textMuted }]}>{dateStr}</Text>
+                </View>
               </View>
             </NetramCard>
           );
@@ -281,66 +537,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
-  topBar: {
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  backText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#0B2545",
-  },
-  topBarTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0B2545",
-  },
-  kpiStrip: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  kpiItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  kpiDivider: {
-    width: 1,
-    backgroundColor: "#E2E8F0",
-    marginVertical: 4,
-  },
-  kpiValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#0B2545",
-    fontFamily: typography.mono,
-  },
-  kpiLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#64748B",
-    marginTop: 2,
-  },
-  searchBoxContainer: {
+    gap: 10,
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: "#F8FAFC",
   },
   searchBar: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
@@ -355,33 +560,158 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: "#0F172A",
+    height: 40,
+    paddingVertical: 0,
   },
-  filterChipContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  filterChip: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    backgroundColor: "#FFFFFF",
+  filterBtn: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  filterChipActive: {
-    backgroundColor: "#0B2545",
-    borderColor: "#0B2545",
+  // ── Filter Bottom Sheet ──
+  sheetModalRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(15,23,42,0.4)",
   },
-  filterChipText: {
+  sheetBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  sheet: {
+    height: "70%",
+    width: "100%",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 20,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  sheetHeader: {
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "left",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  sheetBody: {
+    flexDirection: "row",
+    flex: 1,
+    paddingBottom: 12,
+  },
+  sheetRail: {
+    width: 76,
+    paddingVertical: 10,
+    borderRightWidth: 1,
+    borderRightColor: "#EDF0F5",
+  },
+  sheetRailTab: {
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  sheetRailTabActive: {
+    backgroundColor: "#0C2A52",
+  },
+  sheetContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 8,
+  },
+  sheetTabText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  sheetPillWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  sheetPill: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  sheetPillText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748B",
-    fontFamily: typography.mono,
   },
-  filterChipTextActive: {
+  customRangeContainer: {
+    gap: 6,
+    marginTop: 12,
+  },
+  customRange: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  rangeErrorText: {
+    fontSize: 11,
+    fontWeight: "600",
+    paddingHorizontal: 2,
+  },
+  outerBox: {
+    width: 124,
+    position: "relative",
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 8,
+    gap: 2,
+    backgroundColor: "#FFFFFF",
+  },
+  fieldLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    marginBottom: 0,
+  },
+  customValue: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  sheetFooter: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  footerBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerBtnPrimary: {
+    borderWidth: 0,
+  },
+  footerBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  footerBtnTextPrimary: {
     color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -389,59 +719,61 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   historyCard: {
-    padding: 14,
+    padding: 16,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     marginBottom: 10,
-  },
-  cardTopRow: {
-    flexDirection: "row",
+    height: 134,
     justifyContent: "space-between",
+  },
+  cardHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    justifyContent: "space-between",
+  },
+  headerType: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    lineHeight: 14,
+  },
+  cardStatusLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    lineHeight: 14,
   },
   facilityName: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "700",
     color: "#0F172A",
-    lineHeight: 20,
-    marginBottom: 8,
+    lineHeight: 23,
+    height: 46,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    marginBottom: 10,
   },
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
+  },
+  metaIcon: {
+    marginTop: Platform.OS === "android" ? 0 : 1,
   },
   metaText: {
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 16,
     color: "#64748B",
     fontWeight: "500",
+    includeFontPadding: false,
   },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-  },
-  auditProofText: {
-    fontSize: 10,
-    color: "#166534",
-    fontWeight: "600",
-    flex: 1,
-  },
-  viewLink: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#2563EB",
+  cardDivider: {
+    height: 1,
+    marginVertical: 4,
   },
 });

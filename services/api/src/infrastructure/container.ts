@@ -27,10 +27,12 @@ import {
   FinancialRiskRepository,
   InspectionFlagRepository,
   ProjectRiskRepository,
+  CallRepository,
 } from "@netram/data";
 import type { AppConfig } from "../config.js";
 import { AppError } from "./errors.js";
 import { AuthService } from "../modules/auth/application/auth-service.js";
+import { CallService } from "../modules/calls/application/call-service.js";
 import { DevAuthProvider } from "../modules/auth/infrastructure/providers/dev-auth-provider.js";
 import { SupabaseAuthProvider } from "../modules/auth/infrastructure/providers/supabase-auth-provider.js";
 import { AuthorizationService } from "../modules/authorization/application/authorization-service.js";
@@ -108,11 +110,15 @@ export interface Container {
   projectRiskService: ProjectRiskService;
   projectRiskRepo: ProjectRiskRepository;
   actionInboxService: ActionInboxService;
+  callService: CallService;
+  callRepo: CallRepository;
 }
 
 export function buildContainer(config: AppConfig): Container {
   const db = getDb(config.DATABASE_URL);
 
+  const callRepo = new CallRepository(db);
+  const callService = new CallService(callRepo);
   const userRepo = new UserRepository(db);
   const authzRepo = new AuthorizationRepository(db);
   const auditRepo = new AuditRepository(db);
@@ -393,5 +399,7 @@ export function buildContainer(config: AppConfig): Container {
     projectRiskService,
     projectRiskRepo,
     actionInboxService,
+    callService,
+    callRepo,
   };
 }

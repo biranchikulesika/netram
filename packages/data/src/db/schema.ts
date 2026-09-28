@@ -599,6 +599,45 @@ export const vcParticipants = pgTable("vc_participants", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/* ---------- Video Oversight / Calls ---------- */
+
+export const callContacts = pgTable("call_contacts", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull().default("staff"),
+  title: varchar("title", { length: 200 }).notNull(),
+  projectId: uuid("project_id").references(() => projects.id),
+  projectCode: varchar("project_code", { length: 50 }).notNull(),
+  projectName: varchar("project_name", { length: 300 }).notNull(),
+  phone: varchar("phone", { length: 40 }).notNull(),
+  isOnline: boolean("is_online").notNull().default(true),
+  avatarColor: varchar("avatar_color", { length: 30 }).notNull().default("#2563EB"),
+  videoUri: text("video_uri"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const callRecords = pgTable("call_records", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  contactId: varchar("contact_id", { length: 64 }).notNull(),
+  contactName: varchar("contact_name", { length: 200 }).notNull(),
+  contactTitle: varchar("contact_title", { length: 200 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull().default("staff"),
+  projectId: uuid("project_id").references(() => projects.id),
+  projectCode: varchar("project_code", { length: 50 }).notNull(),
+  projectName: varchar("project_name", { length: 300 }).notNull(),
+  callType: varchar("call_type", { length: 30 }).notNull().default("video"),
+  durationSeconds: integer("duration_seconds").notNull().default(0),
+  direction: varchar("direction", { length: 20 }).notNull().default("outgoing"),
+  status: varchar("status", { length: 20 }).notNull().default("answered"),
+  condition: varchar("condition", { length: 50 }).notNull().default("satisfactory"),
+  reviewText: text("review_text").notNull(),
+  flagInspection: boolean("flag_inspection").notNull().default(false),
+  videoUri: text("video_uri"),
+  inspectorVideoUri: text("inspector_video_uri"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 /* ---------- Notifications ---------- */
 
 export const notifications = pgTable("notifications", {

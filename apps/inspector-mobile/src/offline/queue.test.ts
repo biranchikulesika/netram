@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemorySqliteDatabase, setTestDatabase } from "./db";
 import { OfflineInspectionQueue } from "./queue";
 import { captureEvidenceOffline, computeSha256 } from "./evidence";
+import { seedDemoDataIfEmpty } from "./demo-seed";
 import type { NetramApiClient } from "@netram/api-client";
 
 describe("OfflineInspectionQueue", () => {
@@ -526,5 +527,122 @@ describe("OfflineInspectionQueue", () => {
     expect(rejectedOp?.status).toBe("rejected");
     expect(rejectedOp?.code).toBe("HEADCOUNT_EXCEEDS_LIMIT");
     expect(rejectedOp?.error_message).toBe("Headcount exceeds maximum plausible site workers (5000)");
+  });
+
+  describe("Call contacts and call history", () => {
+    it("caches and retrieves call contacts from SQLite database", async () => {
+      const testContacts = [
+        {
+          id: "cnt-t1",
+          name: "Dr. Alok Mohapatra",
+          role: "staff" as const,
+          title: "District Oversight Director",
+          projectCode: "DOSJE-KHD-001",
+          projectName: "Khordha Rehabilitation Centre",
+          phone: "+91 94370 12345",
+          isOnline: true,
+          avatarColor: "#002449",
+          videoUri: null,
+        },
+        {
+          id: "cnt-t2",
+          name: "Sasmita Nayak",
+          role: "staff" as const,
+          title: "Site Coordinator",
+          projectCode: "DOSJE-KHD-002",
+          projectName: "Old Age Home",
+          phone: "",
+          isOnline: false,
+          avatarColor: "#0284c7",
+          videoUri: "https://example.com/video.mp4",
+        },
+      ];
+
+      await queue.cacheCallContacts(testContacts);
+
+      const contacts = await queue.getCallContacts();
+      expect(contacts).toHaveLength(2);
+      expect(contacts[0]?.id).toBe("cnt-t1");
+      expect(contacts[0]?.name).toBe("Dr. Alok Mohapatra");
+      expect(contacts[0]?.role).toBe("staff");
+      expect(contacts[0]?.isOnline).toBe(true);
+      expect(contacts[1]?.id).toBe("cnt-t2");
+      expect(contacts[1]?.phone).toBe("");
+      expect(contacts[1]?.isOnline).toBe(false);
+    });
+
+    it("records, retrieves, and orders call history in SQLite database", async () => {
+      const answeredRecord = {
+        id: "call-rec-01",
+        contactId: "cnt-t1",
+        contactName: "Dr. Alok Mohapatra",
+        contactTitle: "District Oversight Director",
+        role: "staff" as const,
+        projectName: "Khordha Rehabilitation Centre",
+        projectCode: "DOSJE-KHD-001",
+        callType: "video" as const,
+        durationSeconds: 145,
+        timestamp: "Sep 28, 10:30 AM",
+        condition: "satisfactory" as const,
+        reviewText: "Quarterly review completed successfully",
+        flagInspection: false,
+        videoUri: null,
+        inspectorVideoUri: null,
+        direction: "outgoing" as const,
+        status: "answered" as const,
+        createdAt: new Date(Date.now() - 3600_000).toISOString(),
+      };
+
+      const missedRecord = {
+        id: "call-rec-02",
+        contactId: "cnt-t2",
+        contactName: "Sasmita Nayak",
+        contactTitle: "Site Coordinator",
+        role: "staff" as const,
+        projectName: "Old Age Home",
+        projectCode: "DOSJE-KHD-002",
+        callType: "video" as const,
+        durationSeconds: 0,
+        timestamp: "Sep 28, 11:15 AM",
+        condition: "satisfactory" as const,
+        reviewText: "Missed call, subscriber out of coverage",
+        flagInspection: false,
+        videoUri: null,
+        inspectorVideoUri: null,
+        direction: "incoming" as const,
+        status: "missed" as const,
+        createdAt: new Date().toISOString(),
+      };
+
+      await queue.recordCallHistory(answeredRecord);
+      await queue.recordCallHistory(missedRecord);
+
+      const history = await queue.getCallHistory();
+      expect(history).toHaveLength(2);
+
+      // Most recent should be first (ORDER BY created_at DESC)
+      expect(history[0]?.id).toBe("call-rec-02");
+      expect(history[0]?.status).toBe("missed");
+      expect(history[0]?.direction).toBe("incoming");
+      expect(history[0]?.durationSeconds).toBe(0);
+
+      expect(history[1]?.id).toBe("call-rec-01");
+      expect(history[1]?.status).toBe("answered");
+      expect(history[1]?.direction).toBe("outgoing");
+      expect(history[1]?.durationSeconds).toBe(145);
+    });
+
+    it("seeds demo call contacts and history into SQLite when empty", async () => {
+      await seedDemoDataIfEmpty();
+
+      const contacts = await queue.getCallContacts();
+      expect(contacts.length).toBeGreaterThanOrEqual(5);
+      expect(contacts.some((c) => c.name === "Ramesh Jena")).toBe(true);
+
+      const history = await queue.getCallHistory();
+      expect(history.length).toBeGreaterThanOrEqual(4);
+      expect(history.some((h) => h.status === "answered")).toBe(true);
+      expect(history.some((h) => h.status === "missed")).toBe(true);
+    });
   });
 });

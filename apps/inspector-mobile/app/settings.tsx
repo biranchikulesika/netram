@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
-  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -10,26 +8,24 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import * as Location from "expo-location";
+import { Tabs, useRouter } from "expo-router";
 import { Icon } from "../src/components/ui/Icon";
+import { NetramCard } from "../src/components/ui/NetramCard";
+import { SectionHeader } from "../src/components/ui/SectionHeader";
 import { OfflineInspectionQueue } from "../src/offline/queue";
-import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
 import {
   useSettings,
-  type AutoLockTimeout,
   type ThemeMode,
 } from "../src/theme/settings-context";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { settings, isPureDark, updateSetting } = useSettings();
+  const { settings, theme, isPureDark, updateSetting } = useSettings();
 
   const queue = React.useMemo(() => new OfflineInspectionQueue(), []);
 
   const [cachedCount, setCachedCount] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number>(0);
-  const [gpsAccuracy, setGpsAccuracy] = useState<string>("Active");
 
   const loadData = useCallback(async () => {
     try {
@@ -44,85 +40,28 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     void loadData();
-
-    void (async () => {
-      try {
-        const { status } = await Location.getForegroundPermissionsAsync();
-        if (status === "granted") {
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          setGpsAccuracy(`±${Math.round(loc.coords.accuracy ?? 15)}m`);
-        } else {
-          setGpsAccuracy("Offline");
-        }
-      } catch {
-        setGpsAccuracy("Active");
-      }
-    })();
   }, [loadData]);
 
-  const handleClearCache = async () => {
-    const doClear = () => {
-      Alert.alert("Cleared", "Photo previews cleared.");
-    };
-
-    if (Platform.OS === "web") {
-      const confirmed =
-        typeof window !== "undefined"
-          ? window.confirm("Clear temporary preview cache?")
-          : true;
-      if (confirmed) doClear();
-      return;
-    }
-
-    Alert.alert("Clear Photo Cache", "Free temporary photo thumbnails?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Clear", style: "destructive", onPress: doClear },
-    ]);
-  };
-
-  const handleReSeedData = async () => {
-    const doReload = async () => {
-      await seedDemoDataIfEmpty();
-      await loadData();
-      Alert.alert("Restored", "Sample inspection records restored.");
-    };
-
-    if (Platform.OS === "web") {
-      const confirmed =
-        typeof window !== "undefined"
-          ? window.confirm("Restore sample field inspections?")
-          : true;
-      if (confirmed) void doReload();
-      return;
-    }
-
-    Alert.alert("Restore Sample Data", "Reload sample field inspections?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Restore", onPress: () => void doReload() },
-    ]);
-  };
-
-  const bgCanvas = isPureDark ? "#000000" : "#F8FAFC";
-  const bgCard = isPureDark ? "#121212" : "#FFFFFF";
-  const bgSubtle = isPureDark ? "#1C1C1E" : "#F1F5F9";
-  const borderColor = isPureDark ? "#27272A" : "#E2E8F0";
-  const textPrimary = isPureDark ? "#FFFFFF" : "#0F172A";
-  const textMuted = isPureDark ? "#A1A1AA" : "#64748B";
-  const accentBlue = "#3B82F6";
-  const dividerColor = isPureDark ? "#1F1F23" : "#F1F5F9";
-
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bgCanvas }]}>
+      <Tabs.Screen
+        options={{
+          tabBarStyle: { display: "none" },
+        }}
+      />
+
       {/* ── Header ── */}
-      <View style={[styles.topBar, { backgroundColor: bgCard, borderBottomColor: borderColor }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-          <Icon name="arrow-back" size={20} color={textPrimary} />
-          <Text style={[styles.backText, { color: textPrimary }]}>Back</Text>
+      <View style={[styles.topBar, { backgroundColor: theme.bgSurface, borderBottomColor: theme.borderSubtle }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
+          accessibilityLabel="Back"
+          hitSlop={12}
+        >
+          <Icon name="chevron-back" size={24} color={theme.navyDark} />
         </Pressable>
-        <Text style={[styles.topBarTitle, { color: textPrimary }]}>Settings</Text>
-        <View style={{ width: 60 }} />
+        <Text style={[styles.topBarTitle, { color: theme.navyDark }]}>Settings</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -131,9 +70,9 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Section: Theme ── */}
-        <Text style={[styles.sectionTitle, { color: textMuted }]}>THEME</Text>
-        <View style={[styles.card, { backgroundColor: bgCard, borderColor }]}>
-          <View style={styles.segmentedControl}>
+        <SectionHeader title="THEME" primary />
+        <NetramCard style={styles.card}>
+          <View style={[styles.segmentedControl, { backgroundColor: theme.bgSubtle }]}>
             {(
               [
                 { mode: "light", label: "Light", icon: "sunny-outline" },
@@ -145,28 +84,31 @@ export default function SettingsScreen() {
               return (
                 <Pressable
                   key={t.mode}
-                  style={[
+                  style={({ pressed }) => [
                     styles.segmentTab,
-                    active && {
-                      backgroundColor: isPureDark ? "#27272A" : "#FFFFFF",
-                      shadowColor: "#000",
-                      shadowOpacity: 0.08,
-                      shadowRadius: 3,
-                      shadowOffset: { width: 0, height: 1 },
-                      elevation: 1,
-                    },
+                    active && [
+                      styles.segmentTabActive,
+                      {
+                        backgroundColor: theme.bgSurface,
+                        borderColor: isPureDark ? theme.borderSubtle : "rgba(0,0,0,0.06)",
+                      },
+                    ],
+                    !active && pressed && { opacity: 0.6 },
                   ]}
                   onPress={() => updateSetting("themeMode", t.mode as ThemeMode)}
                 >
                   <Icon
                     name={t.icon}
                     size={16}
-                    color={active ? accentBlue : textMuted}
+                    color={active ? theme.accentBlue : theme.textMuted}
                   />
                   <Text
                     style={[
                       styles.segmentText,
-                      { color: active ? (isPureDark ? "#FFFFFF" : accentBlue) : textMuted, fontWeight: active ? "700" : "500" },
+                      {
+                        color: active ? (isPureDark ? "#FFFFFF" : theme.navyDark) : theme.textMuted,
+                        fontWeight: active ? "700" : "500",
+                      },
                     ]}
                   >
                     {t.label}
@@ -175,165 +117,49 @@ export default function SettingsScreen() {
               );
             })}
           </View>
-        </View>
-
-        {/* ── Section: Location & Privacy ── */}
-        <Text style={[styles.sectionTitle, { color: textMuted }]}>LOCATION & PRIVACY</Text>
-        <View style={[styles.card, { backgroundColor: bgCard, borderColor }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <Icon name="navigate-outline" size={18} color={accentBlue} />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>1 KM Area Alert</Text>
-            </View>
-            <Switch
-              value={settings.geofenceAlert}
-              onValueChange={(val) => updateSetting("geofenceAlert", val)}
-              trackColor={{ false: "#64748B", true: "#93C5FD" }}
-              thumbColor={settings.geofenceAlert ? accentBlue : "#F1F5F9"}
-            />
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <Icon name="locate-outline" size={18} color="#10B981" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>High-Accuracy GPS</Text>
-            </View>
-            <View style={styles.rowRight}>
-              <View style={[styles.statusPill, { backgroundColor: bgSubtle }]}>
-                <Text style={[styles.statusPillText, { color: textMuted }]}>{gpsAccuracy}</Text>
-              </View>
-              <Switch
-                value={settings.highAccuracyGps}
-                onValueChange={(val) => updateSetting("highAccuracyGps", val)}
-                trackColor={{ false: "#64748B", true: "#93C5FD" }}
-                thumbColor={settings.highAccuracyGps ? accentBlue : "#F1F5F9"}
-              />
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <Icon name="map-outline" size={18} color="#F59E0B" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Offline Map Cache</Text>
-            </View>
-            <Switch
-              value={settings.offlineMapPreload}
-              onValueChange={(val) => updateSetting("offlineMapPreload", val)}
-              trackColor={{ false: "#64748B", true: "#93C5FD" }}
-              thumbColor={settings.offlineMapPreload ? accentBlue : "#F1F5F9"}
-            />
-          </View>
-        </View>
-
-        {/* ── Section: Camera & Evidence ── */}
-        <Text style={[styles.sectionTitle, { color: textMuted }]}>CAMERA</Text>
-        <View style={[styles.card, { backgroundColor: bgCard, borderColor }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <Icon name="camera-outline" size={18} color={accentBlue} />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Resolution</Text>
-            </View>
-            <View style={styles.miniPillGroup}>
-              {(["1080p", "720p"] as const).map((q) => {
-                const active = settings.cameraQuality === q;
-                return (
-                  <Pressable
-                    key={q}
-                    style={[
-                      styles.miniPill,
-                      {
-                        backgroundColor: active
-                          ? isPureDark
-                            ? "#27272A"
-                            : "#EFF6FF"
-                          : bgSubtle,
-                        borderColor: active ? accentBlue : "transparent",
-                      },
-                    ]}
-                    onPress={() => updateSetting("cameraQuality", q)}
-                  >
-                    <Text
-                      style={[
-                        styles.miniPillText,
-                        {
-                          color: active ? accentBlue : textMuted,
-                          fontWeight: active ? "700" : "500",
-                        },
-                      ]}
-                    >
-                      {q}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <Icon name="location-outline" size={18} color="#8B5CF6" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Auto Geotagging</Text>
-            </View>
-            <Switch
-              value={settings.autoGeotag}
-              onValueChange={(val) => updateSetting("autoGeotag", val)}
-              trackColor={{ false: "#64748B", true: "#93C5FD" }}
-              thumbColor={settings.autoGeotag ? accentBlue : "#F1F5F9"}
-            />
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <Icon name="radio-outline" size={18} color="#EC4899" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Haptic Feedback</Text>
-            </View>
-            <Switch
-              value={settings.shutterFeedback}
-              onValueChange={(val) => updateSetting("shutterFeedback", val)}
-              trackColor={{ false: "#64748B", true: "#93C5FD" }}
-              thumbColor={settings.shutterFeedback ? accentBlue : "#F1F5F9"}
-            />
-          </View>
-        </View>
+        </NetramCard>
 
         {/* ── Section: Storage & Sync ── */}
-        <Text style={[styles.sectionTitle, { color: textMuted }]}>STORAGE & SYNC</Text>
-        <View style={[styles.card, { backgroundColor: bgCard, borderColor }]}>
+        <SectionHeader title="STORAGE & SYNC" primary />
+        <NetramCard style={styles.card}>
           <View style={styles.settingRow}>
             <View style={styles.rowLeft}>
-              <Icon name="folder-outline" size={18} color="#6366F1" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Saved Inspections</Text>
+              <View style={styles.iconCol}>
+                <Icon name="folder-outline" size={18} color="#6366F1" />
+              </View>
+              <Text style={[styles.rowTitle, { color: theme.textPrimary }]}>Saved Inspections</Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: bgSubtle }]}>
-              <Text style={[styles.badgeText, { color: textPrimary }]}>{cachedCount}</Text>
+            <View style={[styles.badge, { backgroundColor: theme.bgSubtle }]}>
+              <Text style={[styles.badgeText, { color: theme.textPrimary }]}>{cachedCount}</Text>
             </View>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
 
           <View style={styles.settingRow}>
             <View style={styles.rowLeft}>
-              <Icon name="cloud-upload-outline" size={18} color="#0EA5E9" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Pending Uploads</Text>
+              <View style={styles.iconCol}>
+                <Icon name="cloud-upload-outline" size={18} color="#0EA5E9" />
+              </View>
+              <Text style={[styles.rowTitle, { color: theme.textPrimary }]}>Pending Uploads</Text>
             </View>
             <View
               style={[
                 styles.badge,
-                { backgroundColor: pendingCount > 0 ? (isPureDark ? "#450A0A" : "#FEE2E2") : bgSubtle },
+                {
+                  backgroundColor:
+                    pendingCount > 0
+                      ? isPureDark
+                        ? theme.errorBg
+                        : "#FEE2E2"
+                      : theme.bgSubtle,
+                },
               ]}
             >
               <Text
                 style={[
                   styles.badgeText,
-                  { color: pendingCount > 0 ? "#EF4444" : textPrimary },
+                  { color: pendingCount > 0 ? theme.error : theme.textPrimary },
                 ]}
               >
                 {pendingCount}
@@ -341,111 +167,38 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
 
           <View style={styles.settingRow}>
             <View style={styles.rowLeft}>
-              <Icon name="wifi-outline" size={18} color="#14B8A6" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Wi-Fi Only Sync</Text>
+              <View style={styles.iconCol}>
+                <Icon name="wifi-outline" size={18} color={theme.actionGreen} />
+              </View>
+              <Text style={[styles.rowTitle, { color: theme.textPrimary }]}>Wi-Fi Only Sync</Text>
             </View>
             <Switch
               value={settings.wifiOnlySync}
               onValueChange={(val) => updateSetting("wifiOnlySync", val)}
-              trackColor={{ false: "#64748B", true: "#93C5FD" }}
-              thumbColor={settings.wifiOnlySync ? accentBlue : "#F1F5F9"}
+              trackColor={{
+                false: isPureDark ? "#3F3F46" : "#E2E8F0",
+                true: isPureDark ? "#2563EB" : "#93C5FD",
+              }}
+              thumbColor={
+                settings.wifiOnlySync
+                  ? isPureDark
+                    ? "#60A5FA"
+                    : theme.accentBlue
+                  : isPureDark
+                    ? "#71717A"
+                    : "#FFFFFF"
+              }
             />
           </View>
-
-          <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-          <View style={styles.actionBtnRow}>
-            <Pressable
-              style={[styles.actionBtn, { backgroundColor: bgSubtle, borderColor }]}
-              onPress={handleClearCache}
-            >
-              <Icon name="trash-outline" size={15} color={textMuted} />
-              <Text style={[styles.actionBtnText, { color: textPrimary }]}>Clear Cache</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.actionBtn, { backgroundColor: bgSubtle, borderColor }]}
-              onPress={handleReSeedData}
-            >
-              <Icon name="refresh-outline" size={15} color={textMuted} />
-              <Text style={[styles.actionBtnText, { color: textPrimary }]}>Reload Data</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* ── Section: Security ── */}
-        <Text style={[styles.sectionTitle, { color: textMuted }]}>SECURITY</Text>
-        <View style={[styles.card, { backgroundColor: bgCard, borderColor }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <Icon name="shield-checkmark-outline" size={18} color="#10B981" />
-              <Text style={[styles.rowTitle, { color: textPrimary }]}>Screen Lock</Text>
-            </View>
-            <Switch
-              value={settings.biometricLock}
-              onValueChange={(val) => updateSetting("biometricLock", val)}
-              trackColor={{ false: "#64748B", true: "#93C5FD" }}
-              thumbColor={settings.biometricLock ? accentBlue : "#F1F5F9"}
-            />
-          </View>
-
-          {settings.biometricLock && (
-            <>
-              <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-              <View style={styles.settingRow}>
-                <Text style={[styles.rowTitle, { color: textMuted, fontSize: 13 }]}>Auto-Lock Delay</Text>
-                <View style={styles.miniPillGroup}>
-                  {(
-                    [
-                      { val: "immediate", label: "0m" },
-                      { val: "5min", label: "5m" },
-                      { val: "15min", label: "15m" },
-                    ] as const
-                  ).map((t) => {
-                    const active = settings.autoLockTimeout === t.val;
-                    return (
-                      <Pressable
-                        key={t.val}
-                        style={[
-                          styles.miniPill,
-                          {
-                            backgroundColor: active
-                              ? isPureDark
-                                ? "#27272A"
-                                : "#EFF6FF"
-                              : bgSubtle,
-                            borderColor: active ? accentBlue : "transparent",
-                          },
-                        ]}
-                        onPress={() => updateSetting("autoLockTimeout", t.val as AutoLockTimeout)}
-                      >
-                        <Text
-                          style={[
-                            styles.miniPillText,
-                            {
-                              color: active ? accentBlue : textMuted,
-                              fontWeight: active ? "700" : "500",
-                            },
-                          ]}
-                        >
-                          {t.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-            </>
-          )}
-        </View>
+        </NetramCard>
 
         {/* ── Footer ── */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: textMuted }]}>
+          <Text style={[styles.footerText, { color: theme.textMuted }]}>
             Netram Field Inspector • Version 1.0.0
           </Text>
         </View>
@@ -463,50 +216,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: {
-    flexDirection: "row",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
   },
-  backText: {
-    fontSize: 15,
-    fontWeight: "600",
+  headerSpacer: {
+    width: 36,
   },
   topBarTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
+    letterSpacing: -0.3,
   },
   container: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 40,
-    gap: 4,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    marginTop: 14,
-    marginBottom: 6,
-    marginLeft: 4,
   },
   card: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    overflow: "hidden",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 0,
   },
   segmentedControl: {
     flexDirection: "row",
-    backgroundColor: "transparent",
-    paddingVertical: 8,
-    gap: 8,
+    padding: 3,
+    borderRadius: 8,
+    gap: 4,
   },
   segmentTab: {
     flex: 1,
@@ -514,8 +259,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 9,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  segmentTabActive: {
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   segmentText: {
     fontSize: 13,
@@ -524,82 +277,47 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   rowLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  rowRight: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 10,
+    flex: 1,
+  },
+  iconCol: {
+    width: 28,
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "500",
   },
   divider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     width: "100%",
   },
-  statusPill: {
+  badge: {
+    minWidth: 26,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  miniPillGroup: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  miniPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  miniPillText: {
-    fontSize: 12,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  actionBtnRow: {
-    flexDirection: "row",
-    gap: 10,
-    paddingVertical: 10,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: "row",
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
   },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   footer: {
     alignItems: "center",
-    paddingVertical: 20,
+    paddingTop: 28,
+    paddingBottom: 16,
   },
   footerText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "500",
+    letterSpacing: 0.2,
   },
 });

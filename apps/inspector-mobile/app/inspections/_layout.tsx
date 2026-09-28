@@ -13,7 +13,6 @@ export default function InspectionsLayout() {
         },
       }}
     >
-      <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
     </Stack>
   );

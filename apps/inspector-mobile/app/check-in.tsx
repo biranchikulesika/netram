@@ -42,6 +42,7 @@ import {
   DEMO_GEOFENCES,
 } from "../src/offline/demo-seed";
 import { NetramButton } from "../src/components/ui/NetramButton";
+import { formatInspectionType } from "../src/utils/formatters";
 import { WebView } from "react-native-webview";
 
 // ---------------------------------------------------------------------------
@@ -1334,7 +1335,7 @@ export default function MapScreen() {
                   numberOfLines={1}
                 >
                   {selectedSite.withinGeofence
-                    ? `${selectedSite.projectCode} • ${selectedSite.type.replace(/_/g, " ").toUpperCase()}${selectedSite.districtId ? ` • ${selectedSite.districtId}` : ""}`
+                    ? `${selectedSite.projectCode} • ${formatInspectionType(selectedSite.type)}${selectedSite.districtId ? ` • ${selectedSite.districtId}` : ""}`
                     : `${selectedSite.projectCode} • Physical presence required to unlock`}
                 </Text>
               </View>

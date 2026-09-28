@@ -4,6 +4,8 @@ import type {
   OfflineOperationType,
   SyncBatchResponse,
   SyncOperationResult,
+  CallContact,
+  CallRecord,
 } from "@netram/types";
 import type { NetramApiClient } from "@netram/api-client";
 import type { ISqliteDatabase } from "./db";
@@ -246,12 +248,12 @@ export class OfflineInspectionQueue {
     const db = await this.getDb();
     if (inspectionId) {
       return db.getAllAsync<OfflineOperationRecord>(
-        `SELECT * FROM offline_operations WHERE inspection_id = ? ORDER BY client_timestamp DESC`,
+        `SELECT * FROM offline_operations WHERE inspection_id = ? ORDER BY client_timestamp ASC`,
         [inspectionId],
       );
     }
     return db.getAllAsync<OfflineOperationRecord>(
-      `SELECT * FROM offline_operations ORDER BY client_timestamp DESC`,
+      `SELECT * FROM offline_operations ORDER BY client_timestamp ASC`,
     );
   }
 
@@ -841,5 +843,144 @@ export class OfflineInspectionQueue {
       mediaUploaded,
       results: response.results,
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Video Call Directory & History (Database persistence §5, §9, §30)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async getCallContacts(): Promise<CallContact[]> {
+    const db = await this.dbGetter();
+    const rows = await db.getAllAsync<{
+      id: string;
+      name: string;
+      role: string;
+      title: string;
+      project_code: string;
+      project_name: string;
+      phone: string;
+      is_online: number;
+      avatar_color: string;
+      video_uri: string | null;
+    }>("SELECT * FROM cached_call_contacts ORDER BY name");
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      role: (r.role as "staff" | "beneficiary") || "staff",
+      title: r.title,
+      projectCode: r.project_code,
+      projectName: r.project_name,
+      phone: r.phone,
+      isOnline: r.is_online === 1,
+      avatarColor: r.avatar_color,
+      videoUri: r.video_uri,
+    }));
+  }
+
+  async cacheCallContacts(contacts: CallContact[]): Promise<void> {
+    const db = await this.dbGetter();
+    for (const c of contacts) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO cached_call_contacts
+          (id, name, role, title, project_code, project_name, phone, is_online, avatar_color, video_uri)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          c.id,
+          c.name,
+          c.role,
+          c.title,
+          c.projectCode,
+          c.projectName,
+          c.phone,
+          c.isOnline ? 1 : 0,
+          c.avatarColor,
+          c.videoUri ?? null,
+        ],
+      );
+    }
+  }
+
+  async getCallHistory(): Promise<CallRecord[]> {
+    const db = await this.dbGetter();
+    const rows = await db.getAllAsync<{
+      id: string;
+      contact_id: string;
+      contact_name: string;
+      contact_title: string;
+      role: string;
+      project_name: string;
+      project_code: string;
+      call_type: string;
+      duration_seconds: number;
+      timestamp: string;
+      condition: string;
+      review_text: string;
+      flag_inspection: number;
+      video_uri: string | null;
+      inspector_video_uri: string | null;
+      direction: string;
+      status: string;
+      created_at: string;
+    }>("SELECT * FROM cached_call_history ORDER BY created_at DESC");
+
+    return rows.map((r) => ({
+      id: r.id,
+      contactId: r.contact_id,
+      contactName: r.contact_name,
+      contactTitle: r.contact_title,
+      role: (r.role as "staff" | "beneficiary") || "staff",
+      projectName: r.project_name,
+      projectCode: r.project_code,
+      callType: "video",
+      durationSeconds: r.duration_seconds,
+      timestamp: r.timestamp,
+      condition: (r.condition as "satisfactory" | "minor_issue" | "critical_problem") || "satisfactory",
+      reviewText: r.review_text,
+      flagInspection: r.flag_inspection === 1,
+      videoUri: r.video_uri,
+      inspectorVideoUri: r.inspector_video_uri,
+      direction: (r.direction as "incoming" | "outgoing") || "outgoing",
+      status: (r.status as "answered" | "missed") || (r.duration_seconds > 0 ? "answered" : "missed"),
+      createdAt: r.created_at,
+    }));
+  }
+
+  async recordCallHistory(record: CallRecord): Promise<void> {
+    const db = await this.dbGetter();
+    const createdAt = record.createdAt || new Date().toISOString();
+    await db.runAsync(
+      `INSERT OR REPLACE INTO cached_call_history
+        (id, contact_id, contact_name, contact_title, role, project_name, project_code,
+         call_type, duration_seconds, timestamp, condition, review_text, flag_inspection,
+         video_uri, inspector_video_uri, direction, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        record.id,
+        record.contactId,
+        record.contactName,
+        record.contactTitle,
+        record.role,
+        record.projectName,
+        record.projectCode,
+        record.callType,
+        record.durationSeconds,
+        record.timestamp,
+        record.condition,
+        record.reviewText,
+        record.flagInspection ? 1 : 0,
+        record.videoUri ?? null,
+        record.inspectorVideoUri ?? null,
+        record.direction,
+        record.status,
+        createdAt,
+      ],
+    );
+  }
+
+  async cacheCallHistory(records: CallRecord[]): Promise<void> {
+    for (const r of records) {
+      await this.recordCallHistory(r);
+    }
   }
 }

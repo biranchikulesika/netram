@@ -19,7 +19,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { colors } from "../../theme/colors";
 
 export type IconName = string;
@@ -45,7 +45,7 @@ function normalizeIconName(name: string): { collection: string; iconName: string
   }
 
   // Alias dictionary for convenience
-  const aliases: Record<string, string> = {
+  const aliases: Record<string, { collection: string; iconName: string } | string> = {
     search: "search-outline",
     close: "close-outline",
     checkmark: "checkmark-outline",
@@ -62,9 +62,16 @@ function normalizeIconName(name: string): { collection: string; iconName: string
     shield: "shield-outline",
     location: "location-outline",
     "arrow-down-left": "arrow-down-outline",
+    "call-missed": { collection: "material", iconName: "call-missed" },
+    "call-missed-outgoing": { collection: "material", iconName: "call-missed-outgoing" },
+    "call-received": { collection: "material", iconName: "call-received" },
+    "call-made": { collection: "material", iconName: "call-made" },
   };
 
   const resolved = aliases[name] || name;
+  if (typeof resolved === "object") {
+    return resolved;
+  }
   return { collection: "ion", iconName: resolved };
 }
 
@@ -81,8 +88,9 @@ export function getCdnIconUrl(
   }
 
   const { collection, iconName } = normalizeIconName(name);
+  const cdnCollection = collection === "material" ? "material-symbols" : collection;
   const encodedColor = encodeURIComponent(color);
-  return `${CDN_BASE}/${collection}/${iconName}.svg?width=${size}&height=${size}&color=${encodedColor}`;
+  return `${CDN_BASE}/${cdnCollection}/${iconName}.svg?width=${size}&height=${size}&color=${encodedColor}`;
 }
 
 export function Icon({
@@ -104,7 +112,17 @@ export function Icon({
   }
 
   try {
-    const { iconName } = normalizeIconName(name);
+    const { collection, iconName } = normalizeIconName(name);
+    if (collection === "material") {
+      return (
+        <MaterialIcons
+          name={iconName as keyof typeof MaterialIcons.glyphMap}
+          size={size}
+          color={color}
+          style={style as StyleProp<ViewStyle>}
+        />
+      );
+    }
     return (
       <Ionicons
         name={iconName as keyof typeof Ionicons.glyphMap}

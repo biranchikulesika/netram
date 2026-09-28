@@ -23,45 +23,20 @@ import { Icon } from "../src/components/ui/Icon";
 import { InteractiveVideoPlayer } from "../src/components/ui/InteractiveVideoPlayer";
 import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
+import { useAuth } from "../src/auth/auth-context";
 import { OfflineInspectionQueue } from "../src/offline/queue";
+import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
 import {
   startCallingSound,
   playCallPickupSound,
   stopAllCallSounds,
 } from "../src/utils/call-sounds";
 
-export interface AssignedContact {
-  id: string;
-  name: string;
-  role: "staff" | "beneficiary";
-  title: string;
-  projectCode: string;
-  projectName: string;
-  phone: string;
-  isOnline: boolean;
-  avatarColor: string;
-  videoUri?: string;
-}
+import type { CallContact, CallRecord, CallCondition } from "@netram/types";
 
-export type ReviewCondition = "satisfactory" | "minor_issue" | "critical_problem";
-
-export interface CallHistoryRecord {
-  id: string;
-  contactId: string;
-  contactName: string;
-  contactTitle: string;
-  role: "staff" | "beneficiary";
-  projectName: string;
-  projectCode: string;
-  callType: "video";
-  durationSeconds: number;
-  timestamp: string;
-  condition: ReviewCondition;
-  reviewText: string;
-  flagInspection: boolean;
-  videoUri?: string;
-  inspectorVideoUri?: string;
-}
+export type AssignedContact = CallContact;
+export type CallHistoryRecord = CallRecord;
+export type ReviewCondition = CallCondition;
 
 // User's custom default video placed in assets/videos/demo_face_1.mp4
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -85,165 +60,8 @@ const DEMO_MALE_VIDEO = DEFAULT_DEMO_VIDEO;
 const DEMO_FEMALE_VIDEO = DEFAULT_DEMO_VIDEO;
 
 const queue = new OfflineInspectionQueue();
-const STORAGE_KEY = "netram_inspector_call_history";
+// All contact and history records are loaded directly from the database (§5, §8, §9).
 
-// Assigned contacts linked to field projects with realistic human mobile videos
-const DEFAULT_CONTACTS: AssignedContact[] = [
-  {
-    id: "cnt-01",
-    name: "Ramesh Jena",
-    role: "staff",
-    title: "Facility In-Charge",
-    projectCode: "DOSJE-BBR-001",
-    projectName: "Sishhu Bhawan Senior Citizen Home",
-    phone: "+91 94370 12890",
-    isOnline: true,
-    avatarColor: colors.accentBlue,
-    videoUri: DEMO_MALE_VIDEO,
-  },
-  {
-    id: "cnt-02",
-    name: "Dr. Anita Behera",
-    role: "staff",
-    title: "Medical Officer",
-    projectCode: "DOSJE-BBR-002",
-    projectName: "Kalyan Mandap IRCA Rehabilitation",
-    phone: "+91 98610 44521",
-    isOnline: true,
-    avatarColor: colors.actionGreen,
-    videoUri: DEMO_FEMALE_VIDEO,
-  },
-  {
-    id: "cnt-03",
-    name: "Bipin Bihari Das",
-    role: "beneficiary",
-    title: "Senior Resident Lead",
-    projectCode: "DOSJE-BBR-001",
-    projectName: "Sishhu Bhawan Senior Citizen Home",
-    phone: "+91 94381 77230",
-    isOnline: true,
-    avatarColor: colors.gold,
-    videoUri: DEMO_MALE_VIDEO,
-  },
-  {
-    id: "cnt-04",
-    name: "Er. Manoj Nayak",
-    role: "staff",
-    title: "Site Engineer",
-    projectCode: "DOSJE-BBR-003",
-    projectName: "Navajyoti SC/ST Girls Hostel",
-    phone: "+91 97760 99312",
-    isOnline: false,
-    avatarColor: colors.navyData,
-    videoUri: DEMO_MALE_VIDEO,
-  },
-  {
-    id: "cnt-05",
-    name: "Sunita Mohanty",
-    role: "staff",
-    title: "Shelter Superintendent",
-    projectCode: "DOSJE-BBR-004",
-    projectName: "Swadhar Greh Women Shelter",
-    phone: "+91 94392 65410",
-    isOnline: true,
-    avatarColor: colors.navyDark,
-    videoUri: DEMO_FEMALE_VIDEO,
-  },
-  {
-    id: "cnt-06",
-    name: "Laxmi Murmu",
-    role: "beneficiary",
-    title: "Beneficiary Representative",
-    projectCode: "DOSJE-BBR-003",
-    projectName: "Navajyoti SC/ST Girls Hostel",
-    phone: "+91 98533 11840",
-    isOnline: true,
-    avatarColor: colors.tagRust,
-    videoUri: DEMO_FEMALE_VIDEO,
-  },
-  {
-    id: "cnt-07",
-    name: "Pravat Kumar Rout",
-    role: "staff",
-    title: "Project Coordinator",
-    projectCode: "DOSJE-BBR-002",
-    projectName: "Kalyan Mandap IRCA Centre",
-    phone: "+91 94371 88902",
-    isOnline: false,
-    avatarColor: colors.actionGreen,
-    videoUri: DEMO_MALE_VIDEO,
-  },
-  {
-    id: "cnt-08",
-    name: "Minati Sahoo",
-    role: "beneficiary",
-    title: "Resident Beneficiary",
-    projectCode: "DOSJE-BBR-004",
-    projectName: "Swadhar Greh Women Shelter",
-    phone: "+91 96924 55301",
-    isOnline: true,
-    avatarColor: colors.navyBrand,
-    videoUri: DEMO_FEMALE_VIDEO,
-  },
-];
-
-// Initial seeded video call history records with simultaneous real human mobile videos
-const INITIAL_CALL_HISTORY: CallHistoryRecord[] = [
-  {
-    id: "hist-01",
-    contactId: "cnt-02",
-    contactName: "Dr. Anita Behera",
-    contactTitle: "Medical Officer",
-    role: "staff",
-    projectCode: "DOSJE-BBR-002",
-    projectName: "Kalyan Mandap IRCA Rehabilitation",
-    callType: "video",
-    durationSeconds: 374,
-    timestamp: "Today, 11:30 AM",
-    condition: "minor_issue",
-    reviewText:
-      "Medical supplies stock is adequate for 2 weeks. Reported delay in quarterly fund release for ambulance fuel. Staff attendance verified over camera.",
-    flagInspection: false,
-    videoUri: DEMO_FEMALE_VIDEO,
-    inspectorVideoUri: DEMO_MALE_VIDEO,
-  },
-  {
-    id: "hist-02",
-    contactId: "cnt-03",
-    contactName: "Bipin Bihari Das",
-    contactTitle: "Senior Resident Lead",
-    role: "beneficiary",
-    projectCode: "DOSJE-BBR-001",
-    projectName: "Sishhu Bhawan Senior Citizen Home",
-    callType: "video",
-    durationSeconds: 220,
-    timestamp: "Yesterday, 04:15 PM",
-    condition: "satisfactory",
-    reviewText:
-      "Beneficiary confirmed warm meals served on schedule. RO water filter is operational. Zero staff misconduct or grievances reported.",
-    flagInspection: false,
-    videoUri: DEMO_MALE_VIDEO,
-    inspectorVideoUri: DEMO_MALE_VIDEO,
-  },
-  {
-    id: "hist-03",
-    contactId: "cnt-04",
-    contactName: "Er. Manoj Nayak",
-    contactTitle: "Site Engineer",
-    role: "staff",
-    projectCode: "DOSJE-BBR-003",
-    projectName: "Navajyoti SC/ST Girls Hostel",
-    callType: "video",
-    durationSeconds: 502,
-    timestamp: "Sep 24, 02:20 PM",
-    condition: "critical_problem",
-    reviewText:
-      "Perimeter boundary wall construction halted due to cement shortage. Deep unpaved trench waterlogged creating severe safety hazard for resident girls.",
-    flagInspection: true,
-    videoUri: DEMO_MALE_VIDEO,
-    inspectorVideoUri: DEMO_MALE_VIDEO,
-  },
-];
 
 function renderWebVideo(
   videoRef: React.RefObject<HTMLVideoElement | null>,
@@ -276,6 +94,7 @@ function renderWebVideo(
 
 export default function CallsScreen() {
   const { theme, isPureDark } = useSettings();
+  const { client } = useAuth();
 
   // Tab 1: Assigned Calls ("contacts") FIRST, Tab 2: Call History ("history") SECOND
   const [activeTab, setActiveTab] = useState<"contacts" | "history">("contacts");
@@ -287,20 +106,10 @@ export default function CallsScreen() {
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [contacts, setContacts] = useState<AssignedContact[]>(DEFAULT_CONTACTS);
-
-  // Call history records state (strictly video calls)
-  const [callHistory, setCallHistory] = useState<CallHistoryRecord[]>(() => {
-    if (Platform.OS === "web" && typeof window !== "undefined" && window.localStorage) {
-      try {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
-      } catch {
-        // fallback
-      }
-    }
-    return INITIAL_CALL_HISTORY;
-  });
+  // Contacts and Call History loaded directly from database (§5, §8, §9)
+  const [contacts, setContacts] = useState<AssignedContact[]>([]);
+  const [callHistory, setCallHistory] = useState<CallHistoryRecord[]>([]);
+  const [_isLoadingDb, setIsLoadingDb] = useState(true);
 
   // Active Video Call state
   const [activeCall, setActiveCall] = useState<{
@@ -383,40 +192,71 @@ export default function CallsScreen() {
   const textPrimary = theme.textPrimary;
   const textMuted = theme.textMuted;
 
-  // Persist call history
-  const saveCallHistory = useCallback((updated: CallHistoryRecord[]) => {
-    setCallHistory(updated);
-    if (Platform.OS === "web" && typeof window !== "undefined" && window.localStorage) {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
+  // Load contacts and call history directly from the database (§5 offline SQLite, §8 API, §9 PostgreSQL)
+  const loadDatabaseData = useCallback(async () => {
+    try {
+      await seedDemoDataIfEmpty();
 
-  // Sync contacts with local SQLite inspections if available
-  useEffect(() => {
-    void (async () => {
-      try {
-        const cached = await queue.getCachedInspections();
-        if (cached && cached.length > 0) {
-          const updated = DEFAULT_CONTACTS.map((c, i) => {
-            const insp = cached[i % cached.length];
-            if (!insp) return c;
-            return {
-              ...c,
-              projectCode: insp.project_code || c.projectCode,
-              projectName: insp.project_name || c.projectName,
-            };
-          });
-          setContacts(updated);
-        }
-      } catch {
-        // fallback
+      // 1. Authoritative local SQLite database read
+      const [localContacts, localHistory] = await Promise.all([
+        queue.getCallContacts(),
+        queue.getCallHistory(),
+      ]);
+
+      if (localContacts && localContacts.length > 0) {
+        setContacts(localContacts);
       }
-    })();
-  }, []);
+      if (localHistory && localHistory.length > 0) {
+        setCallHistory(localHistory);
+      }
+
+      // 2. Server PostgreSQL database sync if authenticated & online
+      if (client) {
+        try {
+          const [remoteContacts, remoteHistory] = await Promise.all([
+            client.listCallContacts(),
+            client.listCallHistory(),
+          ]);
+          if (remoteContacts && remoteContacts.length > 0) {
+            setContacts(remoteContacts);
+            await queue.cacheCallContacts(remoteContacts);
+          }
+          if (remoteHistory && remoteHistory.length > 0) {
+            setCallHistory(remoteHistory);
+            await queue.cacheCallHistory(remoteHistory);
+          }
+        } catch {
+          // Offline mode — local SQLite database remains authoritative
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load call data from database:", err);
+    } finally {
+      setIsLoadingDb(false);
+    }
+  }, [client]);
+
+  useEffect(() => {
+    void loadDatabaseData();
+  }, [loadDatabaseData]);
+
+  // Persist call history record into local SQLite database and backend PostgreSQL database
+  const saveCallHistory = useCallback(
+    (newRecord: CallHistoryRecord) => {
+      setCallHistory((prev) => [newRecord, ...prev]);
+      void (async () => {
+        try {
+          await queue.recordCallHistory(newRecord);
+          if (client) {
+            await client.createCallRecord(newRecord);
+          }
+        } catch (err) {
+          console.warn("Failed to persist call record to database:", err);
+        }
+      })();
+    },
+    [client]
+  );
 
   // Call timer (strictly 1-second interval based on Date.now())
   useEffect(() => {
@@ -768,9 +608,11 @@ export default function CallsScreen() {
       flagInspection: skip ? false : flagForSiteVisit,
       videoUri: endedCallData.videoUri,
       inspectorVideoUri: endedCallData.inspectorVideoUri,
+      direction: "outgoing",
+      status: endedCallData.duration > 0 ? "answered" : "missed",
     };
 
-    saveCallHistory([newRecord, ...callHistory]);
+    saveCallHistory(newRecord);
     setEndedCallData(null);
     setActiveTab("history");
   };
@@ -1103,124 +945,61 @@ export default function CallsScreen() {
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
-      {/* ── Top Bar ── */}
-      <View style={[styles.topBar, { backgroundColor: bgCard, borderBottomColor: borderColor }]}>
-        <View style={styles.topBarTitleGroup}>
-          <Text style={[styles.topBarTitle, { color: textPrimary }]}>Calls</Text>
-          <Text style={[styles.topBarSubtitle, { color: textMuted }]}>
-            Field Video Oversight Directory
-          </Text>
+      {/* ── Search Bar & Tab Toggle Row ── */}
+      <View style={styles.searchRow}>
+        <View style={[styles.searchBox, { backgroundColor: bgSubtle, borderColor }]}>
+          <Icon name="search" size={17} color={textMuted} />
+          <TextInput
+            style={[styles.searchInput, { color: textPrimary }]}
+            placeholder="Search"
+            placeholderTextColor={textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
+              <Icon name="close-circle" size={17} color={textMuted} />
+            </Pressable>
+          )}
         </View>
-        <View style={styles.topBarBadge}>
-          <View style={styles.shieldPulseDot} />
-          <Text style={styles.topBarBadgeText}>SECURE LINE</Text>
-        </View>
-      </View>
-
-      {/* ── Tab Bar: Contacts / History ── */}
-      <View style={[styles.tabsTrack, { backgroundColor: bgSubtle, borderBottomColor: borderColor, paddingHorizontal: 12, paddingVertical: 6 }]}>
-        <Pressable
-          style={[
-            styles.tabItem,
-            {
-              backgroundColor: activeTab === "contacts" ? colors.navyDark : "transparent",
-              borderRadius: 6,
-              paddingVertical: 7,
-              paddingHorizontal: 12,
-            },
-          ]}
-          onPress={() => setActiveTab("contacts")}
-        >
-          <View style={styles.tabContentRow}>
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === "contacts" ? "#FFFFFF" : textMuted },
-                activeTab === "contacts" && styles.tabTextActive,
-              ]}
-            >
-              Assigned Calls
-            </Text>
-            <View
-              style={[
-                styles.tabBubble,
-                {
-                  backgroundColor:
-                    activeTab === "contacts" ? "rgba(255,255,255,0.2)" : (isPureDark ? "#27272A" : theme.borderSubtle),
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabBubbleText,
-                  { color: activeTab === "contacts" ? "#FFFFFF" : textMuted },
-                ]}
-              >
-                {contacts.length}
-              </Text>
-            </View>
-          </View>
-        </Pressable>
 
         <Pressable
-          style={[
-            styles.tabItem,
-            {
-              backgroundColor: activeTab === "history" ? colors.navyDark : "transparent",
-              borderRadius: 6,
-              paddingVertical: 7,
-              paddingHorizontal: 12,
-            },
-          ]}
-          onPress={() => setActiveTab("history")}
+          style={[styles.tabToggleBtn, { backgroundColor: bgSubtle, borderColor }]}
+          onPress={() => setActiveTab(activeTab === "contacts" ? "history" : "contacts")}
+          accessibilityRole="button"
+          accessibilityLabel={
+            activeTab === "contacts" ? "Switch to call history" : "Switch to assigned calls"
+          }
         >
-          <View style={styles.tabContentRow}>
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === "history" ? "#FFFFFF" : textMuted },
-                activeTab === "history" && styles.tabTextActive,
-              ]}
-            >
-              Call History
-            </Text>
-            <View
-              style={[
-                styles.tabBubble,
-                {
-                  backgroundColor:
-                    activeTab === "history" ? "rgba(255,255,255,0.2)" : (isPureDark ? "#27272A" : theme.borderSubtle),
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabBubbleText,
-                  { color: activeTab === "history" ? "#FFFFFF" : textMuted },
-                ]}
-              >
-                {callHistory.length}
-              </Text>
-            </View>
+          <View
+            style={[
+              styles.togglePill,
+              activeTab === "contacts" && {
+                backgroundColor: isPureDark ? "#27272A" : colors.navyDark,
+              },
+            ]}
+          >
+            <Icon
+              name={activeTab === "contacts" ? "people" : "people-outline"}
+              size={18}
+              color={activeTab === "contacts" ? "#FFFFFF" : textMuted}
+            />
+          </View>
+          <View
+            style={[
+              styles.togglePill,
+              activeTab === "history" && {
+                backgroundColor: isPureDark ? "#27272A" : colors.navyDark,
+              },
+            ]}
+          >
+            <Icon
+              name={activeTab === "history" ? "time" : "time-outline"}
+              size={18}
+              color={activeTab === "history" ? "#FFFFFF" : textMuted}
+            />
           </View>
         </Pressable>
-      </View>
-
-      {/* ── Search Bar ── */}
-      <View style={[styles.searchBox, { backgroundColor: bgSubtle, borderColor }]}>
-        <Icon name="search" size={17} color={textMuted} />
-        <TextInput
-          style={[styles.searchInput, { color: textPrimary }]}
-          placeholder="Search staff, beneficiary, or project…"
-          placeholderTextColor={textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
-            <Icon name="close-circle" size={17} color={textMuted} />
-          </Pressable>
-        )}
       </View>
 
       {/* ── TAB 1: ASSIGNED CALLS (WhatsApp Style) ── */}
@@ -1248,9 +1027,9 @@ export default function CallsScreen() {
                   key={contact.id}
                   style={[styles.whatsAppRowWrapper, { borderBottomColor: borderColor }]}
                 >
-                  <View style={styles.whatsAppMainRow}>
-                    {/* 50px WhatsApp-Style Avatar */}
-                    <View style={styles.avatarWrapper}>
+                  <View style={[styles.whatsAppMainRow, isExpanded && styles.whatsAppMainRowExpanded]}>
+                    {/* Compact Profile Avatar */}
+                    <View style={[styles.avatarWrapper, isExpanded && { marginTop: 2 }]}>
                       <View style={[styles.avatarCircle50, { backgroundColor: contact.avatarColor }]}>
                         <Text style={styles.avatarInitialsText}>{initials}</Text>
                       </View>
@@ -1262,67 +1041,25 @@ export default function CallsScreen() {
                       style={styles.whatsAppInfoCol}
                       onPress={() => setExpandedContactId(isExpanded ? null : contact.id)}
                     >
-                      <View style={styles.contactNameLine}>
-                        <Text style={[styles.contactNameBold, { color: textPrimary }]} numberOfLines={1}>
-                          {contact.name}
-                        </Text>
-                        <Icon
-                          name={isExpanded ? "chevron-up" : "chevron-down"}
-                          size={14}
-                          color={textMuted}
-                        />
-                      </View>
-                      <Text style={[styles.contactSubtitleMuted, { color: textMuted }]} numberOfLines={1}>
-                        {contact.title} • {contact.role === "staff" ? "Staff" : "Beneficiary"}
+                      <Text style={[styles.contactNameBold, { color: textPrimary }]}>
+                        {contact.name}
                       </Text>
+                      {isExpanded && (
+                        <Text style={[styles.contactSubtitleMuted, { color: textMuted }]}>
+                          {contact.title} • {contact.projectName}
+                        </Text>
+                      )}
                     </Pressable>
 
                     {/* ONLY Video Call Button (WhatsApp Green) */}
                     <Pressable
-                      style={styles.whatsAppVideoBtn}
+                      style={[styles.whatsAppVideoBtn, isExpanded && { marginTop: -2 }]}
                       onPress={() => startVideoCall(contact)}
                       accessibilityLabel={`Video Call ${contact.name}`}
                     >
                       <Icon name="videocam" size={20} color={colors.actionGreen} />
                     </Pressable>
                   </View>
-
-                  {/* ── EXPANDED DETAILS (ONLY AFTER CLICKING THE NAME) ── */}
-                  {isExpanded && (
-                    <View style={styles.detailsCard}>
-                      <View style={styles.detailRow}>
-                        <Icon name="business-outline" size={14} color={textMuted} />
-                        <Text style={[styles.detailLabel, { color: textMuted }]}>Project:</Text>
-                        <Text style={[styles.detailValue, { color: textPrimary }]} numberOfLines={1}>
-                          {contact.projectName}
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailRow}>
-                        <Icon name="barcode-outline" size={14} color={textMuted} />
-                        <Text style={[styles.detailLabel, { color: textMuted }]}>Code:</Text>
-                        <Text style={[styles.detailValue, { color: textPrimary }]}>
-                          {contact.projectCode}
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailRow}>
-                        <Icon name="person-outline" size={14} color={textMuted} />
-                        <Text style={[styles.detailLabel, { color: textMuted }]}>Role:</Text>
-                        <Text style={[styles.detailValue, { color: textPrimary }]}>
-                          {contact.role === "staff" ? "Project Staff" : "Beneficiary Representative"}
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailRow}>
-                        <Icon name="call-outline" size={14} color={textMuted} />
-                        <Text style={[styles.detailLabel, { color: textMuted }]}>Phone:</Text>
-                        <Text style={[styles.detailValue, { color: textPrimary }]}>
-                          {contact.phone}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
                 </View>
               );
             })
@@ -1352,22 +1089,59 @@ export default function CallsScreen() {
                 .join("")
                 .slice(0, 2);
 
-              const isCrit = item.condition === "critical_problem";
-              const isMinor = item.condition === "minor_issue";
+              const isPickedUp = item.status ? item.status === "answered" : item.durationSeconds > 0;
+              const isIncoming = item.direction === "incoming";
+
+              // Icon, Color, Badge, and Label
+              let iconName: string;
+              let statusLabel: string;
+              let arrowColor: string;
+              let badgeBg: string;
+
+              if (isPickedUp) {
+                iconName = isIncoming ? "call-received" : "call-made";
+                arrowColor = colors.actionGreen;
+                badgeBg = isPureDark ? "rgba(22, 163, 74, 0.25)" : "#DCFCE7";
+                statusLabel = formatDuration(item.durationSeconds);
+              } else if (isIncoming) {
+                // Incoming call not picked up -> Red bounce arrow & "Missed"
+                iconName = "call-missed";
+                arrowColor = colors.errorRed;
+                badgeBg = isPureDark ? "rgba(220, 38, 38, 0.25)" : "#FEE2E2";
+                statusLabel = "Missed";
+              } else {
+                // Outgoing and unanswered -> North-East red arrow & "Unanswered"
+                iconName = "call-made";
+                arrowColor = colors.errorRed;
+                badgeBg = isPureDark ? "rgba(220, 38, 38, 0.25)" : "#FEE2E2";
+                statusLabel = "Unanswered";
+              }
 
               return (
                 <View
                   key={item.id}
                   style={[styles.whatsAppRowWrapper, { borderBottomColor: borderColor }]}
                 >
-                  <View style={styles.whatsAppMainRow}>
-                    {/* 50px Avatar with Video Mini Badge */}
-                    <View style={styles.avatarWrapper}>
+                  <View style={[styles.whatsAppMainRow, isExpanded && styles.whatsAppMainRowExpanded]}>
+                    {/* Compact Avatar with Direction Mini Badge */}
+                    <View style={[styles.avatarWrapper, isExpanded && { marginTop: 2 }]}>
                       <View style={[styles.avatarCircle50, { backgroundColor: avatarColor }]}>
                         <Text style={styles.avatarInitialsText}>{initials}</Text>
                       </View>
-                      <View style={styles.videoHistoryBadge}>
-                        <Icon name="videocam" size={10} color="#FFFFFF" />
+                      <View
+                        style={[
+                          styles.videoHistoryBadge,
+                          {
+                            backgroundColor: badgeBg,
+                            borderColor: isPureDark ? colors.navyDark : "#FFFFFF",
+                          },
+                        ]}
+                      >
+                        <Icon
+                          name={iconName}
+                          size={11}
+                          color={arrowColor}
+                        />
                       </View>
                     </View>
 
@@ -1376,27 +1150,25 @@ export default function CallsScreen() {
                       style={styles.whatsAppInfoCol}
                       onPress={() => setExpandedCallId(isExpanded ? null : item.id)}
                     >
-                      <View style={styles.contactNameLine}>
-                        <Text style={[styles.contactNameBold, { color: textPrimary }]} numberOfLines={1}>
-                          {item.contactName}
+                      <Text style={[styles.contactNameBold, { color: textPrimary }]} numberOfLines={1}>
+                        {item.contactName}
+                      </Text>
+                      <Text style={[styles.contactSubtitleMuted, { color: textMuted }]} numberOfLines={1}>
+                        {item.timestamp} •{" "}
+                        <Text
+                          style={{
+                            color: isPickedUp ? textMuted : colors.errorRed,
+                            fontWeight: isPickedUp ? "400" : "600",
+                          }}
+                        >
+                          {statusLabel}
                         </Text>
-                        <Icon
-                          name={isExpanded ? "chevron-up" : "chevron-down"}
-                          size={14}
-                          color={textMuted}
-                        />
-                      </View>
-                      <View style={styles.historyTimeSubLine}>
-                        <Icon name="arrow-down-outline" size={12} color={colors.actionGreen} />
-                        <Text style={[styles.contactSubtitleMuted, { color: textMuted }]} numberOfLines={1}>
-                          {item.timestamp} • {formatDuration(item.durationSeconds)}
-                        </Text>
-                      </View>
+                      </Text>
                     </Pressable>
 
                     {/* ONLY Video Re-dial Button */}
                     <Pressable
-                      style={styles.whatsAppVideoBtn}
+                      style={[styles.whatsAppVideoBtn, isExpanded && { marginTop: -2 }]}
                       onPress={() => {
                         const c = matchedContact || {
                           id: item.contactId,
@@ -1420,61 +1192,28 @@ export default function CallsScreen() {
                   {/* ── EXPANDED CALL DETAILS (ONLY AFTER CLICKING THE NAME) ── */}
                   {isExpanded && (
                     <View style={styles.detailsCard}>
-                      <View style={styles.detailRow}>
-                        <Icon name="business-outline" size={14} color={textMuted} />
-                        <Text style={[styles.detailLabel, { color: textMuted }]}>Project:</Text>
-                        <Text style={[styles.detailValue, { color: textPrimary }]} numberOfLines={1}>
-                          {item.projectName} ({item.projectCode})
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailRow}>
-                        <Icon name="shield-checkmark-outline" size={14} color={textMuted} />
-                        <Text style={[styles.detailLabel, { color: textMuted }]}>Condition:</Text>
-                        <View
-                          style={[
-                            styles.conditionStatusBadge,
-                            {
-                              backgroundColor: isCrit
-                                ? "rgba(220, 38, 38, 0.12)"
-                                : isMinor
-                                  ? "rgba(217, 119, 6, 0.12)"
-                                  : "rgba(22, 163, 74, 0.12)",
-                            },
-                          ]}
-                        >
-                          <Icon
-                            name={isCrit ? "alert-circle" : isMinor ? "warning" : "checkmark-circle"}
-                            size={12}
-                            color={isCrit ? "#DC2626" : isMinor ? "#D97706" : "#16A34A"}
-                          />
-                          <Text
-                            style={[
-                              styles.conditionStatusBadgeText,
-                              { color: isCrit ? "#DC2626" : isMinor ? "#D97706" : "#16A34A" },
-                            ]}
-                          >
-                            {isCrit ? "Critical Defect" : isMinor ? "Minor Issues" : "Satisfactory"}
-                          </Text>
-                        </View>
-                      </View>
+                      <Text style={[styles.contactSubtitleMuted, { color: textMuted }]}>
+                        {item.contactTitle || (item.role === "staff" ? "Staff" : "Beneficiary")} • {item.projectName}
+                      </Text>
 
                       {/* Observations Note Box */}
-                      <View style={[styles.reviewNoteCallout, { backgroundColor: bgSubtle, borderColor }]}>
-                        <Text style={[styles.reviewNoteCalloutTitle, { color: textMuted }]}>
-                          INSPECTOR PROBLEM REVIEW:
-                        </Text>
-                        <Text style={[styles.reviewNoteCalloutBody, { color: textPrimary }]}>
-                          {item.reviewText}
-                        </Text>
-                      </View>
+                      {item.reviewText ? (
+                        <View style={[styles.reviewNoteCallout, { backgroundColor: bgSubtle, borderColor }]}>
+                          <Text style={[styles.reviewNoteCalloutTitle, { color: textMuted }]}>
+                            Note
+                          </Text>
+                          <Text style={[styles.reviewNoteCalloutBody, { color: textPrimary }]}>
+                            {item.reviewText}
+                          </Text>
+                        </View>
+                      ) : null}
 
                       {/* Play Recorded Video in Call History — Simultaneous Dual Feed */}
                       {item.videoUri && (
-                        <View style={styles.historyVideoBox}>
+                        <View style={[styles.historyVideoBox, { borderColor }]}>
                           <InteractiveVideoPlayer
                             src={item.videoUri}
-                            inspectorSrc={item.inspectorVideoUri}
+                            inspectorSrc={item.inspectorVideoUri ?? undefined}
                             contactName={item.contactName}
                             title={`${item.contactName} · ${item.projectCode}`}
                             style={styles.historyInteractiveVideo}
@@ -1672,112 +1411,45 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  // Top Header
-  topBar: {
+  // Search & Tab Toggle Row
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
-  topBarTitleGroup: {
-    gap: 2,
-  },
-  topBarTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    letterSpacing: -0.4,
-  },
-  topBarSubtitle: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  topBarBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(30, 123, 73, 0.12)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(30, 123, 73, 0.25)",
-  },
-  shieldPulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.actionGreen,
-  },
-  topBarBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: colors.actionGreen,
-    letterSpacing: 0.5,
-  },
-
-  // WhatsApp-Inspired Tabs
-  tabsTrack: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-  },
-  tabItem: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  tabItemActive: {},
-  tabContentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  tabTextActive: {
-    fontWeight: "800",
-  },
-  tabBubble: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 10,
-  },
-  tabBubbleText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  tabActiveBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 16,
-    right: 16,
-    height: 3,
-    backgroundColor: "#002449",
-    borderRadius: 1.5,
-  },
-
-  // Search
   searchBox: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 4,
+    height: 42,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     gap: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    padding: 0,
+    paddingVertical: 0,
+  },
+  tabToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 42,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 3,
+    gap: 2,
+  },
+  togglePill: {
+    width: 36,
+    height: 34,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // List
@@ -1799,50 +1471,53 @@ const styles = StyleSheet.create({
   whatsAppRowWrapper: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
   whatsAppMainRow: {
     flexDirection: "row",
     alignItems: "center",
   },
+  whatsAppMainRowExpanded: {
+    alignItems: "flex-start",
+  },
   avatarWrapper: {
     position: "relative",
-    marginRight: 14,
+    marginRight: 12,
   },
   avatarCircle50: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitialsText: {
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 13,
+    fontWeight: "700",
     color: "#FFFFFF",
   },
   onlineBadgeGreen: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    bottom: -1,
+    right: -1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: colors.actionGreen,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: "#FFFFFF",
   },
   videoHistoryBadge: {
     position: "absolute",
     bottom: -2,
     right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.actionGreen,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#DCFCE7",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: "#FFFFFF",
   },
   whatsAppInfoCol: {
@@ -1862,11 +1537,7 @@ const styles = StyleSheet.create({
   },
   contactSubtitleMuted: {
     fontSize: 13,
-  },
-  historyTimeSubLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+    lineHeight: 18,
   },
   whatsAppVideoBtn: {
     width: 42,
@@ -1879,50 +1550,33 @@ const styles = StyleSheet.create({
 
   // Details
   detailsCard: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 6,
+    marginLeft: 48,
+    gap: 9,
+    paddingTop: 2,
     paddingBottom: 4,
-    paddingHorizontal: 4,
-    gap: 8,
   },
   detailRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  detailLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    width: 60,
+    alignItems: "flex-start",
+    gap: 5,
   },
   detailValue: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 12.5,
+    lineHeight: 17,
     fontWeight: "500",
-  },
-  conditionStatusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  conditionStatusBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
   },
   reviewNoteCallout: {
     borderRadius: 8,
     borderWidth: 1,
     padding: 10,
-    gap: 4,
-    marginTop: 2,
+    gap: 6,
   },
   reviewNoteCalloutTitle: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.4,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
   reviewNoteCalloutBody: {
     fontSize: 12.5,
@@ -1931,17 +1585,20 @@ const styles = StyleSheet.create({
   flagInspectionBanner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 7,
     backgroundColor: "rgba(220, 38, 38, 0.08)",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(220, 38, 38, 0.2)",
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   flagInspectionBannerText: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 11.5,
+    fontWeight: "600",
     color: "#DC2626",
     flex: 1,
+    lineHeight: 16,
   },
   // ---------------------------------------------------------------------------
   // FULLSCREEN IN-CALL INTERFACE (GOVERNMENT WHITE THEME)
@@ -2343,12 +2000,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   historyVideoBox: {
-    marginTop: 8,
     borderRadius: 8,
     overflow: "hidden",
+    borderWidth: 1,
   },
   historyInteractiveVideo: {
-    height: 230,
+    height: 190,
     borderRadius: 8,
     overflow: "hidden",
   },

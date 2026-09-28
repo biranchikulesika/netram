@@ -317,7 +317,7 @@ describe("Phase 15: End-to-End Workflow Verification", () => {
       expect(conflictOp?.code).toBe("INSPECTION_NOT_IN_FIELD_STAGE");
       expect(conflictOp?.error_message).toContain("already been closed");
 
-      // Dismiss / Acknowledge conflict in Sync Center
+      // Dismiss / Acknowledge conflict in offline queue
       await queue.acknowledgeOperation(op.operationId);
       const allOpsAfterDismiss = await queue.getAllOperations(inspectionId);
       const dismissedOp = allOpsAfterDismiss.find((o) => o.operation_id === op.operationId);

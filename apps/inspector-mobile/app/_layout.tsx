@@ -88,20 +88,13 @@ const RootContent = () => {
           paddingBottom: Platform.OS === "web" ? 4 : 8,
           elevation: 0,
         },
-        tabBarShowLabel: true,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: isPureDark ? "#3B82F6" : (colors?.navyDark ?? "#002449"),
         tabBarInactiveTintColor: isPureDark ? "#71717A" : (colors?.textSubtle ?? "#64748b"),
         tabBarItemStyle: {
           justifyContent: "center",
           alignItems: "center",
           paddingVertical: 2,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-          letterSpacing: 0.2,
-          marginTop: 1,
-          marginBottom: 0,
         },
         tabBarHideOnKeyboard: true,
       }}
@@ -123,30 +116,13 @@ const RootContent = () => {
         }}
       />
 
-      {/* 2: INSPECTIONS */}
-      <Tabs.Screen
-        name="inspections"
-        options={{
-          title: "Inspections",
-          headerShown: false,
-          tabBarLabel: "Inspections",
-          tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={focused ? "list" : "list-outline"}
-              size={20}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      {/* 3: MAP (Check-in) */}
+      {/* 2: MAP (Check-in) */}
       <Tabs.Screen
         name="check-in"
         options={{
-          title: "Map",
           headerShown: false,
-          tabBarLabel: "Map",
+          tabBarLabel: "",
+          tabBarAccessibilityLabel: "Map",
           tabBarIcon: ({ color, focused }) => (
             <Icon
               name={focused ? "navigate" : "navigate-outline"}
@@ -157,7 +133,7 @@ const RootContent = () => {
         }}
       />
 
-      {/* 4: HISTORY */}
+      {/* 3: HISTORY */}
       <Tabs.Screen
         name="history"
         options={{
@@ -174,7 +150,7 @@ const RootContent = () => {
         }}
       />
 
-      {/* 5: CALLS */}
+      {/* 4: CALLS */}
       <Tabs.Screen
         name="videocall"
         options={{
@@ -184,7 +160,24 @@ const RootContent = () => {
           tabBarIcon: ({ color, focused }) => (
             <Icon
               name={focused ? "videocam" : "videocam-outline"}
-              size={22}
+              size={21}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      {/* 5: PROFILE */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          headerShown: false,
+          tabBarLabel: "Profile",
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              name={focused ? "person" : "person-outline"}
+              size={21}
               color={color}
             />
           ),
@@ -194,7 +187,7 @@ const RootContent = () => {
       {/* INTERNAL / HIDDEN ROUTES */}
 
       <Tabs.Screen
-        name="profile"
+        name="inspections"
         options={{
           href: null,
           headerShown: false,
@@ -206,14 +199,7 @@ const RootContent = () => {
         options={{
           href: null,
           headerShown: false,
-        }}
-      />
-
-      <Tabs.Screen
-        name="sync"
-        options={{
-          href: null,
-          headerShown: false,
+          tabBarStyle: { display: "none" },
         }}
       />
 

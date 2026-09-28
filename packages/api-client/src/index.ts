@@ -60,6 +60,9 @@ import type {
   VcJoinDetails,
   VcSessionWithParticipants,
   VcParticipantRole,
+  CallContact,
+  CallRecord,
+  CreateCallRecordInput,
   OrganisationView,
   ProgrammeView,
   RegistryUserView,
@@ -696,6 +699,19 @@ export class NetramApiClient extends HttpClient {
 
   async leaveVcSession(id: string): Promise<void> {
     return this.post(`/api/v1/vc/sessions/${id}/leave`, {});
+  }
+
+  // Calls (Video Oversight Directory & History)
+  async listCallContacts(): Promise<CallContact[]> {
+    return this.get("/api/v1/calls/contacts");
+  }
+
+  async listCallHistory(query: Record<string, unknown> = {}): Promise<CallRecord[]> {
+    return this.get(`/api/v1/calls/history${queryString(query)}`);
+  }
+
+  async createCallRecord(input: CreateCallRecordInput): Promise<CallRecord> {
+    return this.post("/api/v1/calls/history", input);
   }
 
   // Funds & Allocations

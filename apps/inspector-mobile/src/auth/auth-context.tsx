@@ -59,10 +59,8 @@ export const SessionProvider = ({
   const [user, setUser] = useState<InspectorUser | null>(null);
   const [_initializing, setInitializing] = useState(true);
 
-  const apiBase =
-    Platform.OS === "web"
-      ? "http://localhost:3001"
-      : loadMobileEnv().EXPO_PUBLIC_API_URL;
+  // Same API server the web app talks to (shared config; defaults to :3001).
+  const apiBase = loadMobileEnv().EXPO_PUBLIC_API_URL;
 
   useEffect(() => {
     let mounted = true;

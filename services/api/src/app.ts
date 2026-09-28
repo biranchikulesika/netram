@@ -37,6 +37,7 @@ import { registerRegistryRoutes } from "./modules/registry/http/routes.js";
 import { registerRealtimeAuthorizeRoutes } from "./modules/realtime/http/routes.js";
 import { registerCctvRoutes, registerMediaAuthHookRoute } from "./modules/cctv/http/routes.js";
 import { registerVcRoutes } from "./modules/vc/http/routes.js";
+import { registerCallRoutes } from "./modules/calls/http/routes.js";
 import { registerAttendanceRoutes } from "./modules/attendance/http/routes.js";
 import { registerFundRoutes } from "./modules/funds/http/routes.js";
 import { registerFinancialRiskRoutes } from "./modules/financial-risk/http/routes.js";
@@ -254,6 +255,7 @@ export async function buildApp(container: Container) {
       await registerRealtimeAuthorizeRoutes(api, container);
       await registerCctvRoutes(api, container);
       await registerVcRoutes(api, container);
+      await registerCallRoutes(api, container);
       await registerAttendanceRoutes(api, container);
       await registerFundRoutes(api, container);
       await registerFinancialRiskRoutes(api, container);

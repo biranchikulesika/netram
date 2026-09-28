@@ -131,18 +131,32 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
     const whereClause = fromMatch[2]?.trim() ?? "";
     const rows = this.tables.get(table ?? "") ?? [];
 
-    if (!whereClause) {
-      return rows as T[];
+    let filtered = [...rows];
+    if (whereClause) {
+      const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
+      if (whereMatch && whereMatch[1]) {
+        const col = whereMatch[1].toLowerCase();
+        const val = whereMatch[2] !== undefined ? whereMatch[2] : params[0];
+        filtered = filtered.filter((r) => r[col] === val);
+      }
     }
 
-    const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
-    if (whereMatch && whereMatch[1]) {
-      const col = whereMatch[1].toLowerCase();
-      const val = whereMatch[2] !== undefined ? whereMatch[2] : params[0];
-      return rows.filter((r) => r[col] === val) as T[];
+    const orderMatch = trimmed.match(/ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?/i);
+    if (orderMatch && orderMatch[1]) {
+      const orderCol = orderMatch[1].toLowerCase();
+      const isDesc = orderMatch[2]?.toUpperCase() === "DESC";
+      filtered.sort((a, b) => {
+        const valA = a[orderCol];
+        const valB = b[orderCol];
+        if (valA === valB) return 0;
+        if (valA == null) return isDesc ? 1 : -1;
+        if (valB == null) return isDesc ? -1 : 1;
+        const cmp = valA < valB ? -1 : 1;
+        return isDesc ? -cmp : cmp;
+      });
     }
 
-    return rows as T[];
+    return filtered as T[];
   }
 
   async getFirstAsync<T = unknown>(sql: string, params: unknown[] = []): Promise<T | null> {
@@ -239,6 +253,40 @@ CREATE TABLE IF NOT EXISTS cached_checklist_items (
   response TEXT,
   note TEXT,
   updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cached_call_contacts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  title TEXT NOT NULL,
+  project_code TEXT NOT NULL,
+  project_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  is_online INTEGER NOT NULL DEFAULT 1,
+  avatar_color TEXT NOT NULL,
+  video_uri TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cached_call_history (
+  id TEXT PRIMARY KEY,
+  contact_id TEXT NOT NULL,
+  contact_name TEXT NOT NULL,
+  contact_title TEXT NOT NULL,
+  role TEXT NOT NULL,
+  project_name TEXT NOT NULL,
+  project_code TEXT NOT NULL,
+  call_type TEXT NOT NULL DEFAULT 'video',
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  timestamp TEXT NOT NULL,
+  condition TEXT NOT NULL,
+  review_text TEXT NOT NULL,
+  flag_inspection INTEGER NOT NULL DEFAULT 0,
+  video_uri TEXT,
+  inspector_video_uri TEXT,
+  direction TEXT NOT NULL DEFAULT 'outgoing',
+  status TEXT NOT NULL DEFAULT 'answered',
+  created_at TEXT NOT NULL
 );
 `;
 

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,208 +13,314 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../src/auth/auth-context";
-import { Icon, NetramLogo } from "../src/components/ui";
-import { colors, typography } from "../src/theme/colors";
-import { useSettings } from "../src/theme/settings-context";
+import { Icon } from "../src/components/ui";
 import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
+
+/**
+ * Inspector-only quick-fill (this app is used by field inspectors).
+ * Accounts are the seed users shared with the web app via the same API and
+ * database; dev-login resolves them by email, so the password is a dev
+ * placeholder and is not validated.
+ */
+const SEED_ACCOUNTS = [
+  {
+    role: "Inspector Smruti",
+    email: "inspector@netram.dev",
+    password: "Inspector@netram2026",
+    description: "Primary field inspector (inspector-1)",
+  },
+  {
+    role: "Inspector Diptesh",
+    email: "inspector.two@dev.netram.in",
+    password: "Inspector@netram2026",
+    description: "Field inspector (inspector-2)",
+  },
+  {
+    role: "Inspector Bishnu",
+    email: "inspector.three@dev.netram.in",
+    password: "Inspector@netram2026",
+    description: "Field inspector (inspector-3)",
+  },
+] as const;
+
+const inspector = SEED_ACCOUNTS[0]!;
+
+/* Web login palette (does not follow the app's dark mode — the web has none). */
+const palette = {
+  canvas: "#ffffff",
+  surface: "#ffffff",
+  borderSubtle: "#edf0f5",
+  borderStrong: "#45556c",
+  textPrimary: "#0c2a52",
+  textMuted: "#45556c",
+  actionGreen: "#137e3a",
+  error: "#dc2626",
+  errorBg: "rgba(220, 38, 38, 0.08)",
+  pillBg: "#edf0f5",
+  pillActive: "rgba(12, 42, 82, 0.12)",
+  focusRing: "rgba(12, 42, 82, 0.18)",
+  buttonShadow: "rgba(19, 126, 58, 0.25)",
+};
+
+function FieldError({ message }: { message: string }) {
+  return (
+    <View style={styles.fieldError} accessibilityLiveRegion="polite">
+      <Icon name="alert-circle" size={14} color={palette.error} />
+      <Text style={styles.fieldErrorText}>{message}</Text>
+    </View>
+  );
+}
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const { theme, isPureDark } = useSettings();
 
-  const [officerId, setOfficerId] = useState("DOSJE-INSP-2024-8842");
-  const [password, setPassword] = useState("123456");
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState<string>(inspector.email);
+  const [password, setPassword] = useState<string>(inspector.password);
+  const [showPassword, setShowPassword] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const clearError = () => setErrorMessage(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const [showDevAccounts, setShowDevAccounts] = useState(false);
+  const [focusedField, setFocusedField] = useState<"email" | "password" | null>(null);
+
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
+  const clearError = () => {
+    setEmailError(null);
+    setPasswordError(null);
+    setServerError(null);
+  };
+
+  function validate(): boolean {
+    let valid = true;
+    setEmailError(null);
+    setPasswordError(null);
+
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setEmailError("Email or username is required.");
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailError("Please enter a valid official email address.");
+      valid = false;
+    }
+
+    if (!password) {
+      setPasswordError("Password is required.");
+      valid = false;
+    }
+
+    return valid;
+  }
 
   const handleLogin = async () => {
-    const trimmed = officerId.trim();
-    if (!trimmed) {
-      setErrorMessage("Please enter your Officer ID.");
-      return;
-    }
-    if (!password) {
-      setErrorMessage("Please enter your password.");
-      return;
-    }
+    if (!validate()) return;
 
     setBusy(true);
-    clearError();
+    setServerError(null);
     try {
-      let targetUser = trimmed;
-      if (
-        trimmed.toUpperCase() === "DOSJE-INSP-2024-8842" ||
-        trimmed.toLowerCase().includes("insp-001") ||
-        trimmed.toLowerCase().includes("inspector.one")
-      ) {
-        targetUser = "inspector@netram.dev";
-      } else if (
-        trimmed.toLowerCase().includes("insp-002") ||
-        trimmed.toLowerCase().includes("inspector.two")
-      ) {
-        targetUser = "inspector.two@dev.netram.in";
-      }
-
-      await login(targetUser, password);
+      await login(email, password);
       await seedDemoDataIfEmpty();
       router.replace("/");
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      setServerError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
   };
 
+  function handleQuickFill(account: (typeof SEED_ACCOUNTS)[number]) {
+    setEmail(account.email);
+    setPassword(account.password);
+    clearError();
+    setShowDevAccounts(false);
+  }
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bgCanvas }]}>
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={[styles.flex, { backgroundColor: theme.bgCanvas }]}
+        style={styles.flex}
       >
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.bgCanvas }]}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.container, { backgroundColor: theme.bgCanvas }]}>
-            {/* ── Official Header ── */}
-            <View style={styles.headerArea}>
-              <NetramLogo width={160} height={48} />
-              <Text style={[styles.govSubtext, { color: theme.textMuted }]}>
-                Ministry of Social Justice & Empowerment
+          <View style={styles.formContainer}>
+            {/* ── Branding ── */}
+            <View style={styles.branding}>
+              <Text style={styles.brandTitle}>NETRAM</Text>
+              <Text style={styles.brandSubtitle}>
+                Smart Real-Time Monitoring &amp; Inspection Platform
               </Text>
-            </View>
-
-            {/* ── Title ── */}
-            <View style={styles.titleSection}>
-              <Text style={[styles.pageTitle, { color: theme.navyDark }]}>Officer Login</Text>
             </View>
 
             {/* ── Error Banner ── */}
-            {errorMessage && (
-              <View
-                style={[
-                  styles.errorBox,
-                  {
-                    backgroundColor: theme.errorBg,
-                    borderColor: theme.errorBorder,
-                  },
-                ]}
-              >
-                <Icon name="alert-circle" size={16} color={theme.error} />
-                <Text style={[styles.errorText, { color: theme.error }]}>{errorMessage}</Text>
+            {serverError && (
+              <View style={styles.alertBanner} accessibilityLiveRegion="assertive">
+                <Icon name="alert-circle" size={18} color={palette.error} />
+                <View style={styles.alertContent}>
+                  <Text style={styles.alertTitle}>Access Denied</Text>
+                  <Text style={styles.alertText}>{serverError}</Text>
+                </View>
+                <Pressable
+                  onPress={() => setServerError(null)}
+                  hitSlop={10}
+                  accessibilityLabel="Dismiss error message"
+                >
+                  <Text style={styles.alertClose}>×</Text>
+                </Pressable>
               </View>
             )}
 
-            {/* ── Authentication Box ── */}
-            <View
-              style={[
-                styles.authCard,
-                {
-                  backgroundColor: theme.bgSurface,
-                  borderColor: theme.borderSubtle,
-                },
-              ]}
-            >
-              {/* Field 1: Officer ID */}
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: theme.textPrimary }]}>Officer ID</Text>
-                <View
-                  style={[
-                    styles.inputRow,
-                    {
-                      backgroundColor: isPureDark ? theme.bgSubtle : theme.bgSurface,
-                      borderColor: theme.borderStrong,
-                    },
-                  ]}
-                >
-                  <Icon name="card-outline" size={18} color={theme.textMuted} />
-                  <TextInput
-                    style={[styles.inputMono, { color: theme.textPrimary }]}
-                    value={officerId}
-                    onChangeText={(text) => {
-                      setOfficerId(text);
-                      clearError();
-                    }}
-                    placeholder="e.g. DOSJE-INSP-2024-8842"
-                    placeholderTextColor={theme.textMuted}
-                    autoCapitalize="characters"
-                    editable={!busy}
-                  />
-                </View>
-              </View>
-
-              {/* Field 2: Password */}
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: theme.textPrimary }]}>Password</Text>
-                <View
-                  style={[
-                    styles.inputRow,
-                    {
-                      backgroundColor: isPureDark ? theme.bgSubtle : theme.bgSurface,
-                      borderColor: theme.borderStrong,
-                    },
-                  ]}
-                >
-                  <Icon name="key-outline" size={18} color={theme.textMuted} />
-                  <TextInput
-                    style={[styles.input, { color: theme.textPrimary }]}
-                    value={password}
-                    onChangeText={(text) => {
-                      setPassword(text);
-                      clearError();
-                    }}
-                    placeholder="Enter your password"
-                    placeholderTextColor={theme.textMuted}
-                    secureTextEntry={!showPassword}
-                    editable={!busy}
-                  />
-                  <Pressable
-                    onPress={() => setShowPassword((prev) => !prev)}
-                    hitSlop={10}
-                    style={styles.eyeButton}
-                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-                  >
-                    <Icon
-                      name={showPassword ? "eye-off-outline" : "eye-outline"}
-                      size={20}
-                      color={theme.textMuted}
-                    />
-                  </Pressable>
-                </View>
-              </View>
-
-              {/* Submit Button */}
-              <Pressable
-                style={({ pressed }) => [
-                  styles.signInButton,
-                  { backgroundColor: theme.actionGreen },
-                  pressed && { opacity: 0.9, backgroundColor: theme.actionGreenDark },
-                  busy && styles.signInButtonDisabled,
+            {/* ── Email or Username ── */}
+            <View style={styles.fieldGroup}>
+              <View
+                style={[
+                  styles.inputRow,
+                  emailError && styles.inputRowError,
+                  focusedField === "email" && styles.inputRowFocused,
                 ]}
-                onPress={handleLogin}
-                disabled={busy}
               >
-                {busy ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Icon name="lock-closed" size={18} color="#FFFFFF" />
-                    <Text style={styles.signInButtonText}>Sign In</Text>
-                  </>
-                )}
-              </Pressable>
+                <Icon name="mail-outline" size={16} color={palette.textMuted} />
+                <TextInput
+                  ref={emailRef}
+                  style={styles.input}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    clearError();
+                  }}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
+                  placeholder="Enter your email"
+                  placeholderTextColor={palette.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  editable={!busy}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  accessibilityLabel="Official email"
+                />
+              </View>
+              {emailError && <FieldError message={emailError} />}
             </View>
 
-            {/* ── Official Footer ── */}
-            <View style={styles.footerArea}>
-              <Text style={[styles.footerText, { color: theme.textMuted }]}>
-                Government of India
-              </Text>
+            {/* ── Password ── */}
+            <View style={styles.fieldGroup}>
+              <View
+                style={[
+                  styles.inputRow,
+                  passwordError && styles.inputRowError,
+                  focusedField === "password" && styles.inputRowFocused,
+                ]}
+              >
+                <Icon name="lock-closed" size={16} color={palette.textMuted} />
+                <TextInput
+                  ref={passwordRef}
+                  style={styles.input}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    clearError();
+                  }}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
+                  placeholder="Enter your password"
+                  placeholderTextColor={palette.textMuted}
+                  secureTextEntry={!showPassword}
+                  editable={!busy}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  accessibilityLabel="Password"
+                />
+                <Pressable
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={10}
+                  style={styles.eyeButton}
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                >
+                  <Icon
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={18}
+                    color={palette.textMuted}
+                  />
+                </Pressable>
+              </View>
+              {passwordError && <FieldError message={passwordError} />}
+            </View>
+
+            {/* ── Submit ── */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.submitButton,
+                pressed && !busy && styles.submitButtonPressed,
+                busy && styles.submitButtonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={busy}
+              accessibilityRole="button"
+            >
+              {busy ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.submitButtonText}>Authenticating…</Text>
+                </>
+              ) : (
+                <Text style={styles.submitButtonText}>Sign In</Text>
+              )}
+            </Pressable>
+
+            {/* ── Development Quick-Fill Helper ── */}
+            <View style={styles.devSection}>
+              <Pressable
+                style={styles.devToggle}
+                onPress={() => setShowDevAccounts((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showDevAccounts }}
+              >
+                <Text style={styles.devToggleText}>Test accounts</Text>
+                <Icon
+                  name="chevron-down"
+                  size={14}
+                  color={palette.textMuted}
+                  style={[styles.devChevron, showDevAccounts && styles.devChevronOpen]}
+                />
+              </Pressable>
+
+              {showDevAccounts && (
+                <View style={styles.devAccountsList}>
+                  {SEED_ACCOUNTS.map((acc) => {
+                    const active = acc.email === email.trim();
+                    return (
+                      <Pressable
+                        key={acc.email}
+                        style={[styles.devAccountButton, active && styles.devAccountActive]}
+                        onPress={() => handleQuickFill(acc)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                      >
+                        <Text
+                          style={[
+                            styles.devAccountRole,
+                            active && styles.devAccountRoleActive,
+                          ]}
+                        >
+                          {acc.role}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -226,136 +332,184 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: palette.canvas,
   },
   flex: {
     flex: 1,
+    backgroundColor: palette.canvas,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingTop: 32,
-    paddingBottom: 32,
-    alignItems: "center",
-  },
-  container: {
-    width: "100%",
-    maxWidth: 400,
-  },
-  headerArea: {
-    alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
   },
-  govSubtext: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: colors.textMuted,
-    textAlign: "center",
-    marginTop: 8,
+  formContainer: {
+    width: "100%",
+    maxWidth: 440,
+    alignSelf: "center",
   },
-  titleSection: {
+  branding: {
     alignItems: "center",
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.navyDark,
-  },
-  errorBox: {
-    backgroundColor: colors.errorBg,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.errorBorder,
-    padding: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 14,
-  },
-  errorText: {
-    flex: 1,
-    color: colors.error,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  authCard: {
-    backgroundColor: colors.bgSurface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    padding: 24,
     marginBottom: 24,
   },
-  fieldGroup: {
+  brandTitle: {
+    fontSize: 25,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    color: palette.textPrimary,
+    marginBottom: 4,
+    lineHeight: 30,
+  },
+  brandSubtitle: {
+    fontSize: 13,
+    color: palette.textMuted,
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  alertBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: palette.errorBg,
+    borderWidth: 1,
+    borderColor: palette.errorBg,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     marginBottom: 16,
   },
-  label: {
+  alertContent: {
+    flex: 1,
+  },
+  alertTitle: {
+    fontWeight: "700",
     fontSize: 13,
-    fontWeight: "600",
-    color: colors.textPrimary,
-    marginBottom: 6,
+    color: palette.error,
+    marginBottom: 2,
+  },
+  alertText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: palette.error,
+  },
+  alertClose: {
+    fontSize: 18,
+    lineHeight: 20,
+    color: palette.error,
+  },
+  fieldGroup: {
+    marginBottom: 18,
   },
   inputRow: {
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    height: 48,
+    gap: 10,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.borderStrong,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    minHeight: 48,
+  },
+  inputRowFocused: {
+    borderColor: palette.textPrimary,
+    boxShadow: `0 0 0 3px ${palette.focusRing}`,
+  },
+  inputRowError: {
+    borderColor: palette.error,
   },
   input: {
     flex: 1,
-    marginLeft: 10,
-    fontSize: 14,
-    color: colors.textPrimary,
-    paddingVertical: 0,
+    fontSize: 16,
+    color: palette.textPrimary,
+    paddingVertical: 11,
   },
-  inputMono: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 13,
-    fontFamily: typography.mono,
+  fieldError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 4,
+  },
+  fieldErrorText: {
+    fontSize: 12,
+    color: palette.error,
     fontWeight: "500",
-    color: colors.textPrimary,
-    paddingVertical: 0,
   },
   eyeButton: {
     padding: 4,
   },
-  signInButton: {
-    backgroundColor: colors.actionGreen,
-    borderRadius: 8,
-    height: 48,
+  submitButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    marginTop: 8,
+    backgroundColor: palette.actionGreen,
+    borderRadius: 8,
+    minHeight: 48,
+    marginTop: 6,
+    boxShadow: "0 1px 3px rgba(19,126,58,0.25)",
+    elevation: 1,
   },
-  signInButtonPressed: {
+  submitButtonPressed: {
     opacity: 0.9,
-    backgroundColor: colors.actionGreenDark,
   },
-  signInButtonDisabled: {
-    opacity: 0.6,
+  submitButtonDisabled: {
+    opacity: 0.65,
   },
-  signInButtonText: {
-    fontSize: 14,
+  submitButtonText: {
+    fontSize: 16,
     fontWeight: "600",
-    color: colors.textInverse,
+    color: "#ffffff",
   },
-  footerArea: {
+  devSection: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: palette.textMuted,
+    borderStyle: "dashed",
+  },
+  devToggle: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
+    gap: 5,
+    alignSelf: "center",
   },
-  footerText: {
+  devToggleText: {
     fontSize: 12,
-    color: colors.textMuted,
-    textAlign: "center",
+    fontWeight: "600",
+    color: palette.textMuted,
+  },
+  devChevron: {},
+  devChevronOpen: {
+    transform: [{ rotate: "180deg" }],
+  },
+  devAccountsList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 5,
+    marginTop: 9,
+  },
+  devAccountButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: palette.pillBg,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  devAccountActive: {
+    backgroundColor: palette.pillActive,
+  },
+  devAccountRole: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: palette.textMuted,
+  },
+  devAccountRoleActive: {
+    color: palette.textPrimary,
   },
 });

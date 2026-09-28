@@ -22,4 +22,5 @@ export * from "./registry.js";
 export * from "./fund.js";
 export * from "./project-risk.js";
 export * from "./action-inbox.js";
+export * from "./call.js";
 

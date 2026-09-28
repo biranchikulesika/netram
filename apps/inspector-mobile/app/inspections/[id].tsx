@@ -41,6 +41,7 @@ import { captureEvidenceOffline } from "../../src/offline/evidence";
 import { useSyncStatus } from "../../src/offline/sync-context";
 import { useAuth } from "../../src/auth/auth-context";
 import { formatCurrencyString } from "../../src/utils/currency";
+import { formatInspectionType } from "../../src/utils/formatters";
 import type {
   InspectionFlag,
   OrganisationView,
@@ -1145,7 +1146,7 @@ export default function InspectionDetailScreen() {
                     </Text>
                     <MetaRow label="Project Code" value={project?.code || inspection?.project_code || "PRJ"} mono />
                     <MetaRow label="Facility Name" value={project?.name || inspection?.project_name || "Facility"} bold />
-                    <MetaRow label="Type" value={(project?.type || inspection?.type || "Standard").replace(/_/g, " ").toUpperCase()} />
+                    <MetaRow label="Type" value={formatInspectionType(project?.type || inspection?.type)} />
                     <MetaRow label="DARPAN ID" value={organisation?.code || "Available on sync"} mono />
                     <MetaRow
                       label="Status"

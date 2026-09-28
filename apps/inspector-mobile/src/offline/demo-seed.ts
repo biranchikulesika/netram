@@ -199,63 +199,329 @@ export const STANDARD_CHECKLIST_TEMPLATE = [
 export async function seedDemoDataIfEmpty(): Promise<void> {
   const db = await getOfflineDatabase();
 
-  // Check if already seeded
   const existing = await db.getAllAsync<{ id: string }>(
     "SELECT id FROM cached_inspections",
   );
-  if (existing.length > 0) return; // already has data — don't overwrite
+  if (existing.length === 0) {
+    const cachedAt = new Date().toISOString();
 
-  const cachedAt = new Date().toISOString();
-
-  for (const insp of DEMO_INSPECTIONS) {
-    await db.runAsync(
-      `INSERT OR REPLACE INTO cached_inspections
-        (id, project_id, project_name, project_code, type, status, district_id,
-         scheduled_start, scheduled_end, started_at, submitted_at, cached_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        insp.id,
-        insp.project_id,
-        insp.project_name,
-        insp.project_code,
-        insp.type,
-        insp.status,
-        insp.district_id,
-        insp.scheduled_start,
-        insp.scheduled_end,
-        insp.started_at,
-        insp.submitted_at,
-        cachedAt,
-      ],
-    );
-
-    // Seed standard checklist items for each inspection
-    for (let i = 0; i < STANDARD_CHECKLIST_TEMPLATE.length; i++) {
-      const template = STANDARD_CHECKLIST_TEMPLATE[i]!;
-      const itemId = `chk-${insp.id}-${String(i + 1).padStart(2, "0")}`;
-      let initialResponse: string | null = null;
-      if (insp.status === "submitted") {
-        initialResponse = "pass";
-      } else if (insp.status === "in_progress" && i < 3) {
-        initialResponse = i === 1 ? "fail" : "pass";
-      }
-
+    for (const insp of DEMO_INSPECTIONS) {
       await db.runAsync(
-        `INSERT OR REPLACE INTO cached_checklist_items
-          (id, inspection_id, category, question, is_required, response, note, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO cached_inspections
+          (id, project_id, project_name, project_code, type, status, district_id,
+           scheduled_start, scheduled_end, started_at, submitted_at, cached_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          itemId,
           insp.id,
-          template.category,
-          template.question,
-          template.isRequired ? 1 : 0,
-          initialResponse,
-          initialResponse === "fail" ? "Extinguisher inspection tag expired by 3 months" : null,
+          insp.project_id,
+          insp.project_name,
+          insp.project_code,
+          insp.type,
+          insp.status,
+          insp.district_id,
+          insp.scheduled_start,
+          insp.scheduled_end,
+          insp.started_at,
+          insp.submitted_at,
           cachedAt,
+        ],
+      );
+
+      // Seed standard checklist items for each inspection
+      for (let i = 0; i < STANDARD_CHECKLIST_TEMPLATE.length; i++) {
+        const template = STANDARD_CHECKLIST_TEMPLATE[i]!;
+        const itemId = `chk-${insp.id}-${String(i + 1).padStart(2, "0")}`;
+        let initialResponse: string | null = null;
+        if (insp.status === "submitted") {
+          initialResponse = "pass";
+        } else if (insp.status === "in_progress" && i < 3) {
+          initialResponse = i === 1 ? "fail" : "pass";
+        }
+
+        await db.runAsync(
+          `INSERT OR REPLACE INTO cached_checklist_items
+            (id, inspection_id, category, question, is_required, response, note, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            itemId,
+            insp.id,
+            template.category,
+            template.question,
+            template.isRequired ? 1 : 0,
+            initialResponse,
+            initialResponse === "fail" ? "Extinguisher inspection tag expired by 3 months" : null,
+            cachedAt,
+          ],
+        );
+      }
+    }
+  }
+
+  // Seed call contacts if empty
+  const existingContacts = await db.getAllAsync<{ id: string }>(
+    "SELECT id FROM cached_call_contacts",
+  );
+  if (existingContacts.length === 0) {
+    for (const c of DEMO_CALL_CONTACTS) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO cached_call_contacts
+          (id, name, role, title, project_code, project_name, phone, is_online, avatar_color, video_uri)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          c.id,
+          c.name,
+          c.role,
+          c.title,
+          c.projectCode,
+          c.projectName,
+          c.phone,
+          c.isOnline ? 1 : 0,
+          c.avatarColor,
+          c.videoUri,
+        ],
+      );
+    }
+  }
+
+  // Seed call history if empty
+  const existingHistory = await db.getAllAsync<{ id: string }>(
+    "SELECT id FROM cached_call_history",
+  );
+  if (existingHistory.length === 0) {
+    for (const h of DEMO_CALL_HISTORY) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO cached_call_history
+          (id, contact_id, contact_name, contact_title, role, project_name, project_code,
+           call_type, duration_seconds, timestamp, condition, review_text, flag_inspection,
+           video_uri, inspector_video_uri, direction, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          h.id,
+          h.contactId,
+          h.contactName,
+          h.contactTitle,
+          h.role,
+          h.projectName,
+          h.projectCode,
+          h.callType,
+          h.durationSeconds,
+          h.timestamp,
+          h.condition,
+          h.reviewText,
+          h.flagInspection ? 1 : 0,
+          h.videoUri,
+          h.inspectorVideoUri,
+          h.direction,
+          h.status,
+          h.createdAt,
         ],
       );
     }
   }
 }
+
+const DEMO_VIDEO_FALLBACK =
+  "https://raw.githubusercontent.com/OpenTalker/video-retalking/main/examples/face/1.mp4";
+
+export const DEMO_CALL_CONTACTS = [
+  {
+    id: "cnt-01",
+    name: "Ramesh Jena",
+    role: "staff" as const,
+    title: "Facility In-Charge",
+    projectCode: "DOSJE-BBR-001",
+    projectName: "Sishhu Bhawan Senior Citizen Home",
+    phone: "+91 94370 12890",
+    isOnline: true,
+    avatarColor: "#3a488b",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+  {
+    id: "cnt-02",
+    name: "Dr. Anita Behera",
+    role: "staff" as const,
+    title: "Medical Officer",
+    projectCode: "DOSJE-BBR-002",
+    projectName: "Kalyan Mandap IRCA Rehabilitation",
+    phone: "+91 98610 44521",
+    isOnline: true,
+    avatarColor: "#15803d",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+  {
+    id: "cnt-03",
+    name: "Bipin Bihari Das",
+    role: "beneficiary" as const,
+    title: "Senior Resident Lead",
+    projectCode: "DOSJE-BBR-001",
+    projectName: "Sishhu Bhawan Senior Citizen Home",
+    phone: "+91 94381 77230",
+    isOnline: true,
+    avatarColor: "#f59e0b",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+  {
+    id: "cnt-04",
+    name: "Er. Manoj Nayak",
+    role: "staff" as const,
+    title: "Site Engineer",
+    projectCode: "DOSJE-BBR-003",
+    projectName: "Navajyoti SC/ST Girls Hostel",
+    phone: "+91 97760 99312",
+    isOnline: false,
+    avatarColor: "#1c3a63",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+  {
+    id: "cnt-05",
+    name: "Sunita Mohanty",
+    role: "staff" as const,
+    title: "Shelter Superintendent",
+    projectCode: "DOSJE-BBR-004",
+    projectName: "Swadhar Greh Women Shelter",
+    phone: "+91 94392 65410",
+    isOnline: true,
+    avatarColor: "#002449",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+  {
+    id: "cnt-06",
+    name: "Laxmi Murmu",
+    role: "beneficiary" as const,
+    title: "Beneficiary Representative",
+    projectCode: "DOSJE-BBR-003",
+    projectName: "Navajyoti SC/ST Girls Hostel",
+    phone: "+91 98533 11840",
+    isOnline: true,
+    avatarColor: "#c2410c",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+  {
+    id: "cnt-07",
+    name: "Pravat Kumar Rout",
+    role: "staff" as const,
+    title: "Project Coordinator",
+    projectCode: "DOSJE-BBR-002",
+    projectName: "Kalyan Mandap IRCA Centre",
+    phone: "+91 94371 88902",
+    isOnline: false,
+    avatarColor: "#15803d",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+  {
+    id: "cnt-08",
+    name: "Minati Sahoo",
+    role: "beneficiary" as const,
+    title: "Resident Beneficiary",
+    projectCode: "DOSJE-BBR-004",
+    projectName: "Swadhar Greh Women Shelter",
+    phone: "+91 96924 55301",
+    isOnline: true,
+    avatarColor: "#0c2a52",
+    videoUri: DEMO_VIDEO_FALLBACK,
+  },
+];
+
+export const DEMO_CALL_HISTORY = [
+  {
+    id: "hist-01",
+    contactId: "cnt-02",
+    contactName: "Dr. Anita Behera",
+    contactTitle: "Medical Officer",
+    role: "staff" as const,
+    projectCode: "DOSJE-BBR-002",
+    projectName: "Kalyan Mandap IRCA Rehabilitation",
+    callType: "video" as const,
+    durationSeconds: 374,
+    timestamp: "Today, 11:30 AM",
+    condition: "minor_issue" as const,
+    reviewText:
+      "Medical supplies stock is adequate for 2 weeks. Reported delay in quarterly fund release for ambulance fuel. Staff attendance verified over camera.",
+    flagInspection: false,
+    videoUri: DEMO_VIDEO_FALLBACK,
+    inspectorVideoUri: DEMO_VIDEO_FALLBACK,
+    direction: "outgoing" as const,
+    status: "answered" as const,
+    createdAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
+  },
+  {
+    id: "hist-02",
+    contactId: "cnt-03",
+    contactName: "Bipin Bihari Das",
+    contactTitle: "Senior Resident Lead",
+    role: "beneficiary" as const,
+    projectCode: "DOSJE-BBR-001",
+    projectName: "Sishhu Bhawan Senior Citizen Home",
+    callType: "video" as const,
+    durationSeconds: 220,
+    timestamp: "Yesterday, 04:15 PM",
+    condition: "satisfactory" as const,
+    reviewText:
+      "Beneficiary confirmed warm meals served on schedule. RO water filter is operational. Zero staff misconduct or grievances reported.",
+    flagInspection: false,
+    videoUri: DEMO_VIDEO_FALLBACK,
+    inspectorVideoUri: DEMO_VIDEO_FALLBACK,
+    direction: "incoming" as const,
+    status: "answered" as const,
+    createdAt: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
+  },
+  {
+    id: "hist-03",
+    contactId: "cnt-04",
+    contactName: "Er. Manoj Nayak",
+    contactTitle: "Site Engineer",
+    role: "staff" as const,
+    projectCode: "DOSJE-BBR-003",
+    projectName: "Navajyoti SC/ST Girls Hostel",
+    callType: "video" as const,
+    durationSeconds: 502,
+    timestamp: "Sep 24, 02:20 PM",
+    condition: "critical_problem" as const,
+    reviewText:
+      "Perimeter boundary wall construction halted due to cement shortage. Deep unpaved trench waterlogged creating severe safety hazard for resident girls.",
+    flagInspection: true,
+    videoUri: DEMO_VIDEO_FALLBACK,
+    inspectorVideoUri: DEMO_VIDEO_FALLBACK,
+    direction: "outgoing" as const,
+    status: "answered" as const,
+    createdAt: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
+  },
+  {
+    id: "hist-04",
+    contactId: "cnt-05",
+    contactName: "Sunita Mohanty",
+    contactTitle: "Shelter Superintendent",
+    role: "staff" as const,
+    projectCode: "DOSJE-BBR-004",
+    projectName: "Swadhar Greh Women Shelter",
+    callType: "video" as const,
+    durationSeconds: 0,
+    timestamp: "Sep 23, 10:15 AM",
+    condition: "satisfactory" as const,
+    reviewText: "Missed incoming call. Beneficiary intake inquiry pending.",
+    flagInspection: false,
+    direction: "incoming" as const,
+    status: "missed" as const,
+    createdAt: new Date(Date.now() - 3600 * 1000 * 72).toISOString(),
+  },
+  {
+    id: "hist-05",
+    contactId: "cnt-01",
+    contactName: "Ramesh Jena",
+    contactTitle: "Facility In-Charge",
+    role: "staff" as const,
+    projectCode: "DOSJE-BBR-001",
+    projectName: "Sishhu Bhawan Senior Citizen Home",
+    callType: "video" as const,
+    durationSeconds: 0,
+    timestamp: "Sep 22, 06:45 PM",
+    condition: "satisfactory" as const,
+    reviewText: "Unanswered outgoing call. Facility lines engaged during evening check.",
+    flagInspection: false,
+    direction: "outgoing" as const,
+    status: "missed" as const,
+    createdAt: new Date(Date.now() - 3600 * 1000 * 96).toISOString(),
+  },
+];
+
 

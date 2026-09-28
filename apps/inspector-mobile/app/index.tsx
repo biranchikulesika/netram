@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
+  Platform,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -12,24 +12,24 @@ import {
   Text,
   View,
 } from "react-native";
-import { Icon, NetramBadge } from "../src/components/ui";
+import { Icon } from "../src/components/ui";
 import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
 import { useAuth } from "../src/auth/auth-context";
 import { useSyncStatus } from "../src/offline/sync-context";
 import { typography } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
+import { formatInspectionType } from "../src/utils/formatters";
 
 export default function InspectorDashboardScreen() {
   const router = useRouter();
   const { client, user } = useAuth();
-  const { theme, isPureDark } = useSettings();
+  const { theme } = useSettings();
   const queue = useMemo(() => new OfflineInspectionQueue(), []);
   const { refreshPendingCount } = useSyncStatus();
 
   const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
@@ -60,12 +60,6 @@ export default function InspectorDashboardScreen() {
 
   useEffect(() => {
     loadLocalState();
-    if (client) {
-      client
-        .listNotifications({ pageSize: 1 })
-        .then((res) => setUnreadNotifications(res.unread ?? 0))
-        .catch(() => {});
-    }
   }, [loadLocalState, client]);
 
   const handleRefresh = async () => {
@@ -87,7 +81,7 @@ export default function InspectorDashboardScreen() {
 
   const handleSyncNow = async () => {
     if (!client) {
-      router.push("/sync");
+      Alert.alert("Offline Mode", "Please connect to network to synchronise.");
       return;
     }
     setSyncing(true);
@@ -135,7 +129,6 @@ export default function InspectorDashboardScreen() {
   // Color tokens
   const bgCanvas = theme.bgCanvas;
   const bgSurface = theme.bgSurface;
-  const bgSubtle = isPureDark ? "#18181B" : theme.bgSubtle;
   const borderColor = theme.borderSubtle;
   const textPrimary = theme.textPrimary;
   const textMuted = theme.textMuted;
@@ -145,45 +138,26 @@ export default function InspectorDashboardScreen() {
   const isCurrentTaskUnlocked =
     currentTask && (currentTask.status !== "assigned" || checkedInIds.has(currentTask.id));
 
+  const currentTaskDate = currentTask
+    ? currentTask.scheduled_start || currentTask.started_at || currentTask.cached_at
+    : null;
+  const currentTaskDateStr = currentTaskDate
+    ? new Date(currentTaskDate).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Today";
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
-      {/* ── Header Bar ── */}
-      <View style={[styles.headerBar, { backgroundColor: navyDark }]}>
+      {/* ── Header Bar (web topbar parity) ── */}
+      <View style={styles.headerBar}>
         <View style={styles.brandGroup}>
-          <Image
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            source={require("../assets/ashoka_stambh.png")}
-            style={styles.emblemImage}
-            resizeMode="contain"
-          />
-          <View>
-            <Text style={styles.appTitle}>NETRAM</Text>
-            <Text style={styles.appSubtitle}>Field Inspector Portal</Text>
+          <View style={styles.brandBadge}>
+            <Text style={styles.brandBadgeText}>DoSJE</Text>
           </View>
-        </View>
-
-        <View style={styles.headerActions}>
-          <Pressable
-            style={styles.headerIconBtn}
-            onPress={() => router.push("/notifications")}
-            accessibilityLabel="Notifications"
-          >
-            <Icon name="notifications-outline" size={20} color="#FFFFFF" />
-            {unreadNotifications > 0 && <View style={styles.notifDot} />}
-          </Pressable>
-
-          <Pressable
-            style={styles.avatarBtn}
-            onPress={() => router.push("/profile")}
-            accessibilityLabel="Profile"
-          >
-            <Image
-              // eslint-disable-next-line @typescript-eslint/no-require-imports
-              source={require("../assets/inspector_demo.jpg")}
-              style={styles.avatarThumb}
-              resizeMode="cover"
-            />
-          </Pressable>
+          <Text style={styles.brandTitle}>NETRAM</Text>
         </View>
       </View>
 
@@ -201,23 +175,19 @@ export default function InspectorDashboardScreen() {
       >
         {/* ── Stats Strip ── */}
         <View style={[styles.statsRow, { borderColor }]}>
-          <Pressable
+          <View
             style={[styles.statItem, { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor }]}
-            onPress={() => router.push({ pathname: "/inspections", params: { tab: "ASSIGNED" } })}
-            accessibilityLabel="Assigned inspections"
           >
             <Text style={[styles.statCount, { color: navyDark }]}>{assignedCount}</Text>
             <Text style={[styles.statLabel, { color: textMuted }]}>ASSIGNED</Text>
-          </Pressable>
+          </View>
 
-          <Pressable
+          <View
             style={[styles.statItem, { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor }]}
-            onPress={() => router.push({ pathname: "/inspections", params: { tab: "IN_PROGRESS" } })}
-            accessibilityLabel="In-progress inspections"
           >
             <Text style={[styles.statCount, { color: theme.gold }]}>{inProgressCount}</Text>
             <Text style={[styles.statLabel, { color: textMuted }]}>IN PROGRESS</Text>
-          </Pressable>
+          </View>
 
           <Pressable
             style={[styles.statItem, { backgroundColor: bgSurface }]}
@@ -236,27 +206,14 @@ export default function InspectorDashboardScreen() {
         {currentTask ? (
           <View style={[styles.assignmentCard, { backgroundColor: bgSurface, borderColor }]}>
             <View style={styles.cardHeader}>
-              <View
-                style={[
-                  styles.statusDot,
-                  {
-                    backgroundColor:
-                      currentTask.status === "in_progress"
-                        ? theme.gold
-                        : accentBlue,
-                  },
-                ]}
-              />
               <Text style={[styles.cardStatusLabel, { color: textMuted }]}>
                 {currentTask.status === "in_progress" ? "IN PROGRESS" : "NEXT ASSIGNMENT"}
               </Text>
-              <View style={styles.flex1} />
-              <NetramBadge
-                label={currentTask.status.replace(/_/g, " ").toUpperCase()}
-                variant="status"
-                status={currentTask.status}
-                size="sm"
-              />
+              {currentTask.type ? (
+                <Text style={[styles.headerType, { color: textMuted }]}>
+                  {formatInspectionType(currentTask.type)}
+                </Text>
+              ) : null}
             </View>
 
             <Text style={[styles.facilityName, { color: textPrimary }]} numberOfLines={2}>
@@ -267,19 +224,23 @@ export default function InspectorDashboardScreen() {
 
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
-                <Icon name="location-outline" size={13} color={textMuted} />
+                <Icon name="location-outline" size={13} color={textMuted} style={styles.metaIcon} />
                 <Text style={[styles.metaText, { color: textMuted }]}>
                   {currentTask.district_id || "District"}
                 </Text>
               </View>
               {currentTask.project_code && (
                 <View style={styles.metaItem}>
-                  <Icon name="document-text-outline" size={13} color={textMuted} />
+                  <Icon name="document-text-outline" size={13} color={textMuted} style={styles.metaIcon} />
                   <Text style={[styles.metaText, { color: textMuted }]}>
                     {currentTask.project_code}
                   </Text>
                 </View>
               )}
+              <View style={styles.metaItem}>
+                <Icon name="calendar-outline" size={13} color={textMuted} style={styles.metaIcon} />
+                <Text style={[styles.metaText, { color: textMuted }]}>{currentTaskDateStr}</Text>
+              </View>
             </View>
 
             <View style={[styles.cardDivider, { backgroundColor: borderColor }]} />
@@ -294,7 +255,6 @@ export default function InspectorDashboardScreen() {
                     : "Start inspection"
                 }
               >
-                <Icon name="clipboard-outline" size={15} color="#FFFFFF" />
                 <Text style={styles.primaryBtnText}>
                   {currentTask.status === "in_progress"
                     ? "Continue Inspection"
@@ -312,8 +272,7 @@ export default function InspectorDashboardScreen() {
                 }
                 accessibilityLabel="Open map for inspection site"
               >
-                <Icon name="navigate-outline" size={15} color={navyDark} />
-                <Text style={[styles.secondaryBtnText, { color: navyDark }]}>Map</Text>
+                <Icon name="navigate-outline" size={16} color={navyDark} />
               </Pressable>
             </View>
           </View>
@@ -326,49 +285,16 @@ export default function InspectorDashboardScreen() {
           </View>
         )}
 
-        {/* ── Section Label ── */}
-        <Text style={[styles.sectionLabel, { color: textMuted }]}>FIELD SCHEDULE</Text>
+        {/* ── Sync Status (shown only while offline operations are pending) ── */}
+        {pendingCount > 0 && (
+          <View style={[styles.syncRow, { backgroundColor: bgSurface, borderColor }]}>
+            <View style={styles.syncLeft}>
+              <Icon name="cloud-upload-outline" size={16} color={accentBlue} style={styles.metaIcon} />
+              <Text style={[styles.syncText, { color: textPrimary }]}>
+                {`${pendingCount} pending offline operation${pendingCount === 1 ? "" : "s"}`}
+              </Text>
+            </View>
 
-        {/* ── All Assignments Navigation ── */}
-        <Pressable
-          style={[styles.navCard, { backgroundColor: bgSurface, borderColor }]}
-          onPress={() => router.push({ pathname: "/inspections", params: { tab: "ASSIGNED" } })}
-          accessibilityLabel="View all field assignments"
-        >
-          <View style={[styles.navIconBox, { backgroundColor: bgSubtle }]}>
-            <Icon name="list-outline" size={20} color={navyDark} />
-          </View>
-          <View style={styles.navCardContent}>
-            <Text style={[styles.navCardTitle, { color: textPrimary }]}>
-              All Field Assignments
-            </Text>
-            <Text style={[styles.navCardSub, { color: textMuted }]}>
-              {assignedCount + inProgressCount > 0
-                ? `${assignedCount + inProgressCount} active — tap to view schedule`
-                : "View scheduled inspection tasks"}
-            </Text>
-          </View>
-          <Icon name="chevron-forward" size={16} color={textMuted} />
-        </Pressable>
-
-        {/* ── Sync Status ── */}
-        <View style={[styles.syncRow, { backgroundColor: bgSurface, borderColor }]}>
-          <View style={styles.syncLeft}>
-            <Icon
-              name={
-                pendingCount > 0 ? "cloud-upload-outline" : "checkmark-circle-outline"
-              }
-              size={16}
-              color={pendingCount > 0 ? accentBlue : theme.actionGreen}
-            />
-            <Text style={[styles.syncText, { color: textPrimary }]}>
-              {pendingCount > 0
-                ? `${pendingCount} pending offline operation${pendingCount === 1 ? "" : "s"}`
-                : "Offline data synchronised"}
-            </Text>
-          </View>
-
-          {pendingCount > 0 && (
             <Pressable
               style={[styles.syncBtn, { backgroundColor: navyDark }]}
               onPress={handleSyncNow}
@@ -381,8 +307,8 @@ export default function InspectorDashboardScreen() {
                 <Text style={styles.syncBtnText}>Sync Now</Text>
               )}
             </Pressable>
-          )}
-        </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -392,84 +318,44 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  // ── Header ──
+  // ── Header (web topbar parity — ignore dark mode) ──
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
   },
   brandGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-  },
-  emblemImage: {
-    width: 26,
-    height: 26,
-    tintColor: "#FFFFFF",
-  },
-  appTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: 1.2,
-  },
-  appSubtitle: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.65)",
-    marginTop: 1,
-    letterSpacing: 0.3,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 8,
   },
-  headerIconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  notifDot: {
-    position: "absolute",
-    top: 7,
-    right: 7,
-    width: 6,
-    height: 6,
+  brandBadge: {
+    backgroundColor: "#002449",
     borderRadius: 3,
-    backgroundColor: "#EF4444",
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
-  avatarBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 6,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+  brandBadgeText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.4,
   },
-  avatarThumb: {
-    width: "100%",
-    height: "100%",
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
+  brandTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#0c2a52",
+    letterSpacing: 0.3,
   },
   // ── Scroll Content ──
   scrollContent: {
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    gap: 10,
+    paddingTop: 10,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   // ── Stats Strip ──
   statsRow: {
@@ -485,12 +371,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   statCount: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "800",
     fontFamily: typography.mono,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.8,
   },
@@ -499,38 +385,37 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1.0,
-    marginTop: 6,
-    marginBottom: -2,
+    marginTop: 4,
   },
   // ── Assignment Card ──
   assignmentCard: {
     borderWidth: 1,
     borderRadius: 8,
-    padding: 14,
-    gap: 8,
+    padding: 16,
+    gap: 10,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "space-between",
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  headerType: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    lineHeight: 14,
   },
   cardStatusLabel: {
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.8,
-  },
-  flex1: {
-    flex: 1,
+    lineHeight: 14,
   },
   facilityName: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
-    lineHeight: 22,
+    lineHeight: 23,
+    height: 46,
   },
   metaRow: {
     flexDirection: "row",
@@ -540,14 +425,20 @@ const styles = StyleSheet.create({
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
+  },
+  metaIcon: {
+    marginTop: Platform.OS === "android" ? 0 : 1,
   },
   metaText: {
     fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500",
+    includeFontPadding: false,
   },
   cardDivider: {
     height: 1,
-    marginVertical: 2,
+    marginVertical: 4,
   },
   actionRow: {
     flexDirection: "row",
@@ -560,66 +451,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 10,
+    height: 42,
     borderRadius: 6,
   },
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "700",
+    lineHeight: 18,
+    includeFontPadding: false,
   },
   secondaryBtn: {
-    flexDirection: "row",
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
     borderRadius: 6,
     borderWidth: 1,
-  },
-  secondaryBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
   },
   // ── Empty Card ──
   emptyCard: {
     borderWidth: 1,
     borderRadius: 8,
-    paddingVertical: 28,
+    paddingVertical: 32,
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   emptyCardText: {
     fontSize: 13,
-    fontWeight: "500",
-  },
-  // ── Nav Card ──
-  navCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    gap: 10,
-  },
-  navIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navCardContent: {
-    flex: 1,
-    gap: 2,
-  },
-  navCardTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  navCardSub: {
-    fontSize: 12,
+    fontWeight: "600",
   },
   // ── Sync Row ──
   syncRow: {
@@ -640,7 +500,9 @@ const styles = StyleSheet.create({
   syncText: {
     flex: 1,
     fontSize: 12,
+    lineHeight: 16,
     fontWeight: "500",
+    includeFontPadding: false,
   },
   syncBtn: {
     paddingHorizontal: 12,

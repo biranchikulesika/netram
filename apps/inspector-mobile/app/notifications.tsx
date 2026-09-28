@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -96,7 +95,6 @@ const DEMO_NOTIFICATIONS: Notification[] = [
 ];
 
 export default function NotificationsScreen() {
-  const router = useRouter();
   const { client } = useAuth();
   const { theme } = useSettings();
 
@@ -155,16 +153,6 @@ export default function NotificationsScreen() {
           // ignore offline failure
         }
       }
-    }
-
-    switch (item.type) {
-      case "inspection.assigned":
-      case "corrective_action.overdue":
-      case "ai.anomaly_detected":
-        router.push("/inspections");
-        break;
-      default:
-        break;
     }
   };
 
