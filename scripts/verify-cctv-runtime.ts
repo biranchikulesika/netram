@@ -91,44 +91,54 @@ async function main() {
     assert(false, `Expected online status with media rig attached, got: ${health.status}`);
   }
 
-  // 5. Request authorized stream relay URL and token
+  // 5. Request an authorized stream session.
+  // Without a rig the gateway must fail CLOSED: MediaMTX is unreachable, so no
+  // playback contract may be minted and the API surfaces SERVICE_UNAVAILABLE.
+  // With a rig a full contract is returned and verified below.
   console.log(`\n5. Requesting authorized stream session from API...`);
-  const stream = await khordhaClient.requestCameraStream(vaniGate!.id, { ttlSeconds: 180 });
-  assert(Boolean(stream.streamId), "Stream session ID missing");
-  assert(Boolean(stream.streamUrl), "Stream relay URL missing");
-  assert(Boolean(stream.token), "Stream authorization token missing");
-  assert(
-    !stream.streamUrl.startsWith("rtsp://"),
-    "Security violation: returned raw RTSP URL instead of playback contract",
-  );
-  assert(
-    !JSON.stringify(stream).includes("rtsp://"),
-    "Security violation: RTSP endpoint leaked inside the stream payload",
-  );
-  assert(Boolean(stream.playback), "Playback contract missing (Phase 4/5 WHEP)");
-  assert(stream.playback?.protocol === "webrtc", "Playback protocol must be webrtc");
-  assert(Boolean(stream.playback?.whepUrl), "WHEP URL missing from playback contract");
-  assert(Boolean(stream.playback?.token), "Playback token missing from playback contract");
-  assert(Boolean(stream.playback?.mediaPath), "Media path missing from playback contract");
-  console.log(`✓ Authorized playback contract established:`);
-  console.log(`   - Stream ID:   ${stream.streamId}`);
-  console.log(`   - Playback:    ${stream.playback?.protocol} via ${stream.playback?.whepUrl}`);
-  console.log(`   - Media path:  ${stream.playback?.mediaPath}`);
-  console.log(`   - Expires At:  ${stream.expiresAt}`);
-
-  // 6/7. Media-plane verification with a rig; honest control-plane-only mode
-  // without one (the gateway no longer relays bytes — MediaMTX owns the data
-  // plane, so token enforcement happens at the WHEP auth hook).
+  let stream: Awaited<ReturnType<typeof khordhaClient.requestCameraStream>> | null = null;
   if (NO_MEDIA_RIG) {
-    console.log(`\n6/7. Media rig not attached (NETRAM_CCTV_VERIFY_NO_RIG=1).`);
-    assert(
-      stream.token.length >= 20,
-      "Stream token is suspiciously short for a signed credential",
-    );
-    console.log(
-      "✓ Stream token is a signed credential (media-plane tamper rejection is covered by the Phase 4 rig script)",
-    );
+    try {
+      await khordhaClient.requestCameraStream(vaniGate!.id, { ttlSeconds: 180 });
+      assert(false, "Stream request unexpectedly succeeded without a media rig (must fail closed)");
+    } catch (err) {
+      assert(
+        err instanceof ApiError && err.code === "SERVICE_UNAVAILABLE",
+        `Expected SERVICE_UNAVAILABLE without a media rig, got: ${err}`,
+      );
+      console.log("✓ Stream request fails CLOSED without MediaMTX (SERVICE_UNAVAILABLE, no contract minted)");
+    }
   } else {
+    stream = await khordhaClient.requestCameraStream(vaniGate!.id, { ttlSeconds: 180 });
+  }
+
+  if (stream) {
+    assert(Boolean(stream.streamId), "Stream session ID missing");
+    assert(Boolean(stream.streamUrl), "Stream relay URL missing");
+    assert(Boolean(stream.token), "Stream authorization token missing");
+    assert(
+      !stream.streamUrl.startsWith("rtsp://"),
+      "Security violation: returned raw RTSP URL instead of playback contract",
+    );
+    assert(
+      !JSON.stringify(stream).includes("rtsp://"),
+      "Security violation: RTSP endpoint leaked inside the stream payload",
+    );
+    assert(Boolean(stream.playback), "Playback contract missing (Phase 4/5 WHEP)");
+    assert(stream.playback?.protocol === "webrtc", "Playback protocol must be webrtc");
+    assert(Boolean(stream.playback?.whepUrl), "WHEP URL missing from playback contract");
+    assert(Boolean(stream.playback?.token), "Playback token missing from playback contract");
+    assert(Boolean(stream.playback?.mediaPath), "Media path missing from playback contract");
+    console.log(`✓ Authorized playback contract established:`);
+    console.log(`   - Stream ID:   ${stream.streamId}`);
+    console.log(`   - Playback:    ${stream.playback?.protocol} via ${stream.playback?.whepUrl}`);
+    console.log(`   - Media path:  ${stream.playback?.mediaPath}`);
+    console.log(`   - Expires At:  ${stream.expiresAt}`);
+  }  // 6/7. Media-plane verification with a rig only; without one the fail-closed
+  // behaviour was already verified in step 5 (the gateway no longer relays
+  // bytes — MediaMTX owns the data plane, so token enforcement happens at the
+  // WHEP auth hook).
+  if (stream) {
     console.log(`\n6. WHEP handshake against the media rig with the issued token...`);
     const whepRes = await fetch(stream.playback!.whepUrl, {
       method: "POST",
@@ -155,6 +165,8 @@ async function main() {
     });
     assert(garbageRes.status === 401, `Expected 401 for tampered token, got ${garbageRes.status}`);
     console.log("✓ Tampered token rejected with 401 Unauthorized");
+  } else {
+    console.log("\n6/7. Skipped: media plane not attached (fail-closed path already verified).\n");
   }
 
   // 8. Capture snapshot frame for advisory AI inference
