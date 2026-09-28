@@ -1,5 +1,3 @@
-import { Platform } from "react-native";
-
 export interface ISqliteDatabase {
   execAsync(sql: string): Promise<void>;
   runAsync(
@@ -283,7 +281,18 @@ let currentDb: ISqliteDatabase | null = null;
 export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
   if (currentDb) return currentDb;
 
-  const isNativeMobile = Platform.OS === "android" || Platform.OS === "ios";
+  // Detect React Native lazily: a static import here would pull react-native's
+  // Flow-typed source into every plain-node import chain (runtime verification
+  // scripts, tsx), which cannot parse it. A dynamic require fails cleanly
+  // outside the mobile bundle, mirroring the expo-sqlite pattern below.
+  let isNativeMobile = false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Platform } = require("react-native");
+    isNativeMobile = Platform.OS === "android" || Platform.OS === "ios";
+  } catch {
+    isNativeMobile = false;
+  }
 
   if (isNativeMobile && !(typeof process !== "undefined" && process.env?.VITEST)) {
     try {
