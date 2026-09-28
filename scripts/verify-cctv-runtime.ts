@@ -1,15 +1,17 @@
 import { NetramApiClient, ApiError } from "@netram/api-client";
-import { loadServerEnv } from "@netram/config";
+import { loadCctvEnv, loadServerEnv } from "@netram/config";
 
 const env = loadServerEnv();
+const cctvEnv = loadCctvEnv();
 const API_URL = env.NETRAM_API_URL || "http://localhost:3001";
 const GATEWAY_URL = env.NETRAM_CCTV_GATEWAY_URL || "http://localhost:3003";
 // Media-plane mode: with a running rig (docker compose --profile facility)
 // this script verifies the full path including the WHEP handshake and token
-// rejection at MediaMTX. Where the rig is absent (CI), set
-// NETRAM_CCTV_VERIFY_NO_RIG=1 to verify the control plane only; health must
-// still reflect REAL media state (never "online" from a DB row alone).
-const NO_MEDIA_RIG = process.env.NETRAM_CCTV_VERIFY_NO_RIG === "1";
+// rejection at MediaMTX. Where the rig is absent (CI), the configured
+// NETRAM_CCTV_VERIFY_NO_RIG flag limits verification to the control plane;
+// health must still reflect REAL media state (never "online" from a DB row
+// alone).
+const NO_MEDIA_RIG = cctvEnv.NETRAM_CCTV_VERIFY_NO_RIG;
 
 function assert(condition: boolean, msg: string): asserts condition {
   if (!condition) {

@@ -50,6 +50,16 @@ export const cctvEnvSchema = z.object({
     .string()
     .min(32)
     .default("replace-me-with-a-32-char-plus-mediamtx-hook-secret"),
+  /**
+   * Verification mode for runtime verification scripts: when true, no media
+   * rig (MediaMTX) is attached, so camera health must be expected to reflect
+   * that reality (never "online") and media-plane handshakes are skipped.
+   * CI sets this; rig-based local verification leaves it unset.
+   */
+  NETRAM_CCTV_VERIFY_NO_RIG: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type CctvEnv = z.infer<typeof cctvEnvSchema>;
