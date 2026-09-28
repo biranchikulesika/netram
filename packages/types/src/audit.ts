@@ -91,6 +91,7 @@ export const AUDIT_ACTIONS = [
   "financial_risk.flag_assigned",
   "financial_risk.flag_resolved",
   "financial_risk.flag_dismissed",
+  "project_risk.evaluated",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

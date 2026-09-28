@@ -51,6 +51,9 @@ export class CompositeRiskScorer {
     // Multi-Vector Compound Synergy:
     // In administrative risk modeling, concurrent high-severity vectors (e.g. financial + ghost attendance)
     // indicate a statistically higher likelihood of deliberate evasion than isolated defects.
+    // Severe = strongly elevated on the dimension's own normalized scale.
+    // Includes complaintDensity: an escalated complaint volume is exactly the
+    // kind of concurrent vector the synergy bonus is meant to capture.
     const severeDimensions = [
       financialDim,
       inspectionDim,

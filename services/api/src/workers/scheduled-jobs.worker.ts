@@ -17,7 +17,12 @@ export interface ScheduledJobsOptions {
 export interface ScheduledJobsSummary {
   overdueActionsMarked: number;
   overdueActionIds: string[];
-  projectRiskSweep?: { evaluatedCount: number; scheduledCount: number };
+  projectRiskSweep?: {
+    evaluatedCount: number;
+    scheduledCount: number;
+    failedCount: number;
+    failedProjectIds: string[];
+  };
   financialRiskSweep?: { evaluatedCount: number };
   executedAt: string;
 }
@@ -140,7 +145,12 @@ export class ScheduledJobsRunner {
     }
 
     // 2. Risk Engine Sweep: Automatically evaluate active projects and trigger inspections
-    let projectRiskSweep: { evaluatedCount: number; scheduledCount: number } | undefined;
+    let projectRiskSweep: {
+      evaluatedCount: number;
+      scheduledCount: number;
+      failedCount: number;
+      failedProjectIds: string[];
+    } | undefined;
     const now = Date.now();
     if (this.projectRiskService && now - this.lastProjectRiskSweepAt >= this.projectRiskSweepIntervalMs) {
       try {

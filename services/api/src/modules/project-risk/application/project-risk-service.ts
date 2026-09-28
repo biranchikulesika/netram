@@ -46,6 +46,7 @@ export class ProjectRiskService {
     // 3. Evaluate scheduling & trigger inspection if warranted
     let scheduledInspectionId: string | null = null;
     let inspectionFlagId: string | null = null;
+    let schedulingFailed = false;
 
     try {
       const decision = await this.scheduler.evaluateAndSchedule(ctx, projectId, compositeScore);
@@ -55,8 +56,16 @@ export class ProjectRiskService {
       if (decision.inspectionFlagId) {
         inspectionFlagId = decision.inspectionFlagId;
       }
-    } catch {
-      // Don't fail risk scoring if automatic inspection scheduling encounters an issue
+    } catch (schedulingErr) {
+      // A high-risk project whose inspection scheduling failed is an
+      // operationally significant condition (§53): log it loudly and record
+      // the failure in the snapshot's audit trail, but do not discard the
+      // (valid) risk score — the next sweep cycle will retry scheduling.
+      schedulingFailed = true;
+      console.warn(
+        `[project-risk] Inspection scheduling failed for project ${projectId}:`,
+        schedulingErr instanceof Error ? schedulingErr.message : schedulingErr,
+      );
     }
 
     // 4. Explanation assembly
@@ -101,34 +110,50 @@ export class ProjectRiskService {
       scheduledInspectionId,
     });
 
-    // 6. Record Audit Event
-    await this.auditRepo.append({
-      action: "project.updated",
-      actorUserId: ctx.userId,
-      resourceType: "project",
-      resourceId: projectId,
-      requestId: ctx.requestId ?? null,
-      ipAddress: ctx.ipAddress ?? null,
-      metadata: {
-        scoringVersion: compositeScore.scoringVersion,
-        totalScore: compositeScore.totalScore,
-        riskLevel: compositeScore.riskLevel,
-        scheduledInspectionId,
-        inspectionFlagId,
-      },
-    }).catch(() => null);
+    // 6. Record Audit Event (§37). Audit generation belongs to the
+    // application layer; failures must be observable, never silent.
+    await this.auditRepo
+      .append({
+        action: "project_risk.evaluated",
+        actorUserId: ctx.userId,
+        resourceType: "project",
+        resourceId: projectId,
+        requestId: ctx.requestId ?? null,
+        ipAddress: ctx.ipAddress ?? null,
+        metadata: {
+          scoringVersion: compositeScore.scoringVersion,
+          totalScore: compositeScore.totalScore,
+          riskLevel: compositeScore.riskLevel,
+          scheduledInspectionId,
+          inspectionFlagId,
+          schedulingFailed,
+        },
+      })
+      .catch((auditErr) => {
+        console.warn(
+          `[project-risk] Failed to record audit event for project ${projectId}:`,
+          auditErr instanceof Error ? auditErr.message : auditErr,
+        );
+      });
 
     return snapshot;
   }
 
   async sweepAllActiveProjects(
     ctx: RequestUserContext,
-  ): Promise<{ evaluatedCount: number; scheduledCount: number }> {
+  ): Promise<{
+    evaluatedCount: number;
+    scheduledCount: number;
+    failedCount: number;
+    failedProjectIds: string[];
+  }> {
     this.authz.requirePermission(ctx, RISK_EVALUATE);
 
     const activeProjects = await this.projectRiskRepo.findAllActiveProjects();
     let evaluatedCount = 0;
     let scheduledCount = 0;
+    let failedCount = 0;
+    const failedProjectIds: string[] = [];
 
     for (const project of activeProjects) {
       try {
@@ -137,12 +162,19 @@ export class ProjectRiskService {
         if (snapshot.scheduledInspectionId) {
           scheduledCount++;
         }
-      } catch {
-        // Continue processing other projects
+      } catch (err) {
+        // One project's failure must not abort the sweep, but it must not be
+        // invisible either (§53): count, collect, and log for observability.
+        failedCount++;
+        failedProjectIds.push(project.id);
+        console.warn(
+          `[project-risk] Evaluation failed for project ${project.id}:`,
+          err instanceof Error ? err.message : err,
+        );
       }
     }
 
-    return { evaluatedCount, scheduledCount };
+    return { evaluatedCount, scheduledCount, failedCount, failedProjectIds };
   }
 
   async listRankings(

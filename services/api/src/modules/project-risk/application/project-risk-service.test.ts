@@ -121,7 +121,7 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
     expect(snapshot.riskLevel).toBe("low");
     expect(snapshot.scheduledInspectionId).toBeNull();
     expect(mockAuditRepo.append).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "project.updated", resourceId: "p-clean" }),
+      expect.objectContaining({ action: "project_risk.evaluated", resourceId: "p-clean" }),
     );
   });
 
@@ -195,19 +195,19 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
       },
       inspections: {
         inspections: [],
-        findings: [{ id: "f1", inspectionId: "i1", severity: "critical", status: "open" }], // 30 raw * 25% = 7.5 pts
-        correctiveActions: [{ id: "ca1", findingId: "f1", status: "open", deadline: new Date(Date.now() - 100000).toISOString() }], // +25 overdue
+        findings: [{ id: "f1", inspectionId: "i1", severity: "critical", status: "confirmed" }], // 30 raw * 25% = 7.5 pts
+        correctiveActions: [{ id: "ca1", findingId: "f1", status: "pending", deadline: new Date(Date.now() - 100000).toISOString() }], // +25 overdue
       },
       attendance: {
         anomalies: [
-          { id: "a1", anomalyType: "GHOST_WORKER", severity: "critical", state: "NEW", operationalDate: "2026-09-01" },
-          { id: "a2", anomalyType: "GHOST_WORKER", severity: "high", state: "NEW", operationalDate: "2026-09-01" },
+          { id: "a1", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
+          { id: "a2", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "HIGH", state: "NEW", operationalDate: "2026-09-01" },
         ], // 40 raw * 20% = 8 pts
       },
       complaints: {
         complaints: [
-          { id: "c1", status: "submitted", receivedAt: new Date().toISOString() },
-          { id: "c2", status: "submitted", receivedAt: new Date().toISOString() },
+          { id: "c1", status: "received", receivedAt: new Date().toISOString() },
+          { id: "c2", status: "received", receivedAt: new Date().toISOString() },
         ], // 50 raw * 10% = 5 pts
       },
       aiAnomalies: { anomalies: [] },
@@ -401,4 +401,79 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
     expect(snapshots[0]!.totalScore).toBe(65);
     expect(snapshots[1]!.totalScore).toBe(40);
   });
+
+  // Case I: Sweep resilience — one failing project must not abort the sweep,
+  // and the failure must be observable in the result (§53, §29).
+  it("Case I: sweep continues past a failing project and reports the failure", async () => {
+    mockProjectRiskRepo.findAllActiveProjects.mockResolvedValue([
+      { id: "p-broken" },
+      { id: "p-ok" },
+    ]);
+    mockContextBuilder.buildContext.mockImplementation((_ctx: unknown, projectId: string) => {
+      if (projectId === "p-broken") {
+        return Promise.reject(new Error("context build exploded"));
+      }
+      return Promise.resolve(emptyScenarioContext("p-ok"));
+    });
+    mockScheduler.evaluateAndSchedule.mockResolvedValue({
+      projectId: "p-ok",
+      shouldSchedule: false,
+      reason: "Below threshold",
+      actionTaken: "threshold_not_met",
+    });
+
+    const result = await service.sweepAllActiveProjects(mockCtx);
+
+    expect(result.evaluatedCount).toBe(1);
+    expect(result.failedCount).toBe(1);
+    expect(result.failedProjectIds).toEqual(["p-broken"]);
+    expect(result.scheduledCount).toBe(0);
+  });
+
+  // Scheduling failure: the risk score is still valid and must survive (with
+  // the failure recorded), rather than being silently discarded.
+  it("keeps the risk score and records the failure when inspection scheduling throws", async () => {
+    mockContextBuilder.buildContext.mockResolvedValue(emptyScenarioContext("p-high"));
+    mockScheduler.evaluateAndSchedule.mockRejectedValue(new Error("scheduling db down"));
+
+    const snapshot = await service.evaluateProject(mockCtx, "p-high");
+
+    expect(mockProjectRiskRepo.insertSnapshot).toHaveBeenCalled();
+    expect(snapshot.totalScore).toBeGreaterThanOrEqual(0);
+    expect(mockAuditRepo.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "project_risk.evaluated",
+        resourceId: "p-high",
+        metadata: expect.objectContaining({ schedulingFailed: true }),
+      }),
+    );
+  });
 });
+
+/** Minimal clean-project evaluation context for sweep scenarios. */
+function emptyScenarioContext(projectId: string): ProjectRiskEvaluationContext {
+  return {
+    project: {
+      id: projectId,
+      code: `PRJ-${projectId.toUpperCase()}`,
+      name: "Scenario Project",
+      status: "Active",
+      districtId: "dist-1",
+      organisationId: "org-1",
+      createdAt: new Date().toISOString(),
+    },
+    financial: {
+      totalScore: 0,
+      riskLevel: "low",
+      triggeredRules: [],
+      maxPossibleRawScore: 220,
+      allocationsCount: 1,
+      expensesCount: 2,
+      flagId: null,
+    },
+    inspections: { inspections: [], findings: [], correctiveActions: [] },
+    attendance: { anomalies: [] },
+    complaints: { complaints: [] },
+    aiAnomalies: { anomalies: [] },
+  };
+}
