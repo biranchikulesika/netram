@@ -87,7 +87,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (isPlaylist) {
     const text = await upstream.text();
-    return new NextResponse(rewritePlaylist(text, token), {
+    // Child URIs are relative to the playlist's own media path, so pass the
+    // directory this playlist was served from.
+    const dir = segments.slice(0, -1).join("/");
+
+    return new NextResponse(rewritePlaylist(text, token, dir), {
       status: 200,
       headers: {
         "Content-Type": contentType.includes("mpegurl") || contentType.includes("m3u8")

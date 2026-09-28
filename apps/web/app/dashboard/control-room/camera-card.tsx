@@ -16,31 +16,36 @@ export interface CameraCardProps {
   camera: PublicCctvCamera;
   /** Open the camera detail / live viewer (real WebRTC session, PART 10). */
   onOpen: (camera: PublicCctvCamera) => void;
-  /** Switch this tile to an HLS wall tile (PART 8 — explicit user intent). */
-  onToggleHls: (cameraId: string) => void;
 }
 
 /**
  * Production CCTV camera card (Phase 5).
  *
  * The card itself holds NO stream session — a camera being online does NOT
- * mean this browser has an active WebRTC session (PART 7). Two explicit
- * user paths exist:
+ * mean this browser has an active WebRTC session (PART 7). This component
+ * renders only for cameras the wall is NOT currently playing: once a camera
+ * scrolls into view the wall swaps it for an HlsWallTile, which takes over
+ * that camera's session lifecycle. So the only action here is the
+ * full-screen WebRTC viewer.
  *
- *   "Live"  → CameraLiveViewer modal (WebRTC/WHEP, one session, heartbeat,
- *             cleanup on close).
- *   "HLS"   → HlsWallTile (authorized HLS via the same-origin proxy) for
- *             wall-style monitoring.
- *
- * Honest states: the tile shows "Camera available" vs "Camera offline"
- * from the camera's real status; connection states surface inside the
- * live viewer ("Connecting to camera…", "LIVE", "Unable to connect…").
+ * Honest states: "Idle" vs "Camera offline" reflects the camera's
+ * administrative status, not stream health — see the note on `online`
+ * below. Connection states surface inside the live viewer
+ * ("Connecting to camera…", "LIVE", "Unable to connect…").
  */
-export function CameraCard({ camera, onOpen, onToggleHls }: CameraCardProps) {
+export function CameraCard({ camera, onOpen }: CameraCardProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState(false);
 
   const online = camera.status === "active";
+
+  // Deliberately NOT the gateway health value. Sources are on-demand, so a
+  // camera nobody is watching reports `offline` — gating the button on that
+  // would hide it on every idle camera and make it impossible to ever start
+  // a stream. `active` is the administrative state: may this camera be used?
+  // The tile label below is what carries honest stream state.
+  const idleLabel =
+    camera.status === "maintenance" ? "Camera under maintenance" : "Camera offline";
 
   const handleOpen = useCallback(() => {
     if (online) onOpen(camera);
@@ -51,12 +56,13 @@ export function CameraCard({ camera, onOpen, onToggleHls }: CameraCardProps) {
   return (
     <div
       className="camera-card camera-card-compact"
+      data-camera-id={camera.id}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
       <div className="cc-viewport" ref={viewportRef}>
         <div className="cc-idle-placeholder" aria-hidden="true">
-          <span className="cc-idle-label">{online ? "Camera available" : "Camera offline"}</span>
+          <span className="cc-idle-label">{online ? "Idle" : idleLabel}</span>
         </div>
         <div className="cc-vp-osd cc-vp-osd-tl">
           <span
@@ -83,24 +89,15 @@ export function CameraCard({ camera, onOpen, onToggleHls }: CameraCardProps) {
         </div>
 
         <div className="cc-center">
-          <button
-            type="button"
-            onClick={handleOpen}
-            disabled={!online}
-            title={online ? "Open live viewer" : "Camera offline"}
-            className={`cc-play-btn ${hover || !online ? "cc-play-btn-visible" : ""}`}
-          >
-            <IconPlay style={{ width: 15, height: 15 }} />
-            Live
-          </button>
           {online && (
             <button
               type="button"
-              onClick={() => onToggleHls(camera.id)}
-              title="Play HLS wall stream (lower latency mode: WebRTC)"
-              className={`cc-play-btn cc-hls-btn ${hover ? "cc-play-btn-visible" : ""}`}
+              onClick={handleOpen}
+              title="Open live viewer"
+              className={`cc-play-btn ${hover ? "cc-play-btn-visible" : ""}`}
             >
-              HLS
+              <IconPlay style={{ width: 15, height: 15 }} />
+              Live
             </button>
           )}
         </div>

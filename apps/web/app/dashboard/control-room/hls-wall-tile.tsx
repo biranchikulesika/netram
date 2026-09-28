@@ -10,9 +10,13 @@ import type { PublicCctvCamera } from "@netram/types";
  * viewers, PART 7), so wall tiles use HLS via the same-origin authorized
  * proxy (/api/cctv/media/hls). The tile manages one real NETRAM session:
  *
- *   enable  → POST /api/cctv/:id/streams  (authorized playback contract)
+ *   mount   → POST /api/cctv/:id/streams  (authorized playback contract)
  *           → /api/cctv/media/hls/<mediaPath>/index.m3u8?token=…
- *   disable → DELETE session (viewer_stop + correlated reader kick)
+ *   unmount → DELETE session (viewer_stop + correlated reader kick)
+ *
+ * The wall mounts a tile only while it is in view, so scrolling out of the
+ * grid tears the session down. The tile's own button is not play/pause: it
+ * opens the full-screen WebRTC viewer, as it did before auto-play.
  *
  * Every playlist/segment request re-presents the token and MediaMTX's
  * external auth hook validates it — HLS is under exactly the same
@@ -30,22 +34,18 @@ interface HlsContract {
 
 export interface HlsWallTileProps {
   camera: PublicCctvCamera;
-  /** Explicit user intent — never enabled merely because the tile is visible. */
-  enabled: boolean;
-  onToggle: (cameraId: string) => void;
+  /** Open the camera detail / live viewer (WebRTC, PART 10). */
+  onOpen: (camera: PublicCctvCamera) => void;
 }
 
-export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
+export function HlsWallTile({ camera, onOpen }: HlsWallTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [contract, setContract] = useState<HlsContract | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "error">("idle");
   const [message, setMessage] = useState("");
   const generationRef = useRef(0);
 
-  const online = camera.status === "active";
-
   useEffect(() => {
-    if (!enabled) return;
     const gen = ++generationRef.current;
     let current: HlsContract | null = null;
 
@@ -86,7 +86,11 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
         return;
       }
       setContract(current);
-      setMessage("");
+      // Hold a visible state until the first fragment decodes. Minting the
+      // session is fast; the on-demand RTSP source takes several seconds to
+      // come up, and clearing the message here left a blank black tile with
+      // no explanation in between.
+      setMessage("Connecting to camera…");
     };
 
     void create().catch((err: unknown) => {
@@ -102,7 +106,7 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
       setStatus("idle");
       setMessage("");
     };
-  }, [enabled, camera.id]);
+  }, [camera.id]);
 
   // Attach HLS playback whenever a contract exists.
   useEffect(() => {
@@ -117,7 +121,10 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
       video.src = playlistUrl;
       void video
         .play()
-        .then(() => setStatus("playing"))
+        .then(() => {
+          setStatus("playing");
+          setMessage("");
+        })
         .catch(() => undefined);
       return () => {
         video.removeAttribute("src");
@@ -131,10 +138,25 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
         setMessage("HLS is not supported in this browser.");
         return;
       }
-      const client = new Hls({ lowLatencyMode: true, backBufferLength: 15 });
+      // Wall tiles are a many-up low-fidelity overview, so the client is tuned
+      // for cost, not latency:
+      //  - lowLatencyMode off: no 200ms PART polling, full 1s segments only.
+      //    This is the single biggest saving — LL-HLS reloads every playlist
+      //    ~5x/s per tile, which is 35 proxied requests/s for a 7-tile wall.
+      //  - backBufferLength 0: a wall tile is live-only and never scrubbed, so
+      //    hls.js's 90s default back buffer is pure wasted decoded memory.
+      // ponytail: buffers are capped for a 7-tile overview; raise
+      // maxBufferLength if the wall is ever used for slow-motion review.
+      const client = new Hls({
+        lowLatencyMode: false,
+        backBufferLength: 0,
+        maxBufferLength: 6,
+        maxMaxBufferLength: 10,
+      });
       hlsClient = client;
       client.on(Hls.Events.FRAG_LOADED, () => {
         setStatus((s) => (s === "playing" ? s : "playing"));
+        setMessage("");
       });
       client.on(Hls.Events.ERROR, (_evt, data) => {
         if (!data.fatal) return;
@@ -153,15 +175,14 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
     };
   }, [contract]);
 
-  const handleToggle = useCallback(() => {
-    onToggle(camera.id);
-  }, [camera.id, onToggle]);
+  const handleOpen = useCallback(() => {
+    onOpen(camera);
+  }, [camera, onOpen]);
 
   const [facility, place] = splitFacilityPlace(camera.name);
-  const busy = status === "loading";
 
   return (
-    <div className="camera-card camera-card-compact">
+    <div className="camera-card camera-card-compact" data-camera-id={camera.id}>
       <div className="cc-viewport">
         <video ref={videoRef} autoPlay playsInline muted className="cc-video" />
         <div className="cc-vp-osd cc-vp-osd-tl">
@@ -187,32 +208,26 @@ export function HlsWallTile({ camera, enabled, onToggle }: HlsWallTileProps) {
             </span>
           )}
         </div>
-        {!enabled && (
-          <div className="cc-idle-placeholder" aria-hidden="true">
-            <span className="cc-idle-label">{online ? "Camera available" : "Camera offline"}</span>
-          </div>
-        )}
         {status === "playing" && (
           <span className="cc-live-badge" role="status">
             HLS
           </span>
         )}
-        {status !== "playing" && (message || (enabled && busy)) && (
+        {status !== "playing" && message && (
           <div className="cc-center" aria-live="polite">
-            <span className="cc-status-text">{message || "Loading HLS stream…"}</span>
+            <span className="cc-status-text">{message}</span>
           </div>
         )}
-        <div className="cc-center">
-          <button
-            type="button"
-            onClick={handleToggle}
-            disabled={!online || busy}
-            title={!online ? "Camera offline" : enabled ? "Stop HLS stream" : "Play HLS stream"}
-            className={`cc-play-btn cc-play-btn-visible ${status === "playing" ? "cc-play-btn-playing" : ""}`}
-          >
-            {busy ? "Connecting…" : status === "playing" ? "Stop" : "HLS"}
-          </button>
-        </div>
+        {/* A real button, not a div with onClick: the whole tile is the hit
+            area so no visible control covers the footage, while Enter/Space and
+            screen readers still work. The global `button` reset is undone in
+            .cc-tile-hit because it is a hit area, not a visual control. */}
+        <button
+          type="button"
+          onClick={handleOpen}
+          className="cc-tile-hit"
+          aria-label={`Open full screen live view: ${camera.name}`}
+        />
       </div>
     </div>
   );
