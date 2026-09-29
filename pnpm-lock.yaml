@@ -255,9 +255,6 @@ importers:
       react-refresh:
         specifier: ^0.14.2
         version: 0.14.2
-      whatwg-fetch:
-        specifier: ^3.6.20
-        version: 3.6.20
     devDependencies:
       '@types/react':
         specifier: ~18.3.12

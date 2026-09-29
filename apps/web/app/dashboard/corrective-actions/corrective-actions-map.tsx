@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { CorrectiveAction, CorrectiveActionStatus } from "@netram/types";
 import { formatDistrict } from "../../../lib/presentation";
-import { DISTRICT_COORDINATES, parseGpsCoordinates } from "../projects/real-leaflet-map";
+import { districtCoordinatesByName, parseGpsCoordinates } from "../projects/real-leaflet-map";
 import NetramOverviewMap, {
   type MapFacility,
 } from "../../components/netram-overview-map";
@@ -42,7 +42,7 @@ function resolveLocation(action: CorrectiveAction): { lat: number; lng: number }
   const parsed = project ? parseGpsCoordinates(project.description) : null;
   if (parsed) return parsed;
 
-  const district = project?.districtId ? DISTRICT_COORDINATES[project.districtId] : null;
+  const district = districtCoordinatesByName(project?.districtName);
   const baseLat = district?.lat ?? 20.4;
   const baseLng = district?.lng ?? 84.8;
 

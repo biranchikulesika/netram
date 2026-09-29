@@ -278,7 +278,7 @@ export async function startOutboxDispatcherWorker(
 
 export async function main(): Promise<void> {
   const env = loadWorkerEnv();
-  console.log(`[outbox-dispatcher] starting (redis=${env.REDIS_URL})`);
+  console.log("[outbox-dispatcher] starting");
   const instance = await startOutboxDispatcherWorker({
     redisUrl: env.REDIS_URL,
     databaseUrl: env.DATABASE_URL,

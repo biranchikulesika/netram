@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Inspection, InspectionStatus } from "@netram/types";
-import { DISTRICT_COORDINATES } from "../projects/real-leaflet-map";
+import { districtCoords } from "../projects/real-leaflet-map";
 import NetramOverviewMap, { type MapFacility } from "../../components/netram-overview-map";
 import { InspectionCard } from "./inspection-card";
 import { IconChevronRight, IconMapPin } from "../../components/icons";
@@ -55,16 +55,19 @@ interface Cluster {
 
 export default function InspectionsMap({ inspections }: InspectionsMapProps) {
   const clusters = useMemo(() => {
+    // Cluster by the server-resolved district name; the gazetteer only
+    // positions the cluster and never gates inclusion.
     const byDistrict = new Map<string, Inspection[]>();
     for (const i of inspections) {
-      if (!i.districtId) continue;
-      const list = byDistrict.get(i.districtId) ?? [];
+      const key = (i.districtName ?? "").trim().toLowerCase();
+      if (!key) continue;
+      const list = byDistrict.get(key) ?? [];
       list.push(i);
-      byDistrict.set(i.districtId, list);
+      byDistrict.set(key, list);
     }
     const out: Cluster[] = [];
-    for (const [districtId, items] of byDistrict.entries()) {
-      const district = DISTRICT_COORDINATES[districtId];
+    for (const [key, items] of byDistrict.entries()) {
+      const district = districtCoords[key];
       const first = items[0]!;
       const hash = first.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const angle = (hash % 360) * (Math.PI / 180);
@@ -72,9 +75,9 @@ export default function InspectionsMap({ inspections }: InspectionsMapProps) {
       const lat = (district?.lat ?? 20.4) + Math.sin(angle) * offset;
       const lng = (district?.lng ?? 84.8) + Math.cos(angle) * offset;
       out.push({
-        districtId,
-        // DISTRICT_COORDINATES only positions the cluster; the label is resolved
-        // by the API so a new or unmapped district still reads correctly.
+        districtId: key,
+        // The label comes from the API-resolved district name; the gazetteer
+        // name is only a fallback so an unmapped district still reads.
         label: first.districtName ?? district?.name ?? "Unknown district",
         items,
         lat,

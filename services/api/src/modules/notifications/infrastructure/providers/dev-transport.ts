@@ -26,9 +26,10 @@ export class DevLogNotificationProvider implements NotificationProviderPort {
         reason: `no ${this.channel} provider configured for this environment`,
       };
     }
+    // Metadata only: notification titles/bodies can carry personal
+    // information and must not be written to operational logs (§39).
     console.log(
-      `[notification:${this.channel}] ${notification.notificationId} → user ${notification.userId}: ${notification.title}`,
-      notification.body ?? "",
+      `[notification:${this.channel}] ${notification.notificationId} delivered via dev-console (no vendor configured)`,
     );
     return {
       channel: this.channel,

@@ -26,18 +26,24 @@ interface GeofenceConfig {
   auditTx?: string;
 }
 
-// Canonical District Coordinates in Odisha
-export const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number; name: string }> = {
-  "5f6c6fcf-fc88-5bf1-9f63-cad86ee0bd3b": {
-    lat: 20.2961,
-    lng: 85.8245,
-    name: "Khordha (Bhubaneswar)",
-  },
-  "92f0e386-2b80-5ca4-94a0-9c7d90d47dbf": { lat: 20.4625, lng: 85.883, name: "Cuttack" },
-  "ec220eb3-d4a3-5b12-9412-26d8badeafe7": { lat: 19.8135, lng: 85.8312, name: "Puri" },
-  "a2dfd214-5aa0-5c7a-aa78-7b59865ba0a3": { lat: 19.38, lng: 84.85, name: "Ganjam (Berhampur)" },
-  "e71c0cc4-6569-5e2b-bb73-cc3cae07fb8d": { lat: 22.12, lng: 84.03, name: "Sundargarh (Rourkela)" },
+// District gazetteer for map positioning — a static geographic reference
+// (display config, not application data), keyed by district NAME. Never keyed
+// by database IDs: records carry the server-resolved `districtName`.
+export const districtCoords: Record<string, { lat: number; lng: number; name: string }> = {
+  khordha: { lat: 20.2961, lng: 85.8245, name: "Khordha (Bhubaneswar)" },
+  cuttack: { lat: 20.4625, lng: 85.883, name: "Cuttack" },
+  puri: { lat: 19.8135, lng: 85.8312, name: "Puri" },
+  ganjam: { lat: 19.38, lng: 84.85, name: "Ganjam (Berhampur)" },
+  sundargarh: { lat: 22.12, lng: 84.03, name: "Sundargarh (Rourkela)" },
 };
+
+/** Look up district coordinates by the server-resolved district name. */
+export function districtCoordinatesByName(
+  districtName: string | null | undefined,
+): { lat: number; lng: number; name: string } | null {
+  if (!districtName) return null;
+  return districtCoords[districtName.trim().toLowerCase()] ?? null;
+}
 
 export function parseGpsCoordinates(desc: string | null): { lat: number; lng: number } | null {
   if (!desc) return null;
@@ -121,30 +127,20 @@ export default function RealLeafletMap({
     return {};
   });
 
-  // Persistent Geofences Registry (Per facility, synced to localStorage)
+  // Geofences are authoritative server data (project_geofences table); the
+  // localStorage copy is only an offline read cache of that server data.
   const [geofences, setGeofences] = useState<Record<string, GeofenceConfig>>(() => {
-    const defaultGeofences: Record<string, GeofenceConfig> = {
-      "50e7100e-8ac6-4d46-ae2a-93663249ce45": {
-        type: "circle",
-        radiusMeters: 300,
-        polygonPoints: [],
-        sealedAt: "2026-09-18T10:30:00Z",
-        sealedBy: "DSWO Puri",
-        auditTx: "0x8f2d...41a9",
-      },
-    };
-
     if (typeof window !== "undefined") {
       try {
         const stored = localStorage.getItem("netram_geofences_registry");
         if (stored) {
-          return { ...defaultGeofences, ...JSON.parse(stored) };
+          return JSON.parse(stored) as Record<string, GeofenceConfig>;
         }
       } catch {
-        // Fallback to default
+        // Fall through to empty; server fetch below is authoritative.
       }
     }
-    return defaultGeofences;
+    return {};
   });
 
   // Fetch authoritative geofences from Netram backend on mount
@@ -165,7 +161,6 @@ export default function RealLeafletMap({
                   radiusMeters: g.radiusMeters,
                   polygonPoints: Array.isArray(g.polygonVertices) ? g.polygonVertices : [],
                   sealedAt: g.sealedAt,
-                  sealedBy: "DSWO",
                   auditTx: g.auditTx ?? undefined,
                 };
               }
@@ -198,7 +193,7 @@ export default function RealLeafletMap({
       let lng = parsed?.lng;
 
       if (!lat || !lng) {
-        const dist = p.districtId ? DISTRICT_COORDINATES[p.districtId] : null;
+        const dist = districtCoordinatesByName(p.districtName);
         const baseLat = dist ? dist.lat : 20.2961;
         const baseLng = dist ? dist.lng : 85.8245;
 
@@ -234,14 +229,11 @@ export default function RealLeafletMap({
   const currentGeofence: GeofenceConfig = useMemo(() => {
     if (!selectedFacility) {
       return { type: "circle", radiusMeters: 250, polygonPoints: [] };
-    }
-    return (
+    }      return (
       geofences[selectedFacility.id] ?? {
         type: "circle",
         radiusMeters: 250,
         polygonPoints: [],
-        sealedAt: "Pending",
-        sealedBy: "DSWO",
       }
     );
   }, [selectedFacility, geofences]);
@@ -385,6 +377,9 @@ export default function RealLeafletMap({
       polygonVertices: geofenceMode === "polygon" ? polygonVertices : [],
     };
 
+    // Sealing is an authoritative, audited server action. If the API call
+    // fails, the seal did not happen — surface the error instead of faking
+    // success locally (the old code fabricated an "auditTx" hash here).
     let serverGeofence: GeofenceConfig | null = null;
     try {
       const res = await fetch(`/api/projects/${selectedFacility.id}/geofence`, {
@@ -392,41 +387,24 @@ export default function RealLeafletMap({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        const data = await res.json();
-        serverGeofence = {
-          type: data.type,
-          radiusMeters: data.radiusMeters,
-          polygonPoints: Array.isArray(data.polygonVertices) ? data.polygonVertices : [],
-          sealedAt: data.sealedAt,
-          sealedBy: "DSWO",
-          auditTx: data.auditTx ?? undefined,
-        };
+      if (!res.ok) {
+        notify("Unable to seal geofence. Please try again.");
+        return;
       }
+      const data = await res.json();
+      serverGeofence = {
+        type: data.type,
+        radiusMeters: data.radiusMeters,
+        polygonPoints: Array.isArray(data.polygonVertices) ? data.polygonVertices : [],
+        sealedAt: data.sealedAt,
+        auditTx: data.auditTx ?? undefined,
+      };
     } catch {
-      // Offline fallback
+      notify("Unable to seal geofence. Check your connection and try again.");
+      return;
     }
 
-    const txHash = `0x${Math.random().toString(16).substring(2, 8)}...${Math.random().toString(16).substring(2, 6)}`;
-    const newConfig: GeofenceConfig =
-      serverGeofence ??
-      (geofenceMode === "polygon"
-        ? {
-            type: "polygon",
-            radiusMeters: 0,
-            polygonPoints: polygonVertices,
-            sealedAt: new Date().toISOString(),
-            sealedBy: "DSWO",
-            auditTx: txHash,
-          }
-        : {
-            type: "circle",
-            radiusMeters: circleRadius,
-            polygonPoints: [],
-            sealedAt: new Date().toISOString(),
-            sealedBy: "DSWO",
-            auditTx: txHash,
-          });
+    const newConfig: GeofenceConfig = serverGeofence;
 
     setGeofences((prev) => {
       const updated = {

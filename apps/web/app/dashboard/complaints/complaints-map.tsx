@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Complaint, ComplaintStatus } from "@netram/types";
 import { formatDistrict } from "../../../lib/presentation";
-import { DISTRICT_COORDINATES } from "../projects/real-leaflet-map";
+import { districtCoordinatesByName } from "../projects/real-leaflet-map";
 import NetramOverviewMap, {
   type MapFacility,
 } from "../../components/netram-overview-map";
@@ -34,7 +34,7 @@ function clusterColor(complaints: Complaint[]): string {
 }
 
 function resolveLocation(complaint: Complaint): { lat: number; lng: number } {
-  const district = complaint.districtId ? DISTRICT_COORDINATES[complaint.districtId] : null;
+  const district = districtCoordinatesByName(complaint.districtName);
   const baseLat = district?.lat ?? 20.4;
   const baseLng = district?.lng ?? 84.8;
 

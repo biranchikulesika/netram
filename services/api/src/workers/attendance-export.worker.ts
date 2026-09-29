@@ -90,7 +90,7 @@ export async function startAttendanceExportWorker(
 
 export async function main(): Promise<void> {
   const env = loadWorkerEnv();
-  console.log(`[attendance-export-worker] starting (redis=${env.REDIS_URL})`);
+  console.log("[attendance-export-worker] starting");
   const instance = await startAttendanceExportWorker({
     redisUrl: env.REDIS_URL,
     databaseUrl: env.DATABASE_URL,
