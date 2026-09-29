@@ -27,6 +27,11 @@ export default async function HomePage() {
       }}
     >
       <style>{`
+        /* Page canvas paints the full viewport edge-to-edge (overscroll too) */
+        html,
+        body {
+          background: #f6f8fc;
+        }
         :root {
           --navy: #0c2a52;
           --saffron: #dd501e;
@@ -103,14 +108,6 @@ export default async function HomePage() {
           font-family:
             "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari", Mangal,
             var(--font-sans);
-        }
-        .hero-grid {
-          background-image:
-            linear-gradient(rgba(30, 58, 138, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(30, 58, 138, 0.06) 1px, transparent 1px);
-          background-size: 64px 64px;
-          -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
-          mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
         }
         .action-row {
           display: flex;
@@ -198,7 +195,6 @@ export default async function HomePage() {
 
       {/* Hero */}
       <section
-        className="hero-grid"
         style={{
           padding: "var(--sp-4) 1.5rem var(--sp-3)",
           textAlign: "center",
