@@ -12,6 +12,7 @@ import {
 import { Video, ResizeMode, Audio as ExpoAudio, type AVPlaybackStatus } from "expo-av";
 import { Icon } from "./Icon";
 import { colors } from "../../theme/colors";
+import { useSettings } from "../../theme/settings-context";
 
 export interface InteractiveVideoPlayerProps {
   src: string | number;
@@ -31,6 +32,7 @@ export function InteractiveVideoPlayer({
   style,
   autoPlay = false,
 }: InteractiveVideoPlayerProps) {
+  const { theme } = useSettings();
   const flattened = StyleSheet.flatten(style);
   const containerHeight = flattened?.height || 220;
 
@@ -51,9 +53,17 @@ export function InteractiveVideoPlayer({
 
   if (!src) {
     return (
-      <View style={[styles.container, { height: containerHeight }, style, styles.emptyBox]}>
-        <Icon name="videocam" size={32} color={colors.textMuted} />
-        <Text style={styles.emptyText}>No Video Source</Text>
+      <View
+        style={[
+          styles.container,
+          { height: containerHeight },
+          style,
+          styles.emptyBox,
+          { backgroundColor: theme.bgSubtle },
+        ]}
+      >
+        <Icon name="videocam" size={32} color={theme.textMuted} />
+        <Text style={[styles.emptyText, { color: theme.textMuted }]}>No Video Source</Text>
       </View>
     );
   }

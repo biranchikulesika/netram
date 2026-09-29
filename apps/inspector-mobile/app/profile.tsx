@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Image,
+  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -20,8 +20,19 @@ import { useSettings } from "../src/theme/settings-context";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { theme } = useSettings();
+  const [loggingOut, setLoggingOut] = React.useState(false);
+
+  // RootLayout swaps to the login screen once the token is cleared.
+  const handleLogout = React.useCallback(async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }, [logout]);
 
   const bgCanvas = theme.bgCanvas;
   const bgCard = theme.bgSurface;
@@ -32,8 +43,15 @@ export default function ProfileScreen() {
   const emailPrefix = user?.email?.split("@")[0];
   const displayName =
     user?.displayName ||
-    (emailPrefix ? emailPrefix.replace(/[._-]/g, " ") : "Rajkumar G.");
-  const officerId = user?.id ? `INSP-${user.id.slice(0, 8).toUpperCase()}` : "INSP-2024-8842";
+    (emailPrefix ? emailPrefix.replace(/[._-]/g, " ") : "Inspector");
+  const officerId = user?.id ? `INSP-${user.id.slice(0, 8).toUpperCase()}` : "—";
+  const initials =
+    displayName
+      .split(" ")
+      .map((p) => p[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "IN";
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
@@ -44,13 +62,8 @@ export default function ProfileScreen() {
       >
         {/* ── Officer Identity Hero Card ── */}
         <View style={[styles.heroCard, { backgroundColor: bgCard, borderColor }]}>
-          <View style={[styles.avatar, { borderColor: theme.borderSubtle }]}>
-            <Image
-              // eslint-disable-next-line @typescript-eslint/no-require-imports
-              source={require("../assets/inspector_demo.jpg")}
-              style={styles.avatarImage}
-              resizeMode="cover"
-            />
+          <View style={[styles.avatar, { borderColor: theme.borderSubtle, backgroundColor: theme.navyDark }]}>
+            <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
           <Text style={[styles.nameText, { color: theme.navyDark }]}>{displayName}</Text>
           <Text style={[styles.officerIdText, { color: theme.accentBlue }]}>{officerId}</Text>
@@ -66,7 +79,7 @@ export default function ProfileScreen() {
             <View style={styles.infoCol}>
               <Text style={[styles.infoLabel, { color: textMuted }]}>Official Email</Text>
               <Text style={[styles.infoValue, { color: textPrimary }]}>
-                {user?.email ?? "inspector@netram.dev"}
+                {user?.email ?? "—"}
               </Text>
             </View>
           </View>
@@ -79,7 +92,9 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.infoCol}>
               <Text style={[styles.infoLabel, { color: textMuted }]}>Designation</Text>
-              <Text style={[styles.infoValue, { color: textPrimary }]}>Field Inspection Officer</Text>
+              <Text style={[styles.infoValue, { color: textPrimary }]}>
+                {user ? `Field Inspection Officer (${user.type})` : "—"}
+              </Text>
             </View>
           </View>
 
@@ -90,22 +105,10 @@ export default function ProfileScreen() {
               <Icon name="business-outline" size={17} color={textMuted} />
             </View>
             <View style={styles.infoCol}>
-              <Text style={[styles.infoLabel, { color: textMuted }]}>Department</Text>
+              <Text style={[styles.infoLabel, { color: textMuted }]}>Account Type</Text>
               <Text style={[styles.infoValue, { color: textPrimary }]}>
-                Ministry of Social Justice & Empowerment
+                {user?.type ?? "—"}
               </Text>
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
-
-          <View style={styles.infoRow}>
-            <View style={styles.iconCol}>
-              <Icon name="location-outline" size={17} color={textMuted} />
-            </View>
-            <View style={styles.infoCol}>
-              <Text style={[styles.infoLabel, { color: textMuted }]}>Assigned District</Text>
-              <Text style={[styles.infoValue, { color: textPrimary }]}>Khordha, Odisha</Text>
             </View>
           </View>
         </NetramCard>
@@ -122,22 +125,34 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.actionCol}>
               <Text style={[styles.actionTitle, { color: textPrimary }]}>App Settings</Text>
-              <Text style={[styles.actionSubtitle, { color: textMuted }]}>Theme, auto-lock & diagnostics</Text>
             </View>
             <Icon name="chevron-forward" size={16} color={textMuted} />
           </Pressable>
-        </NetramCard>
 
-        {/* ── Sign Out Action Button ── */}
-        <View style={styles.logoutWrapper}>
-          <NetramButton
-            label={loggingOut ? "Signing Out…" : "Sign Out"}
-            variant="danger"
-            loading={loggingOut}
-            disabled={loggingOut}
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
+
+          <Pressable
+            style={({ pressed }) => [styles.actionRow, pressed && { opacity: 0.7 }]}
             onPress={handleLogout}
-          />
-        </View>
+            disabled={loggingOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sign Out"
+          >
+            <View style={styles.iconCol}>
+              <Icon name="log-out-outline" size={18} color={theme.error} />
+            </View>
+            <View style={styles.actionCol}>
+              <Text style={[styles.actionTitle, { color: theme.error }]}>
+                {loggingOut ? "Signing Out…" : "Sign Out"}
+              </Text>
+            </View>
+            {loggingOut ? (
+              <ActivityIndicator size="small" color={theme.error} />
+            ) : (
+              <Icon name="chevron-forward" size={16} color={textMuted} />
+            )}
+          </Pressable>
+        </NetramCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -181,6 +196,12 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: "100%",
     height: "100%",
+  },
+  avatarInitials: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
   nameText: {
     color: colors.navyDark,
@@ -240,16 +261,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.textPrimary,
   },
-  actionSubtitle: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-  },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.borderSubtle,
     marginVertical: 4,
-  },
-  logoutWrapper: {
-    marginTop: 6,
   },
 });

@@ -141,6 +141,7 @@ apps/inspector-mobile/
 
 ### Verification
 
+- `pnpm --filter @netram/inspector-mobile start` (dev server; `android` / `ios` / `web` variants)
 - `pnpm --filter @netram/inspector-mobile typecheck`
 - `pnpm --filter @netram/inspector-mobile lint`
 - `pnpm --filter @netram/inspector-mobile test`

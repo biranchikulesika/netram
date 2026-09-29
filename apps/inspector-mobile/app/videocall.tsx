@@ -11,7 +11,6 @@ import {
   Modal,
   Animated,
   PanResponder,
-  Image,
 } from "react-native";
 import {
   CameraView,
@@ -24,9 +23,7 @@ import { InteractiveVideoPlayer } from "../src/components/ui/InteractiveVideoPla
 import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { useAuth } from "../src/auth/auth-context";
-import { OfflineInspectionQueue } from "../src/offline/queue";
-import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
-import {
+import { OfflineInspectionQueue } from "../src/offline/queue";import {
   startCallingSound,
   playCallPickupSound,
   stopAllCallSounds,
@@ -38,26 +35,8 @@ export type AssignedContact = CallContact;
 export type CallHistoryRecord = CallRecord;
 export type ReviewCondition = CallCondition;
 
-// User's custom default video placed in assets/videos/demo_face_1.mp4
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const USER_DEMO_VIDEO_ASSET = require("../assets/videos/demo_face_1.mp4");
-
-const resolveVideoUri = (asset: number | string, fallback: string): string => {
-  try {
-    const resolved = Image.resolveAssetSource(asset as number);
-    if (resolved?.uri) return resolved.uri;
-  } catch {}
-  return fallback;
-};
-
-// Default demo video resolved from the user's asset in assets section
-export const DEFAULT_DEMO_VIDEO = resolveVideoUri(
-  USER_DEMO_VIDEO_ASSET,
-  "https://raw.githubusercontent.com/OpenTalker/video-retalking/main/examples/face/1.mp4"
-);
-
-const DEMO_MALE_VIDEO = DEFAULT_DEMO_VIDEO;
-const DEMO_FEMALE_VIDEO = DEFAULT_DEMO_VIDEO;
+// Remote participant video always comes from the directory record served by
+// the API (CallContact.videoUri). No bundled demo footage is used.
 
 const queue = new OfflineInspectionQueue();
 // All contact and history records are loaded directly from the database (§5, §8, §9).
@@ -125,8 +104,8 @@ export default function CallsScreen() {
   const [endedCallData, setEndedCallData] = useState<{
     contact: AssignedContact;
     duration: number;
-    videoUri: string;
-    inspectorVideoUri?: string;
+    videoUri: string | null;
+    inspectorVideoUri?: string | null;
   } | null>(null);
 
   const [reviewCondition, setReviewCondition] = useState<ReviewCondition>("satisfactory");
@@ -195,9 +174,8 @@ export default function CallsScreen() {
   // Load contacts and call history directly from the database (§5 offline SQLite, §8 API, §9 PostgreSQL)
   const loadDatabaseData = useCallback(async () => {
     try {
-      await seedDemoDataIfEmpty();
-
-      // 1. Authoritative local SQLite database read
+      // 1. Authoritative local SQLite database read (offline-first cache of
+      //    server directory/history — never fabricated client-side)
       const [localContacts, localHistory] = await Promise.all([
         queue.getCallContacts(),
         queue.getCallHistory(),
@@ -537,18 +515,15 @@ export default function CallsScreen() {
       const c = activeCall.contact;
       const dur = activeCall.duration;
       const callHash = `sha256-videocall-${c.id}-${Date.now().toString(16)}`;
-      const isRemoteFemale =
-        c.id === "cnt-02" || c.id === "cnt-05" || c.id === "cnt-06" || c.id === "cnt-08";
-      const defaultContactVideo =
-        c.videoUri || (isRemoteFemale ? DEMO_FEMALE_VIDEO : DEMO_MALE_VIDEO);
-      const defaultFallbackInspectorVideo = isRemoteFemale ? DEMO_MALE_VIDEO : DEMO_FEMALE_VIDEO;
 
-      const finalRemoteVideoUri = c.videoUri || defaultContactVideo;
+      // The remote feed is the directory record's video URI; without a live
+      // inspector recording there is no inspector video to store.
+      const finalRemoteVideoUri = c.videoUri ?? null;
       const finalInspectorVideoUri =
         recordedUri ||
         nativeRecordedUriRef.current ||
         webRecordedUriRef.current ||
-        defaultFallbackInspectorVideo;
+        null;
 
       // Auto-recording option for evidence storing (§30)
       if (autoRecordEvidence && dur > 0) {
@@ -703,13 +678,13 @@ export default function CallsScreen() {
         {/* Fullscreen Remote Video Canvas */}
         <View style={styles.remoteVideoCanvas}>
           {/* Background Ambient Feed */}
-          <View style={styles.remoteVideoBackdrop}>
+          <View style={[styles.remoteVideoBackdrop, { backgroundColor: bgSubtle }]}>
             {isConnected ? (
               <View style={styles.connectedRemoteFeed}>
                 {Platform.OS === "web" ? (
                   <video
                     ref={remoteVideoRef}
-                    src={c.videoUri || (c.id === "cnt-02" || c.id === "cnt-05" || c.id === "cnt-06" || c.id === "cnt-08" ? DEMO_FEMALE_VIDEO : DEMO_MALE_VIDEO)}
+                    src={c.videoUri || ""}
                     autoPlay
                     playsInline
                     loop
@@ -725,13 +700,7 @@ export default function CallsScreen() {
                   />
                 ) : (
                   <ExpoVideo
-                    source={{
-                      uri:
-                        c.videoUri ||
-                        (c.id === "cnt-02" || c.id === "cnt-05" || c.id === "cnt-06" || c.id === "cnt-08"
-                          ? DEMO_FEMALE_VIDEO
-                          : DEMO_MALE_VIDEO),
-                    }}
+                    source={{ uri: c.videoUri || "" }}
                     style={StyleSheet.absoluteFillObject}
                     resizeMode={ResizeMode.COVER}
                     shouldPlay={true}
@@ -760,8 +729,8 @@ export default function CallsScreen() {
 
                 {/* Prominent WhatsApp-Style Call State Indicator */}
                 <View style={styles.callingStateInfoBox}>
-                  <Text style={styles.callingTargetName}>{c.name}</Text>
-                  <Text style={styles.callingTargetTitle}>
+                  <Text style={[styles.callingTargetName, { color: textPrimary }]}>{c.name}</Text>
+                  <Text style={[styles.callingTargetTitle, { color: textMuted }]}>
                     {c.title} • {c.projectName}
                   </Text>
                   <View style={styles.callingBadgePill}>
@@ -1271,8 +1240,8 @@ export default function CallsScreen() {
                 {endedCallData.videoUri && (
                   <View style={styles.modalVideoPlayerCard}>
                     <InteractiveVideoPlayer
-                      src={endedCallData.videoUri}
-                      inspectorSrc={endedCallData.inspectorVideoUri}
+                      src={endedCallData.videoUri || ""}
+                      inspectorSrc={endedCallData.inspectorVideoUri || undefined}
                       contactName={endedCallData.contact.name}
                       title={`Session Recording: ${endedCallData.contact.name}`}
                       style={styles.modalInteractiveVideo}
@@ -1289,6 +1258,7 @@ export default function CallsScreen() {
                   <Pressable
                     style={[
                       styles.conditionOptionBtn,
+                      { backgroundColor: bgCard, borderColor: borderColor },
                       reviewCondition === "satisfactory" && styles.conditionOptionSatisfactoryActive,
                     ]}
                     onPress={() => setReviewCondition("satisfactory")}
@@ -1301,6 +1271,7 @@ export default function CallsScreen() {
                     <Text
                       style={[
                         styles.conditionOptionText,
+                        { color: textMuted },
                         reviewCondition === "satisfactory" && styles.conditionOptionTextActive,
                       ]}
                     >
@@ -1311,6 +1282,7 @@ export default function CallsScreen() {
                   <Pressable
                     style={[
                       styles.conditionOptionBtn,
+                      { backgroundColor: bgCard, borderColor: borderColor },
                       reviewCondition === "minor_issue" && styles.conditionOptionMinorActive,
                     ]}
                     onPress={() => setReviewCondition("minor_issue")}
@@ -1323,6 +1295,7 @@ export default function CallsScreen() {
                     <Text
                       style={[
                         styles.conditionOptionText,
+                        { color: textMuted },
                         reviewCondition === "minor_issue" && styles.conditionOptionTextActive,
                       ]}
                     >
@@ -1333,6 +1306,7 @@ export default function CallsScreen() {
                   <Pressable
                     style={[
                       styles.conditionOptionBtn,
+                      { backgroundColor: bgCard, borderColor: borderColor },
                       reviewCondition === "critical_problem" && styles.conditionOptionCriticalActive,
                     ]}
                     onPress={() => setReviewCondition("critical_problem")}
@@ -1345,6 +1319,7 @@ export default function CallsScreen() {
                     <Text
                       style={[
                         styles.conditionOptionText,
+                        { color: textMuted },
                         reviewCondition === "critical_problem" && styles.conditionOptionTextActive,
                       ]}
                     >

@@ -1783,10 +1783,11 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       {
         id: did("notif:officer-khordha"),
         userId: did("user:officer-khordha"),
-        type: "inspection.submitted",
-        title: "Inspection submitted",
-        body: "Vani Vihar surprise inspection was submitted.",
-        status: "sent",
+        type: "inspection.assigned",
+        title: "New inspection assigned",
+        body:
+          "A surprise inspection at Vani Vihar SC/ST Hostel has been submitted for authority review.",
+        status: "read",
         sentAt: new Date("2026-02-11T09:40:00Z"),
       },
     ])
@@ -2772,6 +2773,139 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       .onConflictDoNothing();
   }
 
+  // ---------- Project geofences (§30) ----------
+  // Authoritative site perimeters for every project that has inspections.
+  // The inspector mobile app renders check-in pins exclusively from these
+  // server-sealed geofences and fabricates no coordinates client-side.
+  // Centres are synthetic district-town approximations (safe, deterministic).
+  await db
+    .insert(s.projectGeofences)
+    .values([
+      {
+        projectId: did("project:vani"),
+        type: "circle",
+        radiusMeters: 300,
+        centerLat: 20.2961,
+        centerLng: 85.8173,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2026-01-12T09:00:00Z"),
+      },
+      {
+        projectId: did("project:rajdhani"),
+        type: "circle",
+        radiusMeters: 300,
+        centerLat: 20.3115,
+        centerLng: 85.8428,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2026-01-12T09:05:00Z"),
+      },
+      {
+        projectId: did("project:cuttack-girls"),
+        type: "circle",
+        radiusMeters: 300,
+        centerLat: 20.4711,
+        centerLng: 85.8829,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2025-11-05T09:00:00Z"),
+      },
+      {
+        projectId: did("project:purisch-1"),
+        type: "circle",
+        radiusMeters: 300,
+        centerLat: 19.8052,
+        centerLng: 85.8251,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2025-10-02T09:00:00Z"),
+      },
+      {
+        projectId: did("project:puri-irca"),
+        type: "circle",
+        radiusMeters: 300,
+        centerLat: 19.8138,
+        centerLng: 85.8389,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2025-10-02T09:05:00Z"),
+      },
+      {
+        projectId: did("project:ganjam-school"),
+        type: "circle",
+        radiusMeters: 300,
+        centerLat: 19.3189,
+        centerLng: 84.8046,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2025-12-02T09:00:00Z"),
+      },
+      {
+        projectId: did("project:jajapur-adarsh"),
+        type: "circle",
+        radiusMeters: 500,
+        centerLat: 20.8481,
+        centerLng: 86.1261,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2025-11-16T09:00:00Z"),
+      },
+      {
+        projectId: did("project:rourkela"),
+        type: "circle",
+        radiusMeters: 300,
+        centerLat: 22.2555,
+        centerLng: 84.854,
+        sealedById: did("user:dept-admin"),
+        sealedAt: new Date("2026-01-06T09:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
+  // ---------- Inspector in-app notifications ----------
+  // Unread ("pending") and read items for the demo inspector accounts, using
+  // only contract enum values (NOTIFICATION_TYPES / NOTIFICATION_STATUSES),
+  // so the mobile inbox has real server data immediately after db:setup.
+  await db
+    .insert(s.notifications)
+    .values([
+      {
+        id: did("notif:inspector-1-khordha-assigned"),
+        userId: did("user:inspector-1"),
+        type: "inspection.assigned",
+        title: "New inspection assigned",
+        body:
+          "Surprise inspection at Rajdhani Boys' Hostel (ST), Khordha, scheduled for 20 Apr 2026.",
+        status: "pending",
+        sentAt: new Date("2026-04-10T08:00:00Z"),
+      },
+      {
+        id: did("notif:inspector-1-ca-overdue"),
+        userId: did("user:inspector-1"),
+        type: "corrective_action.overdue",
+        title: "Corrective action verification due",
+        body:
+          "Remediation for the kitchen hygiene finding at Vani Vihar SC/ST Hostel has passed its deadline.",
+        status: "pending",
+        sentAt: new Date("2026-03-05T09:00:00Z"),
+      },
+      {
+        id: did("notif:inspector-1-ai-anomaly"),
+        userId: did("user:inspector-1"),
+        type: "ai.anomaly_detected",
+        title: "AI attendance variance flagged",
+        body:
+          "Camera attendance estimation shows a variance against the physical muster roll at Vani Vihar SC/ST Hostel. For review only.",
+        status: "read",
+        sentAt: new Date("2026-02-20T10:30:00Z"),
+      },
+      {
+        id: did("notif:inspector-2-cuttack-assigned"),
+        userId: did("user:inspector-2"),
+        type: "inspection.assigned",
+        title: "New inspection assigned",
+        body:
+          "Routine inspection at Cuttack Girls' Hostel, Cuttack, scheduled for 01 Mar 2026.",
+        status: "pending",
+        sentAt: new Date("2026-02-25T08:00:00Z"),
+      },
+    ])
+    .onConflictDoNothing();
+
   // ---------- Inspection teams for enriched projects ----------
   await db
     .insert(s.inspectionTeams)
@@ -3716,6 +3850,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     .onConflictDoNothing();
 
   // ---------- Notifications ----------
+  // Contract-aligned types/statuses only: NOTIFICATION_TYPES
+  // (inspection.assigned | corrective_action.overdue | ai.anomaly_detected)
+  // and NOTIFICATION_STATUSES (pending | read).
   await db
     .insert(s.notifications)
     .values([
@@ -3725,7 +3862,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         type: "inspection.assigned",
         title: "Follow-up inspection assigned",
         body: "Vani Vihar follow-up inspection was assigned to you.",
-        status: "sent",
+        status: "pending",
         sentAt: new Date("2026-03-01T09:00:00Z"),
       },
       {
@@ -3734,7 +3871,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         type: "inspection.assigned",
         title: "Surprise inspection assigned",
         body: "Ganjam Model School surprise inspection was assigned to you.",
-        status: "sent",
+        status: "read",
         sentAt: new Date("2026-02-16T14:00:00Z"),
       },
       {
@@ -3743,7 +3880,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         type: "inspection.assigned",
         title: "Surprise inspection assigned",
         body: "Rourkela Model Girls' Hostel surprise inspection was assigned to you.",
-        status: "sent",
+        status: "read",
         sentAt: new Date("2026-09-08T11:00:00Z"),
       },
       {
@@ -3752,16 +3889,17 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         type: "corrective_action.overdue",
         title: "Corrective action overdue",
         body: "A corrective action at Ganjam Model School Hostel is overdue.",
-        status: "sent",
+        status: "pending",
         sentAt: new Date("2026-03-11T00:05:00Z"),
       },
       {
         id: did("notif:org-ganjam-complaint"),
         userId: did("user:institution-ganjam"),
-        type: "complaint.received",
-        title: "Complaint received",
-        body: "A complaint was registered against your facility.",
-        status: "sent",
+        type: "inspection.assigned",
+        title: "New inspection assigned",
+        body:
+          "An inspection related to a complaint registered against your facility has been scheduled.",
+        status: "pending",
         sentAt: new Date("2026-09-08T10:00:00Z"),
       },
       {
@@ -3770,7 +3908,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         type: "ai.anomaly_detected",
         title: "AI anomaly detected",
         body: "A new AI signal requires review at Rourkela Model Girls' Hostel.",
-        status: "sent",
+        status: "pending",
         sentAt: new Date("2026-09-10T12:00:00Z"),
       },
     ])

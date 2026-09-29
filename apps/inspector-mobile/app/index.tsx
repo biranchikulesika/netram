@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -13,13 +14,23 @@ import {
   View,
 } from "react-native";
 import { Icon } from "../src/components/ui";
-import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
+import {
+  OfflineInspectionQueue,
+  type CachedInspectionRecord,
+  type PendingMediaUploadRecord,
+} from "../src/offline/queue";
 import { useAuth } from "../src/auth/auth-context";
 import { useSyncStatus } from "../src/offline/sync-context";
 import { typography } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
-import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
 import { formatInspectionType } from "../src/utils/formatters";
+
+/** Single consumer, so this stays local rather than in shared formatters. */
+function formatBytes(bytes: number): string {
+  if (!bytes) return "—";
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 export default function InspectorDashboardScreen() {
   const router = useRouter();
@@ -30,28 +41,18 @@ export default function InspectorDashboardScreen() {
 
   const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingMedia, setPendingMedia] = useState<PendingMediaUploadRecord[]>([]);
+  const [showUploads, setShowUploads] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
 
   const loadLocalState = useCallback(async () => {
     try {
-      await seedDemoDataIfEmpty();
       const cached = await queue.getCachedInspections();
       setInspections(cached);
-      const allOps = await queue.getAllOperations();
-      const checkedSet = new Set(
-        allOps
-          .filter(
-            (o) =>
-              o.operation_type === "check_in" ||
-              o.operation_type === "start_inspection",
-          )
-          .map((o) => o.inspection_id),
-      );
-      setCheckedInIds(checkedSet);
       const pending = await queue.getPendingOperations();
       setPendingCount(pending.length);
+      setPendingMedia(await queue.getPendingMediaUploads());
       void refreshPendingCount();
     } catch (err) {
       console.warn("Error reading SQLite local state:", err);
@@ -88,6 +89,7 @@ export default function InspectorDashboardScreen() {
     try {
       await queue.sync(client);
       await loadLocalState();
+      setShowUploads(false);
       Alert.alert("Sync Complete", "Inspections synchronised with central server.");
     } catch (err) {
       Alert.alert("Sync Error", err instanceof Error ? err.message : "Unable to reach server.");
@@ -117,6 +119,11 @@ export default function InspectorDashboardScreen() {
     [inspections],
   );
 
+  const totalBytes = useMemo(
+    () => pendingMedia.reduce((sum, f) => sum + (f.file_size_bytes || 0), 0),
+    [pendingMedia],
+  );
+
   const currentTask = useMemo(() => {
     return (
       inspections.find((i) => i.status === "in_progress") ||
@@ -134,9 +141,6 @@ export default function InspectorDashboardScreen() {
   const textMuted = theme.textMuted;
   const navyDark = theme.navyDark;
   const accentBlue = theme.accentBlue;
-
-  const isCurrentTaskUnlocked =
-    currentTask && (currentTask.status !== "assigned" || checkedInIds.has(currentTask.id));
 
   const currentTaskDate = currentTask
     ? currentTask.scheduled_start || currentTask.started_at || currentTask.cached_at
@@ -157,8 +161,26 @@ export default function InspectorDashboardScreen() {
           <View style={styles.brandBadge}>
             <Text style={styles.brandBadgeText}>DoSJE</Text>
           </View>
-          <Text style={styles.brandTitle}>NETRAM</Text>
+          <Text style={[styles.brandTitle, { color: theme.navyDark }]}>NETRAM</Text>
         </View>
+
+        {pendingCount > 0 ? (
+          <Pressable
+            style={[styles.uploadBtn, { borderColor }]}
+            onPress={() => setShowUploads(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Pending uploads, ${pendingCount} operation${pendingCount === 1 ? "" : "s"}`}
+          >
+            {syncing ? (
+              <ActivityIndicator size="small" color={accentBlue} />
+            ) : (
+              <Icon name="cloud-upload-outline" size={18} color={accentBlue} />
+            )}
+            <View style={[styles.uploadBadge, { backgroundColor: navyDark }]}>
+              <Text style={styles.uploadBadgeText}>{pendingCount}</Text>
+            </View>
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView
@@ -217,9 +239,7 @@ export default function InspectorDashboardScreen() {
             </View>
 
             <Text style={[styles.facilityName, { color: textPrimary }]} numberOfLines={2}>
-              {isCurrentTaskUnlocked
-                ? currentTask.project_name
-                : "Assigned Facility — Reach Site to Unlock"}
+              {currentTask.project_name}
             </Text>
 
             <View style={styles.metaRow}>
@@ -285,15 +305,68 @@ export default function InspectorDashboardScreen() {
           </View>
         )}
 
-        {/* ── Sync Status (shown only while offline operations are pending) ── */}
-        {pendingCount > 0 && (
-          <View style={[styles.syncRow, { backgroundColor: bgSurface, borderColor }]}>
-            <View style={styles.syncLeft}>
-              <Icon name="cloud-upload-outline" size={16} color={accentBlue} style={styles.metaIcon} />
-              <Text style={[styles.syncText, { color: textPrimary }]}>
-                {`${pendingCount} pending offline operation${pendingCount === 1 ? "" : "s"}`}
-              </Text>
+      </ScrollView>
+
+      {/* ── MODAL: files queued for upload ── */}
+      <Modal
+        visible={showUploads}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowUploads(false)}
+      >
+        <View style={styles.sheetOverlay}>
+          <View style={[styles.sheet, { backgroundColor: bgSurface }]}>
+            <View style={[styles.sheetHandle, { backgroundColor: borderColor }]} />
+
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetHeaderText}>
+                <Text style={[styles.sheetTitle, { color: textPrimary }]}>Pending uploads</Text>
+                <Text style={[styles.sheetSubtitle, { color: textMuted }]}>
+                  {pendingMedia.length > 0
+                    ? `${pendingMedia.length} file${pendingMedia.length === 1 ? "" : "s"} · ${formatBytes(totalBytes)}`
+                    : "No files waiting"}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setShowUploads(false)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Close pending uploads"
+              >
+                <Icon name="close" size={22} color={textMuted} />
+              </Pressable>
             </View>
+
+            {pendingMedia.length > 0 ? (
+              <ScrollView
+                style={styles.sheetList}
+                showsVerticalScrollIndicator={false}
+              >
+                {pendingMedia.map((file) => (
+                  <View key={file.id} style={styles.fileRow}>
+                    <View style={[styles.fileIconTile, { backgroundColor: theme.bgSubtle }]}>
+                      <Icon
+                        name={file.mime_type.startsWith("video") ? "videocam-outline" : "image-outline"}
+                        size={16}
+                        color={accentBlue}
+                      />
+                    </View>
+                    <View style={styles.fileInfo}>
+                      <Text style={[styles.fileName, { color: textPrimary }]} numberOfLines={1}>
+                        {file.file_name}
+                      </Text>
+                      <Text style={[styles.fileMeta, { color: textMuted }]}>
+                        {formatBytes(file.file_size_bytes)} ·{" "}
+                        {new Date(file.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : null}
 
             <Pressable
               style={[styles.syncBtn, { backgroundColor: navyDark }]}
@@ -304,12 +377,15 @@ export default function InspectorDashboardScreen() {
               {syncing ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.syncBtnText}>Sync Now</Text>
+                <>
+                  <Icon name="cloud-upload-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.syncBtnText}>Sync Now</Text>
+                </>
               )}
             </Pressable>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -347,7 +423,6 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#0c2a52",
     letterSpacing: 0.3,
   },
   // ── Scroll Content ──
@@ -481,39 +556,113 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  // ── Sync Row ──
-  syncRow: {
-    flexDirection: "row",
+  // ── Header upload indicator ──
+  uploadBtn: {
+    width: 38,
+    height: 38,
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    borderRadius: 19,
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
   },
-  syncLeft: {
-    flexDirection: "row",
+  uploadBadge: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 4,
+    borderRadius: 9,
     alignItems: "center",
-    gap: 8,
-    flex: 1,
+    justifyContent: "center",
   },
-  syncText: {
+  uploadBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+    lineHeight: 13,
+    includeFontPadding: false,
+  },
+  // ── Pending uploads sheet ──
+  sheetOverlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    gap: 14,
+    maxHeight: "70%",
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  sheetHeaderText: {
+    flex: 1,
+    gap: 2,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 21,
+  },
+  sheetSubtitle: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: "500",
+    includeFontPadding: false,
+  },
+  sheetList: {
+    flexGrow: 0,
+  },
+  fileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 7,
+  },
+  fileIconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fileInfo: {
+    flex: 1,
+    gap: 1,
+  },
+  fileName: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "600",
+  },
+  fileMeta: {
+    fontSize: 11,
+    lineHeight: 15,
     includeFontPadding: false,
   },
   syncBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    minWidth: 72,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    height: 46,
+    borderRadius: 8,
   },
   syncBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
   },
 });

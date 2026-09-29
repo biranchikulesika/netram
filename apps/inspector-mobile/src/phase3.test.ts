@@ -74,7 +74,7 @@ describe("Phase 3 — Offline Sync Specifications", () => {
   describe("3.1 Sync Strategy", () => {
     it("collects all pending operations strictly sorted by created_at ASC", async () => {
       // Enqueue multiple operations at explicit timestamps
-      const op1 = await queue.checkIn(inspectionIdA, 21.4925, 86.9328, 5.0);
+      const op1 = await queue.recordAttendance(inspectionIdA, 12, "Muster verified");
       const op2 = await queue.startInspection(inspectionIdA);
       const op3 = await queue.recordObservation(inspectionIdA, "Found foundation works on schedule");
 
@@ -84,7 +84,7 @@ describe("Phase 3 — Offline Sync Specifications", () => {
       expect(pending[0]?.operationId).toBe(op1.operationId);
       expect(pending[1]?.operationId).toBe(op2.operationId);
       expect(pending[2]?.operationId).toBe(op3.operationId);
-      expect(pending[0]?.type).toBe("check_in");
+      expect(pending[0]?.type).toBe("record_attendance");
       expect(pending[1]?.type).toBe("start_inspection");
       expect(pending[2]?.type).toBe("record_observation");
     });
@@ -103,18 +103,18 @@ describe("Phase 3 — Offline Sync Specifications", () => {
     });
 
     it("sends batch to server and updates local SQLite status for accepted operations", async () => {
-      const checkInOp = await queue.checkIn(inspectionIdA, 21.4925, 86.9328);
+      const attendanceOp = await queue.recordAttendance(inspectionIdA, 12, "Muster verified");
       const startOp = await queue.startInspection(inspectionIdA);
 
       const mockApiClient = {
         syncOfflineOperations: vi.fn().mockResolvedValue({
           results: [
             {
-              operationId: checkInOp.operationId,
+              operationId: attendanceOp.operationId,
               inspectionId: inspectionIdA,
-              type: "check_in",
+              type: "record_attendance",
               status: "accepted",
-              resultData: { verifiedGeofence: true },
+              resultData: { recorded: true },
               syncedAt: new Date().toISOString(),
             },
             {
@@ -337,7 +337,7 @@ describe("Phase 3 — Offline Sync Specifications", () => {
   describe("3.3 Sync Screen Operations & Queue Helpers", () => {
     it("groups pending operations by inspection with cached metadata", async () => {
       // Enqueue operations for inspection A and inspection B
-      await queue.checkIn(inspectionIdA, 21.4925, 86.9328);
+      await queue.recordAttendance(inspectionIdA, 12, "Muster verified");
       await queue.recordObservation(inspectionIdA, "Observation A1");
       await queue.recordObservation(inspectionIdB, "Observation B1");
 
@@ -383,7 +383,7 @@ describe("Phase 3 — Offline Sync Specifications", () => {
     });
 
     it("retryAllOperations resets all rejected and conflict operations in bulk", async () => {
-      const op1 = await queue.checkIn(inspectionIdA, 21.4925, 86.9328);
+      const op1 = await queue.recordAttendance(inspectionIdA, 12, "Muster verified");
       const op2 = await queue.startInspection(inspectionIdA);
 
       await db.runAsync(

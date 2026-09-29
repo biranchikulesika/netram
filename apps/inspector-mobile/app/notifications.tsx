@@ -64,66 +64,32 @@ function getNotificationDetails(type: NotificationType): {
   }
 }
 
-const DEMO_NOTIFICATIONS: Notification[] = [
-  {
-    id: "notif-001",
-    userId: "usr-insp-001",
-    type: "inspection.assigned",
-    title: "New Routine Inspection Assigned",
-    body: "You have been assigned to inspect Sishhu Bhawan Senior Citizen Home in Khordha District.",
-    status: "pending",
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    id: "notif-002",
-    userId: "usr-insp-001",
-    type: "corrective_action.overdue",
-    title: "Corrective Action Verification Due",
-    body: "Remediation verification for Kalyan Mandap IRCA Rehabilitation Centre is scheduled for today.",
-    status: "pending",
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    id: "notif-003",
-    userId: "usr-insp-001",
-    type: "ai.anomaly_detected",
-    title: "AI Attendance Variance Flagged",
-    body: "Camera attendance estimation indicates 35% variance against physical muster roll at Navajyoti Hostel.",
-    status: "read",
-    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-];
-
 export default function NotificationsScreen() {
   const { client } = useAuth();
   const { theme } = useSettings();
 
   const [items, setItems] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!client) {
-      setItems(DEMO_NOTIFICATIONS);
-      setUnreadCount(DEMO_NOTIFICATIONS.filter((n) => n.status === "pending").length);
+      // Not authenticated: nothing authoritative to show.
+      setItems([]);
+      setUnreadCount(0);
       setLoading(false);
       return;
     }
 
     try {
       const res = await client.listNotifications({ pageSize: 50 });
-      if (res.items && res.items.length > 0) {
-        setItems(res.items);
-        setUnreadCount(res.unread);
-      } else {
-        setItems(DEMO_NOTIFICATIONS);
-        setUnreadCount(DEMO_NOTIFICATIONS.filter((n) => n.status === "pending").length);
-      }
+      setItems(res.items ?? []);
+      setUnreadCount(res.unread ?? 0);
     } catch {
-      setItems(DEMO_NOTIFICATIONS);
-      setUnreadCount(DEMO_NOTIFICATIONS.filter((n) => n.status === "pending").length);
+      setLoadError("Could not reach the server. Pull down to retry.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -136,6 +102,7 @@ export default function NotificationsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setLoadError(null);
     await fetchNotifications();
   };
 
@@ -146,7 +113,7 @@ export default function NotificationsScreen() {
       );
       setUnreadCount((c) => Math.max(0, c - 1));
 
-      if (client && !item.id.startsWith("notif-")) {
+      if (client) {
         try {
           await client.markNotificationRead(item.id);
         } catch {
@@ -218,7 +185,13 @@ export default function NotificationsScreen() {
             />
           }
         >
-          {items.length === 0 ? (
+          {loadError ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              title="Notifications Unavailable"
+              subtitle={loadError}
+            />
+          ) : items.length === 0 ? (
             <EmptyState
               icon="notifications-off-outline"
               title="No Notifications"

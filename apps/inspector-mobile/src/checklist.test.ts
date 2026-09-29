@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { InMemorySqliteDatabase, setTestDatabase } from "./offline/db";
 import { OfflineInspectionQueue, type ChecklistItem } from "./offline/queue";
-import { STANDARD_CHECKLIST_TEMPLATE } from "./offline/demo-seed";
 
 describe("Phase 5: Field Inspection Checklist System", () => {
   let db: InMemorySqliteDatabase;
@@ -98,14 +97,10 @@ describe("Phase 5: Field Inspection Checklist System", () => {
     expect(items.find((i) => i.id === "chk-001")?.response).toBeNull();
   });
 
-  it("verifies STANDARD_CHECKLIST_TEMPLATE has required government categories", () => {
-    expect(STANDARD_CHECKLIST_TEMPLATE.length).toBeGreaterThanOrEqual(8);
-    const categories = new Set(STANDARD_CHECKLIST_TEMPLATE.map((t) => t.category));
-    expect(categories.has("Safety & Security")).toBe(true);
-    expect(categories.has("Infrastructure & Quality")).toBe(true);
-    expect(categories.has("Compliance & Records")).toBe(true);
-
-    const requiredItems = STANDARD_CHECKLIST_TEMPLATE.filter((t) => t.isRequired);
-    expect(requiredItems.length).toBeGreaterThan(0);
+  it("keeps required and optional items distinct", () => {
+    const required = sampleItems.filter((i) => i.is_required);
+    const optional = sampleItems.filter((i) => !i.is_required);
+    expect(required.length).toBeGreaterThan(0);
+    expect(optional.length).toBeGreaterThan(0);
   });
 });

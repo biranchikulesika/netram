@@ -14,36 +14,30 @@ import {
 } from "react-native";
 import { useAuth } from "../src/auth/auth-context";
 import { Icon } from "../src/components/ui";
-import { seedDemoDataIfEmpty } from "../src/offline/demo-seed";
 
 /**
- * Inspector-only quick-fill (this app is used by field inspectors).
- * Accounts are the seed users shared with the web app via the same API and
- * database; dev-login resolves them by email, so the password is a dev
- * placeholder and is not validated.
+ * Development quick-fill accounts. These are the dev/test seed users shared
+ * with the web app via the same API and local database — development-only
+ * credentials, not production secrets. The dev-login provider resolves the
+ * account by email; the password field is the shared dev placeholder kept for
+ * form completeness.
  */
-const SEED_ACCOUNTS = [
+const DEV_ACCOUNTS = [
   {
-    role: "Inspector Smruti",
     email: "inspector@netram.dev",
     password: "Inspector@netram2026",
-    description: "Primary field inspector (inspector-1)",
   },
   {
-    role: "Inspector Diptesh",
     email: "inspector.two@dev.netram.in",
     password: "Inspector@netram2026",
-    description: "Field inspector (inspector-2)",
   },
   {
-    role: "Inspector Bishnu",
     email: "inspector.three@dev.netram.in",
     password: "Inspector@netram2026",
-    description: "Field inspector (inspector-3)",
   },
 ] as const;
 
-const inspector = SEED_ACCOUNTS[0]!;
+const DEFAULT_DEV_ACCOUNT = DEV_ACCOUNTS[0];
 
 /* Web login palette (does not follow the app's dark mode — the web has none). */
 const palette = {
@@ -75,8 +69,8 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState<string>(inspector.email);
-  const [password, setPassword] = useState<string>(inspector.password);
+  const [email, setEmail] = useState<string>(DEFAULT_DEV_ACCOUNT.email);
+  const [password, setPassword] = useState<string>(DEFAULT_DEV_ACCOUNT.password);
   const [showPassword, setShowPassword] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -125,7 +119,6 @@ export default function LoginScreen() {
     setServerError(null);
     try {
       await login(email, password);
-      await seedDemoDataIfEmpty();
       router.replace("/");
     } catch (err: unknown) {
       setServerError(err instanceof Error ? err.message : String(err));
@@ -134,7 +127,7 @@ export default function LoginScreen() {
     }
   };
 
-  function handleQuickFill(account: (typeof SEED_ACCOUNTS)[number]) {
+  function handleQuickFill(account: (typeof DEV_ACCOUNTS)[number]) {
     setEmail(account.email);
     setPassword(account.password);
     clearError();
@@ -298,13 +291,13 @@ export default function LoginScreen() {
 
               {showDevAccounts && (
                 <View style={styles.devAccountsList}>
-                  {SEED_ACCOUNTS.map((acc) => {
-                    const active = acc.email === email.trim();
+                  {DEV_ACCOUNTS.map((account) => {
+                    const active = account.email === email.trim();
                     return (
                       <Pressable
-                        key={acc.email}
+                        key={account.email}
                         style={[styles.devAccountButton, active && styles.devAccountActive]}
-                        onPress={() => handleQuickFill(acc)}
+                        onPress={() => handleQuickFill(account)}
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
                       >
@@ -314,7 +307,7 @@ export default function LoginScreen() {
                             active && styles.devAccountRoleActive,
                           ]}
                         >
-                          {acc.role}
+                          {account.email}
                         </Text>
                       </Pressable>
                     );

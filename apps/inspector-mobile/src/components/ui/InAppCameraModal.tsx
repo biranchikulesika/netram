@@ -8,45 +8,60 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
+  ScrollView,
+  TextInput,
 } from "react-native";
 import {
   CameraView,
   useCameraPermissions,
   useMicrophonePermissions,
-  type CameraType,
 } from "expo-camera";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "./Icon";
+import { InteractiveVideoPlayer } from "./InteractiveVideoPlayer";
 import { colors } from "../../theme/colors";
 
-export interface CapturedEvidenceResult {
+// Native caps recording through `recordAsync`; web has no such limit, so the
+// same number is enforced from the clock tick there. Keep them in step.
+const RECORD_MAX_SECONDS = 60;
+
+export interface CapturedMediaItem {
+  id: string;
   uri: string;
   fileName: string;
+  evidenceType: "photo" | "video";
+  mimeType: string;
   fileBytes?: Uint8Array;
-  width?: number;
-  height?: number;
-  duration?: number;
+  note: string;
 }
 
 export interface InAppCameraModalProps {
   visible: boolean;
   initialMode?: "photo" | "video";
   onClose: () => void;
-  onCapturePhoto: (result: CapturedEvidenceResult) => void;
-  onCaptureVideo: (result: CapturedEvidenceResult) => void;
+  onSaveMedia: (items: CapturedMediaItem[]) => Promise<boolean>;
 }
 
 export function InAppCameraModal({
   visible,
   initialMode = "photo",
   onClose,
-  onCapturePhoto,
-  onCaptureVideo,
+  onSaveMedia,
 }: InAppCameraModalProps) {
-  const [facing, setFacing] = useState<CameraType>("back");
+  // Real device insets, so the header and shutter clear the notch and the
+  // home indicator on every device instead of assuming one iPhone layout.
+  const insets = useSafeAreaInsets();
+  const [mode, setMode] = useState<"photo" | "video">(initialMode);
   const [torch, setTorch] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordSeconds, setRecordSeconds] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  // Captures made during this camera session, kept on the roll until the user
+  // reviews and saves them. Nothing is queued until "Save" is tapped.
+  const [captures, setCaptures] = useState<CapturedMediaItem[]>([]);
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
 
   // Camera and Microphone permissions
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -63,12 +78,15 @@ export function InAppCameraModal({
   // Reset state when modal opens
   useEffect(() => {
     if (visible) {
+      setCaptures([]);
+      setReviewIndex(null);
       setIsRecording(false);
       setRecordSeconds(0);
       setIsProcessing(false);
       setTorch(false);
+      setMode(initialMode);
     }
-  }, [visible]);
+  }, [visible, initialMode]);
 
   // Request permissions when modal opens
   useEffect(() => {
@@ -76,11 +94,18 @@ export function InAppCameraModal({
       if (!cameraPermission?.granted) {
         requestCameraPermission().catch(() => {});
       }
-      if (initialMode === "video" && !micPermission?.granted) {
+      if (mode === "video" && !micPermission?.granted) {
         requestMicPermission().catch(() => {});
       }
     }
-  }, [visible, initialMode, cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
+  }, [
+    visible,
+    mode,
+    cameraPermission,
+    micPermission,
+    requestCameraPermission,
+    requestMicPermission,
+  ]);
 
   // Web camera stream fallback with full audio support
   useEffect(() => {
@@ -92,11 +117,11 @@ export function InAppCameraModal({
         if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
           const constraints: MediaStreamConstraints = {
             video: {
-              facingMode: facing === "back" ? "environment" : "user",
+              facingMode: "environment",
               width: { ideal: 1280 },
               height: { ideal: 720 },
             },
-            audio: initialMode === "video" ? { echoCancellation: true, noiseSuppression: true } : false,
+            audio: mode === "video" ? { echoCancellation: true, noiseSuppression: true } : false,
           };
           stream = await navigator.mediaDevices.getUserMedia(constraints);
           webMediaStreamRef.current = stream;
@@ -121,7 +146,7 @@ export function InAppCameraModal({
         webMediaStreamRef.current = null;
       }
     };
-  }, [visible, facing, initialMode]);
+  }, [visible, mode]);
 
   // Clean up recording timer on unmount
   useEffect(() => {
@@ -131,6 +156,17 @@ export function InAppCameraModal({
       }
     };
   }, []);
+
+  // Collect a fresh capture onto the roll. The user reviews and saves later.
+  const addCapture = useCallback(
+    (item: Omit<CapturedMediaItem, "id" | "note">) => {
+      setCaptures((prev) => [
+        ...prev,
+        { ...item, id: `capture-${Date.now()}-${prev.length}`, note: "" },
+      ]);
+    },
+    [],
+  );
 
   // Handle Photo Capture (Instantaneous)
   const handleTakePhoto = async () => {
@@ -150,14 +186,12 @@ export function InAppCameraModal({
             const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
             const fileName = `photo-${Date.now()}.jpg`;
 
-            // Close modal & deliver photo immediately (0ms delay)
             setIsProcessing(false);
-            onClose();
-            onCapturePhoto({
+            addCapture({
               uri: dataUrl,
               fileName,
-              width: canvas.width,
-              height: canvas.height,
+              evidenceType: "photo",
+              mimeType: "image/jpeg",
             });
             return;
           }
@@ -174,15 +208,12 @@ export function InAppCameraModal({
       });
 
       if (photo && photo.uri) {
-        const fileName = `photo-${Date.now()}.jpg`;
-        // Close modal & deliver photo immediately without blocking fetch
         setIsProcessing(false);
-        onClose();
-        onCapturePhoto({
+        addCapture({
           uri: photo.uri,
-          fileName,
-          width: photo.width,
-          height: photo.height,
+          fileName: `photo-${Date.now()}.jpg`,
+          evidenceType: "photo",
+          mimeType: "image/jpeg",
         });
       }
     } catch (err: unknown) {
@@ -204,10 +235,14 @@ export function InAppCameraModal({
       setRecordSeconds(0);
       setIsRecording(true);
 
+      // This tick drives the clock pill. It only enforces the cap on web, where
+      // MediaRecorder has no duration limit. Native is already capped by
+      // `recordAsync`, and stopping it a second time from here would leave the
+      // processing spinner up forever once the recording had resolved.
       recordIntervalRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - recordStartTimeRef.current) / 1000);
         setRecordSeconds(elapsed);
-        if (elapsed >= 60) {
+        if (elapsed >= RECORD_MAX_SECONDS && Platform.OS === "web") {
           handleStopRecording();
         }
       }, 250);
@@ -248,22 +283,15 @@ export function InAppCameraModal({
       }
 
       if (cameraRef.current) {
-        const videoPromise = cameraRef.current.recordAsync({
-          maxDuration: 60,
-        });
-
-        videoPromise
+        cameraRef.current
+          .recordAsync({ maxDuration: RECORD_MAX_SECONDS })
           .then((recorded) => {
             if (recorded && recorded.uri) {
-              const fileName = `video-${Date.now()}.mp4`;
-              // Deliver recorded video immediately without heavy fetch
-              setIsProcessing(false);
-              setIsRecording(false);
-              onClose();
-              onCaptureVideo({
+              addCapture({
                 uri: recorded.uri,
-                fileName,
-                duration: recordSeconds,
+                fileName: `video-${Date.now()}.mp4`,
+                evidenceType: "video",
+                mimeType: "video/mp4",
               });
             }
           })
@@ -284,9 +312,10 @@ export function InAppCameraModal({
     }
   };
 
-  // Stop Video Recording
+  // Stop Video Recording. Deliberately free of render state so the 60s tick can
+  // call this from the closure it captured when recording started: a guard on
+  // `isRecording` would read `false` there and silently do nothing.
   const handleStopRecording = useCallback(async () => {
-    if (!isRecording) return;
     setIsProcessing(true);
 
     if (recordIntervalRef.current) {
@@ -302,20 +331,23 @@ export function InAppCameraModal({
             const blob = new Blob(webRecordedChunksRef.current, { type: recordedMime });
             const uri = URL.createObjectURL(blob);
             const ext = recordedMime.includes("mp4") ? "mp4" : "webm";
-            const fileName = `video-${Date.now()}.${ext}`;
 
             setIsRecording(false);
             setIsProcessing(false);
-            onClose();
-            onCaptureVideo({
+            addCapture({
               uri,
-              fileName,
-              duration: recordSeconds,
+              fileName: `video-${Date.now()}.${ext}`,
+              evidenceType: "video",
+              mimeType: recordedMime,
             });
           };
           webMediaRecorderRef.current.stop();
           return;
         }
+        // Nothing left to stop (already stopped, or never started). Release the
+        // spinner instead of falling through to a camera that does not exist.
+        setIsProcessing(false);
+        return;
       }
 
       if (cameraRef.current) {
@@ -326,92 +358,144 @@ export function InAppCameraModal({
       setIsRecording(false);
       Alert.alert("Stop Error", err instanceof Error ? err.message : String(err));
     }
-  }, [isRecording, recordSeconds, onCaptureVideo, onClose]);
-
-  const toggleFacing = () => {
-    setFacing((prev) => (prev === "back" ? "front" : "back"));
-  };
+  }, [addCapture]);
 
   const toggleTorch = () => {
     setTorch((prev) => !prev);
   };
 
-  const hasPermissions = cameraPermission?.granted && (initialMode === "photo" || micPermission?.granted);
+  // Closing the camera with unsaved captures should not silently drop them.
+  const confirmClose = () => {
+    if (isRecording) {
+      handleStopRecording();
+      return;
+    }
+    if (captures.length === 0) {
+      onClose();
+      return;
+    }
+    Alert.alert(
+      "Discard captures?",
+      `${captures.length} captured item${captures.length > 1 ? "s" : ""} will be lost.`,
+      [
+        { text: "Keep", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            setCaptures([]);
+            setReviewIndex(null);
+            onClose();
+          },
+        },
+      ],
+    );
+  };
+
+  const handleNoteChange = (text: string) => {
+    if (reviewIndex === null) return;
+    setCaptures((prev) =>
+      prev.map((c, i) => (i === reviewIndex ? { ...c, note: text } : c)),
+    );
+  };
+
+  const handleDiscardCurrent = () => {
+    if (reviewIndex === null) return;
+    const removing = captures[reviewIndex];
+    if (!removing) return;
+    Alert.alert(
+      "Discard this capture?",
+      "The photo or video will be deleted. This cannot be undone.",
+      [
+        { text: "Keep", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            const next = captures.filter((_, i) => i !== reviewIndex);
+            setCaptures(next);
+            setReviewIndex(next.length === 0 ? null : Math.min(reviewIndex, next.length - 1));
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSaveAll = async () => {
+    if (captures.length === 0) {
+      onClose();
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const saved = await onSaveMedia(captures);
+      if (saved) {
+        setCaptures([]);
+        setReviewIndex(null);
+        onClose();
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const hasCameraPermission = Boolean(cameraPermission?.granted);
+  const latestCapture = captures[captures.length - 1];
+  const currentCapture = reviewIndex !== null ? captures[reviewIndex] : undefined;
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={false}
-      onRequestClose={() => {
-        if (isRecording) {
-          handleStopRecording();
-        } else {
-          onClose();
-        }
-      }}
+      // Android only: let the viewfinder extend under the status bar, then pad
+      // the chrome back in with the real insets. Ignored on iOS.
+      statusBarTranslucent
+      onRequestClose={confirmClose}
     >
       <View style={styles.container}>
-        {/* Top Header — Clean White with Premium Action Buttons */}
-        <View style={styles.topHeader}>
+        {/* Top Controls — overlaid on the full-bleed preview */}
+        <View
+          style={[
+            styles.topHeader,
+            {
+              paddingTop: insets.top + 8,
+              height: insets.top + 60,
+            },
+          ]}
+        >
           {/* Close Button */}
           <Pressable
-            onPress={() => {
-              if (isRecording) {
-                handleStopRecording();
-              } else {
-                onClose();
-              }
-            }}
+            onPress={confirmClose}
             style={styles.headerIconButton}
             hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Close camera"
           >
-            <Icon name="close" size={22} color={colors.navyDark} />
+            <Icon name="close" size={22} color="#FFFFFF" />
           </Pressable>
 
-          {/* Action Row: Torch & Camera Flip with Premium Buttons */}
+          {/* Action Row: Torch */}
           <View style={styles.headerActionRow}>
             <Pressable
               onPress={toggleTorch}
-              style={[
-                styles.headerIconButton,
-                torch ? styles.headerIconButtonTorchActive : null,
-              ]}
+              style={styles.headerIconButton}
               hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Toggle flash"
             >
               <Icon
                 name={torch ? "flash" : "flash-outline"}
                 size={21}
-                color={torch ? "#D97706" : colors.navyDark}
+                color={torch ? "#FACC15" : "#FFFFFF"}
               />
-            </Pressable>
-
-            <Pressable
-              onPress={toggleFacing}
-              style={styles.headerIconButton}
-              hitSlop={10}
-            >
-              <Icon name="camera-reverse-outline" size={22} color={colors.navyDark} />
             </Pressable>
           </View>
         </View>
 
-        {/* Viewfinder Area */}
+        {/* Viewfinder Area — full screen, controls float above it */}
         <View style={styles.viewfinderContainer}>
-          {!hasPermissions ? (
-            <View style={styles.permissionCard}>
-              <Icon name="camera" size={44} color={colors.navyDark} />
-              <Pressable
-                onPress={() => {
-                  requestCameraPermission();
-                  requestMicPermission();
-                }}
-                style={styles.permissionBtn}
-              >
-                <Icon name="checkmark" size={18} color="#FFFFFF" />
-              </Pressable>
-            </View>
-          ) : Platform.OS === "web" ? (
+          {Platform.OS === "web" ? (
             <div
               style={{
                 width: "100%",
@@ -433,20 +517,19 @@ export function InAppCameraModal({
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
-                  transform: facing === "front" ? "scaleX(-1)" : "none",
                 }}
               />
             </div>
-          ) : (
+          ) : hasCameraPermission ? (
             <CameraView
               ref={cameraRef}
               style={StyleSheet.absoluteFillObject}
-              facing={facing}
-              mode={initialMode === "video" ? "video" : "picture"}
+              facing="back"
+              mode={mode === "video" ? "video" : "picture"}
               enableTorch={torch}
               mute={false}
             />
-          )}
+          ) : null}
 
           {/* Alignment Grid Overlay */}
           <View style={styles.gridOverlay} pointerEvents="none">
@@ -469,7 +552,7 @@ export function InAppCameraModal({
 
           {/* Recording Timer Pill (Video Mode only when actively recording) */}
           {isRecording && (
-            <View style={styles.recordingPill}>
+            <View style={[styles.recordingPill, { top: insets.top + 72 }]}>
               <View style={styles.recordingDot} />
               <Text style={styles.recordingText}>
                 00:{recordSeconds < 10 ? `0${recordSeconds}` : recordSeconds} / 01:00
@@ -485,46 +568,214 @@ export function InAppCameraModal({
           )}
         </View>
 
-        {/* Bottom Bar — Clean White with Shutter Only */}
-        <View style={styles.bottomBar}>
-          <View style={styles.shutterRow}>
-            {initialMode === "photo" ? (
-              <Pressable
-                onPress={handleTakePhoto}
-                disabled={isProcessing}
-                style={({ pressed }) => [
-                  styles.photoShutterOuter,
-                  pressed ? { transform: [{ scale: 0.93 }] } : null,
-                ]}
-              >
-                <View style={styles.photoShutterInner} />
-              </Pressable>
-            ) : (
-              <View style={styles.videoShutterContainer}>
-                {!isRecording ? (
-                  <Pressable
-                    onPress={handleStartRecording}
-                    disabled={isProcessing}
-                    style={({ pressed }) => [
-                      styles.videoShutterOuter,
-                      pressed ? { transform: [{ scale: 0.93 }] } : null,
+        {/* Bottom Controls — overlaid on the preview */}
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              paddingBottom: insets.bottom + 22,
+            },
+          ]}
+        >
+          <View style={styles.modeSelectorRow}>
+            {(["photo", "video"] as const).map((m) => {
+              const active = mode === m;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => {
+                    if (isRecording || active) return;
+                    setMode(m);
+                    if (m === "video" && !micPermission?.granted) {
+                      requestMicPermission().catch(() => {});
+                    }
+                  }}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text
+                    style={[
+                      styles.modeSelectorText,
+                      { color: active ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)" },
                     ]}
                   >
-                    <View style={styles.videoShutterInner} />
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    onPress={handleStopRecording}
-                    disabled={isProcessing}
-                    style={styles.stopButtonOuter}
-                  >
-                    <View style={styles.stopButtonSquare} />
-                  </Pressable>
-                )}
-              </View>
-            )}
+                    {m.toUpperCase()}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.shutterRow}>
+            <View style={styles.shutterSide} />
+
+            <View style={styles.shutterCenter}>
+              {mode === "photo" ? (
+                <Pressable
+                  onPress={handleTakePhoto}
+                  disabled={isProcessing}
+                  style={({ pressed }) => [
+                    styles.photoShutterOuter,
+                    pressed ? { transform: [{ scale: 0.93 }] } : null,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Take photo"
+                >
+                  <View style={styles.photoShutterInner} />
+                </Pressable>
+              ) : (
+                <View style={styles.videoShutterContainer}>
+                  {!isRecording ? (
+                    <Pressable
+                      onPress={handleStartRecording}
+                      disabled={isProcessing}
+                      style={({ pressed }) => [
+                        styles.videoShutterOuter,
+                        pressed ? { transform: [{ scale: 0.93 }] } : null,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Start recording"
+                    >
+                      <View style={styles.videoShutterInner} />
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      onPress={handleStopRecording}
+                      disabled={isProcessing}
+                      style={styles.stopButtonOuter}
+                      accessibilityRole="button"
+                      accessibilityLabel="Stop recording"
+                    >
+                      <View style={styles.stopButtonSquare} />
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Gallery button — right of the shutter, like a standard camera app */}
+            <View style={styles.shutterSide}>
+              {latestCapture ? (
+                <Pressable
+                  onPress={() => setReviewIndex(captures.length - 1)}
+                  style={styles.galleryButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Review captured media"
+                >
+                  {latestCapture.evidenceType === "photo" ? (
+                    <Image source={{ uri: latestCapture.uri }} style={styles.galleryThumb} />
+                  ) : (
+                    <View style={[styles.galleryThumb, styles.galleryThumbVideo]}>
+                      <Icon name="play" size={20} color="#FFFFFF" />
+                    </View>
+                  )}
+                  <View style={styles.galleryBadge}>
+                    <Text style={styles.galleryBadgeText}>{captures.length}</Text>
+                  </View>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
         </View>
+
+        {/* ── Review captured media: caption, discard, save ── */}
+        {reviewIndex !== null && currentCapture ? (
+          <View style={styles.reviewOverlay}>
+            <View style={[styles.reviewHeader, { paddingTop: insets.top + 8 }]}>
+              <Pressable
+                onPress={() => setReviewIndex(null)}
+                style={styles.headerIconButton}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Back to camera"
+              >
+                <Icon name="arrow-back" size={24} color="#FFFFFF" />
+              </Pressable>
+
+              <Text style={styles.reviewTitle}>
+                {reviewIndex + 1} / {captures.length}
+              </Text>
+
+              <Pressable
+                onPress={handleDiscardCurrent}
+                style={styles.headerIconButton}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Discard this capture"
+              >
+                <Icon name="trash" size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+
+            <View style={styles.reviewMediaWrap}>
+              {currentCapture.evidenceType === "photo" ? (
+                <Image
+                  source={{ uri: currentCapture.uri }}
+                  style={styles.reviewMedia}
+                  resizeMode="contain"
+                />
+              ) : (
+                <InteractiveVideoPlayer src={currentCapture.uri} style={styles.reviewMedia} />
+              )}
+            </View>
+
+            {captures.length > 1 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.reviewStrip}
+                contentContainerStyle={styles.reviewStripContent}
+              >
+                {captures.map((c, i) => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => setReviewIndex(i)}
+                    style={[
+                      styles.reviewStripItem,
+                      i === reviewIndex ? styles.reviewStripItemActive : null,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Show capture ${i + 1}`}
+                  >
+                    {c.evidenceType === "photo" ? (
+                      <Image source={{ uri: c.uri }} style={styles.reviewStripThumb} />
+                    ) : (
+                      <View style={[styles.reviewStripThumb, styles.galleryThumbVideo]}>
+                        <Icon name="play" size={16} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+
+            <View style={[styles.reviewBottom, { paddingBottom: insets.bottom + 16 }]}>
+              <TextInput
+                style={styles.reviewCaption}
+                value={currentCapture.note}
+                onChangeText={handleNoteChange}
+                placeholder="Add a caption..."
+                placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                multiline
+                accessibilityLabel="Caption"
+              />
+              <Pressable
+                onPress={handleSaveAll}
+                disabled={isProcessing}
+                style={styles.reviewSaveButton}
+                accessibilityRole="button"
+                accessibilityLabel="Save captures"
+              >
+                {isProcessing ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Icon name="checkmark" size={24} color="#FFFFFF" />
+                )}
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -533,16 +784,14 @@ export function InAppCameraModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    display: "flex",
-    flexDirection: "column",
+    backgroundColor: "#000000",
   },
   topHeader: {
-    height: Platform.OS === "ios" ? 88 : 64,
-    paddingTop: Platform.OS === "ios" ? 44 : 12,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
+    // Height and paddingTop come from device safe-area insets at render time.
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -552,25 +801,15 @@ const styles = StyleSheet.create({
   headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
     alignItems: "center",
     justifyContent: "center",
-  },
-  headerIconButtonTorchActive: {
-    backgroundColor: "#FEF3C7",
-    borderColor: "#F59E0B",
   },
   headerActionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
   },
   viewfinderContainer: {
-    flex: 1,
-    position: "relative",
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "#000000",
     overflow: "hidden",
   },
@@ -620,83 +859,208 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 50,
   },
-  permissionCard: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: "#FFFFFF",
-    gap: 16,
-  },
-  permissionBtn: {
-    backgroundColor: colors.navyDark,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 8,
-  },
   bottomBar: {
-    height: 120,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    paddingTop: 14,
+    // paddingBottom comes from device safe-area insets at render time.
     alignItems: "center",
     justifyContent: "center",
     zIndex: 30,
   },
-  shutterRow: {
+  modeSelectorRow: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 28,
+    marginBottom: 14,
+  },
+  modeSelectorText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  shutterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 28,
+  },
+  shutterSide: {
+    width: 64,
+    height: 64,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shutterCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.85)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  galleryThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+  },
+  galleryThumbVideo: {
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    backgroundColor: "#111827",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
   },
   photoShutterOuter: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 4,
-    borderColor: colors.navyDark,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
   },
   photoShutterInner: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: colors.navyDark,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FFFFFF",
   },
   videoShutterContainer: {
     alignItems: "center",
     justifyContent: "center",
   },
   videoShutterOuter: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 4,
-    borderColor: colors.error,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
   },
   videoShutterInner: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: colors.error,
   },
   stopButtonOuter: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 4,
-    borderColor: "#EF4444",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "transparent",
   },
   stopButtonSquare: {
-    width: 26,
-    height: 26,
+    width: 22,
+    height: 22,
     borderRadius: 6,
     backgroundColor: "#EF4444",
+  },
+  reviewOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#000000",
+    zIndex: 100,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
+  reviewTitle: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  reviewMediaWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewMedia: {
+    width: "100%",
+    height: "100%",
+  },
+  reviewStrip: {
+    maxHeight: 72,
+    flexGrow: 0,
+  },
+  reviewStripContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+    alignItems: "center",
+  },
+  reviewStripItem: {
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: "transparent",
+    overflow: "hidden",
+  },
+  reviewStripItemActive: {
+    borderColor: "#FFFFFF",
+  },
+  reviewStripThumb: {
+    width: 48,
+    height: 48,
+  },
+  reviewBottom: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  reviewCaption: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 120,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    color: "#FFFFFF",
+    fontSize: 15,
+  },
+  reviewSaveButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#22C55E",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

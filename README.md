@@ -55,6 +55,7 @@ pnpm infra:up                 # Postgres + Redis + MinIO via Docker
 pnpm db:setup                 # migrate from zero + deterministic seed
 pnpm --filter @netram/api dev # API on :3001
 pnpm --filter @netram/web dev # web on :3000
+pnpm --filter @netram/inspector-mobile start # Expo dev server (a = Android, i = iOS, w = web)
 ```
 
 Full setup, database lifecycle, verification scripts and the CCTV media rig:

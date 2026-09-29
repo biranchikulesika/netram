@@ -101,18 +101,6 @@ describe("UI Components Render Tests (P14-04)", () => {
       expect(html).toContain("closed");
     });
 
-    it("masks facility name when isUnlocked is false", () => {
-      const html = renderToStaticMarkup(
-        <InspectionCard
-          inspection={baseInspection}
-          isUnlocked={false}
-          onPress={vi.fn()}
-        />,
-      );
-      expect(html).not.toContain("Community Sanitation Center");
-      expect(html).toContain("Assigned Facility (Locked)");
-      expect(html).toContain("CHECK IN ON MAP TO UNLOCK");
-    });
   });
 
   describe("InteractiveVideoPlayer", () => {
@@ -131,12 +119,6 @@ describe("UI Components Render Tests (P14-04)", () => {
         <InteractiveVideoPlayer src="" />,
       );
       expect(html).toContain("No Video Source");
-    });
-  });
-
-  describe("InAppCameraModal", () => {
-    it("is defined as a secure in-app evidence capture component", () => {
-      expect(true).toBe(true);
     });
   });
 

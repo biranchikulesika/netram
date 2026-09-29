@@ -1,3 +1,4 @@
+import React from "react";
 import { vi } from "vitest";
 
 const mockStore = new Map<string, string>();
@@ -13,13 +14,33 @@ vi.mock("expo-secure-store", () => ({
 }));
 
 vi.mock("expo-camera", () => ({
-  CameraView: () => null,
+  // Exposes the imperative handle the modal calls, so capture paths are
+  // testable instead of dying on "Camera not ready".
+  CameraView: React.forwardRef(function MockCameraView(
+    _props: Record<string, unknown>,
+    ref: React.Ref<unknown>,
+  ) {
+    React.useImperativeHandle(ref, () => ({
+      takePictureAsync: async () => ({ uri: "file:///mock/photo.jpg" }),
+      recordAsync: () => new Promise(() => {}),
+      stopRecording: () => {},
+    }));
+    return null;
+  }),
   useCameraPermissions: () => [{ granted: true }, vi.fn()],
   useMicrophonePermissions: () => [{ granted: true }, vi.fn()],
   requestCameraPermissionsAsync: vi.fn(async () => ({ granted: true })),
   requestMicrophonePermissionsAsync: vi.fn(async () => ({ granted: true })),
   getCameraPermissionsAsync: vi.fn(async () => ({ granted: true })),
   getMicrophonePermissionsAsync: vi.fn(async () => ({ granted: true })),
+}));
+
+// No SafeAreaProvider in tests; the modal only reads the insets for padding.
+vi.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
+  SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+  SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock("react-native-webview", () => ({

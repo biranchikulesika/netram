@@ -44,14 +44,12 @@ describe("Phase 2 — Inspection Workflow (Core) Specifications", () => {
   // 2.1: Offline Queue Contracts
   // ---------------------------------------------------------------------------
   describe("2.1 Offline Queue Contracts", () => {
-    it("supports all 8 core offline operations with client UUID and pending sync status", async () => {
-      // 1. check_in
-      await queue.checkIn(inspectionId, 20.2961, 85.8245, 8.5);
-      // 2. start_inspection
+    it("supports all 7 core offline operations with client UUID and pending sync status", async () => {
+      // 1. start_inspection
       await queue.startInspection(inspectionId);
-      // 3. add_observation / record_observation
+      // 2. add_observation / record_observation
       await queue.recordObservation(inspectionId, "Site perimeter barricading is properly installed.");
-      // 4. capture_evidence
+      // 3. capture_evidence
       await captureEvidenceOffline(queue, {
         inspectionId,
         evidenceType: "photo",
@@ -60,24 +58,23 @@ describe("Phase 2 — Inspection Workflow (Core) Specifications", () => {
         latitude: 20.2961,
         longitude: 85.8245,
       });
-      // 5. add_finding / draft_finding
+      // 4. add_finding / draft_finding
       await queue.saveFindingDraft(inspectionId, {
         severity: "high",
         description: "Exposed electrical conduits near drainage ditch without protective sheath.",
         remediation: "Install conduit casing and secure earthing.",
       });
-      // 6. update_checklist_item
+      // 5. update_checklist_item
       await queue.updateChecklistItem(inspectionId, "chk-01", "pass", "Compliant");
-      // 7. update_worker_count / record_attendance
+      // 6. update_worker_count / record_attendance
       await queue.recordAttendance(inspectionId, 28, "Muster verified with contractor foreman");
-      // 8. submit_inspection
+      // 7. submit_inspection
       await queue.submitInspection(inspectionId);
 
       const ops = await queue.getAllOperations();
-      expect(ops.length).toBe(8);
+      expect(ops.length).toBe(7);
 
       const opTypes = ops.map((o) => o.operation_type);
-      expect(opTypes).toContain("check_in");
       expect(opTypes).toContain("start_inspection");
       expect(opTypes).toContain("record_observation");
       expect(opTypes).toContain("capture_evidence");
@@ -138,28 +135,6 @@ describe("Phase 2 — Inspection Workflow (Core) Specifications", () => {
       expect(isFresh(staleLocation)).toBe(false);
     });
 
-    it("guarantees check-in operation idempotency", async () => {
-      await queue.checkIn(inspectionId, 20.2961, 85.8245, 5.0);
-
-      // Simulating idempotency check before queuing duplicate check_in
-      const allOps = await queue.getAllOperations();
-      const alreadyCheckedIn = allOps.some(
-        (o) =>
-          o.inspection_id === inspectionId &&
-          (o.operation_type === "check_in" || o.operation_type === "start_inspection"),
-      );
-      expect(alreadyCheckedIn).toBe(true);
-
-      // Subsequent attempt is a no-op
-      if (!alreadyCheckedIn) {
-        await queue.checkIn(inspectionId, 20.2961, 85.8245, 5.0);
-      }
-
-      const checkInOps = (await queue.getAllOperations()).filter(
-        (o) => o.operation_type === "check_in",
-      );
-      expect(checkInOps.length).toBe(1);
-    });
   });
 
   // ---------------------------------------------------------------------------

@@ -10,7 +10,6 @@ export interface InspectionCardProps {
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
-  isUnlocked?: boolean;
 }
 
 export function InspectionCard({
@@ -18,7 +17,6 @@ export function InspectionCard({
   onPress,
   style,
   testID,
-  isUnlocked = true,
 }: InspectionCardProps) {
   const { theme } = useSettings();
 
@@ -36,7 +34,7 @@ export function InspectionCard({
     <NetramCard testID={testID} onPress={onPress} style={[styles.card, style]}>
       <View style={styles.topRow}>
         <NetramBadge
-          label={isUnlocked ? (inspection.project_code || "PRJ") : "ASSIGNED"}
+          label={inspection.project_code || "PRJ"}
           variant="id"
           size="sm"
         />
@@ -53,12 +51,10 @@ export function InspectionCard({
           style={[styles.projectName, { color: theme.textPrimary }]}
           numberOfLines={2}
         >
-          {isUnlocked
-            ? (inspection.project_name || "Untitled Project")
-            : "Assigned Facility (Locked)"}
+          {inspection.project_name || "Untitled Project"}
         </Text>
         <Text style={[styles.typeText, { color: theme.accentBlue }]}>
-          {isUnlocked ? `${displayType} INSPECTION` : "🔒 CHECK IN ON MAP TO UNLOCK"}
+          {`${displayType} INSPECTION`}
         </Text>
       </View>
 

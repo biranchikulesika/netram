@@ -191,6 +191,7 @@ const RootContent = () => {
         options={{
           href: null,
           headerShown: false,
+          tabBarStyle: { display: "none" },
         }}
       />
 

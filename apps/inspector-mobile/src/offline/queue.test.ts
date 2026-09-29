@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemorySqliteDatabase, setTestDatabase } from "./db";
 import { OfflineInspectionQueue } from "./queue";
 import { captureEvidenceOffline, computeSha256 } from "./evidence";
-import { seedDemoDataIfEmpty } from "./demo-seed";
 import type { NetramApiClient } from "@netram/api-client";
 
 describe("OfflineInspectionQueue", () => {
@@ -185,6 +184,11 @@ describe("OfflineInspectionQueue", () => {
     expect(evRecords[0]?.content_hash).toBe(evResult.contentHash);
     expect(evRecords[0]?.upload_state).toBe("pending");
     expect(evRecords[0]?.integrity_state).toBe("pending_verification");
+
+    // The pending-uploads sheet reads queued files from here.
+    const queued = await queue.getPendingMediaUploads();
+    expect(queued.map((q) => q.file_name)).toContain("dining-hall.jpg");
+    expect(queued[0]?.evidence_id).toBe(evResult.evidenceId);
   });
 
   it("uploads media file when evidence capture operation is accepted during sync", async () => {
@@ -329,47 +333,6 @@ describe("OfflineInspectionQueue", () => {
     const parsedResult = JSON.parse(allOpsAfter[0]?.result_data || "{}");
     expect(parsedResult.acknowledged).toBe(true);
     expect(parsedResult.acknowledgedAt).toBeDefined();
-  });
-
-  it("enqueues and synchronizes check_in field arrival operation", async () => {
-    const op = await queue.checkIn(inspectionId, 28.6139, 77.209, 12.5);
-
-    expect(op.type).toBe("check_in");
-    expect(op.inspectionId).toBe(inspectionId);
-    expect(op.payload.latitude).toBe(28.6139);
-    expect(op.payload.longitude).toBe(77.209);
-    expect(op.payload.accuracy).toBe(12.5);
-    expect(op.payload.clientTimestamp).toBeDefined();
-
-    const pending = await queue.getPendingOperations();
-    expect(pending).toHaveLength(1);
-    expect(pending[0]?.type).toBe("check_in");
-
-    const mockApiClient = {
-      syncOfflineOperations: vi.fn().mockResolvedValue({
-        results: [
-          {
-            operationId: op.operationId,
-            inspectionId,
-            type: "check_in",
-            status: "accepted",
-            message: "Field check-in recorded. Server validates jurisdiction against project geofence boundary.",
-            syncedAt: new Date().toISOString(),
-          },
-        ],
-        processedAt: new Date().toISOString(),
-      }),
-      uploadEvidence: vi.fn(),
-    } as unknown as NetramApiClient;
-
-    const summary = await queue.sync(mockApiClient);
-    expect(summary.synced).toBe(1);
-
-    const pendingAfter = await queue.getPendingOperations();
-    expect(pendingAfter).toHaveLength(0);
-
-    const allOps = await queue.getAllOperations(inspectionId);
-    expect(allOps[0]?.status).toBe("accepted");
   });
 
   it("clears cached inspections while strictly preserving pending operations", async () => {
@@ -632,17 +595,46 @@ describe("OfflineInspectionQueue", () => {
       expect(history[1]?.durationSeconds).toBe(145);
     });
 
-    it("seeds demo call contacts and history into SQLite when empty", async () => {
-      await seedDemoDataIfEmpty();
+    it("round-trips server-cached call contacts and history through SQLite", async () => {
+      await queue.cacheCallContacts([
+        {
+          id: "cnt-cache-01",
+          name: "Cached Contact",
+          role: "staff",
+          title: "Facility In-Charge",
+          projectCode: "PRJ-C-001",
+          projectName: "Cached Project",
+          phone: "+91 90000 00000",
+          isOnline: true,
+          avatarColor: "#002449",
+          videoUri: null,
+        },
+      ]);
+      await queue.cacheCallHistory([
+        {
+          id: "hist-cache-01",
+          contactId: "cnt-cache-01",
+          contactName: "Cached Contact",
+          contactTitle: "Facility In-Charge",
+          role: "staff",
+          projectName: "Cached Project",
+          projectCode: "PRJ-C-001",
+          callType: "video",
+          durationSeconds: 60,
+          timestamp: "Just now",
+          condition: "satisfactory",
+          reviewText: "Cached from server.",
+          flagInspection: false,
+          direction: "outgoing",
+          status: "answered",
+        },
+      ]);
 
       const contacts = await queue.getCallContacts();
-      expect(contacts.length).toBeGreaterThanOrEqual(5);
-      expect(contacts.some((c) => c.name === "Ramesh Jena")).toBe(true);
+      expect(contacts.some((c) => c.id === "cnt-cache-01")).toBe(true);
 
       const history = await queue.getCallHistory();
-      expect(history.length).toBeGreaterThanOrEqual(4);
-      expect(history.some((h) => h.status === "answered")).toBe(true);
-      expect(history.some((h) => h.status === "missed")).toBe(true);
+      expect(history.some((h) => h.id === "hist-cache-01" && h.status === "answered")).toBe(true);
     });
   });
 });

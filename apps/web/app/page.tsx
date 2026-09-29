@@ -21,7 +21,7 @@ export default async function HomePage() {
         minHeight: "100vh",
         boxSizing: "border-box",
         width: "100%",
-        background: "#edf0f5",
+        background: "#f6f8fc",
         display: "flex",
         flexDirection: "column",
       }}
@@ -106,9 +106,11 @@ export default async function HomePage() {
         }
         .hero-grid {
           background-image:
-            linear-gradient(rgba(12, 42, 82, 0.06) 1px, transparent 1px);
+            linear-gradient(rgba(30, 58, 138, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(30, 58, 138, 0.06) 1px, transparent 1px);
           background-size: 64px 64px;
-          
+          -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
+          mask-image: radial-gradient(ellipse 90% 85% at 50% 35%, #000 65%, transparent 100%);
         }
         .action-row {
           display: flex;
@@ -245,7 +247,7 @@ export default async function HomePage() {
           borderTop: "1px solid var(--line)",
         }}
       >
-        <span>(c) 2026 Team Netram</span>
+        <span>© 2026 Team Netram</span>
         <a
           href="https://github.com/biranchikulesika/netram"
           target="_blank"

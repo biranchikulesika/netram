@@ -27,7 +27,20 @@ export const serverEnvSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? v : undefined)),
-  NETRAM_CORS_ORIGIN: z.string().default("*"),
+  /**
+   * Allowed browser origins for CORS. Comma-separated list, e.g.
+   * "http://localhost:3000,http://localhost:8081" (web app + Expo web).
+   * A single value and the wildcard "*" remain valid.
+   */
+  NETRAM_CORS_ORIGIN: z
+    .string()
+    .default("*")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+    ),
   NETRAM_OBJECT_STORAGE_ENDPOINT: z.string().default("http://localhost:9000"),
   NETRAM_OBJECT_STORAGE_ACCESS_KEY: z.string().default("netram"),
   NETRAM_OBJECT_STORAGE_SECRET_KEY: z.string().default("netram-secret"),

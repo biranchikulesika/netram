@@ -240,7 +240,10 @@ export default function HistoryScreen() {
               {/* ── Left rail: filter tabs ── */}
               <View style={styles.sheetRail}>
                 <Pressable
-                  style={[styles.sheetRailTab, sheetTab === "date" && styles.sheetRailTabActive]}
+                  style={[
+                    styles.sheetRailTab,
+                    sheetTab === "date" && { backgroundColor: theme.accentBlue },
+                  ]}
                   onPress={() => setSheetTab("date")}
                 >
                   <Text style={[styles.sheetTabText, { color: sheetTab === "date" ? "#FFFFFF" : theme.textMuted }]}>
@@ -248,7 +251,10 @@ export default function HistoryScreen() {
                   </Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.sheetRailTab, sheetTab === "status" && styles.sheetRailTabActive]}
+                  style={[
+                    styles.sheetRailTab,
+                    sheetTab === "status" && { backgroundColor: theme.accentBlue },
+                  ]}
                   onPress={() => setSheetTab("status")}
                 >
                   <Text style={[styles.sheetTabText, { color: sheetTab === "status" ? "#FFFFFF" : theme.textMuted }]}>
@@ -256,7 +262,10 @@ export default function HistoryScreen() {
                   </Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.sheetRailTab, sheetTab === "type" && styles.sheetRailTabActive]}
+                  style={[
+                    styles.sheetRailTab,
+                    sheetTab === "type" && { backgroundColor: theme.accentBlue },
+                  ]}
                   onPress={() => setSheetTab("type")}
                 >
                   <Text style={[styles.sheetTabText, { color: sheetTab === "type" ? "#FFFFFF" : theme.textMuted }]}>
@@ -497,7 +506,7 @@ export default function HistoryScreen() {
                 <View style={styles.metaItem}>
                   <Icon name="location-outline" size={13} color={theme.textMuted} style={styles.metaIcon} />
                   <Text style={[styles.metaText, { color: theme.textMuted }]}>
-                    {item.district_id || "Khordha"}
+                    {item.district_id || "District unavailable"}
                   </Text>
                 </View>
 
@@ -623,9 +632,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 6,
-  },
-  sheetRailTabActive: {
-    backgroundColor: "#0C2A52",
   },
   sheetContent: {
     flex: 1,

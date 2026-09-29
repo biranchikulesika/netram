@@ -118,40 +118,6 @@ export async function loginAsInspector(
     await saveSession(session);
     return session;
   } catch (err: unknown) {
-    if (
-      trimmedEmail === "inspector@netram.dev" ||
-      trimmedEmail === "inspector.two@dev.netram.in"
-    ) {
-      try {
-        const devResult = await client.devLogin(trimmedEmail);
-        const session: InspectorSession = {
-          token: devResult.token,
-          user: {
-            id: devResult.user.id,
-            email: devResult.user.email,
-            displayName: devResult.user.displayName,
-            type: devResult.user.type,
-          },
-          apiUrl,
-        };
-        await saveSession(session);
-        return session;
-      } catch {
-        const isTwo = trimmedEmail === "inspector.two@dev.netram.in";
-        const fallbackSession: InspectorSession = {
-          token: `dev-inspector-eval-${Date.now()}`,
-          user: {
-            id: isTwo ? "usr-insp-002" : "usr-insp-001",
-            email: trimmedEmail,
-            displayName: isTwo ? "Inspector Two (Cuttack)" : "Inspector One (Khordha)",
-            type: "inspector",
-          },
-          apiUrl,
-        };
-        await saveSession(fallbackSession);
-        return fallbackSession;
-      }
-    }
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Authentication failed: ${message}`);
   }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 import {
   Pressable,
   SafeAreaView,
@@ -12,7 +12,6 @@ import { Tabs, useRouter } from "expo-router";
 import { Icon } from "../src/components/ui/Icon";
 import { NetramCard } from "../src/components/ui/NetramCard";
 import { SectionHeader } from "../src/components/ui/SectionHeader";
-import { OfflineInspectionQueue } from "../src/offline/queue";
 import {
   useSettings,
   type ThemeMode,
@@ -21,26 +20,6 @@ import {
 export default function SettingsScreen() {
   const router = useRouter();
   const { settings, theme, isPureDark, updateSetting } = useSettings();
-
-  const queue = React.useMemo(() => new OfflineInspectionQueue(), []);
-
-  const [cachedCount, setCachedCount] = useState<number>(0);
-  const [pendingCount, setPendingCount] = useState<number>(0);
-
-  const loadData = useCallback(async () => {
-    try {
-      const cached = await queue.getCachedInspections();
-      setCachedCount(cached.length);
-      const pending = await queue.getPendingOperations();
-      setPendingCount(pending.length);
-    } catch {
-      // ignore
-    }
-  }, [queue]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bgCanvas }]}>
@@ -122,53 +101,6 @@ export default function SettingsScreen() {
         {/* ── Section: Storage & Sync ── */}
         <SectionHeader title="STORAGE & SYNC" primary />
         <NetramCard style={styles.card}>
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <View style={styles.iconCol}>
-                <Icon name="folder-outline" size={18} color="#6366F1" />
-              </View>
-              <Text style={[styles.rowTitle, { color: theme.textPrimary }]}>Saved Inspections</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: theme.bgSubtle }]}>
-              <Text style={[styles.badgeText, { color: theme.textPrimary }]}>{cachedCount}</Text>
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.rowLeft}>
-              <View style={styles.iconCol}>
-                <Icon name="cloud-upload-outline" size={18} color="#0EA5E9" />
-              </View>
-              <Text style={[styles.rowTitle, { color: theme.textPrimary }]}>Pending Uploads</Text>
-            </View>
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor:
-                    pendingCount > 0
-                      ? isPureDark
-                        ? theme.errorBg
-                        : "#FEE2E2"
-                      : theme.bgSubtle,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.badgeText,
-                  { color: pendingCount > 0 ? theme.error : theme.textPrimary },
-                ]}
-              >
-                {pendingCount}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
-
           <View style={styles.settingRow}>
             <View style={styles.rowLeft}>
               <View style={styles.iconCol}>
@@ -293,22 +225,6 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 14,
     fontWeight: "500",
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    width: "100%",
-  },
-  badge: {
-    minWidth: 26,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "700",
   },
   footer: {
     alignItems: "center",

@@ -105,6 +105,15 @@ export interface FailedMediaUploadRecord {
   created_at: string;
 }
 
+export interface PendingMediaUploadRecord {
+  id: string;
+  evidence_id: string;
+  file_name: string;
+  mime_type: string;
+  file_size_bytes: number;
+  created_at: string;
+}
+
 export interface SyncSummary {
   synced: number;
   conflicts: number;
@@ -384,20 +393,6 @@ export class OfflineInspectionQueue {
     return this.enqueueOperation(inspectionId, "record_observation", { text });
   }
 
-  async checkIn(
-    inspectionId: string,
-    latitude: number,
-    longitude: number,
-    accuracy?: number | null,
-  ): Promise<OfflineOperation> {
-    return this.enqueueOperation(inspectionId, "check_in", {
-      latitude,
-      longitude,
-      accuracy: accuracy ?? null,
-      clientTimestamp: new Date().toISOString(),
-    });
-  }
-
   async recordAttendance(
     inspectionId: string,
     workerCount: number,
@@ -473,6 +468,18 @@ export class OfflineInspectionQueue {
   async getFailedMediaUploads(): Promise<FailedMediaUploadRecord[]> {
     const db = await this.getDb();
     return db.getAllAsync<FailedMediaUploadRecord>(`SELECT id, evidence_id, file_name, error_message, created_at FROM media_upload_queue WHERE upload_status = 'failed' ORDER BY created_at DESC`);
+  }
+
+  /**
+   * Files still waiting to be uploaded to the server, oldest first.
+   * Lets the inspector see exactly what will go up before triggering a sync.
+   */
+  async getPendingMediaUploads(): Promise<PendingMediaUploadRecord[]> {
+    const db = await this.getDb();
+    return db.getAllAsync<PendingMediaUploadRecord>(
+      `SELECT id, evidence_id, file_name, mime_type, file_size_bytes, created_at
+       FROM media_upload_queue WHERE upload_status = 'pending' ORDER BY created_at ASC`,
+    );
   }
 
   /**

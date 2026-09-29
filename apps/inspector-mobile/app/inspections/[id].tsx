@@ -1,33 +1,31 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Modal,
-  Pressable,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
-  type StyleProp,
-  type ViewStyle,
 } from "react-native";
 import * as Location from "expo-location";
-import { Audio } from "expo-av";
-import { colors, typography } from "../../src/theme/colors";
+import { typography } from "../../src/theme/colors";
 import { useSettings } from "../../src/theme/settings-context";
 import { requestInspectionPermissions } from "../../src/utils/permissions";
 import {
+  EmptyState,
   Icon,
   NetramBadge,
   NetramButton,
   InteractiveVideoPlayer,
   InAppCameraModal,
-  type CapturedEvidenceResult,
+  type CapturedMediaItem,
 } from "../../src/components/ui";
 import {
   OfflineInspectionQueue,
@@ -35,7 +33,6 @@ import {
   type CachedFindingDraftRecord,
   type CachedInspectionRecord,
   type CachedObservationRecord,
-  type OfflineOperationRecord,
 } from "../../src/offline/queue";
 import { captureEvidenceOffline } from "../../src/offline/evidence";
 import { useSyncStatus } from "../../src/offline/sync-context";
@@ -45,37 +42,22 @@ import { formatInspectionType } from "../../src/utils/formatters";
 import type {
   InspectionFlag,
   OrganisationView,
-  ProgrammeView,
   Project,
   ProjectFundOverview,
-  ProjectGeofence,
 } from "@netram/types";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-function PlayableVideo({
-  src,
-  style,
-  autoPlay = false,
-  title,
-}: {
-  src: string;
-  style?: StyleProp<ViewStyle>;
-  autoPlay?: boolean;
-  title?: string;
-}) {
+/** Video evidence may be typed loosely or only carry an .mp4/.mov file name. */
+function isVideoMedia(media: { evidence_type?: string | null; file_name?: string | null }) {
   return (
-    <InteractiveVideoPlayer
-      src={src}
-      style={style}
-      autoPlay={autoPlay}
-      title={title}
-    />
+    media.evidence_type === "video" ||
+    /\.(mp4|mov)$/i.test(media.file_name ?? "")
   );
 }
 
-type SegmentTab = "FACILITY" | "NOTES" | "REMARKS";
-
 export default function InspectionDetailScreen() {
-  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
+  const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queue = useMemo(() => new OfflineInspectionQueue(), []);
   const { refreshPendingCount } = useSyncStatus();
@@ -85,64 +67,28 @@ export default function InspectionDetailScreen() {
   const [inspection, setInspection] = useState<CachedInspectionRecord | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [organisation, setOrganisation] = useState<OrganisationView | null>(null);
-  const [programme, setProgramme] = useState<ProgrammeView | null>(null);
-  const [geofence, setGeofence] = useState<ProjectGeofence | null>(null);
   const [fundOverview, setFundOverview] = useState<ProjectFundOverview | null>(null);
   const [inspectionFlags, setInspectionFlags] = useState<InspectionFlag[]>([]);
 
-  const [operations, setOperations] = useState<OfflineOperationRecord[]>([]);
   const [observations, setObservations] = useState<CachedObservationRecord[]>([]);
   const [evidenceList, setEvidenceList] = useState<CachedEvidenceRecord[]>([]);
   const [findings, setFindings] = useState<CachedFindingDraftRecord[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<SegmentTab>("FACILITY");
-  const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
 
   // Evidence preview modal state
   const [previewMedia, setPreviewMedia] = useState<
     | (CachedEvidenceRecord & {
         caption?: string | null;
-        voiceEvidenceId?: string | null;
-        voiceUri?: string | null;
       })
     | null
   >(null);
 
-  // Officer Remarks Textpad state
-  const [remarkText, setRemarkText] = useState("");
-
-  // Media Capture Observation Note Modal state
-  const [pendingMedia, setPendingMedia] = useState<{
-    uri: string;
-    fileName: string;
-    evidenceType: "photo" | "video";
-    mimeType: string;
-    fileBytes?: Uint8Array;
-    latitude?: number;
-    longitude?: number;
-  } | null>(null);
-  const [pendingCaption, setPendingCaption] = useState("");
-
   // In-App Camera and Video Modal state (No external mobile apps)
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
   const [cameraModalMode, setCameraModalMode] = useState<"photo" | "video">("photo");
-
-  // Voice note capture state (attached alongside photo/video)
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
-  const [voiceDuration, setVoiceDuration] = useState(0);
-  const [pendingVoiceUri, setPendingVoiceUri] = useState<string | null>(null);
-  const [pendingVoiceBytes, setPendingVoiceBytes] = useState<Uint8Array | null>(null);
-  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
-  const [playingObsVoiceId, setPlayingObsVoiceId] = useState<string | null>(null);
-
-  const voiceMediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const voiceAudioChunksRef = useRef<Blob[]>([]);
-  const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const activeAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
-  const nativeRecordingRef = useRef<Audio.Recording | null>(null);
-  const nativeSoundRef = useRef<Audio.Sound | null>(null);
 
   // Request Android runtime permissions on screen entry
   useEffect(() => {
@@ -152,31 +98,25 @@ export default function InspectionDetailScreen() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   const loadData = useCallback(async () => {
-    if (!id) return;
     setLoading(true);
+    setLoadError(null);
+    if (!id) {
+      setLoadError("This inspection could not be identified.");
+      setLoading(false);
+      return;
+    }
     try {
-      const [cached, ops, obs, ev, drafts] = await Promise.all([
+      const [cached, obs, ev, drafts] = await Promise.all([
         queue.getCachedInspection(id),
-        queue.getAllOperations(id),
         queue.getCachedObservations(id),
         queue.getCachedEvidence(id),
         queue.getCachedFindingDrafts(id),
       ]);
       setInspection(cached);
-      setOperations(ops);
       setObservations(obs);
       setEvidenceList(ev);
       setFindings(drafts);
       void refreshPendingCount();
-
-      // Pre-fill remarks textpad from existing observation if any
-      const existingRemark = obs.find((o) => o.text.startsWith("[remark"));
-      if (existingRemark) {
-        const cleaned = existingRemark.text
-          .replace(/^\[remark(?::[^\]]+)?\]\s*/, "")
-          .replace(/\s*\[rec:[\s\S]*$/, "");
-        setRemarkText((prev) => (prev ? prev : cleaned));
-      }
 
       // Graceful server enrichment if online
       if (client && cached?.project_id) {
@@ -193,23 +133,6 @@ export default function InspectionDetailScreen() {
               // Proceed gracefully
             }
           }
-
-          if (prj.programmeIds && prj.programmeIds.length > 0) {
-            try {
-              const progs = await client.listProgrammes();
-              const foundProg = progs.find((p) => p.id === prj.programmeIds[0]);
-              if (foundProg) setProgramme(foundProg);
-            } catch {
-              // Proceed gracefully
-            }
-          }
-        } catch {
-          // Proceed gracefully
-        }
-
-        try {
-          const geo = await client.getProjectGeofence(cached.project_id);
-          setGeofence(geo);
         } catch {
           // Proceed gracefully
         }
@@ -233,6 +156,7 @@ export default function InspectionDetailScreen() {
       }
     } catch (err) {
       console.warn("Failed to load inspection detail:", err);
+      setLoadError("This inspection could not be read from the offline store.");
     } finally {
       setLoading(false);
     }
@@ -242,71 +166,18 @@ export default function InspectionDetailScreen() {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (tab && !hasSetInitialTab) {
-      const upper = tab.toUpperCase();
-      if (
-        upper === "NOTES" ||
-        upper === "MEDIA" ||
-        upper === "FINDINGS" ||
-        upper === "REMARKS" ||
-        upper === "FACILITY"
-      ) {
-        if (upper === "MEDIA") {
-          setActiveTab("NOTES");
-        } else if (upper === "FINDINGS" || upper === "REMARKS") {
-          setActiveTab("REMARKS");
-        } else {
-          setActiveTab(upper as SegmentTab);
-        }
-        setHasSetInitialTab(true);
-      }
-    } else if (inspection?.status === "in_progress" && !hasSetInitialTab) {
-      setActiveTab("NOTES");
-      setHasSetInitialTab(true);
-    }
-  }, [tab, inspection?.status, hasSetInitialTab]);
-
   // Status computation
   const status = inspection?.status ?? "assigned";
   const canStart = status === "assigned";
   const isFieldStage = status === "in_progress";
 
-  // Geofence gate: facility detail is unlocked once the inspector has
-  // recorded a check-in (or started the inspection) for this assignment.
-  const hasCheckedIn = useMemo(
-    () =>
-      status === "in_progress" ||
-      status === "submitted" ||
-      status === "closed" ||
-      operations.some(
-        (o) => o.operation_type === "check_in" || o.operation_type === "start_inspection",
-      ),
-    [operations, status],
-  );
-
   // Workflow Action: Start Inspection
   const handleStartInspection = async () => {
     if (!id) return;
 
-    // Check if task is assigned with location
-    const hasAssignedLocation = Boolean(
-      (geofence?.centerLat != null && geofence?.centerLng != null) ||
-      (geofence?.radiusMeters != null && geofence.radiusMeters > 0) ||
-      hasCheckedIn
-    );
-
-    if (!hasAssignedLocation) {
-      Alert.alert("Location Warning", "Location not assigned.");
-      return;
-    }
-
-    const targetFacility = hasCheckedIn
-      ? (inspection?.project_name || "this facility")
-      : "this assigned facility";
     Alert.alert(
       "Start Inspection",
-      `Begin field inspection for ${targetFacility}?`,
+      `Begin field inspection for ${inspection?.project_name || "this assigned facility"}?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -316,11 +187,7 @@ export default function InspectionDetailScreen() {
             try {
               await queue.startInspection(id);
               await loadData();
-              setActiveTab("NOTES");
-              Alert.alert(
-                "Inspection Started",
-                "Status updated to In Progress.",
-              );
+              Alert.alert("Inspection Started", "Status updated to In Progress.");
             } catch (err: unknown) {
               Alert.alert("Error", String(err));
             } finally {
@@ -356,9 +223,6 @@ export default function InspectionDetailScreen() {
     if (!id) return;
     setActionBusy(true);
     try {
-      if (remarkText.trim().length > 0) {
-        await queue.recordObservation(id, `[remark] ${remarkText.trim()}`);
-      }
       await queue.submitInspection(id);
       setShowSubmitModal(false);
       await loadData();
@@ -370,16 +234,6 @@ export default function InspectionDetailScreen() {
       Alert.alert("Submission Error", String(err));
     } finally {
       setActionBusy(false);
-    }
-  };
-
-  // Remark Action: Auto-save on blur
-  const handleAutoSaveRemark = async () => {
-    if (!id || remarkText.trim().length === 0) return;
-    try {
-      await queue.recordObservation(id, `[remark] ${remarkText.trim()}`);
-    } catch {
-      // Quiet background save
     }
   };
 
@@ -423,13 +277,28 @@ export default function InspectionDetailScreen() {
     return {};
   };
 
-  // Evidence Action: In-App Camera Photo (§2.5, §30 - No external apps)
-  const handleCaptureCameraPhoto = async () => {
+  // Evidence Action: In-App Camera (§2.5, §30 - No external apps).
+  // Photo or video is chosen inside the camera, the way a native camera app works.
+  const handleOpenCamera = async () => {
     if (!id) return;
     try {
       const perms = await requestInspectionPermissions();
       if (!perms.camera) {
-        Alert.alert("Permission Needed", "Camera access is required to capture site photos.");
+        Alert.alert(
+          "Camera access needed",
+          "Netram needs camera access to capture site evidence. You can enable it in Settings.",
+          [
+            { text: "Not now", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                if (Platform.OS !== "web" && Linking.openSettings) {
+                  void Linking.openSettings();
+                }
+              },
+            },
+          ],
+        );
         return;
       }
       setCameraModalMode("photo");
@@ -439,400 +308,43 @@ export default function InspectionDetailScreen() {
     }
   };
 
-  // Evidence Action: In-App Camera Video (§2.5, §30 - No external apps)
-  const handleCaptureCameraVideo = async () => {
-    if (!id) return;
-    try {
-      const perms = await requestInspectionPermissions();
-      if (!perms.camera) {
-        Alert.alert("Permission Needed", "Camera and microphone access are required to record site video.");
-        return;
-      }
-      setCameraModalMode("video");
-      setCameraModalVisible(true);
-    } catch (err: unknown) {
-      Alert.alert("Video Capture Error", err instanceof Error ? err.message : String(err));
-    }
-  };
+  const openCheckIn = () =>
+    router.push({ pathname: "/check-in", params: { inspectionId: id } });
 
-  const handleInAppPhotoCaptured = (result: CapturedEvidenceResult) => {
-    // Open Note & Voice Note dialog IMMEDIATELY (instant 0ms popup)
-    setPendingMedia({
-      uri: result.uri,
-      fileName: result.fileName,
-      evidenceType: "photo",
-      mimeType: "image/jpeg",
-      fileBytes: result.fileBytes,
-    });
-    setPendingCaption("");
-    deleteVoiceRecording();
-
-    // Attach location asynchronously in background
-    void getCaptureLocation().then((loc) => {
-      if (loc.latitude != null && loc.longitude != null) {
-        setPendingMedia((prev) => (prev ? { ...prev, ...loc } : null));
-      }
-    });
-  };
-
-  const handleInAppVideoCaptured = (result: CapturedEvidenceResult) => {
-    // Open Note & Voice Note dialog IMMEDIATELY (instant 0ms popup)
-    setPendingMedia({
-      uri: result.uri,
-      fileName: result.fileName,
-      evidenceType: "video",
-      mimeType: result.fileName.endsWith(".webm") ? "video/webm" : "video/mp4",
-      fileBytes: result.fileBytes,
-    });
-    setPendingCaption("");
-    deleteVoiceRecording();
-
-    // Attach location asynchronously in background
-    void getCaptureLocation().then((loc) => {
-      if (loc.latitude != null && loc.longitude != null) {
-        setPendingMedia((prev) => (prev ? { ...prev, ...loc } : null));
-      }
-    });
-  };
-
-  // Voice Note Recording Handlers (Real audio on native via expo-av, and web via MediaRecorder)
-  const startVoiceRecording = async () => {
-    try {
-      const perms = await requestInspectionPermissions();
-      if (!perms.audio) {
-        Alert.alert("Permission Needed", "Microphone access is required to record voice notes.");
-        return;
-      }
-
-      deleteVoiceRecording();
-      setIsRecordingVoice(true);
-      setVoiceDuration(0);
-
-      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: true, noiseSuppression: true },
-          });
-          const mediaRecorder = new MediaRecorder(stream);
-          voiceMediaRecorderRef.current = mediaRecorder;
-          voiceAudioChunksRef.current = [];
-
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              voiceAudioChunksRef.current.push(e.data);
-            }
-          };
-
-          mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(voiceAudioChunksRef.current, { type: "audio/webm" });
-            const directUrl = URL.createObjectURL(audioBlob);
-            setPendingVoiceUri(directUrl);
-
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const uint8 = new Uint8Array(arrayBuffer);
-            setPendingVoiceBytes(uint8);
-
-            stream.getTracks().forEach((track) => track.stop());
-          };
-
-          mediaRecorder.start(250);
-        } catch (mediaErr) {
-          console.warn("Web audio recording error:", mediaErr);
-        }
-      } else {
-        // Native (Android / iOS) recording via expo-av
-        try {
-          await Audio.requestPermissionsAsync();
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: true,
-            playsInSilentModeIOS: true,
-          });
-          const recording = new Audio.Recording();
-          await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-          await recording.startAsync();
-          nativeRecordingRef.current = recording;
-        } catch (nativeErr) {
-          console.warn("Native audio recording error:", nativeErr);
-        }
-      }
-
-      voiceTimerRef.current = setInterval(() => {
-        setVoiceDuration((d) => d + 1);
-      }, 1000);
-    } catch (err: unknown) {
-      setIsRecordingVoice(false);
-      Alert.alert("Microphone Error", err instanceof Error ? err.message : String(err));
-    }
-  };
-
-  const stopVoiceRecording = async (): Promise<{ uri: string | null; bytes: Uint8Array | null }> => {
-    if (voiceTimerRef.current) {
-      clearInterval(voiceTimerRef.current);
-      voiceTimerRef.current = null;
-    }
-    setIsRecordingVoice(false);
-
-    if (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") {
-      return new Promise((resolve) => {
-        const recorder = voiceMediaRecorderRef.current;
-        if (!recorder) {
-          resolve({ uri: pendingVoiceUri, bytes: pendingVoiceBytes });
-          return;
-        }
-        recorder.onstop = async () => {
-          try {
-            const audioBlob = new Blob(voiceAudioChunksRef.current, { type: "audio/webm" });
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            const uint8 = new Uint8Array(arrayBuffer);
-            setPendingVoiceBytes(uint8);
-
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const dataUrl = reader.result as string;
-              setPendingVoiceUri(dataUrl);
-              resolve({ uri: dataUrl, bytes: uint8 });
-            };
-            reader.onerror = () => {
-              const fallbackUrl = URL.createObjectURL(audioBlob);
-              setPendingVoiceUri(fallbackUrl);
-              resolve({ uri: fallbackUrl, bytes: uint8 });
-            };
-            reader.readAsDataURL(audioBlob);
-          } catch (e) {
-            console.warn("Web audio processing error:", e);
-            resolve({ uri: null, bytes: null });
-          }
-        };
-        try {
-          recorder.stop();
-        } catch {
-          resolve({ uri: null, bytes: null });
-        }
-      });
-    }
-
-    if (nativeRecordingRef.current) {
-      try {
-        await nativeRecordingRef.current.stopAndUnloadAsync();
-        const uri = nativeRecordingRef.current.getURI();
-        nativeRecordingRef.current = null;
-        if (uri) {
-          setPendingVoiceUri(uri);
-          return { uri, bytes: null };
-        }
-      } catch (err) {
-        console.warn("Stop native recording error:", err);
-      }
-    }
-
-    return { uri: pendingVoiceUri, bytes: pendingVoiceBytes };
-  };
-
-  const deleteVoiceRecording = () => {
-    if (voiceTimerRef.current) {
-      clearInterval(voiceTimerRef.current);
-      voiceTimerRef.current = null;
-    }
-    if (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") {
-      try {
-        voiceMediaRecorderRef.current.stop();
-      } catch {
-        // ignore
-      }
-    }
-    if (nativeRecordingRef.current) {
-      nativeRecordingRef.current.stopAndUnloadAsync().catch(() => {});
-      nativeRecordingRef.current = null;
-    }
-    if (nativeSoundRef.current) {
-      nativeSoundRef.current.unloadAsync().catch(() => {});
-      nativeSoundRef.current = null;
-    }
-    if (activeAudioPlayerRef.current) {
-      activeAudioPlayerRef.current.pause();
-      activeAudioPlayerRef.current = null;
-    }
-    setIsRecordingVoice(false);
-    setIsPlayingVoice(false);
-    setPendingVoiceUri(null);
-    setPendingVoiceBytes(null);
-    setVoiceDuration(0);
-  };
-
-  const playAudioUri = async (
-    uri: string | null,
-    onStart: () => void,
-    onEnd: () => void,
-  ) => {
-    if (!uri) {
-      onEnd();
-      return;
-    }
-    onStart();
-
-    // 1. Web playback via HTML5 Audio element
-    if (Platform.OS === "web" && typeof Audio !== "undefined") {
-      try {
-        const audio = new window.Audio(uri);
-        activeAudioPlayerRef.current = audio;
-        audio.onended = () => {
-          activeAudioPlayerRef.current = null;
-          onEnd();
-        };
-        audio.onerror = () => {
-          activeAudioPlayerRef.current = null;
-          onEnd();
-        };
-        await audio.play();
-        return;
-      } catch (e) {
-        console.warn("Web audio playback error:", e);
-      }
-    }
-
-    // 2. Native playback via expo-av Audio.Sound (speaker output unmuted)
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        playThroughEarpieceAndroid: false,
-        shouldDuckAndroid: true,
-      });
-
-      if (nativeSoundRef.current) {
-        await nativeSoundRef.current.unloadAsync().catch(() => {});
-        nativeSoundRef.current = null;
-      }
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true, volume: 1.0 },
-      );
-      nativeSoundRef.current = sound;
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
-          nativeSoundRef.current = null;
-          onEnd();
-        }
-      });
-      return;
-    } catch (nativeErr) {
-      console.warn("Native audio play failed:", nativeErr);
-      onEnd();
-    }
-  };
-
-  const togglePlayPreviewVoice = () => {
-    if (isPlayingVoice) {
-      if (activeAudioPlayerRef.current) {
-        activeAudioPlayerRef.current.pause();
-        activeAudioPlayerRef.current = null;
-      }
-      if (nativeSoundRef.current) {
-        nativeSoundRef.current.pauseAsync().catch(() => {});
-      }
-      setIsPlayingVoice(false);
-    } else {
-      void playAudioUri(
-        pendingVoiceUri,
-        () => setIsPlayingVoice(true),
-        () => setIsPlayingVoice(false),
-      );
-    }
-  };
-
-  const togglePlayCardVoice = (itemId: string, uri: string | null) => {
-    if (playingObsVoiceId === itemId) {
-      if (activeAudioPlayerRef.current) {
-        activeAudioPlayerRef.current.pause();
-        activeAudioPlayerRef.current = null;
-      }
-      if (nativeSoundRef.current) {
-        nativeSoundRef.current.pauseAsync().catch(() => {});
-      }
-      setPlayingObsVoiceId(null);
-    } else {
-      if (activeAudioPlayerRef.current) {
-        activeAudioPlayerRef.current.pause();
-        activeAudioPlayerRef.current = null;
-      }
-      if (nativeSoundRef.current) {
-        nativeSoundRef.current.pauseAsync().catch(() => {});
-      }
-      setPlayingObsVoiceId(itemId);
-      void playAudioUri(
-        uri,
-        () => setPlayingObsVoiceId(itemId),
-        () => setPlayingObsVoiceId(null),
-      );
-    }
-  };
-
-  // Media + Observation Note confirmation (opened immediately after taking photo/video)
-  const handleConfirmSendMedia = async () => {
-    if (!id || !pendingMedia) return;
+  // Persist the captures the user reviewed and saved in the camera. Location is
+  // attached to every item, since they were all taken in the same pass.
+  const handleSaveMediaBatch = async (
+    items: CapturedMediaItem[],
+  ): Promise<boolean> => {
+    if (!id || items.length === 0) return true;
     setActionBusy(true);
     try {
-      // 0. Auto-stop active voice recording if user didn't hit stop before save
-      let voiceUri = pendingVoiceUri;
-      let voiceBytes = pendingVoiceBytes;
-      if (
-        isRecordingVoice ||
-        (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state !== "inactive") ||
-        nativeRecordingRef.current
-      ) {
-        const stopped = await stopVoiceRecording();
-        voiceUri = stopped.uri ?? voiceUri;
-        voiceBytes = stopped.bytes ?? voiceBytes;
-      }
-
-      // 1. Capture Photo or Video Evidence
-      const mediaResult = await captureEvidenceOffline(queue, {
-        inspectionId: id,
-        evidenceType: pendingMedia.evidenceType,
-        fileName: pendingMedia.fileName,
-        fileBytes: pendingMedia.fileBytes,
-        localFileUri: pendingMedia.uri,
-        mimeType: pendingMedia.mimeType,
-        latitude: pendingMedia.latitude,
-        longitude: pendingMedia.longitude,
-      });
-
-      // 2. Capture Voice Note as Audio Evidence if recorded
-      let voiceEvidenceId: string | null = null;
-      if (voiceBytes || voiceUri) {
-        const audioResult = await captureEvidenceOffline(queue, {
+      const loc = await getCaptureLocation();
+      for (const item of items) {
+        const mediaResult = await captureEvidenceOffline(queue, {
           inspectionId: id,
-          evidenceType: "audio",
-          fileName: `voice-note-${Date.now()}.${Platform.OS === "web" ? "webm" : "m4a"}`,
-          fileBytes: voiceBytes || new TextEncoder().encode(`voice-${Date.now()}`),
-          localFileUri: voiceUri || undefined,
-          mimeType: Platform.OS === "web" ? "audio/webm" : "audio/m4a",
-          latitude: pendingMedia.latitude,
-          longitude: pendingMedia.longitude,
+          evidenceType: item.evidenceType,
+          fileName: item.fileName,
+          fileBytes: item.fileBytes,
+          localFileUri: item.uri,
+          mimeType: item.mimeType,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
         });
-        voiceEvidenceId = audioResult.evidenceId;
+
+        let obsPayload = `[media:${mediaResult.evidenceId}]`;
+        const caption = item.note.trim();
+        if (caption.length > 0) {
+          obsPayload += ` ${caption}`;
+        }
+        await queue.recordObservation(id, obsPayload);
       }
 
-      // 3. Record Observation with linked Media and Voice Note
-      const caption = pendingCaption.trim();
-      let obsPayload = `[media:${mediaResult.evidenceId}]`;
-      if (voiceEvidenceId) {
-        obsPayload += ` [voice:${voiceEvidenceId}]`;
-      }
-      if (caption.length > 0) {
-        obsPayload += ` ${caption}`;
-      }
-      await queue.recordObservation(id, obsPayload);
-
-      deleteVoiceRecording();
-      setPendingMedia(null);
-      setPendingCaption("");
       await loadData();
+      return true;
     } catch (err: unknown) {
       Alert.alert("Save Error", err instanceof Error ? err.message : String(err));
+      return false;
     } finally {
       setActionBusy(false);
     }
@@ -843,53 +355,16 @@ export default function InspectionDetailScreen() {
     return observations.length > 0 || findings.length > 0 || evidenceList.length > 0;
   }, [status, observations.length, findings.length, evidenceList.length]);
 
-  // Derived Officer Remarks from observations
-  const officerRemarks = useMemo(() => {
-    const list: Array<{
-      id: string;
-      tag: string;
-      text: string;
-      recommendations?: string | null;
-      created_at: string;
-      is_local: number;
-    }> = [];
-    for (const obs of observations) {
-      const remarkMatch = obs.text.match(/^\[remark(?::([^\]]+))?\]\s*([\s\S]*)$/);
-      if (remarkMatch) {
-        const fullContent = remarkMatch[2] || "";
-        let mainText = fullContent;
-        let recText: string | undefined;
-        if (fullContent.includes("[rec:")) {
-          const recParts = fullContent.split("[rec:");
-          mainText = (recParts[0] ?? "").trim();
-          recText = recParts[1]?.replace(/\]$/, "").trim();
-        }
-        list.push({
-          id: obs.id,
-          tag: remarkMatch[1] || "General Assessment",
-          text: mainText,
-          recommendations: recText || null,
-          created_at: obs.created_at,
-          is_local: obs.is_local,
-        });
-      }
-    }
-    return list;
-  }, [observations]);
-
-  // Derived media observations (Photo & Video evidence linked with their observation note & voice note)
+  // Derived media observations (Photo & Video evidence linked with their observation note)
   const mediaObservations = useMemo(() => {
     const captionMap: Record<string, string> = {};
-    const voiceMap: Record<string, string> = {};
 
     for (const obs of observations) {
       const mediaMatch = obs.text.match(/\[media:([^\]]+)\]/);
-      const voiceMatch = obs.text.match(/\[voice:([^\]]+)\]/);
       if (mediaMatch && mediaMatch[1]) {
         const mediaId = mediaMatch[1];
-        if (voiceMatch && voiceMatch[1]) {
-          voiceMap[mediaId] = voiceMatch[1];
-        }
+        // "[voice:…]" is still stripped: observations captured before voice
+        // notes were removed may carry the marker, and it is not display text.
         const cleanCaption = obs.text
           .replace(/\[media:[^\]]+\]/g, "")
           .replace(/\[voice:[^\]]+\]/g, "")
@@ -900,41 +375,60 @@ export default function InspectionDetailScreen() {
       }
     }
 
-    const audioMap: Record<string, (typeof evidenceList)[0]> = {};
-    for (const ev of evidenceList) {
-      if (ev.evidence_type === "audio") {
-        audioMap[ev.id] = ev;
-      }
-    }
-
     return evidenceList
       .filter((ev) => ev.evidence_type === "photo" || ev.evidence_type === "video")
-      .map((ev) => {
-        const voiceId = voiceMap[ev.id];
-        const voiceEv = voiceId ? audioMap[voiceId] : undefined;
-        return {
-          ...ev,
-          caption: captionMap[ev.id] || null,
-          voiceEvidenceId: voiceId || null,
-          voiceUri: voiceEv?.local_file_uri || null,
-        };
-      });
+      .map((ev) => ({
+        ...ev,
+        caption: captionMap[ev.id] || null,
+      }));
   }, [evidenceList, observations]);
 
   // Color theme tokens — follows user's dark/light mode preference
-  const bgCanvas    = theme.bgCanvas;
-  const bgSurface   = theme.bgSurface;
-  const bgSubtle    = isPureDark ? "#18181B" : theme.bgSubtle;
+  const bgCanvas = theme.bgCanvas;
+  const bgSurface = theme.bgSurface;
+  const bgSubtle = isPureDark ? "#18181B" : theme.bgSubtle;
   const borderColor = theme.borderSubtle;
   const textPrimary = theme.textPrimary;
-  const textMuted   = theme.textMuted;
-  const accentBlue  = theme.accentBlue;
-  const navyDark    = theme.navyDark;
+  const textMuted = theme.textMuted;
+  const accentBlue = theme.accentBlue;
+  const navyDark = theme.navyDark;
 
   if (loading) {
     return (
       <SafeAreaView style={[styles.centerContainer, { backgroundColor: bgCanvas }]}>
         <ActivityIndicator size="large" color={accentBlue} />
+      </SafeAreaView>
+    );
+  }
+
+  // Only a genuine read failure gets the dead-end screen. A record that is
+  // simply absent still renders the detail page, because the officer followed
+  // a link to a real inspection and must not be bounced to another screen.
+  if (!inspection && loadError) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
+        <View
+          style={[
+            styles.inspTopBar,
+            { backgroundColor: bgSurface, borderBottomColor: borderColor },
+          ]}
+        >
+          <View style={styles.navRow}>
+            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+              <Icon name="chevron-back" size={24} color={textPrimary} />
+            </Pressable>
+            <Text style={[styles.inspTitle, { color: textPrimary }]}>Inspection</Text>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Inspection unavailable"
+            subtitle={loadError}
+            action={{ label: "Retry", onPress: () => void loadData() }}
+          />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -972,696 +466,328 @@ export default function InspectionDetailScreen() {
     </View>
   );
 
-  const tabs: {
-    key: SegmentTab;
-    label: string;
-    icon: string;
-    count?: number | string;
-  }[] = [
-    {
-      key: "FACILITY",
-      label: "Dossier",
-      icon: "business-outline",
-    },
-    {
-      key: "NOTES",
-      label: "Observation",
-      icon: "camera-outline",
-      count: mediaObservations.length > 0 ? mediaObservations.length : undefined,
-    },
-    {
-      key: "REMARKS",
-      label: "Remarks",
-      icon: "document-text-outline",
-    },
-  ];
+  // The schema has no inspection code, only the uuid. Show a short, stable
+  // reference an inspector can read out over the phone.
+  const inspectionRef = inspection?.id
+    ? `INSP-${inspection.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`
+    : undefined;
+
+  const SectionHeading = ({ title, count }: { title: string; count?: number }) => (
+    <View style={styles.cleanSectionHeadingRow}>
+      <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>{title}</Text>
+      {count !== undefined && count > 0 && (
+        <View style={[styles.sectionCountPill, { backgroundColor: bgSubtle }]}>
+          <Text style={[styles.sectionCountText, { color: textMuted }]}>{count}</Text>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
       <View style={[styles.container, { backgroundColor: bgCanvas }]}>
-
         {/* ── TOP BAR (video-call style) ── */}
-        <View style={[styles.inspTopBar, { backgroundColor: bgSurface, borderBottomColor: borderColor }]}>
+        <View
+          style={[
+            styles.inspTopBar,
+            { backgroundColor: bgSurface, borderBottomColor: borderColor },
+          ]}
+        >
           <View style={styles.navRow}>
             <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-              <Icon name="arrow-back" size={20} color={textPrimary} />
+              <Icon name="chevron-back" size={24} color={textPrimary} />
             </Pressable>
 
             <View style={styles.inspTitleGroup}>
               <Text style={[styles.inspTitle, { color: textPrimary }]} numberOfLines={1}>
-                {hasCheckedIn
-                  ? (project?.name || inspection?.project_name || "Inspection")
-                  : "Assigned Facility"}
+                {project?.name || inspection?.project_name || "Inspection"}
               </Text>
               <Text style={[styles.inspSubtitle, { color: textMuted }]} numberOfLines={1}>
-                {inspection?.project_code || ""}{inspection?.district_id ? ` · ${inspection.district_id}` : ""}
+                {project?.code || inspection?.project_code || ""}
+                {inspection?.district_id ? ` · ${inspection.district_id}` : ""}
               </Text>
             </View>
 
-            {status === "in_progress" ? (
-              <Pressable
-                style={[
-                  styles.headerSubmitBtn,
-                  { backgroundColor: canSubmitInspection ? theme.actionGreen : theme.textMuted },
-                ]}
-                onPress={handleSubmitInspection}
-                disabled={actionBusy}
-                hitSlop={8}
-              >
-                <Icon name="checkmark-circle" size={15} color="#FFFFFF" />
-                <Text style={styles.headerSubmitBtnText}>Submit</Text>
-              </Pressable>
-            ) : canStart ? (
-              <Pressable
-                style={[styles.headerSubmitBtn, { backgroundColor: accentBlue }]}
-                onPress={handleStartInspection}
-                disabled={actionBusy}
-                hitSlop={8}
-              >
-                <Icon name="play" size={13} color="#FFFFFF" />
-                <Text style={styles.headerSubmitBtnText}>Start</Text>
-              </Pressable>
-            ) : status === "submitted" || status === "closed" ? (
-              <View
-                style={[
-                  styles.headerSubmittedPill,
-                  { backgroundColor: "rgba(22,163,74,0.12)", borderColor: "rgba(22,163,74,0.3)" },
-                ]}
-              >
-                <Icon name="checkmark-done" size={13} color={theme.actionGreen} />
-                <Text style={[styles.headerSubmittedText, { color: theme.actionGreen }]}>
-                  Submitted
-                </Text>
-              </View>
-            ) : (
-              <View style={[styles.headerSubmittedPill, { backgroundColor: bgSubtle, borderColor }]}>
-                <Text style={[styles.headerSubmittedText, { color: textMuted }]}>
-                  {status.toUpperCase()}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 
-        {/* ── TAB BAR ── */}
-        <View style={[styles.inspTabsTrack, { backgroundColor: bgSubtle, borderBottomColor: borderColor, paddingHorizontal: 12, paddingVertical: 6 }]}>
-          {tabs.map((t) => {
-            const isActive = activeTab === t.key;
-            return (
-              <Pressable
-                key={t.key}
-                style={[
-                  styles.inspTabItem,
-                  {
-                    backgroundColor: isActive ? navyDark : "transparent",
-                    borderRadius: 6,
-                    paddingVertical: 7,
-                    paddingHorizontal: 10,
-                  },
-                ]}
-                onPress={() => setActiveTab(t.key)}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                  <Text style={[
-                    styles.inspTabText,
-                    { color: isActive ? "#FFFFFF" : textMuted },
-                    isActive && { fontWeight: "800" },
-                  ]}>
-                    {t.label}
-                  </Text>
-                  {t.count !== undefined && (
-                    <View style={[styles.inspTabBubble, {
-                      backgroundColor: isActive ? "rgba(255,255,255,0.2)" : (isPureDark ? "#27272A" : theme.borderSubtle),
-                    }]}>
-                      <Text style={[styles.inspTabBubbleText, {
-                        color: isActive ? "#FFFFFF" : textMuted,
-                      }]}>
-                        {t.count}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* ── TAB CONTENT ── */}
         <ScrollView
           style={styles.scrollArea}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* ──────────────── TAB 1: FACILITY DOSSIER ──────────────── */}
-          {activeTab === "FACILITY" && (
-            <View style={styles.tabContentContainer}>
-              {!hasCheckedIn ? (
-                <View style={[styles.locationLockCard, { backgroundColor: bgSurface, borderColor }]}>
-                  <View style={[styles.lockIconCircle, { backgroundColor: bgSubtle }]}>
-                    <Icon name="lock-closed" size={32} color={accentBlue} />
-                  </View>
-                  <Text style={[styles.lockTitle, { color: textPrimary }]}>Location Locked</Text>
-                  <Text style={[styles.lockSubtitle, { color: textMuted }]}>
-                    Facility details unlock automatically when you reach the assigned 1 km area.
-                  </Text>
+          <View style={styles.pageContainer}>
+            {/* ──────────────── FACILITY DOSSIER ──────────────── */}
+            <>
+                {/* FACILITY IDENTITY */}
+                <View style={styles.cleanSection}>
+                  <SectionHeading title="Facility Identity" />
+                  <MetaRow label="Inspection Ref" value={inspectionRef} mono />
+                  <MetaRow
+                    label="Project Code"
+                    value={project?.code || inspection?.project_code}
+                    mono
+                  />
+                  <MetaRow
+                    label="Type"
+                    value={formatInspectionType(project?.type || inspection?.type)}
+                  />
+                  <MetaRow label="Operating Agency" value={organisation?.name} />
+                  <MetaRow
+                    label="Status"
+                    value={(project?.status || inspection?.status || "active")
+                      .replace(/_/g, " ")
+                      .toUpperCase()}
+                  />
                   <Pressable
-                    style={[styles.lockMapBtn, { backgroundColor: accentBlue }]}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/check-in",
-                        params: { inspectionId: id },
-                      })
-                    }
+                    style={[styles.metaRow, { borderBottomColor: borderColor }]}
+                    onPress={openCheckIn}
+                    accessibilityRole="button"
+                    accessibilityLabel="View site on map"
                   >
-                    <Icon name="navigate-outline" size={16} color="#FFFFFF" />
-                    <Text style={styles.lockMapBtnText}>Open Map & Check In</Text>
+                    <Text style={[styles.metaLabel, { color: textMuted }]}>Location</Text>
+                    <View style={styles.metaLinkValue}>
+                      <Text style={[styles.metaValue, { color: accentBlue }]}>View on Map</Text>
+                      <Icon name="chevron-forward" size={14} color={accentBlue} />
+                    </View>
                   </Pressable>
                 </View>
-              ) : (
-                <>
-                  {/* FACILITY IDENTITY */}
+
+                {/* FUNDS & SANCTIONS */}
+                {fundOverview && (
                   <View style={styles.cleanSection}>
-                    <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>
-                      FACILITY IDENTITY
-                    </Text>
-                    <MetaRow label="Project Code" value={project?.code || inspection?.project_code || "PRJ"} mono />
-                    <MetaRow label="Facility Name" value={project?.name || inspection?.project_name || "Facility"} bold />
-                    <MetaRow label="Type" value={formatInspectionType(project?.type || inspection?.type)} />
-                    <MetaRow label="DARPAN ID" value={organisation?.code || "Available on sync"} mono />
+                    <SectionHeading title="Funds & Sanctions" />
                     <MetaRow
-                      label="Status"
-                      badge={
-                        <NetramBadge
-                          label={(project?.status || inspection?.status || "active").replace(/_/g, " ").toUpperCase()}
-                          variant="status"
-                          status={project?.status || inspection?.status}
-                          size="sm"
-                        />
-                      }
+                      label="Total Sanctioned"
+                      value={formatCurrencyString(fundOverview.summary.totalAllocated)}
+                      bold
                     />
-                  </View>
-
-                  {/* OPERATING AGENCY */}
-                  <View style={styles.cleanSection}>
-                    <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>
-                      OPERATING AGENCY
-                    </Text>
-                    <MetaRow label="Agency Name" value={organisation?.name || "Operating Agency"} />
-                    <MetaRow label="Category" value={organisation?.category || "Registered Society / Trust"} />
-                  </View>
-
-                  {/* SCHEME & PROGRAMME */}
-                  <View style={styles.cleanSection}>
-                    <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>
-                      SCHEME & PROGRAMME
-                    </Text>
-                    <MetaRow label="Programme" value={programme?.name || "National Welfare Programme"} />
-                    <MetaRow label="Scope" value={(programme?.scopeLevel || "NATIONAL").toUpperCase()} />
-                  </View>
-
-                  {/* LOCATION & RADIUS */}
-                  <View style={styles.cleanSection}>
-                    <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>
-                      LOCATION & RADIUS
-                    </Text>
-                    <MetaRow label="District" value={inspection?.district_id || "District Authority"} mono />
-                    <MetaRow label="Area Radius" value={geofence?.radiusMeters ? `${geofence.radiusMeters} meters` : "1,000 meters"} />
-                    <Pressable
-                      style={[styles.cleanMapLink, { borderBottomColor: borderColor }]}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/check-in",
-                          params: { inspectionId: id },
-                        })
-                      }
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Icon name="location-outline" size={15} color={accentBlue} />
-                        <Text style={[styles.cleanMapLinkText, { color: accentBlue }]}>
-                          View Site on Map
+                    <MetaRow
+                      label="Total Released"
+                      value={formatCurrencyString(fundOverview.summary.totalReleased)}
+                    />
+                    <MetaRow
+                      label="Total Expended"
+                      value={formatCurrencyString(fundOverview.summary.totalExpenditure)}
+                    />
+                    <View style={styles.utilisationBlock}>
+                      <View style={styles.utilisationHeader}>
+                        <Text style={[styles.utilisationLabel, { color: textMuted }]}>
+                          UTILISATION
+                        </Text>
+                        <Text style={[styles.utilisationValue, { color: accentBlue }]}>
+                          {fundOverview.summary.utilizationRate.toFixed(1)}%
                         </Text>
                       </View>
-                      <Icon name="chevron-forward" size={14} color={accentBlue} />
-                    </Pressable>
-                  </View>
-
-                  {/* FUNDS & SANCTIONS */}
-                  {fundOverview && (
-                    <View style={styles.cleanSection}>
-                      <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>
-                        FUNDS & SANCTIONS
-                      </Text>
-                      <MetaRow label="Total Sanctioned" value={formatCurrencyString(fundOverview.summary.totalAllocated)} bold />
-                      <MetaRow label="Total Released" value={formatCurrencyString(fundOverview.summary.totalReleased)} />
-                      <MetaRow label="Total Expended" value={formatCurrencyString(fundOverview.summary.totalExpenditure)} />
-                      <MetaRow label="Utilisation" value={`${fundOverview.summary.utilizationRate.toFixed(1)}%`} mono />
-                    </View>
-                  )}
-
-                  {/* ADVISORY FLAGS */}
-                  {inspectionFlags.length > 0 && (
-                    <View style={styles.cleanSection}>
-                      <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>
-                        {`ADVISORY FLAGS (${inspectionFlags.length})`}
-                      </Text>
-                      <View style={{ gap: 8, marginTop: 4 }}>
-                        {inspectionFlags.map((flag) => (
-                          <View
-                            key={flag.id}
-                            style={[
-                              styles.cleanFlagRow,
-                              {
-                                backgroundColor: bgSubtle,
-                                borderLeftColor:
-                                  flag.riskLevel === "high" || flag.riskLevel === "critical"
-                                    ? "#EF4444"
-                                    : accentBlue,
-                              },
-                            ]}
-                          >
-                            <View style={styles.flagTopRow}>
-                              <NetramBadge
-                                label={flag.riskLevel.toUpperCase()}
-                                variant="severity"
-                                severity={flag.riskLevel}
-                                size="sm"
-                              />
-                            </View>
-                            <Text style={[styles.flagText, { color: textPrimary }]}>{flag.explanation}</Text>
-                          </View>
-                        ))}
+                      <View style={[styles.utilisationTrack, { backgroundColor: bgSubtle }]}>
+                        <View
+                          style={[
+                            styles.utilisationFill,
+                            {
+                              backgroundColor: accentBlue,
+                              width: `${Math.min(100, Math.max(0, fundOverview.summary.utilizationRate))}%`,
+                            },
+                          ]}
+                        />
                       </View>
                     </View>
-                  )}
-                </>
-              )}
-            </View>
-          )}
+                  </View>
+                )}
 
-          {/* ──────────────── TAB 2: OBSERVATIONS (PHOTOS & VIDEOS ONLY) ──────────────── */}
-          {activeTab === "NOTES" && (
-            <View style={styles.obsPageContainer}>
-              {/* Media Capture Action Row */}
-              {isFieldStage && (
-                <View style={styles.obsActionRow}>
-                  <Pressable
-                    style={[styles.obsCaptureBtn, { backgroundColor: accentBlue }]}
-                    onPress={handleCaptureCameraPhoto}
-                  >
-                    <Icon name="camera" size={18} color="#FFFFFF" />
-                    <Text style={styles.obsCaptureBtnText}>Take Photo</Text>
-                  </Pressable>
+                {/* ADVISORY FLAGS */}
+                {inspectionFlags.length > 0 && (
+                  <View style={styles.cleanSection}>
+                    <SectionHeading title="Advisory Flags" count={inspectionFlags.length} />
+                    <View style={{ gap: 8, marginTop: 4 }}>
+                      {inspectionFlags.map((flag) => (
+                        <View
+                          key={flag.id}
+                          style={[
+                            styles.cleanFlagRow,
+                            {
+                              backgroundColor: bgSubtle,
+                              borderLeftColor:
+                                flag.riskLevel === "high" || flag.riskLevel === "critical"
+                                  ? "#EF4444"
+                                  : accentBlue,
+                            },
+                          ]}
+                        >
+                          <View style={styles.flagTopRow}>
+                            <NetramBadge
+                              label={flag.riskLevel.toUpperCase()}
+                              variant="severity"
+                              severity={flag.riskLevel}
+                              size="sm"
+                            />
+                          </View>
+                          <Text style={[styles.flagText, { color: textPrimary }]}>
+                            {flag.explanation}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
 
-                  <Pressable
-                    style={[styles.obsCaptureBtn, { backgroundColor: navyDark }]}
-                    onPress={handleCaptureCameraVideo}
-                  >
-                    <Icon name="videocam" size={18} color="#FFFFFF" />
-                    <Text style={styles.obsCaptureBtnText}>Record Video</Text>
-                  </Pressable>
-                </View>
-              )}
-
-              {/* Media Observation Cards */}
-              <View style={styles.obsCardsList}>
-                {mediaObservations.length > 0 ? (
-                  mediaObservations.map((item) => {
-                    const isVideo =
-                      item.evidence_type === "video" ||
-                      (item.file_name?.toLowerCase().endsWith(".mp4") ?? false) ||
-                      (item.file_name?.toLowerCase().endsWith(".mov") ?? false);
+            {/* ──────────────── OBSERVATIONS ──────────────── */}
+            <View style={styles.cleanSection}>
+              <SectionHeading title="Observations" count={mediaObservations.length} />
+              {/* Sideways roll: one row of evidence instead of a tall stack. */}
+              {mediaObservations.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.obsStrip}
+                >
+                  {mediaObservations.map((item) => {
+                    const isVideo = isVideoMedia(item);
+                    const synced = item.upload_state === "uploaded";
 
                     return (
                       <View
                         key={item.id}
-                        style={[styles.obsCard, { backgroundColor: bgSurface, borderColor }]}
+                        style={[styles.obsTile, { backgroundColor: bgSurface, borderColor }]}
                       >
-                        {/* 1. Media Section (Playable Video or Full Photo) */}
-                        {isVideo && item.local_file_uri ? (
-                          <View style={styles.obsVideoPlayerWrap}>
-                            <PlayableVideo
+                        <Pressable
+                          style={[styles.obsTileMedia, { backgroundColor: bgSubtle }]}
+                          onPress={() => setPreviewMedia(item)}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            isVideo ? "Play observation video" : "Open observation photo"
+                          }
+                        >
+                          {!isVideo && item.local_file_uri ? (
+                            <Image
+                              source={{ uri: item.local_file_uri }}
+                              style={styles.obsImage}
+                              resizeMode="cover"
+                            />
+                          ) : isVideo && item.local_file_uri ? (
+                            <InteractiveVideoPlayer
                               src={item.local_file_uri}
-                              style={styles.obsVideoPlayer}
+                              style={styles.obsImage}
                             />
-                            <View
-                              style={[
-                                styles.obsTypeBadge,
-                                { backgroundColor: navyDark },
-                              ]}
-                            >
-                              <Text style={styles.obsTypeBadgeText}>VIDEO</Text>
-                            </View>
-                            {(item.voiceEvidenceId || item.voiceUri) && (
-                              <View style={styles.obsVoiceAttachedBadge}>
-                                <Icon name="mic" size={11} color="#FFFFFF" />
-                                <Text style={styles.obsVoiceAttachedBadgeText}>VOICE NOTE</Text>
-                              </View>
-                            )}
-                          </View>
-                        ) : (
-                          <Pressable
-                            style={[styles.obsMediaBox, { backgroundColor: bgSubtle }]}
-                            onPress={() => setPreviewMedia(item)}
-                          >
-                            {!isVideo && item.local_file_uri ? (
-                              <Image
-                                source={{ uri: item.local_file_uri }}
-                                style={styles.obsImage}
-                                resizeMode="cover"
+                          ) : (
+                            <View style={styles.obsVideoPlaceholder}>
+                              <Icon
+                                name={isVideo ? "videocam" : "camera"}
+                                size={32}
+                                color={isVideo ? navyDark : accentBlue}
                               />
-                            ) : (
-                              <View style={styles.obsVideoPlaceholder}>
-                                <Icon
-                                  name={isVideo ? "videocam" : "camera"}
-                                  size={44}
-                                  color={isVideo ? navyDark : accentBlue}
-                                />
-                              </View>
-                            )}
+                            </View>
+                          )}
 
-                            <View
-                              style={[
-                                styles.obsTypeBadge,
-                                { backgroundColor: isVideo ? navyDark : accentBlue },
-                              ]}
-                            >
-                              <Text style={styles.obsTypeBadgeText}>
-                                {isVideo ? "VIDEO" : "PHOTO"}
+                          {/* Capture time and upload state sit on the media
+                              itself, so a tile stays one clean block. */}
+                          <View style={styles.obsTileOverlay}>
+                            <View style={styles.obsTimeRow}>
+                              <Icon name="time-outline" size={11} color="#FFFFFF" />
+                              <Text style={styles.obsTimeText}>
+                                {new Date(item.created_at).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
                               </Text>
                             </View>
 
-                            {(item.voiceEvidenceId || item.voiceUri) && (
-                              <View style={styles.obsVoiceAttachedBadge}>
-                                <Icon name="mic" size={11} color="#FFFFFF" />
-                                <Text style={styles.obsVoiceAttachedBadgeText}>VOICE NOTE</Text>
-                              </View>
-                            )}
-                          </Pressable>
-                        )}
+                            {/* Icon only, but labelled so the state is still
+                                announced rather than read as decoration. */}
+                            <View
+                              accessibilityRole="image"
+                              accessibilityLabel={synced ? "Synced" : "Not synced"}
+                            >
+                              <Icon
+                                name={synced ? "cloud-done" : "cloud-offline-outline"}
+                                size={13}
+                                color={synced ? "#4ADE80" : "#FBBF24"}
+                              />
+                            </View>
+                          </View>
+                        </Pressable>
 
-                        {/* 2. Text Note Section (Prominent, High-Contrast Clear Text) */}
                         {item.caption ? (
-                          <View style={[styles.obsTextNoteBox, { backgroundColor: bgSubtle, borderColor }]}>
-                            <View style={styles.obsSectionHeader}>
-                              <Icon name="document-text" size={14} color={accentBlue} />
-                              <Text style={[styles.obsSectionTitle, { color: accentBlue }]}>
-                                FIELD OBSERVATION NOTE
-                              </Text>
-                            </View>
-                            <Text style={[styles.obsTextNoteContent, { color: textPrimary }]}>
-                              {item.caption}
-                            </Text>
-                          </View>
+                          <Text
+                            style={[styles.obsTileCaption, { color: textPrimary }]}
+                            numberOfLines={3}
+                          >
+                            {item.caption}
+                          </Text>
                         ) : null}
-
-                        {/* 3. Voice Note Player Bar */}
-                        {(item.voiceEvidenceId || item.voiceUri) && (
-                          <View style={[styles.obsVoicePlayerBar, { backgroundColor: bgSubtle, borderColor }]}>
-                            <Pressable
-                              style={[
-                                styles.obsVoicePlayBtn,
-                                { backgroundColor: playingObsVoiceId === item.id ? theme.error : navyDark },
-                              ]}
-                              onPress={() => togglePlayCardVoice(item.id, item.voiceUri)}
-                            >
-                              <Icon
-                                name={playingObsVoiceId === item.id ? "pause" : "play"}
-                                size={14}
-                                color="#FFFFFF"
-                              />
-                            </Pressable>
-
-                            <View style={styles.obsVoiceInfoCol}>
-                              <View style={styles.obsVoiceInfoRow}>
-                                <Text style={[styles.obsVoiceTitle, { color: textPrimary }]}>
-                                  Voice Note
-                                </Text>
-                                {playingObsVoiceId === item.id && (
-                                  <View style={styles.obsPlayingPill}>
-                                    <View style={styles.obsPlayingDot} />
-                                    <Text style={styles.obsPlayingPillText}>Playing</Text>
-                                  </View>
-                                )}
-                              </View>
-                              <Text style={[styles.obsVoiceSubtext, { color: textMuted }]}>
-                                {playingObsVoiceId === item.id
-                                  ? "Audio playback in progress..."
-                                  : "Tap to listen to recorded audio note"}
-                              </Text>
-                            </View>
-
-                            <Pressable
-                              style={[
-                                styles.obsVoiceListenBtn,
-                                { borderColor: playingObsVoiceId === item.id ? theme.error : navyDark },
-                              ]}
-                              onPress={() => togglePlayCardVoice(item.id, item.voiceUri)}
-                            >
-                              <Icon
-                                name={playingObsVoiceId === item.id ? "pause" : "play"}
-                                size={11}
-                                color={playingObsVoiceId === item.id ? theme.error : navyDark}
-                              />
-                              <Text
-                                style={[
-                                  styles.obsVoiceListenBtnText,
-                                  { color: playingObsVoiceId === item.id ? theme.error : navyDark },
-                                ]}
-                              >
-                                {playingObsVoiceId === item.id ? "Pause" : "Play"}
-                              </Text>
-                            </Pressable>
-                          </View>
-                        )}
-
-                        {/* 4. Simple Clean Footer (NO sha256, NO shield-checkmark/verified) */}
-                        <View style={[styles.obsCardFooter, { borderTopColor: borderColor }]}>
-                          <View style={styles.obsTimeRow}>
-                            <Icon name="time-outline" size={13} color={textMuted} />
-                            <Text style={[styles.obsTimeText, { color: textMuted }]}>
-                              {new Date(item.created_at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </Text>
-                          </View>
-
-                          <View style={styles.obsSyncBadge}>
-                            <Icon
-                              name={item.upload_state === "uploaded" ? "checkmark-done" : "checkmark"}
-                              size={14}
-                              color={item.upload_state === "uploaded" ? theme.actionGreen : textMuted}
-                            />
-                            <Text style={[styles.obsSyncText, { color: textMuted }]}>
-                              {item.upload_state === "uploaded" ? "Synced" : "Local"}
-                            </Text>
-                          </View>
-                        </View>
                       </View>
                     );
-                  })
-                ) : (
-                  <View style={[styles.obsEmptyCard, { backgroundColor: bgSurface, borderColor }]}>
-                    <Icon name="camera-outline" size={44} color={accentBlue} />
-                    <Text style={[styles.obsEmptyTitle, { color: textPrimary }]}>
-                      No observations recorded
-                    </Text>
-                    <Text style={[styles.obsEmptySubtitle, { color: textMuted }]}>
-                      Tap Take Photo or Record Video above to capture on-site evidence and add notes.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* ──────────────── TAB 3: OFFICER REMARKS TEXTPAD ──────────────── */}
-          {activeTab === "REMARKS" && (
-            <View style={styles.textpadContainer}>
-              <View style={[styles.textpadCard, { backgroundColor: bgSurface, borderColor }]}>
-                <TextInput
-                  style={[
-                    styles.textpadInput,
-                    {
-                      color: textPrimary,
-                    },
-                  ]}
-                  value={remarkText}
-                  onChangeText={setRemarkText}
-                  onBlur={handleAutoSaveRemark}
-                  placeholder="Type inspection remarks here..."
-                  placeholderTextColor={textMuted}
-                  multiline
-                  editable={isFieldStage}
-                  textAlignVertical="top"
-                />
-              </View>
-
-              {(status === "submitted" || status === "closed") && (
-                <View style={{ marginTop: 12, alignItems: "center" }}>
-                  <NetramBadge
-                    label="SEALED REMARKS"
-                    variant="status"
-                    status="completed"
-                    size="md"
-                  />
+                  })}
+                </ScrollView>
+              ) : (
+                <View style={[styles.obsEmptyCard, { backgroundColor: bgSurface, borderColor }]}>
+                  <Icon name="camera-outline" size={44} color={accentBlue} />
+                  <Text style={[styles.obsEmptyTitle, { color: textPrimary }]}>
+                    No observations recorded
+                  </Text>
                 </View>
               )}
             </View>
-          )}
+
+          </View>
         </ScrollView>
 
-        {/* ── MODAL: Observation Note Box (Opened after taking photo/video) ── */}
-        <Modal
-          visible={pendingMedia !== null}
-          transparent
-          animationType="fade"
-          onRequestClose={() => {
-            deleteVoiceRecording();
-            setPendingMedia(null);
-            setPendingCaption("");
-          }}
-        >
-          <View style={styles.captionModalOverlay}>
-            <View style={[styles.captionModalBox, { backgroundColor: bgSurface, borderColor }]}>
-              <View style={styles.captionModalHeader}>
-                <Text style={[styles.captionModalTitle, { color: navyDark }]}>
-                  {pendingMedia?.evidenceType === "video" ? "Observation for Video" : "Observation for Photo"}
-                </Text>
-                <Pressable
-                  onPress={() => {
-                    deleteVoiceRecording();
-                    setPendingMedia(null);
-                    setPendingCaption("");
-                  }}
-                  hitSlop={12}
-                >
-                  <Icon name="close" size={22} color={textMuted} />
-                </Pressable>
-              </View>
+        {/* ── BOTTOM ACTION BAR: capture + the one primary workflow action ── */}
+        {(isFieldStage || canStart) && (
+          <View
+            style={[styles.actionBar, { backgroundColor: bgSurface, borderTopColor: borderColor }]}
+          >
+            {canStart ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionBarPrimary,
+                  { backgroundColor: accentBlue },
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={handleStartInspection}
+                disabled={actionBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Start inspection"
+              >
+                <Icon name="play" size={16} color="#FFFFFF" />
+                <Text style={styles.actionBarPrimaryText}>Start Inspection</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionBarPrimary,
+                  {
+                    backgroundColor: canSubmitInspection
+                      ? theme.actionGreen
+                      : theme.textMuted,
+                  },
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={handleSubmitInspection}
+                disabled={actionBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Submit inspection"
+              >
+                <Text style={styles.actionBarPrimaryText}>Submit Inspection</Text>
+              </Pressable>
+            )}
 
-              {/* Media Preview Box */}
-              <View style={[styles.captionMediaPreview, { backgroundColor: bgSubtle, borderColor }]}>
-                {pendingMedia?.evidenceType === "photo" && pendingMedia.uri ? (
-                  <Image
-                    source={{ uri: pendingMedia.uri }}
-                    style={{ width: "100%", height: 180, borderRadius: 10 }}
-                    resizeMode="cover"
-                  />
-                ) : pendingMedia?.evidenceType === "video" && pendingMedia.uri ? (
-                  <PlayableVideo
-                    src={pendingMedia.uri}
-                    style={{ width: "100%", height: 180, borderRadius: 10 }}
-                  />
-                ) : (
-                  <View style={{ width: "100%", height: 140, alignItems: "center", justifyContent: "center" }}>
-                    <Icon name="videocam" size={40} color={navyDark} />
-                    <Text style={{ marginTop: 6, fontSize: 12, color: textMuted }}>
-                      {pendingMedia?.fileName || "video.mp4"}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* 1. Text Observation Note */}
-              <View>
-                <View style={styles.modalSectionRow}>
-                  <Icon name="create-outline" size={13} color={accentBlue} />
-                  <Text style={[styles.modalSectionLabel, { color: accentBlue }]}>TEXT NOTE</Text>
-                </View>
-                <View style={[styles.captionInputWrap, { backgroundColor: bgSubtle, borderColor }]}>
-                  <TextInput
-                    style={[styles.captionInput, { color: textPrimary }]}
-                    value={pendingCaption}
-                    onChangeText={setPendingCaption}
-                    placeholder="Enter observation note details..."
-                    placeholderTextColor={textMuted}
-                    multiline
-                  />
-                </View>
-              </View>
-
-              {/* 2. Voice Note Recording Section */}
-              <View>
-                <View style={styles.modalSectionRow}>
-                  <Icon name="mic" size={13} color={accentBlue} />
-                  <Text style={[styles.modalSectionLabel, { color: accentBlue }]}>VOICE NOTE</Text>
-                </View>
-
-                {!isRecordingVoice && !pendingVoiceBytes && !pendingVoiceUri && (
-                  <Pressable
-                    style={[styles.voiceRecordBtn, { backgroundColor: bgSubtle, borderColor }]}
-                    onPress={startVoiceRecording}
-                  >
-                    <Icon name="mic-outline" size={16} color={accentBlue} />
-                    <Text style={[styles.voiceRecordBtnText, { color: textPrimary }]}>
-                      Record Voice Note
-                    </Text>
-                  </Pressable>
-                )}
-
-                {isRecordingVoice && (
-                  <View style={[styles.voiceActiveBox, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
-                    <View style={styles.voiceActiveLeft}>
-                      <View style={styles.voiceRedDot} />
-                      <Text style={styles.voiceTimerText}>
-                        Recording {Math.floor(voiceDuration / 60)}:{(voiceDuration % 60).toString().padStart(2, "0")}
-                      </Text>
-                    </View>
-                    <Pressable style={styles.voiceStopBtn} onPress={stopVoiceRecording}>
-                      <Icon name="square" size={12} color="#FFFFFF" />
-                      <Text style={styles.voiceStopBtnText}>Stop</Text>
-                    </Pressable>
-                  </View>
-                )}
-
-                {!isRecordingVoice && (pendingVoiceBytes || pendingVoiceUri) && (
-                  <View style={[styles.voicePlaybackBox, { backgroundColor: bgSubtle, borderColor }]}>
-                    <View style={styles.voicePlaybackLeft}>
-                      <Pressable
-                        style={[styles.voicePlayIconBtn, { backgroundColor: accentBlue }]}
-                        onPress={togglePlayPreviewVoice}
-                      >
-                        <Icon name={isPlayingVoice ? "pause" : "play"} size={13} color="#FFFFFF" />
-                      </Pressable>
-                      <Text style={[styles.voiceDurationText, { color: textPrimary }]}>
-                        Voice Note ({Math.floor(voiceDuration / 60)}:{(voiceDuration % 60).toString().padStart(2, "0")})
-                      </Text>
-                    </View>
-                    <Pressable style={styles.voiceDeleteBtn} onPress={deleteVoiceRecording}>
-                      <Icon name="trash-outline" size={16} color="#DC2626" />
-                    </Pressable>
-                  </View>
-                )}
-              </View>
-
-              {/* Action Buttons Row */}
-              <View style={styles.captionBtnRow}>
-                <Pressable
-                  style={[styles.captionCancelBtn, { borderColor }]}
-                  onPress={() => {
-                    deleteVoiceRecording();
-                    setPendingMedia(null);
-                    setPendingCaption("");
-                  }}
-                >
-                  <Text style={[styles.captionCancelText, { color: textMuted }]}>Cancel</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.captionSendBtn, { backgroundColor: theme.actionGreen }]}
-                  onPress={handleConfirmSendMedia}
-                  disabled={actionBusy}
-                >
-                  <Icon name="checkmark" size={16} color="#FFFFFF" />
-                  <Text style={styles.captionSendText}>
-                    {actionBusy ? "Saving..." : "Save Observation"}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
+            {isFieldStage && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionBarCapture,
+                  { backgroundColor: accentBlue },
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={handleOpenCamera}
+                accessibilityRole="button"
+                accessibilityLabel="Open camera to capture photo or video"
+              >
+                <Icon name="camera" size={24} color="#FFFFFF" />
+              </Pressable>
+            )}
           </View>
-        </Modal>
+        )}
 
         {/* ── MODAL: Media Full Preview ── */}
         <Modal
@@ -1671,125 +797,62 @@ export default function InspectionDetailScreen() {
           onRequestClose={() => setPreviewMedia(null)}
         >
           <View style={styles.previewModalOverlay}>
-            <View style={[styles.previewModalBox, { backgroundColor: bgSurface, borderColor }]}>
+            {/* Frameless lightbox: media edge-to-edge on pure black, no card chrome. */}
+            <View
+              style={[
+                styles.previewLightbox,
+                { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 },
+              ]}
+            >
               <View style={styles.previewModalHeader}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                  <Icon
-                    name={previewMedia?.evidence_type === "video" ? "videocam" : "image"}
-                    size={20}
-                    color={previewMedia?.evidence_type === "video" ? navyDark : accentBlue}
-                  />
-                  <Text style={[styles.previewModalTitle, { color: navyDark }]} numberOfLines={1}>
-                    {previewMedia?.file_name || "Captured Evidence"}
-                  </Text>
-                </View>
-                <Pressable onPress={() => setPreviewMedia(null)} hitSlop={12}>
-                  <Icon name="close" size={22} color={textMuted} />
+                <Pressable
+                  onPress={() => setPreviewMedia(null)}
+                  hitSlop={14}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close preview"
+                >
+                  <Icon name="close" size={26} color="#FFFFFF" />
                 </Pressable>
               </View>
 
-              <View style={[styles.previewMediaContent, { backgroundColor: bgSubtle }]}>
-                {previewMedia?.evidence_type === "photo" && previewMedia.local_file_uri ? (
+              <View style={styles.previewMediaContent}>
+                {previewMedia && !isVideoMedia(previewMedia) && previewMedia.local_file_uri ? (
                   <Image
                     source={{ uri: previewMedia.local_file_uri }}
-                    style={{ width: "100%", height: 280, borderRadius: 8 }}
+                    style={styles.previewMediaImage}
                     resizeMode="contain"
                   />
-                ) : previewMedia?.evidence_type === "video" && previewMedia.local_file_uri ? (
-                  <PlayableVideo
+                ) : previewMedia && isVideoMedia(previewMedia) && previewMedia.local_file_uri ? (
+                  <InteractiveVideoPlayer
                     src={previewMedia.local_file_uri}
                     autoPlay
-                    style={{ width: "100%", height: 280, borderRadius: 8 }}
+                    style={styles.previewMediaImage}
                   />
                 ) : (
-                  <View style={{ height: 180, alignItems: "center", justifyContent: "center" }}>
-                    <Icon name="videocam" size={56} color={navyDark} />
-                    <Text style={{ marginTop: 8, fontSize: 13, color: textMuted }}>
-                      {previewMedia?.file_name || "Video Recording"}
-                    </Text>
+                  <View style={styles.previewMediaPlaceholder}>
+                    <Icon name="videocam" size={56} color="#FFFFFF" />
                   </View>
                 )}
               </View>
 
-              {previewMedia?.caption ? (
-                <View style={[styles.previewCaptionBox, { backgroundColor: bgSubtle, borderColor }]}>
-                  <Text style={[styles.previewCaptionLabel, { color: accentBlue }]}>FIELD OBSERVATION NOTE</Text>
-                  <Text style={[styles.previewCaptionText, { color: textPrimary }]}>
-                    {previewMedia.caption}
-                  </Text>
-                </View>
-              ) : null}
-
-              {(previewMedia?.voiceEvidenceId || previewMedia?.voiceUri) && (
-                <View style={[styles.obsVoicePlayerBar, { backgroundColor: bgSubtle, borderColor, marginHorizontal: 0, marginTop: 10 }]}>
-                  <Pressable
-                    style={[
-                      styles.obsVoicePlayBtn,
-                      { backgroundColor: playingObsVoiceId === previewMedia.id ? theme.error : navyDark },
-                    ]}
-                    onPress={() => togglePlayCardVoice(previewMedia.id, previewMedia.voiceUri || null)}
-                  >
-                    <Icon
-                      name={playingObsVoiceId === previewMedia.id ? "pause" : "play"}
-                      size={14}
-                      color="#FFFFFF"
-                    />
-                  </Pressable>
-
-                  <View style={styles.obsVoiceInfoCol}>
-                    <Text style={[styles.obsVoiceTitle, { color: textPrimary }]}>
-                      Voice Note
-                    </Text>
-                    <Text style={[styles.obsVoiceSubtext, { color: textMuted }]}>
-                      {playingObsVoiceId === previewMedia.id
-                        ? "Audio playback in progress..."
-                        : "Tap to listen to recorded audio note"}
-                    </Text>
-                  </View>
-
-                  <Pressable
-                    style={[
-                      styles.obsVoiceListenBtn,
-                      { borderColor: playingObsVoiceId === previewMedia.id ? theme.error : navyDark },
-                    ]}
-                    onPress={() => togglePlayCardVoice(previewMedia.id, previewMedia.voiceUri || null)}
-                  >
-                    <Icon
-                      name={playingObsVoiceId === previewMedia.id ? "pause" : "play"}
-                      size={11}
-                      color={playingObsVoiceId === previewMedia.id ? theme.error : navyDark}
-                    />
-                    <Text
-                      style={[
-                        styles.obsVoiceListenBtnText,
-                        { color: playingObsVoiceId === previewMedia.id ? theme.error : navyDark },
-                      ]}
-                    >
-                      {playingObsVoiceId === previewMedia.id ? "Pause" : "Play"}
-                    </Text>
-                  </Pressable>
-                </View>
-              )}
-
-              <View style={[styles.previewFooter, { borderTopColor: borderColor }]}>
-                <View style={styles.obsTimeRow}>
-                  <Icon name="time-outline" size={13} color={textMuted} />
-                  <Text style={[styles.obsTimeText, { color: textMuted }]}>
-                    {previewMedia?.created_at
-                      ? new Date(previewMedia.created_at).toLocaleTimeString([], {
+              {previewMedia?.caption || previewMedia?.created_at ? (
+                <View style={styles.previewMetaBar}>
+                  {previewMedia?.caption ? (
+                    <Text style={styles.previewCaptionText}>{previewMedia.caption}</Text>
+                  ) : null}
+                  {previewMedia?.created_at ? (
+                    <View style={styles.obsTimeRow}>
+                      <Icon name="time-outline" size={13} color="#FFFFFF" />
+                      <Text style={styles.obsTimeText}>
+                        {new Date(previewMedia.created_at).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
-                        })
-                      : "Captured"}
-                  </Text>
+                        })}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
-                <Pressable
-                  style={[styles.previewCloseBtn, { borderColor }]}
-                  onPress={() => setPreviewMedia(null)}
-                >
-                  <Text style={[styles.previewCloseText, { color: textPrimary }]}>Close</Text>
-                </Pressable>
-              </View>
+              ) : null}
             </View>
           </View>
         </Modal>
@@ -1801,13 +864,18 @@ export default function InspectionDetailScreen() {
           animationType="fade"
           onRequestClose={() => setShowSubmitModal(false)}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: isPureDark ? "rgba(0,0,0,0.85)" : "rgba(0, 36, 73, 0.65)" }]}>
+          <View
+            style={[
+              styles.modalOverlay,
+              { backgroundColor: isPureDark ? "rgba(0,0,0,0.85)" : "rgba(0, 36, 73, 0.65)" },
+            ]}
+          >
             <View style={[styles.modalContent, { backgroundColor: bgSurface, borderColor }]}>
               <Text style={[styles.modalTitle, { color: textPrimary }]}>
                 OFFICIAL FIELD SIGN-OFF
               </Text>
               <Text style={[styles.modalSubtitle, { color: textMuted }]}>
-                Government of Odisha — Field Inspection Oversight Protocol
+                Netram Field Inspection Oversight Protocol
               </Text>
 
               {/* Project / Facility Summary */}
@@ -1819,39 +887,54 @@ export default function InspectionDetailScreen() {
                   {inspection?.project_name || project?.name || "Facility Site"}
                 </Text>
                 <Text style={{ fontSize: 11, color: textMuted, marginTop: 2 }}>
-                  {inspection?.project_code || "PRJ"} · {inspection?.district_id || "Khordha"} District
+                  {[
+                    inspection?.project_code,
+                    inspection?.district_id && `${inspection.district_id} District`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
                 </Text>
               </View>
 
               {/* Metric Summary Grid */}
               <View style={styles.submitSummaryGrid}>
-                <View style={[styles.submitSummaryCell, { backgroundColor: bgSubtle, borderColor }]}>
+                <View
+                  style={[styles.submitSummaryCell, { backgroundColor: bgSubtle, borderColor }]}
+                >
                   <Text style={[styles.submitSummaryLabel, { color: textMuted }]}>Field Notes</Text>
                   <Text style={[styles.submitSummaryValue, { color: textPrimary }]}>
-                    {observations.length - officerRemarks.length}
+                    {observations.length}
                   </Text>
                 </View>
-                <View style={[styles.submitSummaryCell, { backgroundColor: bgSubtle, borderColor }]}>
-                  <Text style={[styles.submitSummaryLabel, { color: textMuted }]}>Media Evidence</Text>
+                <View
+                  style={[styles.submitSummaryCell, { backgroundColor: bgSubtle, borderColor }]}
+                >
+                  <Text style={[styles.submitSummaryLabel, { color: textMuted }]}>
+                    Media Evidence
+                  </Text>
                   <Text style={[styles.submitSummaryValue, { color: textPrimary }]}>
                     {evidenceList.length}
-                  </Text>
-                </View>
-                <View style={[styles.submitSummaryCell, { backgroundColor: bgSubtle, borderColor }]}>
-                  <Text style={[styles.submitSummaryLabel, { color: textMuted }]}>Remarks</Text>
-                  <Text style={[styles.submitSummaryValue, { color: textPrimary }]}>
-                    {officerRemarks.length}
                   </Text>
                 </View>
               </View>
 
               {/* Formal Statutory Declaration */}
-              <View style={[styles.declarationBox, { backgroundColor: isPureDark ? "#112211" : "#F0FDF4", borderColor: theme.actionGreen }]}>
+              <View
+                style={[
+                  styles.declarationBox,
+                  {
+                    backgroundColor: isPureDark ? "#112211" : "#F0FDF4",
+                    borderColor: theme.actionGreen,
+                  },
+                ]}
+              >
                 <Text style={[styles.declarationTitle, { color: theme.actionGreen }]}>
                   STATUTORY DECLARATION
                 </Text>
                 <Text style={[styles.declarationText, { color: textPrimary }]}>
-                  "I hereby solemnly declare that this inspection was conducted in person within the designated geofence boundary, and the field notes, media evidence, and official remarks recorded herein represent an accurate on-site verification."
+                  "I hereby solemnly declare that this inspection was conducted in person within the
+                  designated geofence boundary, and the field notes and media evidence recorded herein
+                  represent an accurate on-site verification."
                 </Text>
               </View>
 
@@ -1880,8 +963,7 @@ export default function InspectionDetailScreen() {
           visible={cameraModalVisible}
           initialMode={cameraModalMode}
           onClose={() => setCameraModalVisible(false)}
-          onCapturePhoto={handleInAppPhotoCaptured}
-          onCaptureVideo={handleInAppVideoCaptured}
+          onSaveMedia={handleSaveMediaBatch}
         />
       </View>
     </SafeAreaView>
@@ -1900,12 +982,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  topSection: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-  },
   navRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1915,32 +991,6 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 6,
     borderRadius: 8,
-  },
-  backBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  headerBadges: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  startBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 10,
-    marginTop: 6,
-    alignSelf: "stretch",
-    justifyContent: "center",
-  },
-  startBtnText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.3,
   },
 
   // Video-call-style top bar
@@ -1964,258 +1014,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
-  headerSubmitBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  headerSubmitBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
-  headerSubmittedPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  headerSubmittedText: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  textpadContainer: {
-    padding: 16,
-    flex: 1,
-  },
-  textpadCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-    minHeight: 380,
-  },
-  textpadInput: {
-    flex: 1,
-    minHeight: 360,
-    padding: 16,
-    fontSize: 15,
-    lineHeight: 22,
-  },
 
   // Underline tab bar (video-call style)
-  inspTabsTrack: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-  },
-  inspTabItem: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  inspTabItemActive: {},
-  inspTabText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  inspTabUnderline: {
-    position: "absolute",
-    bottom: 0,
-    left: 6,
-    right: 6,
-    height: 2.5,
-    borderRadius: 1.5,
-  },
-  inspTabBubble: {
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 8,
-  },
-  inspTabBubbleText: {
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  bottomTabBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 3,
-  },
-  bottomTabBadgeText: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#FFFFFF",
-  },
-  bottomTabLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  facilityInfo: {
-    marginBottom: 6,
-  },
-  facilityName: {
-    fontSize: 16,
-    fontWeight: "800",
-    lineHeight: 21,
-
-    marginBottom: 3,
-  },
-  schemeName: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  districtLabel: {
-    fontSize: 12,
-  },
-  mainActionButton: {
-    marginTop: 6,
-  },
-  stepperContainer: {
-    borderBottomWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  stepperNodesRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  stepperNodePressable: {
-    alignItems: "center",
-    gap: 4,
-    flex: 1,
-  },
-  stepperCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepperCircleNum: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  stepperNodeLabel: {
-    fontSize: 10,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-  stepperContextCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  stepperContextLeft: {
-    flex: 1,
-    gap: 2,
-    marginRight: 8,
-  },
-  stepBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  stepNumPill: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-  },
-  stepNumPillText: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    fontFamily: typography.mono,
-  },
-  stepTitleHeading: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  stepDescText: {
-    fontSize: 11,
-    lineHeight: 15,
-  },
-  stepProgressBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepProgressText: {
-    fontSize: 11,
-    fontWeight: "700",
-    fontFamily: typography.mono,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 2,
-    marginBottom: 6,
-  },
-  wizardFooter: {
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  wizardNextButton: {
-    width: "100%",
-  },
-  wizardFooterRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  wizardPrevButton: {
-    flex: 1,
-  },
-  wizardNextButtonHalf: {
-    flex: 1.3,
-  },
-  manifestItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  manifestLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  manifestTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  manifestValue: {
-    fontSize: 12,
-  },
   scrollArea: {
     flex: 1,
   },
@@ -2223,53 +1023,26 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  tabContentContainer: {
-    gap: 12,
+  cleanSection: {
+    marginBottom: 22,
   },
-  locationLockCard: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 44,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
+  pageContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
   },
-  lockIconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  lockTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  lockSubtitle: {
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-    maxWidth: 280,
-  },
-  lockMapBtn: {
+  cleanSectionHeadingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    marginTop: 6,
   },
-  lockMapBtnText: {
-    fontSize: 14,
+  sectionCountPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  sectionCountText: {
+    fontSize: 10,
     fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  cleanSection: {
-    marginBottom: 22,
   },
   cleanSectionHeading: {
     fontSize: 11,
@@ -2297,16 +1070,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: "right",
   },
-  cleanMapLink: {
+  metaLinkValue: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 11,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  cleanMapLinkText: {
-    fontSize: 13,
-    fontWeight: "600",
+    gap: 4,
   },
   cleanFlagRow: {
     paddingVertical: 8,
@@ -2314,12 +1081,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderRadius: 4,
     gap: 4,
-  },
-  flagCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 10,
-    gap: 6,
   },
   flagTopRow: {
     flexDirection: "row",
@@ -2330,196 +1091,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  actionAddButton: {
-    marginBottom: 2,
-  },
-  itemCard: {
-    padding: 14,
-    borderRadius: 12,
-  },
-  obsItemText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  itemFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 8,
-    borderTopWidth: 1,
-  },
-  timestampMono: {
-    fontSize: 11,
-    fontFamily: typography.mono,
-  },
-  evidenceGrid: {
-    gap: 10,
-  },
-  mediaActionRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-  mediaActionBtn: {
-    flex: 1,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 6,
-  },
-  mediaActionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: 0.4,
-  },
-  videoBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  videoBadgeText: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: 0.6,
-  },
-  videoPlayOverlay: {
-    position: "absolute",
-    bottom: 4,
-    right: 4,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 10,
-    padding: 2,
-  },
-  evidenceCard: {
-    padding: 12,
-    borderRadius: 12,
-  },
-  evidenceRow: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-  },
-  evidenceThumb: {
-    width: 68,
-    height: 68,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  evidenceDetails: {
-    flex: 1,
-    gap: 3,
-  },
-  evidenceTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  evidenceFileName: {
-    fontSize: 13,
-    fontWeight: "700",
-    flex: 1,
-    marginRight: 6,
-  },
-  stampPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginVertical: 2,
-  },
-  stampText: {
-    fontSize: 10,
-    fontFamily: typography.mono,
-  },
-  evidenceTime: {
-    fontSize: 11,
-  },
-  findingTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  findingDesc: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 6,
-  },
-  remediationBox: {
-    padding: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    marginBottom: 6,
-  },
-  remediationLabel: {
-    fontSize: 9,
-    fontFamily: typography.mono,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  remediationText: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  editPrompt: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
 
-  subHeading: {
-    fontSize: 11,
-    fontFamily: typography.mono,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-  },
-  attendanceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  attendanceBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  attendanceCountText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  attendanceNoteText: {
-    fontSize: 12,
-  },
-  attendanceTimeText: {
-    fontSize: 10,
-    fontFamily: typography.mono,
-  },
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
     padding: 16,
-  },
-  modalScrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
   },
   modalContent: {
     borderRadius: 16,
@@ -2535,34 +1111,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 16,
   },
-  inputLabel: {
-    fontSize: 11,
-    fontFamily: typography.mono,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  severityRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 16,
-  },
-  severityChip: {
-    padding: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  obsLinkChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  obsLinkText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
   modalBtnRow: {
     flexDirection: "row",
     gap: 10,
@@ -2573,68 +1121,8 @@ const styles = StyleSheet.create({
   },
 
   // ── In-progress banner styles ──────────────────────────────
-  inProgressHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  inProgressPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  inProgressDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  inProgressText: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
 
   // ── Tab bar styles ─────────────────────────────────────────
-  tabBarContainer: {
-    borderBottomWidth: 1,
-  },
-  tabBarScroll: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-    flexDirection: "row",
-  },
-  tabPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    gap: 6,
-  },
-  tabPillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  tabCountBadge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  tabCountBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#FFFFFF",
-  },
-
 
   submitSummaryGrid: {
     flexDirection: "row",
@@ -2682,106 +1170,112 @@ const styles = StyleSheet.create({
   // ── Preview Modal Styles ──────────────────────────────────
   previewModalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    justifyContent: "center",
-    padding: 16,
+    backgroundColor: "#000000",
   },
-  previewModalBox: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-    maxHeight: "90%",
+  previewLightbox: {
+    flex: 1,
+    gap: 16,
   },
   previewModalHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-  },
-  previewModalTitle: {
-    fontSize: 14,
-    fontWeight: "700",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
   },
   previewMediaContent: {
-    borderRadius: 10,
-    overflow: "hidden",
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  previewCaptionBox: {
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 4,
+  previewMediaImage: {
+    width: "100%",
+    height: "100%",
   },
-  previewCaptionLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+  previewMediaPlaceholder: {
+    height: 180,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewMetaBar: {
+    paddingHorizontal: 16,
+    gap: 6,
   },
   previewCaptionText: {
+    color: "#FFFFFF",
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "500",
   },
-  previewFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 10,
-    borderTopWidth: 1,
-  },
-  previewCloseBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  previewCloseText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  obsPageContainer: {
-    padding: 16,
-    gap: 14,
-  },
-  obsActionRow: {
+  actionBar: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  obsCaptureBtn: {
+  actionBarCapture: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  actionBarPrimary: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 8,
+    height: 52,
+    borderRadius: 26,
   },
-  obsCaptureBtnText: {
+  actionBarPrimaryText: {
     color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
-  obsCardsList: {
-    gap: 14,
+  obsStrip: {
+    gap: 12,
+    paddingRight: 4,
   },
-  obsCard: {
-    borderRadius: 8,
+  obsTile: {
+    width: 210,
+    borderRadius: 10,
     borderWidth: 1,
     overflow: "hidden",
   },
-  obsMediaBox: {
+  obsTileMedia: {
     width: "100%",
-    height: 200,
+    height: 150,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+  },
+  obsTileOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: "rgba(15, 23, 42, 0.55)",
+  },
+  obsTileCaption: {
+    fontSize: 12,
+    lineHeight: 17,
+    padding: 10,
   },
   obsImage: {
     width: "100%",
@@ -2791,108 +1285,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  obsPlayOverlay: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  obsTypeBadge: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    zIndex: 10,
-  },
-  obsTypeBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  obsVoiceAttachedBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.actionGreen,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    zIndex: 10,
-  },
-  obsVoiceAttachedBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  obsVideoPlayerWrap: {
-    width: "100%",
-    backgroundColor: "#000000",
-    position: "relative",
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    overflow: "hidden",
-  },
-  obsVideoPlayer: {
-    width: "100%",
-    height: 220,
-    backgroundColor: "#000000",
-  },
-  obsTextNoteBox: {
-    marginHorizontal: 12,
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 4,
-  },
-  obsSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 2,
-  },
-  obsSectionTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  obsTextNoteContent: {
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "500",
-  },
-  obsCardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-  },
   obsTimeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-  },
-  obsTimeText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  obsSyncBadge: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 4,
   },
-  obsSyncText: {
+  obsTimeText: {
+    color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "600",
+  },
+  utilisationBlock: {
+    marginTop: 10,
+    gap: 6,
+  },
+  utilisationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  utilisationLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  utilisationValue: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  utilisationTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  utilisationFill: {
+    height: 6,
+    borderRadius: 3,
   },
   obsEmptyCard: {
     borderRadius: 14,
@@ -2906,245 +1334,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     marginTop: 4,
-  },
-  obsEmptySubtitle: {
-    fontSize: 13,
-    textAlign: "center",
-    maxWidth: 260,
-  },
-  captionModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    justifyContent: "center",
-    padding: 16,
-  },
-  captionModalBox: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
-  captionModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  captionModalTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  captionMediaPreview: {
-    borderRadius: 10,
-    borderWidth: 1,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  captionInputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  captionInput: {
-    flex: 1,
-    fontSize: 13,
-    minHeight: 38,
-    maxHeight: 80,
-  },
-  captionBtnRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 4,
-  },
-  captionCancelBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  captionCancelText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  captionSendBtn: {
-    flex: 1.5,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  captionSendText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  modalSectionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  modalSectionLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  voiceRecordBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  voiceRecordBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  voiceActiveBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  voiceActiveLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  voiceRedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#DC2626",
-  },
-  voiceTimerText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#DC2626",
-  },
-  voiceStopBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#DC2626",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  voiceStopBtnText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  voicePlaybackBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  voicePlaybackLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-  },
-  voicePlayIconBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  voiceDurationText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  voiceDeleteBtn: {
-    padding: 4,
-  },
-  obsVoicePlayerBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 12,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 10,
-  },
-  obsVoicePlayBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  obsVoiceInfoCol: {
-    flex: 1,
-    gap: 2,
-  },
-  obsVoiceInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  obsVoiceTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  obsPlayingPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#FEF2F2",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  obsPlayingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#DC2626",
-  },
-  obsPlayingPillText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#DC2626",
-  },
-  obsVoiceSubtext: {
-    fontSize: 11,
-    fontWeight: "400",
-  },
-  obsVoiceListenBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  obsVoiceListenBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
   },
 });

@@ -37,6 +37,19 @@ pnpm --filter @netram/api workers    # background worker pool
 AI service (Python): `cd services/ai && pip install -e . && uvicorn app.main:app --port 8000`
 (see `services/ai/pyproject.toml`).
 
+### Inspector mobile app
+
+```bash
+pnpm --filter @netram/inspector-mobile start     # Expo dev server (then press a / i / w)
+pnpm --filter @netram/inspector-mobile android  # Android emulator
+pnpm --filter @netram/inspector-mobile ios      # iOS simulator
+pnpm --filter @netram/inspector-mobile web      # browser
+```
+
+From `apps/inspector-mobile` the same scripts are `pnpm start`, `pnpm android`,
+`pnpm ios`, `pnpm web`. The API on `:3001` must be running for online sync,
+evidence upload and login; queued offline operations are flushed on reconnect.
+
 ### CCTV media rig
 
 The full simulated facility (camera → RTSP → MediaMTX):
