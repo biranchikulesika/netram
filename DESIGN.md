@@ -110,7 +110,7 @@ Any reintroduction is a design-system regression.
 * **Section Eyebrow / Tag**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em - 0.2em`, colour `#0c2a52`, font-weight `600`.
 * **Body Text**: `14px - 15px` (`0.875rem - 0.9375rem`), font-weight `400` or `500`, line-height `1.5 - 1.6`, colour `#45556c`.
 * **Technical Labels / Keys**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em`, colour `#45556c`, background `#edf0f5`.
-* **Form Inputs & Buttons**: `15px - 16px` (ensuring 16px on mobile to prevent iOS viewport auto-zoom), font-weight `500` - `600`.
+* **Form Inputs & Buttons**: `15px - 16px`, font-weight `500` - `600`.
 
 ---
 
@@ -239,3 +239,7 @@ channel for web UI code — prefer `var(…)` tokens over raw hex in component c
 4. **Contrast compliance**: Always ensure text on `--bg-canvas` (`#ffffff`) uses `--text-primary` (`#0c2a52`) or `--text-muted` (`#45556c`).
 5. **Cross-platform parity**: Mobile inspector UI components (`apps/inspector-mobile`) must use the same palette values and typography hierarchy.
 6. **Closed palette**: The 8 colours in §1.1 are the complete set. Every new UI surface must be expressible with them; if one genuinely cannot, that is an architectural decision requiring a DESIGN.md update first — never a local hex literal.
+7. **Desktop-only web layout**: `apps/web` is a desktop application and has no mobile web build — field staff use `apps/inspector-mobile`. The root layout pins the viewport to a fixed `1280`px so phone browsers render the desktop layout rather than a squashed approximation.
+   - Do not add responsive `@media` breakpoints or mobile-specific layout variants to the web app. A fixed 1280px viewport means no `max-width` query can ever match, so such rules are dead weight.
+   - Three pre-existing breakpoints are now inert and are left in place pending a separate cleanup: `apps/web/globals.css` (768px, portal sidebar/topbar), `apps/web/app/components/masthead.module.css` (720px, SIH logo) and `apps/web/app/login/login.module.css` (640px, login card padding).
+   - Do not add `user-scalable: false` / `maximumScale: 1` / `minimumScale` — forcing a desktop layout onto a phone is already hard to read, and blocking pinch-zoom removes the tool low-vision users depend on. `width: 1280` alone gives the desktop layout with zoom intact.

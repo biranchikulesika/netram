@@ -43,7 +43,7 @@ packages/ui/
 - All SSR pages and layouts (website, workspace views, authentication, dashboards)
 - Server Components (default) and Client Components (interaction, hooks, realtime UI)
 - Browser-side API calls via `@netram/api-client`
-- Responsive layout, accessibility, image optimisation (`next/image`)
+- Desktop-only layout (the viewport is pinned to 1280px; there is no mobile web build), accessibility, image optimisation (`next/image`)
 - No business logic in components; no direct database access; no backend-only imports
 
 ### Key contracts consumed

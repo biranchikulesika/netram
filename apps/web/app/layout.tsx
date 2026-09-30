@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "leaflet/dist/leaflet.css";
 import "../globals.css";
 import DisclaimerModal from "./DisclaimerModal";
@@ -32,6 +32,26 @@ export const metadata: Metadata = {
     title: NETRAM_TITLE,
     description: NETRAM_DESCRIPTION,
   },
+};
+
+/**
+ * The web platform is a desktop application. There is no mobile web build —
+ * field staff use the separate `apps/inspector-mobile` app — so phone browsers
+ * should render the desktop layout rather than a squashed approximation of it.
+ *
+ * `width: 1280` makes a mobile browser lay the page out at a fixed 1280 CSS
+ * pixels and scale the result down to fit, which is exactly the desktop
+ * presentation. Next.js's default is `width=device-width`, which is what
+ * produced the narrow, unusable layout on a phone.
+ *
+ * Deliberately NOT set: `userScalable: false`, `maximumScale: 1` or
+ * `minimumScale`. Those block pinch-zoom, which is an accessibility
+ * requirement — forcing a desktop layout on a small screen is already hard
+ * enough to read. Zoom stays available.
+ */
+export const viewport: Viewport = {
+  width: 1280,
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
