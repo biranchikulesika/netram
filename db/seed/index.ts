@@ -1,8 +1,9 @@
 import { resolve } from "node:path";
-import { v5 as uuidv5 } from "uuid";
 import { getDb } from "@netram/data";
 import * as s from "@netram/data/schema";
 import { fileURLToPath } from "node:url";
+import { did } from "./ids";
+import { seedProjectOperations } from "./project-operations";
 
 try {
   process.loadEnvFile(resolve(import.meta.dirname, "../../.env"));
@@ -11,12 +12,10 @@ try {
   // provided by the environment (docker-compose env / systemd).
 }
 
-/** Deterministic namespace for all seed IDs. */
-const SEED_NS = "d3a5e19a-9a1e-4f0b-8f44-3b0b8f44b1a2";
-
-export function did(seed: string): string {
-  return uuidv5(seed, SEED_NS);
-}
+// Re-exported so the existing seed entry point keeps its public surface; the
+// implementation lives in ./ids so sibling seed modules can mint ids without
+// importing this file (and creating a cycle).
+export { did } from "./ids";
 
 export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Promise<void> {
   if (!databaseUrl) throw new Error("DATABASE_URL is required for seeding.");
@@ -1126,7 +1125,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Vani Vihar SC/ST Hostel",
       type: "institution",
       schemeComponentId: did("component:pmajay-bjrc"),
-      description: "SC/ST hostel near Vani Vihar, Bhubaneswar. 120 residents.",
+      description:
+        "SC/ST residential hostel in the Vani Vihar locality, Bhubaneswar. Ground-up project with two blocks: a 120-bed residential block and a 60-seat dining hall, built under the PM-AJAY Biju Chhatra Bhuban Ruchi CGM scheme component. Occupancy runs at about 115 of 120 beds. Staffed by one superintendent, two wardens and a shared cook-house team serving breakfast, lunch, an evening snack and dinner. Two biometric attendance devices and four CCTV cameras are installed and reporting.",
       organisationId: did("org:vani"),
       authorityId: did("authority:dosje-khordha"),
       districtId: did("district:khordha"),
@@ -1144,7 +1144,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Rajdhani Boys' Hostel (ST)",
       type: "institution",
       schemeComponentId: did("component:pmajay-bjrc"),
-      description: "ST boys' hostel, Khordha. Under verification.",
+      description:
+        "ST boys' hostel in Khordha town, operated by the District Welfare Office. Single 80-bed residential block with a common kitchen and a fenced play area. Verification is still pending: the facility was built to the 80-bed sanction but on-ground measurement during the pre-approval desk check recorded only 74 usable beds, and the ward-strength declaration for three of five sanctioned posts could not be matched to muster-roll records. No inspection findings have been raised against it yet.",
       organisationId: did("org:rajdhani"),
       authorityId: did("authority:dosje-khordha"),
       districtId: did("district:khordha"),
@@ -1162,7 +1163,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Cuttack Girls' Hostel",
       type: "institution",
       schemeComponentId: did("component:pmajay-bjrc"),
-      description: "Girls' hostel in Cuttack. Suspended during compliance review.",
+      description:
+        "Girls' hostel in Cuttack, 150-bed capacity across two blocks, running a senior-secondary stream alongside the residential facility. Placed under suspension pending a compliance review after the last inspection cycle recorded a food-misprocurement finding and a beneficiary-roll mismatch of 19 records. The kitchen, the two biometric devices and the CCTV coverage are all in place; the review concerns procurement records and roll accuracy rather than the physical facility. Operations continue at reduced intake while the review is open.",
       organisationId: did("org:cuttack-girls"),
       authorityId: did("authority:dosje-cuttack"),
       districtId: did("district:cuttack"),
@@ -1179,17 +1181,18 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       code: "PRJ-PURI-004",
       name: "Puri Model Boys' Hostel",
       type: "institution",
-      description: "Model hostel in Puri, entered as a draft.",
+      description:
+        "Proposed model boys' hostel in Puri district. Record is still a draft: the site has been identified and the District Welfare Officer has been named as the interim contact, but there is no sanctioned capacity, no scheme component mapping and no fund allocation yet. Nothing operational is attached to this project until it is verified and approved — no inspections, cameras, devices or funds exist for it, by design.",
       organisationId: did("org:puri-model"),
       authorityId: did("authority:dosje"),
       districtId: did("district:puri"),
       status: "Draft",
       approvedById: null,
       approvedAt: null,
-      contactName: null,
-      contactPhone: null,
-      contactEmail: null,
-      programmeIds: [],
+      contactName: "Debendra Nayak",
+      contactPhone: "+91 94378 10442",
+      contactEmail: "debendra.nayak@puriwelfare.dev.netram.in",
+      programmeIds: [did("programme:pmajay")],
     },
     {
       id: did("project:ganjam-school"),
@@ -1197,7 +1200,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Ganjam Model School Hostel",
       type: "institution",
       schemeComponentId: did("component:pmajay-bjrc"),
-      description: "Model school hostel in Ganjam.",
+      description:
+        "Model school hostel in Ganjam district, operating alongside a pre-primary to upper-primary school. 90-bed residential block, kitchen and dining hall, and a combined academic-and-residential timetable for 84 enrolled children. Serves as a host site for attendance-discrepancy review, so it carries a main biometric device and a second low-attendance device at the rear gate for comparison runs.",
       organisationId: did("org:ganjam-school"),
       authorityId: did("authority:dosje"),
       districtId: did("district:ganjam"),
@@ -1218,7 +1222,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       type: "institution",
       schemeComponentId: did("component:ipsrc"),
       description:
-        "Senior citizen home under AVYAY/IPSrC, Puri district. Named in the official DoSJE social audit calendar (Odisha rows).",
+        "Senior citizen home under AVYAY/IPSrC, Puri district, operated by Nilachal Seva Pratisthan. 40-bed home for residents aged 60 and above, with a nursing room, an accessible washroom block and a daytime activity hall. Care is delivered by a supervisor, two nursing aides and a visiting physician twice a week. Named in the official DoSJE social audit calendar (Odisha rows), so its records are published to the officer disclosure policy rather than withheld.",
       organisationId: did("org:nilachal"),
       authorityId: did("authority:dosje"),
       districtId: did("district:puri"),
@@ -1237,7 +1241,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       type: "institution",
       schemeComponentId: did("component:irca"),
       description:
-        "Integrated Rehabilitation Centre for Addicts under NAPDDR, Puri district. Named in the official DoSJE social audit calendar (Odisha rows).",
+        "Integrated Rehabilitation Centre for Addicts under NAPDDR, Puri district, operated by the same organisation as the Astaraag senior citizen home. 30-bed residential facility running a 90-day detoxification and counselling programme, with a counselling room, a group-therapy hall and a pharmacy store. Staffed by a centre-in-charge, a counsellor, three recovery assistants and a nurse on call. Named in the official DoSJE social audit calendar (Odisha rows).",
       organisationId: did("org:nilachal"),
       authorityId: did("authority:dosje"),
       districtId: did("district:puri"),
@@ -1256,7 +1260,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       type: "village",
       schemeComponentId: did("component:pmajay-adarsh"),
       description:
-        "SC-majority village under the PM-AJAY Adarsh Gram component, Jajapur. The village itself is the audited unit; no implementing institute (official calendar shows institute N/A for Jajapur village audits).",
+        "SC-majority village under the PM-AJAY Adarsh Gram component, Dharmasala, Jajapur. The village itself is the audited unit, not an institution: audits cover the gram panchayat's delivery of the component's works and entitlements rather than a residential facility. Household-level checks cover the roll, the works executed and the panchayat's own records. No implementing institute exists — the official calendar shows institute N/A for Jajapur village audits — so there is no organisation and no facility contact; the district welfare office coordinates. There is no CCTV and no biometric attendance at a village target.",
       organisationId: null,
       authorityId: did("authority:dosje"),
       districtId: did("district:jajapur"),
@@ -2754,13 +2758,17 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Rourkela Model Girls' Hostel (ST)",
       type: "institution",
       schemeComponentId: did("component:pmajay-bjrc"),
-      description: "Model ST girls' hostel in Rourkela, Sundargarh. 90 residents.",
+      description:
+        "Model ST girls' hostel in Rourkela, Sundargarh district. 90-bed residential block with a kitchen, dining hall and indoor recreation room, plus a boundary wall and gatehouse completed in 2025. Around 86 of 90 beds occupied. Used as the verification site for a pending attendance correction: wardens maintain a manual roll alongside two biometric devices, which is how a three-day device outage was reconciled.",
       organisationId: did("org:rourkela"),
       authorityId: did("authority:dosje"),
       districtId: did("district:sundargarh"),
       status: "Active",
       approvedById: did("user:dept-admin"),
       approvedAt: new Date("2026-01-05T09:30:00Z"),
+      contactName: "Snehalata Behera",
+      contactPhone: "+91 94379 61234",
+      contactEmail: "snehalata.behera@rourkelahostel.dev.netram.in",
       programmeIds: [did("programme:pmajay"), did("programme:surprise-audit")],
     },
   ] as const;
@@ -5491,6 +5499,14 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       createdAt: new Date("2026-09-23T09:30:00Z"),
     })
     .onConflictDoNothing();
+
+  // ==========================================================================
+  // Per-project operational history: inspection cycles, findings, evidence,
+  // corrective actions, complaints, funds, expenses, risk and oversight calls.
+  // Lives in its own module because it is large and conceptually separable
+  // from the reference data above.
+  // ==========================================================================
+  await seedProjectOperations(db);
 
   console.log(
     `Seed complete: ${projects.length + enrichedProjects.length} projects, ${users.length + enrichedUsers.length} users across ${districtRows.length} districts.`,

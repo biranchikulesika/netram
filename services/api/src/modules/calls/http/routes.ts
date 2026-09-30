@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import type { Container } from "../../../infrastructure/container.js";
 import { toJsonSchema } from "../../../infrastructure/schema-helper.js";
+import { z } from "zod";
 import {
+  callContactSchema,
+  callRecordSchema,
   createCallRecordSchema,
   listCallHistoryQuerySchema,
 } from "@netram/validation";
@@ -20,6 +23,7 @@ export async function registerCallRoutes(app: FastifyInstance, container: Contai
       schema: {
         tags: ["calls"],
         security: [{ bearerAuth: [] }],
+        response: { 200: toJsonSchema("CallContactList", z.array(callContactSchema)) },
       },
     },
     async (request) => {
@@ -35,6 +39,7 @@ export async function registerCallRoutes(app: FastifyInstance, container: Contai
         tags: ["calls"],
         security: [{ bearerAuth: [] }],
         querystring: toJsonSchema("ListCallHistoryQuery", listCallHistoryQuerySchema),
+        response: { 200: toJsonSchema("CallRecordList", z.array(callRecordSchema)) },
       },
     },
     async (request) => {
@@ -51,6 +56,7 @@ export async function registerCallRoutes(app: FastifyInstance, container: Contai
         tags: ["calls"],
         security: [{ bearerAuth: [] }],
         body: toJsonSchema("CreateCallRecordInput", createCallRecordSchema),
+        response: { 201: toJsonSchema("CallRecord", callRecordSchema) },
       },
     },
     async (request, reply) => {

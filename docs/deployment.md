@@ -112,6 +112,45 @@ set; it stays closed otherwise.
 `db-setup` is the one-shot initial build of the same thing, and every
 database-reading service waits for it so a fresh volume is never served empty.
 
+### Seed data
+
+The seed lives in `db/seed/`:
+
+| File | Contents |
+|------|----------|
+| `index.ts` | Reference data: geography, roles, permissions, authorities, jurisdictions, organisations, programmes, scheme components, finding categories, disclosure policies, users, projects, plus attendance and CCTV simulation setup. |
+| `ids.ts` | The `did()` helper. Every id is UUIDv5 over a readable seed key, in one shared namespace. |
+| `project-operations.ts` | Per-project operational history: inspection cycles, observations, findings, evidence, corrective actions, complaints and attachments, funds and releases, expenses and financial documents, risk snapshots, CCTV cameras, oversight video calls, and the offline operations the inspector app replayed. |
+
+Two properties are load-bearing, because the demo database is destroyed and
+rebuilt every 30 minutes and another developer must be able to reproduce it:
+
+- **Deterministic.** No `Date.now()`, no randomness, no dependence on Map
+  iteration order. Every timestamp is a literal. A fresh reset produces the same
+  ids and the same instants, which is what keeps client-generated offline
+  operation ids meaningful across restarts (AGENTS.md §13, §31).
+- **Interconnected.** Findings reference real inspections; corrective actions
+  reference those findings; evidence references both; risk snapshots reference
+  flags raised against the same inspections. A query for orphans should return
+  zero.
+
+**Content is synthetic.** Organisation names follow the official DoSJE social
+audit calendar because that calendar is public. Every person, phone number,
+email, invoice number, document hash and location is invented, and emails use
+the reserved `.dev.netram.in` domain. No real personal information and no real
+credentials.
+
+To add project detail, extend the `ProjectSpec` list in
+`project-operations.ts` — one entry per project, each carrying its inspection
+cycles and finding text. The module expands those into observations, evidence,
+corrective actions and risk snapshots. Do not hand-insert derived rows.
+
+Verified per-project depth after a clean `db:setup` (9 projects, 26
+inspections, 37 findings, 50 evidence, 34 corrective actions, 29 photos, 13
+complaints, 20 risk snapshots, 37 sync operations). `PRJ-PURI-004` is
+deliberately empty of operations: it is a `Draft`, and a draft cannot have
+inspections, funds or findings.
+
 ## 6. Operating the stack
 
 ```bash
