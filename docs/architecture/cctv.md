@@ -173,7 +173,7 @@ browser playback), plus phase 2/3/4 suites (`verify:runtime:cctv-phase2|3|4`).
 - **Production facility deployment is NOT implemented**: no WireGuard tunnel,
   no real cameras, no ONVIF provisioning, no TLS/reverse-proxy termination,
   no TURN. The dev rig simulates the facility; production topology design
-  lives in [`docs/history/cctv-target-architecture.md`](../history/cctv-target-architecture.md).
+  lives in [`docs/history/cctv-evolution.md`](../history/cctv-evolution.md).
 - Hook secret travels as a query param on the configured hook URL (MediaMTX
   cannot send custom headers) — acceptable for dev; production must move it to
   a secret-managed reverse-proxy front.

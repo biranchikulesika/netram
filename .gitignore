@@ -73,6 +73,7 @@ Thumbs.db
 .idea/
 .vscode/
 .kilo/
+.freebuff/
 *.swp
 *.swo
 
@@ -84,9 +85,12 @@ infrastructure/.data/
 coverage/
 
 # ================= Markdown =================
-# Default: every `.md` file is ignored.
-# Only canonical repository documentation is explicitly allowed below.
-# A Markdown file enters Git only when deliberately added to this allowlist.
+# Ignore editor backup/scratch markdown files
+*~.md
+*.tmp.md
+*.scratch.md
+
+# Default: unapproved markdown files outside docs are ignored
 *.md
 
 # Root repository documentation
@@ -94,20 +98,7 @@ coverage/
 !AGENTS.md
 !DESIGN.md
 
-# Canonical docs
-!docs/OWNERSHIP.md
-!docs/architecture/README.md
-!docs/architecture/cctv.md
-!docs/contracts/README.md
-!docs/domain/README.md
-!docs/decisions/ADR-001-monorepo.md
+# Canonical documentation suite
+!docs/*.md
+!docs/**/*.md
 
-# Canonical development docs
-!docs/deployment.md
-!docs/development/setup.md
-!docs/development/TEAM-HANDOFF.md
-!docs/development/WORK-AREAS.md
-!docs/development/SHARED-CONTRACTS.md
-!docs/development/TEAM-TASKS.md
-!docs/development/environments.md
-main.py

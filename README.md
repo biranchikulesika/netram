@@ -74,19 +74,20 @@ Full setup, database lifecycle, verification scripts and the CCTV media rig:
 
 | Subject                                            | Authoritative document                                                 |
 | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Master documentation index**                     | [`docs/README.md`](docs/README.md)                                     |
 | Engineering rules & boundaries (agents and humans) | [`AGENTS.md`](AGENTS.md)                                               |
-| Current architecture                               | [`docs/architecture/README.md`](docs/architecture/README.md)           |
+| Current architecture & visual flowcards            | [`docs/architecture/README.md`](docs/architecture/README.md)           |
 | CCTV / live streaming                              | [`docs/architecture/cctv.md`](docs/architecture/cctv.md)               |
 | Domain model                                       | [`docs/domain/README.md`](docs/domain/README.md)                       |
 | DoSJE domain knowledge base                        | [`docs/DoSJE.md`](docs/DoSJE.md)                                       |
-| API contract                                       | [`docs/contracts/README.md`](docs/contracts/README.md)                 |
+| API & shared package contracts                     | [`docs/contracts/README.md`](docs/contracts/README.md)                 |
 | Development setup                                  | [`docs/development/setup.md`](docs/development/setup.md)               |
 | Environments & isolation                           | [`docs/development/environments.md`](docs/development/environments.md) |
-| Deployment status (implemented vs planned)         | [`docs/deployment.md`](docs/deployment.md)                             |
+| Deployment status (single-VPS topology)            | [`docs/deployment.md`](docs/deployment.md)                             |
 | Design system (colours, typography, components)    | [`DESIGN.md`](DESIGN.md)                                               |
-| Ownership                                          | [`docs/OWNERSHIP.md`](docs/OWNERSHIP.md)                               |
+| Ownership & CODEOWNERS                             | [`docs/OWNERSHIP.md`](docs/OWNERSHIP.md)                               |
 | Architecture decisions                             | [`docs/decisions/`](docs/decisions/)                                   |
-| CCTV design/phase history                          | [`docs/history/`](docs/history/)                                       |
+| CCTV evolution & historical records                | [`docs/history/`](docs/history/)                                       |
 
 ## Security rules you inherit
 

@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@netram/types": "workspace:*",
-    "@netram/config": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "postgres": "^3.4.5"
   },

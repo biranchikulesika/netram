@@ -12,9 +12,18 @@ import type { ISqliteDatabase } from "./db";
 import { getOfflineDatabase } from "./db";
 
 function uuidv4(): string {
-  // RFC4122 compliant UUID v4 generator
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
+  if (typeof crypto !== "undefined") {
+    if (typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    if (typeof crypto.getRandomValues === "function") {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      bytes[6] = (bytes[6]! & 0x0f) | 0x40; // version 4
+      bytes[8] = (bytes[8]! & 0x3f) | 0x80; // variant RFC4122
+      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
   }
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;

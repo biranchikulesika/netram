@@ -26,13 +26,67 @@ the typed client in `packages/api-client`.
 5. Information disclosure is server-side: unauthorised fields are **omitted**,
    never merely hidden in the UI (AGENTS.md §34).
 
-## Changing an API
+## Changing a Contract Boundary
 
-The change checklist (AGENTS.md §19): update the contract → update validation →
-update backend → update client → update tests → verify consumers. The CI job
-fails if `openapi.json` drifts from the code.
+The change checklist (AGENTS.md §19):
+1. Update domain types (`packages/types`)
+2. Update validation schemas (`packages/validation`)
+3. Update backend implementation & routes (`services/api`)
+4. Regenerate OpenAPI contract (`pnpm api:export-openapi`)
+5. Update typed client (`packages/api-client`)
+6. Update test assertions and verify all consumers
 
-## Current surface
+The CI job strictly validates that `openapi.json` does not drift from code (`git diff --exit-code -- services/api/openapi`).
+
+---
+
+## Shared Contract Packages
+
+The monorepo defines shared contracts in isolated workspace packages to maintain strict synchronization across the web, mobile, and backend services:
+
+| Package | Path | Purpose | Key Consumers |
+|---|---|---|---|
+| **`@netram/types`** | `packages/types/src/` | Canonical domain definitions, contract interfaces, enums, and event shapes | Web, Mobile, API, Workers, Realtime |
+| **`@netram/validation`** | `packages/validation/src/` | Zod runtime boundary validation schemas and input parsers | Web, Mobile, API |
+| **`@netram/api-client`** | `packages/api-client/src/` | Strongly-typed HTTP client wrapping all REST endpoints | Web, Mobile |
+| **`@netram/config`** | `packages/config/src/` | Validated, typed environment variable schemas (server and client) | All apps & services |
+| **`@netram/data`** | `packages/data/src/` | Persistence schemas (Drizzle ORM) and repository interfaces | API, Seed, Workers |
+
+### Domain Type Inventory (`packages/types/src/`)
+
+| File | Domain Area & Core Concepts |
+|---|---|
+| `auth.ts` | `AuthenticatedUser`, `RequestUserContext`, dev token structures |
+| `authorization.ts` | `Role`, `Permission`, `RoleAssignment`, `Scope`, `Policy` |
+| `user.ts` | `User`, `UserProfile`, user status transitions |
+| `geography.ts` | `State`, `District`, `Jurisdiction` hierarchy |
+| `project.ts` | `Project`, `ProjectStatus`, lifecycle transitions, facility profiles |
+| `project-photo.ts` | `ProjectPhoto`, photo metadata, capture checksums |
+| `inspection.ts` | `Inspection`, `InspectionStatus`, workflow states, random assignment |
+| `inspection-assignment.ts` | `InspectionAssignment`, team allocation rules |
+| `finding.ts` | `Finding`, `FindingSeverity`, `FindingStatus` |
+| `corrective-action.ts` | `CorrectiveAction`, `CorrectiveActionStatus`, ATR records |
+| `evidence.ts` | `Evidence`, `EvidenceIntegrityState`, `EvidenceUploadState` |
+| `observation.ts` | `Observation`, `ObservationType` |
+| `complaint.ts` | `Complaint`, `ComplaintStatus`, escalation pathways |
+| `notification.ts` | `Notification`, notification channels (in-app, email, sms, push) |
+| `audit.ts` | `AuditEvent`, append-only audit trail entries |
+| `ai-anomaly.ts` | `AIAnomaly`, `AnomalyScore`, `AnomalySeverity`, confidence intervals |
+| `attendance.ts` | `AttendanceCalculation`, `AttendanceAnomaly`, `AttendanceCorrection` |
+| `cctv.ts` | `PublicCctvCamera`, `CameraHealthStatus`, `AuthorizedStream`, WHEP playback |
+| `vc.ts` | `VideoConferenceSession`, `VCSessionStatus`, participant state |
+| `fund.ts` | `FundAllocation`, `FundRelease`, `Expense`, `FinancialDocument`, `InspectionFlag` |
+| `project-risk.ts` | `ProjectRiskSnapshot`, composite multi-dimensional scoring types |
+| `action-inbox.ts` | `ActionInboxItem`, `ActionInboxSection`, kind-to-permission mapping |
+| `scheme-component.ts` | `SchemeComponent` (DoSJE welfare scheme components) |
+| `registry.ts` | `AgencyRegistration`, `OfficialRegistration`, `REGISTRY_CAPABILITIES` |
+| `sync.ts` | Offline operation batch contracts (`OfflineOperation`, `SyncResult`, `ConflictResult`) |
+| `domain-events.ts` | Strongly-typed event payloads (`InspectionAssigned`, `EvidenceCaptured`, etc.) |
+| `common.ts` | Shared primitives (`UUID`, `Timestamp`, `Pagination`, `ApiError`) |
+
+---
+
+## HTTP REST API Surface (`/api/v1/`)
 
 All routes are served under `/api/v1/` with `bearerAuth` security unless
 otherwise noted.

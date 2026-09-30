@@ -14,9 +14,7 @@
   "dependencies": {
     "@netram/config": "workspace:*",
     "@netram/data": "workspace:*",
-    "@netram/types": "workspace:*",
     "fastify": "^5.2.1",
-    "undici": "^7.2.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {

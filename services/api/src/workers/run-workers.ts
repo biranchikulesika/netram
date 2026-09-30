@@ -28,6 +28,7 @@ import { startNotificationWorker } from "./notification.worker.js";
 import { startOutboxDispatcherWorker } from "./outbox-dispatcher.worker.js";
 import { startScheduledJobsWorker } from "./scheduled-jobs.worker.js";
 import { startCctvSweeperWorker } from "./cctv-sweeper.worker.js";
+import { startAttendanceExportWorker } from "./attendance-export.worker.js";
 
 export function buildFinancialRiskSweep(databaseUrl: string): FinancialRiskService {
   const db = getDb(databaseUrl);
@@ -147,7 +148,16 @@ export async function main(): Promise<void> {
     closers.push(cctvSweeper.close);
     console.log("✓ CCTV Stream Session Sweeper online");
 
-    console.log("\n⚡ Netram Worker Pool successfully running with all 4 workers active.");
+    // 5. Attendance Export Worker (Background CSV generation)
+    console.log("[workers] Initializing Attendance Export Worker...");
+    const attendanceExportWorker = await startAttendanceExportWorker({
+      redisUrl: env.REDIS_URL,
+      databaseUrl: env.DATABASE_URL,
+    });
+    closers.push(attendanceExportWorker.close);
+    console.log("✓ Attendance Export Worker online");
+
+    console.log("\n⚡ Netram Worker Pool successfully running with all 5 workers active.");
 
     const shutdown = async (signal: string) => {
       console.log(`\n[workers] Received ${signal}. Gracefully stopping worker pool...`);
