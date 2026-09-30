@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { loadClientEnv } from "@netram/config";
 import type { ProjectStatus } from "@netram/types";
 import { getClient, getSessionUser } from "../../../lib/api";
 import { NavHeader } from "../../components/nav-header";
@@ -40,8 +39,6 @@ export default async function ProjectsPage({
     })
     .catch(() => ({ items: [], total: 0, page: 1, pageSize }));
 
-  const apiUrl = loadClientEnv().NEXT_PUBLIC_API_URL;
-
   return (
     <main>
       <NavHeader
@@ -59,7 +56,6 @@ export default async function ProjectsPage({
         initialStatus={params.status ?? "ALL"}
         initialView={validView}
         initialSearch={searchQuery}
-        apiUrl={apiUrl}
       />
     </main>
   );

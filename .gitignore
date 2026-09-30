@@ -22,6 +22,8 @@ cache/
 .env.*
 !.env.example
 !.env.sample
+# Deployment templates carry placeholders only; the real .env.vps stays ignored.
+!.env.vps.example
 
 # ================= Private keys & certificates =================
 *.pem
@@ -101,6 +103,7 @@ coverage/
 !docs/decisions/ADR-001-monorepo.md
 
 # Canonical development docs
+!docs/deployment.md
 !docs/development/setup.md
 !docs/development/TEAM-HANDOFF.md
 !docs/development/WORK-AREAS.md

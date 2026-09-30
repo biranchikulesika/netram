@@ -1,4 +1,5 @@
 export * from "./common.js";
+export * from "./public-api-paths.js";
 export * from "./auth.js";
 export * from "./authorization.js";
 export * from "./project.js";

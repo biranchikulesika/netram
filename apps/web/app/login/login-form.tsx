@@ -56,6 +56,7 @@ export function LoginForm({ isDev = true }: LoginFormProps) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showDevAccounts, setShowDevAccounts] = useState(false);
 
   function validate(): boolean {
     let isValid = true;
@@ -139,12 +140,6 @@ export function LoginForm({ isDev = true }: LoginFormProps) {
 
   return (
     <div className={styles.formContainer}>
-      {isDev && (
-        <p className={styles.devHint}>
-          Demo environment — pick an account below; the password field is not
-          checked. The database resets every 30 minutes.
-        </p>
-      )}
       {serverError && (
         <div className={styles.alertBanner} role="alert">
           <svg
@@ -358,28 +353,55 @@ export function LoginForm({ isDev = true }: LoginFormProps) {
       </form>      {/* Development Quick-Fill Helper (only shown in development environments) */}
       {isDev && (
         <div className={styles.devSection}>
-          {SEED_ACCOUNTS.map((acc) => {
-            const active = acc.email === email.trim();
-            return (
-              <button
-                key={acc.email}
-                type="button"
-                className={`${styles.devAccountButton} ${
-                  active ? styles.devAccountActive : ""
-                }`}
-                onClick={() => handleQuickFill(acc)}
-                title={`${acc.email} — ${acc.description}`}
-                aria-pressed={active}
-              >
-                <span className={styles.devAccountRole}>{acc.role}</span>
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            className={styles.devToggle}
+            onClick={() => setShowDevAccounts(!showDevAccounts)}
+            aria-expanded={showDevAccounts}
+          >
+            <span>Test accounts</span>
+            <svg
+              className={styles.devChevron}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          {showDevAccounts && (
+            <div className={styles.devAccountsList}>
+              {SEED_ACCOUNTS.map((acc) => {
+                const active = acc.email === email.trim();
+                return (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    className={`${styles.devAccountButton} ${
+                      active ? styles.devAccountActive : ""
+                    }`}
+                    onClick={() => handleQuickFill(acc)}
+                    title={`${acc.email} — ${acc.description}`}
+                    aria-pressed={active}
+                  >
+                    <span className={styles.devAccountRole}>{acc.role}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* The dev account list takes the bottom slot; links would compete with it. */}
-      {!isDev && (
+      {!showDevAccounts && (
         <div className={styles.crossLinks}>
           <Link href="/" className={styles.crossBtn}>
             Home

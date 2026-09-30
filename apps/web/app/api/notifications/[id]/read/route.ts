@@ -20,7 +20,7 @@ export async function POST(
 
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/notifications/${encodeURIComponent(id)}/read`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/notifications/${encodeURIComponent(id)}/read`,
     {
       method: "POST",
       headers: {

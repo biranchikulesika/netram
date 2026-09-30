@@ -11,7 +11,7 @@ export async function getClient(): Promise<NetramApiClient> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value ?? null;
   return new NetramApiClient({
-    baseUrl: env.NEXT_PUBLIC_API_URL,
+    baseUrl: env.NETRAM_API_BASE_URL,
     getToken: () => token,
   });
 }

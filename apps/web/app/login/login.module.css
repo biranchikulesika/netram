@@ -492,16 +492,3 @@
     font-size: 1rem;
   }
 }
-
-/* Demo-deployment notice shown above the form (dev auth provider only). */
-.devHint {
-  margin: 0 0 1rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid rgba(194, 65, 12, 0.35);
-  border-radius: 10px;
-  background: rgba(194, 65, 12, 0.08);
-  color: #9a3412;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  text-align: center;
-}

@@ -26,7 +26,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
 
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/cctv/cameras/${encodeURIComponent(id)}/streams/${encodeURIComponent(streamId)}`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/cctv/cameras/${encodeURIComponent(id)}/streams/${encodeURIComponent(streamId)}`,
     {
       method: "DELETE",
       headers: {
@@ -54,7 +54,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/cctv/cameras/${encodeURIComponent(id)}/streams/${encodeURIComponent(streamId)}/heartbeat`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/cctv/cameras/${encodeURIComponent(id)}/streams/${encodeURIComponent(streamId)}/heartbeat`,
     {
       method: "POST",
       headers: {

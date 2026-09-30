@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const formData = await request.formData();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/projects/${id}/photos`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/projects/${id}/photos`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -42,7 +42,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   }
 
   const env = loadClientEnv();
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/projects/${id}/photos`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/projects/${id}/photos`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

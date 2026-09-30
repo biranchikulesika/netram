@@ -17,7 +17,7 @@ export async function GET(
 
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/complaints/${id}/files/${fileId}`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/complaints/${id}/files/${fileId}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

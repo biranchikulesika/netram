@@ -18,7 +18,7 @@ async function proxy(request: NextRequest, context: RouteContext, method: "GET" 
   }
 
   const env = loadClientEnv();
-  const target = `${env.NEXT_PUBLIC_API_URL}/api/v1/registry/${path.join("/")}`;
+  const target = `${env.NETRAM_API_BASE_URL}/api/v1/registry/${path.join("/")}`;
 
   const res = await fetch(target, {
     method,

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   const env = loadClientEnv();
   const search = request.nextUrl.search;
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/vc/sessions${search}`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/vc/sessions${search}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/vc/sessions`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/vc/sessions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -21,7 +21,7 @@ export async function POST(
   const formData = await request.formData();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/corrective-actions/${id}/submit-atr`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/corrective-actions/${id}/submit-atr`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

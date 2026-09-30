@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const qs = queryParams.toString();
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/audit-events${qs ? `?${qs}` : ""}`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/audit-events${qs ? `?${qs}` : ""}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

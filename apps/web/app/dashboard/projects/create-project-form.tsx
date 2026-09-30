@@ -5,7 +5,6 @@ import { useState } from "react";
 import type { ProjectType } from "@netram/types";
 
 interface CreateProjectFormProps {
-  apiUrl?: string;
   onCancel?: () => void;
   onCreated?: () => void;
 }

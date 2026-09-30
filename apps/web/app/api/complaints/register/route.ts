@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (!formData) return NextResponse.json({}, { status: 400 });
 
   const env = loadClientEnv();
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/complaints/register`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/complaints/register`, {
     method: "POST",
     headers: {
       Accept: "application/json",

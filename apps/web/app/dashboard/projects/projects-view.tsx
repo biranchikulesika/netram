@@ -22,7 +22,6 @@ interface ProjectsViewProps {
   initialStatus?: string;
   initialView?: ProjectView;
   initialSearch?: string;
-  apiUrl: string;
 }
 
 import { PaginationBar } from "../../components/pagination-bar";
@@ -37,7 +36,6 @@ export function ProjectsView({
   initialStatus = "ALL",
   initialView = DEFAULT_PROJECT_VIEW,
   initialSearch = "",
-  apiUrl: _apiUrl,
 }: ProjectsViewProps) {
   const router = useRouter();
   const pathname = usePathname();

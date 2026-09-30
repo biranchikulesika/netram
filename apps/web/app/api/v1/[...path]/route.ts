@@ -2,18 +2,10 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
+import { isPublicApiPath } from "@netram/types";
 import { SESSION_COOKIE } from "../../../../lib/api";
 
 async function proxy(request: NextRequest, params: { path: string[] }) {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (!token) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
-      { status: 401 },
-    );
-  }
-
   const pathSegments = params.path ?? [];
   if (pathSegments.some((p) => p === ".." || p === "." || p.includes("/") || p.includes("\\"))) {
     return NextResponse.json(
@@ -22,21 +14,41 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
     );
   }
 
-  const env = loadClientEnv();
   const subPath = pathSegments.join("/");
+  // Full API path, used both to build the target URL and to decide whether the
+  // call needs a session token.
+  const apiPath = `/api/v1/${subPath}`;
+
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+
+  // Unauthenticated API entry points (sign-in, public tracking, registry, docs)
+  // must be reachable BEFORE a session exists. Requiring the cookie here would
+  // deadlock: the endpoint that mints the cookie is itself behind this check.
+  // The list is the shared API contract; the API independently marks the same
+  // paths public, so this is not a new authorisation surface.
+  const isPublic = isPublicApiPath(apiPath);
+  if (!token && !isPublic) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 },
+    );
+  }
+
+  const env = loadClientEnv();
   const url = new URL(request.url);
-  const targetUrl = `${env.NEXT_PUBLIC_API_URL}/api/v1/${subPath}${url.search}`;
+  const targetUrl = `${env.NETRAM_API_BASE_URL}${apiPath}${url.search}`;
 
   const headers = new Headers();
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   const contentType = request.headers.get("content-type");
   if (contentType) {
     headers.set("content-type", contentType);
   }
 
-  const body = ["GET", "HEAD"].includes(request.method)
-    ? undefined
-    : await request.arrayBuffer();
+  const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
 
   const res = await fetch(targetUrl, {
     method: request.method,
