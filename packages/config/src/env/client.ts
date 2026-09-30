@@ -1,9 +1,16 @@
 import { z } from "zod";
 import { nodeEnvSchema } from "./schema.js";
+import { authProviderSchema } from "./server.js";
 
 export const clientEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema.default("development"),
   NEXT_PUBLIC_API_URL: z.url().describe("Public base URL of the Netram API for web/mobile clients"),
+  /**
+   * Auth-provider signal for the web login screen: when the deployment runs
+   * the dev provider (local development or the demo VPS), the seeded demo
+   * accounts are offered. Server-side signal; never shipped to the browser.
+   */
+  NETRAM_AUTH_PROVIDER: authProviderSchema.default("dev"),
   NEXT_PUBLIC_REALTIME_WS_URL: z
     .string()
     .default("ws://localhost:3002")

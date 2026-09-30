@@ -15,7 +15,7 @@ packages/api-client/               @biranchikulesika
 packages/ui/                       @biranchikulesika
 packages/config/                   @biranchikulesika
 
-supabase/                          @biranchikulesika @jyotirmaya2004
+db/                                @biranchikulesika @jyotirmaya2004
 scripts/                           @biranchikulesika
 
 infrastructure/                    @biranchikulesika @BISHNU-CHARAN-BARIK

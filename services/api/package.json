@@ -8,6 +8,8 @@
     "dev:worker": "tsx watch src/workers/notification.worker.ts",
     "workers": "tsx src/workers/run-workers.ts",
     "start": "tsx src/server.ts",
+    "db:migrate": "pnpm --filter @netram/data db:migrate",
+    "db:setup": "pnpm --filter @netram/data db:setup",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",

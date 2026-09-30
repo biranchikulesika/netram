@@ -6,8 +6,9 @@ import { fileURLToPath } from "node:url";
 
 try {
   process.loadEnvFile(resolve(import.meta.dirname, "../../.env"));
-} catch (err) {
-  console.log("ENV LOAD FAILED:", err);
+} catch {
+  // .env is optional in containerized deployments where DATABASE_URL is
+  // provided by the environment (docker-compose env / systemd).
 }
 
 /** Deterministic namespace for all seed IDs. */

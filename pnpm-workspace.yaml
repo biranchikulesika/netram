@@ -2,7 +2,7 @@ packages:
   - "apps/*"
   - "services/*"
   - "packages/*"
-  - "supabase/seed"
+  - "db/seed"
 
 # Lifecycle build scripts are approved per-package (supply-chain awareness).
 allowBuilds:
@@ -46,8 +46,7 @@ overrides:
   tar: ^7.5.22
   # GHSA-wh4c-j3r5-mjhp et al.: XML injection fixes (expo>@expo/plist pins 0.7.13)
   "@xmldom/xmldom": ^0.8.15
-  # GHSA-w5hq-g745-h8pq: buffer bounds check in v3/v5/v6 with buf param (<11.1.1).
-  # uuid 11 keeps the CJS entry point and the v5 API; supabase/seed uses uuidv5 only.
+  # GHSA-w5hq-g745-h8pq: buffer bounds check in v3/v5/v6 with buf param (<11.1.1).#  uuid 11 keeps the CJS entry point and the v5 API; db/seed uses uuidv5 only.
   uuid: ^11.1.1
 
 # NOT overridden (documented exceptions):

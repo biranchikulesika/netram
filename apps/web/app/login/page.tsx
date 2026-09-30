@@ -18,10 +18,10 @@ export default async function LoginPage() {
   if (session) redirect("/dashboard");
 
   const env = loadClientEnv();
-  const isDev =
-    env.NODE_ENV !== "production" ||
-    env.NEXT_PUBLIC_API_URL.includes("localhost") ||
-    env.NEXT_PUBLIC_API_URL.includes("127.0.0.1");
+  // Demo deployment: the platform intentionally runs the dev auth provider so
+  // visitors can explore with the seeded demo accounts. The provider is the
+  // honest signal — not a hostname guess (the demo VPS serves a public domain).
+  const isDev = env.NETRAM_AUTH_PROVIDER !== "supabase";
 
   return (
     <div className={styles.pageWrapper}>
@@ -65,7 +65,7 @@ export default async function LoginPage() {
       <main className={styles.mainContainer}>
         <div className={styles.loginCard}>
           <Branding />
-          <LoginForm apiUrl={env.NEXT_PUBLIC_API_URL} isDev={isDev} />
+          <LoginForm isDev={isDev} />
         </div>
       </main>
     </div>

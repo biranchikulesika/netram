@@ -1,31 +1,63 @@
-# Netram local development infrastructure.
+# Netram — single-VPS demo deployment (docker compose).
 #
-# This file provides the SUPPORT SERVICES the platform depends on. The
-# application services (api, web, realtime, ...) are orchestrated through
-# pnpm/Turborepo during development (see README.md).
+# Topology (everything on one host, one compose network):
 #
-# Service applications can also be containerized individually (see each
-# service's Dockerfile). To run the full stack through Docker, start every
-# component with its own profile.
+#   Internet ──▶ Caddy (:80/:443, automatic HTTPS, Cloudflare-friendly)
+#                 ├── netram.kulesika.in          → web        (Next.js BFF)
+#                 │     └── /api/*  (same-origin) → api        (Fastify)
+#                 └── netram.kulesika.in/ws       → realtime   (WebSocket)
+#
+#   Data plane (internal only, never published):
+#     postgres · redis · minio · cctv-gateway · netram-media · facility rig
+#
+# Demo behaviour (intentional, see docs/deployment.md):
+#   - NETRAM_AUTH_PROVIDER=dev → visitors sign in with the seeded demo
+#     accounts (no password verification). This is a DEMO choice, not a
+#     production auth model.
+#   - db-reset loops every NETRAM_DEMO_RESET_SECONDS (default 1800 = 30 min):
+#     schema dropped and rebuilt from migrations + deterministic seed, so every
+#     visitor starts from the same state. Requires NETRAM_ALLOW_DB_RESET=1
+#     (the reset guard stays closed otherwise).
+#
+# All secrets/URLs come from the environment file: cp .env.vps.example .env
+# and edit it before `docker compose up -d`.
 
 name: netram
 
 services:
+  # ------------------------------------------------------------- edge
+  caddy:
+    image: caddy:2-alpine
+    container_name: netram-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Public hostname; Caddy obtains/renews the certificate automatically.
+      NETRAM_DOMAIN: ${NETRAM_DOMAIN:-netram.kulesika.in}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - realtime
+
+  # ------------------------------------------------------------- data stores
   postgres:
     image: postgres:16-alpine
     container_name: netram-postgres
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
     environment:
-      POSTGRES_USER: netram
-      POSTGRES_PASSWORD: netram
-      POSTGRES_DB: netram
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-netram}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-netram}
+      POSTGRES_DB: ${POSTGRES_DB:-netram}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U netram -d netram"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-netram} -d ${POSTGRES_DB:-netram}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -33,10 +65,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: netram-redis
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     command: ["redis-server", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -50,17 +79,13 @@ services:
   minio:
     image: bitnamilegacy/minio:latest
     container_name: netram-minio
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: netram
-      MINIO_ROOT_PASSWORD: netram-secret
-      MINIO_DEFAULT_BUCKETS: netram
+      MINIO_ROOT_USER: ${NETRAM_OBJECT_STORAGE_ACCESS_KEY:-netram}
+      MINIO_ROOT_PASSWORD: ${NETRAM_OBJECT_STORAGE_SECRET_KEY:-netram-secret}
+      MINIO_DEFAULT_BUCKETS: ${NETRAM_OBJECT_STORAGE_BUCKET:-netram}
       MINIO_SERVER_PORT: 9000
       MINIO_CONSOLE_PORT: 9001
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -69,44 +94,42 @@ services:
       timeout: 5s
       retries: 10
 
-  # =================================================================
-  # Application Services (Profile: "full")
-  # Run backing infra with: pnpm infra:up
-  # Run full containerized stack with: docker compose --profile full up -d
-  # =================================================================
-
+  # ------------------------------------------------------------- applications
   api:
     build:
       context: .
       dockerfile: services/api/Dockerfile
     container_name: netram-api
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
-    profiles: ["full", "services"]
     environment:
-      DATABASE_URL: postgres://netram:netram@postgres:5432/netram
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
       REDIS_URL: redis://redis:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # DEMO: dev auth provider (email-only sign-in with seeded accounts).
+      NETRAM_AUTH_PROVIDER: dev
+      NETRAM_DEV_AUTH_SECRET: ${NETRAM_DEV_AUTH_SECRET}
+      NETRAM_API_HOST: 0.0.0.0
       NETRAM_API_PORT: 3001
-      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+      # Same-origin deployment: the browser only ever reaches the API through
+      # the web BFF, so no CORS surface is needed.
+      NETRAM_CORS_ORIGIN: ${NETRAM_CORS_ORIGIN:-https://netram.kulesika.in}
       NETRAM_OBJECT_STORAGE_ENDPOINT: http://minio:9000
-      NETRAM_OBJECT_STORAGE_ACCESS_KEY: netram
-      NETRAM_OBJECT_STORAGE_SECRET_KEY: netram-secret
-      NETRAM_OBJECT_STORAGE_BUCKET: netram
+      NETRAM_OBJECT_STORAGE_ACCESS_KEY: ${NETRAM_OBJECT_STORAGE_ACCESS_KEY:-netram}
+      NETRAM_OBJECT_STORAGE_SECRET_KEY: ${NETRAM_OBJECT_STORAGE_SECRET_KEY:-netram-secret}
+      NETRAM_OBJECT_STORAGE_BUCKET: ${NETRAM_OBJECT_STORAGE_BUCKET:-netram}
       NETRAM_OBJECT_STORAGE_USE_SSL: "false"
-      # Server-to-server reachability into the compose network (NOT the
-      # browser-facing URL the gateway mints into relay links).
+      NETRAM_API_URL: http://api:3001
+      # Server-to-server reachability into the compose network.
       NETRAM_CCTV_GATEWAY_URL: http://cctv-gateway:3003
       # Must match the gateway's secret: relay tokens are signed/verified across services.
-      NETRAM_CCTV_STREAM_SECRET: ${NETRAM_CCTV_STREAM_SECRET:-replace-me-with-a-32-char-plus-cctv-stream-secret}
+      NETRAM_CCTV_STREAM_SECRET: ${NETRAM_CCTV_STREAM_SECRET}
       # Service-to-service secret presented to the CCTV gateway (§14).
-      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET:-replace-me-with-a-32-char-plus-cctv-service-secret}
+      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET}
       # MediaMTX external auth hook secret (Phase 4): must match the gateway.
-      NETRAM_MEDIAMTX_HOOK_SECRET: ${NETRAM_MEDIAMTX_HOOK_SECRET:-replace-me-with-a-32-char-plus-mediamtx-hook-secret}
-    extra_hosts:
-      # MediaMTX (host-published ports) reaches the hook through the host.
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "3001:3001"
+      NETRAM_MEDIAMTX_HOOK_SECRET: ${NETRAM_MEDIAMTX_HOOK_SECRET}
+    expose:
+      - "3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,22 +143,23 @@ services:
       context: .
       dockerfile: services/api/Dockerfile
     container_name: netram-workers
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
-    profiles: ["full", "services"]
     command: ["pnpm", "workers"]
     environment:
-      DATABASE_URL: postgres://netram:netram@postgres:5432/netram
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
       REDIS_URL: redis://redis:6379
-      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NETRAM_AUTH_PROVIDER: dev
+      NETRAM_DEV_AUTH_SECRET: ${NETRAM_DEV_AUTH_SECRET}
       NETRAM_OBJECT_STORAGE_ENDPOINT: http://minio:9000
-      NETRAM_OBJECT_STORAGE_ACCESS_KEY: netram
-      NETRAM_OBJECT_STORAGE_SECRET_KEY: netram-secret
-      NETRAM_OBJECT_STORAGE_BUCKET: netram
+      NETRAM_OBJECT_STORAGE_ACCESS_KEY: ${NETRAM_OBJECT_STORAGE_ACCESS_KEY:-netram}
+      NETRAM_OBJECT_STORAGE_SECRET_KEY: ${NETRAM_OBJECT_STORAGE_SECRET_KEY:-netram-secret}
+      NETRAM_OBJECT_STORAGE_BUCKET: ${NETRAM_OBJECT_STORAGE_BUCKET:-netram}
       NETRAM_OBJECT_STORAGE_USE_SSL: "false"
       # CCTV stream-session sweeper (Phase 4).
       NETRAM_CCTV_GATEWAY_URL: http://cctv-gateway:3003
-      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET:-replace-me-with-a-32-char-plus-cctv-service-secret}
+      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -147,20 +171,46 @@ services:
       context: .
       dockerfile: services/realtime/Dockerfile
     container_name: netram-realtime
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
-    profiles: ["full", "services"]
     environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
       NETRAM_REALTIME_PORT: 3002
-      REDIS_URL: redis://redis:6379
+      NETRAM_REALTIME_POLL_MS: ${NETRAM_REALTIME_POLL_MS:-1000}
+      NETRAM_REALTIME_OUTBOX_BATCH: ${NETRAM_REALTIME_OUTBOX_BATCH:-50}
       NETRAM_API_URL: http://api:3001
-      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
-    ports:
-      - "3002:3002"
+      NETRAM_DEV_AUTH_SECRET: ${NETRAM_DEV_AUTH_SECRET}
+    expose:
+      - "3002"
     depends_on:
-      redis:
-        condition: service_healthy
       api:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: netram-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Public origin of the site (browser-facing). The Next.js BFF proxies
+      # /api/* server-side to the Fastify API over the compose network.
+      NEXT_PUBLIC_API_URL: ${NETRAM_SITE_ORIGIN:-https://netram.kulesika.in}
+      # Browser WebSocket base for the realtime service. Caddy terminates
+      # wss:// on 443 and upgrades /ws to the realtime container.
+      NEXT_PUBLIC_REALTIME_WS_URL: wss://${NETRAM_DOMAIN:-netram.kulesika.in}/ws
+      # MediaMTX endpoints for the server-side WHEP/HLS proxy routes.
+      NETRAM_MEDIAMTX_WHEP_URL: http://netram-media:8189
+      NETRAM_MEDIAMTX_WHEP_USERNAME: ${NETRAM_MEDIAMTX_API_USERNAME:-admin}
+      NETRAM_MEDIAMTX_WHEP_PASSWORD: ${NETRAM_MEDIAMTX_API_PASSWORD:-netram-dev-internal}
+      NETRAM_MEDIAMTX_HLS_URL: http://netram-media:8888
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_started
+      realtime:
         condition: service_started
 
   cctv-gateway:
@@ -168,112 +218,103 @@ services:
       context: .
       dockerfile: services/cctv-gateway/Dockerfile
     container_name: netram-cctv-gateway
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
-    profiles: ["full", "services"]
     environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NETRAM_CCTV_GATEWAY_HOST: 0.0.0.0
       NETRAM_CCTV_GATEWAY_PORT: 3003
-      # Browser-facing base for minted relay URLs (published port). Override
-      # via .env when the stack must be reachable from other machines (LAN).
-      NETRAM_CCTV_GATEWAY_URL: ${NETRAM_CCTV_GATEWAY_URL:-http://localhost:3003}
+      NETRAM_CCTV_GATEWAY_URL: http://cctv-gateway:3003
       # Must match the API's secret: relay tokens are signed/verified across services.
-      NETRAM_CCTV_STREAM_SECRET: ${NETRAM_CCTV_STREAM_SECRET:-replace-me-with-a-32-char-plus-cctv-stream-secret}
+      NETRAM_CCTV_STREAM_SECRET: ${NETRAM_CCTV_STREAM_SECRET}
       # Service-to-service secret the API presents on control-plane calls (§14).
-      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET:-replace-me-with-a-32-char-plus-cctv-service-secret}
+      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET}
       # Internal MediaMTX control API over the compose network.
       NETRAM_MEDIAMTX_API_URL: http://netram-media:9997
       NETRAM_MEDIAMTX_API_USERNAME: ${NETRAM_MEDIAMTX_API_USERNAME:-admin}
       NETRAM_MEDIAMTX_API_PASSWORD: ${NETRAM_MEDIAMTX_API_PASSWORD:-netram-dev-internal}
-      # Browser-facing WHEP base (published port). Distinct from the API URL.
-      NETRAM_MEDIAMTX_WHEP_PUBLIC_URL: ${NETRAM_MEDIAMTX_WHEP_PUBLIC_URL:-http://localhost:8189}
-      # Dev-only ingest override: route provisioning at the rig's facility feed.
+      # Base minted into playback contracts. The web app rewrites to its
+      # same-origin proxy before anything reaches the browser, so the exact
+      # host here is internal; it must simply be a valid URL.
+      NETRAM_MEDIAMTX_WHEP_PUBLIC_URL: http://netram-media:8189
+      # Simulated facility feed (see netram-media + facility rig below).
       NETRAM_MEDIAMTX_DEV_INGEST_SOURCE: rtsp://facility-nvr:8554/facility-vani/cam-gate
-    ports:
-      - "3003:3003"
+    expose:
+      - "3003"
     depends_on:
       api:
         condition: service_started
 
-  ai:
+  # ------------------------------------------------------------- demo db reset
+  # Drops and rebuilds the demo database every NETRAM_DEMO_RESET_SECONDS
+  # (default 30 min): migrations from zero + deterministic seed. Every visitor
+  # then starts from the same coherent state; trial edits disappear. The
+  # built-in reset guard (§12/§71) stays closed unless NETRAM_ALLOW_DB_RESET=1.
+  db-reset:
     build:
       context: .
-      dockerfile: services/ai/Dockerfile
-    container_name: netram-ai
-    # Survive VPS reboots (single-host deployment).
+      dockerfile: services/api/Dockerfile
+    container_name: netram-db-reset
     restart: unless-stopped
-    profiles: ["full", "services"]
-    ports:
-      - "8000:8000"
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: netram-web
-    # Survive VPS reboots (single-host deployment).
-    restart: unless-stopped
-    profiles: ["full", "web"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "db-reset loop: resetting every ${NETRAM_DEMO_RESET_SECONDS:-1800}s"
+        while true; do
+          sleep "${NETRAM_DEMO_RESET_SECONDS:-1800}"
+          echo "[$(date -u +%FT%TZ)] Resetting demo database (migrate from zero + seed)..."
+          if pnpm --filter @netram/data db:setup; then
+            echo "[$(date -u +%FT%TZ)] Demo database restored."
+          else
+            echo "[$(date -u +%FT%TZ)] Demo database reset FAILED — retrying next cycle." >&2
+          fi
+        done
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXT_PUBLIC_REALTIME_WS_URL: ws://localhost:3002
-    ports:
-      - "3000:3000"
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
+      # Explicit operator opt-in required by the reset guard.
+      NETRAM_ALLOW_DB_RESET: "1"
+      LOG_LEVEL: info
     depends_on:
+      postgres:
+        condition: service_healthy
       api:
         condition: service_started
-      realtime:
-        condition: service_started
 
-  # =================================================================
-  # CCTV Media Pipeline (Profiles: "media", "facility") — Phase 1/2 dev rig
-  # Development-only simulation of the target architecture (see
-  # docs/history/cctv-target-architecture.md and
-  # docs/history/cctv-phase-1-2.md):
-  #   facility FFmpeg camera --RTSP--> MediaMTX --WHEP/HLS--> browser
-  # The MP4 is only ever an FFmpeg input, never a browser source.
-  # =================================================================
-
+  # ------------------------------------------------------------- CCTV media plane
   # NETRAM-side media server (data plane). Serves WHEP (WebRTC) + HLS to the
   # browser through the same-origin Next.js proxy. Pulls the simulated camera
   # on demand across the network boundary (pilot topology).
   netram-media:
     image: bluenviron/mediamtx:latest
     container_name: netram-media
-    # Survive VPS reboots (single-host deployment).
     restart: unless-stopped
-    profiles: ["media", "facility"]
+    ports:
+      # WebRTC media (ICE/SRTP) flows browser → MediaMTX directly over UDP;
+      # the same-origin proxy only carries signaling. This port MUST be
+      # reachable from the internet for camera playback to work.
+      - "8189:8189/udp"
+      # ICE-TCP fallback for networks that block UDP.
+      - "8189:8189"
     volumes:
       - ./infra/mediamtx/mediamtx.yml:/mediamtx.yml:ro,Z
     environment:
       # Phase 4: the external auth hook endpoint. MTX_ env vars override the
-      # config file (MediaMTX does not env-substitute the YAML itself). Points
-      # at the API through the HOST bridge gateway so the hook works whether
-      # the API runs in compose or on the host. The hook secret is embedded as
-      # a query parameter because MediaMTX cannot send custom headers.
-      # Override MEDIAMTX_HOOK_BASE in the environment when the API lives
-      # elsewhere; keep the secret in sync with the API's
-      # NETRAM_MEDIAMTX_HOOK_SECRET.
-      MTX_AUTHHTTPADDRESS: ${MEDIAMTX_HOOK_BASE:-http://172.20.0.1:3001}/media/auth?hookSecret=${NETRAM_MEDIAMTX_HOOK_SECRET:-replace-me-with-a-32-char-plus-mediamtx-hook-secret}
-    ports:
-      # WebRTC/ICE (UDP) must be reachable by the browser's RTCPeerConnection.
-      - "8189:8189/udp"
-      # HLS segments (dev only; the browser normally uses the same-origin
-      # proxy route instead of this direct port).
-      - "8888:8888"
-      # WHEP signaling HTTP + WebRTC ICE (dev only). Browsers reach WHEP
-      # through the same-origin Next.js proxy route; this publish exists so
-      # the Next.js server (host-run during dev) can reach the endpoint.
-      # TCP carries signaling, UDP carries media (ICE).
-      - "8189:8189"
-      - "8189:8189/udp"
-      # RTSP read/pull side. Dev-only: in the real topology this port is never
-      # publicly exposed — it is only needed here so MediaMTX can accept the
-      # push-mode demo and for local ffprobe verification of pull mode.
-      - "8554:8554"
-      # Control REST API (Phase 3 gateway bridge). Published for host-run dev
-      # verification only; in deployment the gateway reaches this over the
-      # internal network and the port stays unpublished.
-      - "9997:9997"
+      # config file (MediaMTX does not env-substitute the YAML itself). The
+      # API is on the same compose network here, so the hook resolves it by
+      # service name. The hook secret is embedded as a query parameter
+      # because MediaMTX cannot send custom headers.
+      MTX_AUTHHTTPADDRESS: http://api:3001/media/auth?hookSecret=${NETRAM_MEDIAMTX_HOOK_SECRET}
+      # Advertise the public hostname as an ICE candidate so browsers on the
+      # internet can reach the media plane. (The demo DNS record must be
+      # DNS-only/grey-cloud in Cloudflare: its proxy does not pass UDP.)
+      MTX_WEBRTCADDITIONALHOSTS: ${NETRAM_DOMAIN:-netram.kulesika.in}
+    expose:
+      # HLS + control API stay internal: the browser reaches HLS through the
+      # web app's same-origin proxy, and the gateway reaches the control API
+      # over the compose network.
+      - "8888"
+      - "9997"
     networks:
       - default
       - facility
@@ -287,7 +328,6 @@ services:
       context: ./infra/facility-sim
     image: netram-camera-sim:dev
     container_name: netram-camera-sim
-    profiles: ["facility"]
     environment:
       CAMERA_MODE: ${NETRAM_CCTV_SIM_MODE:-pull}
       SAMPLE_VIDEO: /media/sample.mp4
@@ -305,7 +345,6 @@ services:
   facility-nvr:
     image: bluenviron/mediamtx:latest
     container_name: netram-facility-nvr
-    profiles: ["facility"]
     volumes:
       - ./infra/facility-sim/nvr.yml:/mediamtx.yml:ro,Z
     networks:
@@ -320,4 +359,5 @@ networks:
 volumes:
   db-data:
   minio-data:
-
+  caddy-data:
+  caddy-config:

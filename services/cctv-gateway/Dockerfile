@@ -2,7 +2,7 @@ FROM node:22-alpine AS base
 RUN corepack enable && corepack prepare pnpm@12.3.4 --activate
 WORKDIR /app
 
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml patches ./
 COPY packages/config packages/config
 COPY packages/types packages/types
 COPY services/cctv-gateway services/cctv-gateway

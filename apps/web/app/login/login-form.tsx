@@ -7,7 +7,6 @@ import { NetramApiClient } from "@netram/api-client";
 import styles from "./login.module.css";
 
 export interface LoginFormProps {
-  apiUrl: string;
   isDev?: boolean;
 }
 
@@ -44,7 +43,7 @@ const SEED_ACCOUNTS = [
   },
 ];
 
-export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
+export function LoginForm({ isDev = true }: LoginFormProps) {
   const router = useRouter();
 
   // Form states
@@ -57,9 +56,6 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-
-  // UI state for the development quick-fill helper
-  const [showDevAccounts, setShowDevAccounts] = useState(false);
 
   function validate(): boolean {
     let isValid = true;
@@ -91,29 +87,18 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
     setServerError(null);
 
     try {
-      let baseUrl = apiUrl;
-      if (
-        typeof window !== "undefined" &&
-        window.location.hostname !== "localhost" &&
-        window.location.hostname !== "127.0.0.1"
-      ) {
-        try {
-          const parsed = new URL(apiUrl);
-          baseUrl = `${window.location.protocol}//${window.location.hostname}:${parsed.port || "3001"}`;
-        } catch {
-          // fallback to apiUrl
-        }
-      }
-
       const client = new NetramApiClient({
-        baseUrl,
+        // Same-origin BFF proxy: the browser never talks to the Fastify API
+        // directly. The BFF forwards /api/v1/* to the API over the internal
+        // network and attaches the session token from the httpOnly cookie.
+        baseUrl: "",
         fetchImpl: (...args) => fetch(...args),
       });
 
-      // Authentication integration point:
-      // In the current local/dev slice, we resolve the session via devLogin.
-      // When password verification is activated on the backend, this cleanly
-      // transitions to client.login({ email, password }).
+      // Demo deployment runs the dev auth provider: authentication is by
+      // email only (any of the seeded demo accounts). When a real password
+      // verification backend is activated, this transitions to
+      // client.login({ email, password }).
       const { token } = await client.devLogin(email.trim());
 
       const res = await fetch("/api/session", {
@@ -154,6 +139,12 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
 
   return (
     <div className={styles.formContainer}>
+      {isDev && (
+        <p className={styles.devHint}>
+          Demo environment — pick an account below; the password field is not
+          checked. The database resets every 30 minutes.
+        </p>
+      )}
       {serverError && (
         <div className={styles.alertBanner} role="alert">
           <svg
@@ -364,60 +355,31 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
             <span>Sign In</span>
           )}
         </button>
-      </form>
-
-      {/* Development Quick-Fill Helper (only shown in development environments) */}
+      </form>      {/* Development Quick-Fill Helper (only shown in development environments) */}
       {isDev && (
         <div className={styles.devSection}>
-          <button
-            type="button"
-            className={styles.devToggle}
-            onClick={() => setShowDevAccounts(!showDevAccounts)}
-            aria-expanded={showDevAccounts}
-          >
-            <span>Test accounts</span>
-            <svg
-              className={styles.devChevron}
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
-
-          {showDevAccounts && (
-            <div className={styles.devAccountsList}>
-              {SEED_ACCOUNTS.map((acc) => {
-                const active = acc.email === email.trim();
-                return (
-                  <button
-                    key={acc.email}
-                    type="button"
-                    className={`${styles.devAccountButton} ${
-                      active ? styles.devAccountActive : ""
-                    }`}
-                    onClick={() => handleQuickFill(acc)}
-                    title={`${acc.email} — ${acc.description}`}
-                    aria-pressed={active}
-                  >
-                    <span className={styles.devAccountRole}>{acc.role}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {SEED_ACCOUNTS.map((acc) => {
+            const active = acc.email === email.trim();
+            return (
+              <button
+                key={acc.email}
+                type="button"
+                className={`${styles.devAccountButton} ${
+                  active ? styles.devAccountActive : ""
+                }`}
+                onClick={() => handleQuickFill(acc)}
+                title={`${acc.email} — ${acc.description}`}
+                aria-pressed={active}
+              >
+                <span className={styles.devAccountRole}>{acc.role}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* The dev account list takes the bottom slot; links would compete with it. */}
-      {!showDevAccounts && (
+      {!isDev && (
         <div className={styles.crossLinks}>
           <Link href="/" className={styles.crossBtn}>
             Home

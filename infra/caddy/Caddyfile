@@ -1,0 +1,43 @@
+# Netram demo edge — automatic HTTPS via Let's Encrypt (ZeroSSL/LE).
+#
+#   https://netram.kulesika.in/      → web      (Next.js BFF; /api/* proxies
+#                                                server-side to the Fastify API)
+#   https://netram.kulesika.in/ws    → realtime (WebSocket upgrade)
+#
+# Cloudflare note: point the record at the VPS (proxied or DNS-only both work;
+# with the orange cloud set SSL/TLS mode to "Full (strict)"). Caddy handles
+# certificate issuance/renewal by itself when DNS resolves straight to the box;
+# behind Cloudflare's proxy the origin certificate still validates because
+# Cloudflare → origin uses the public hostname.
+#
+# The web container serves everything the browser needs (pages + same-origin
+# /api/* BFF + same-origin media proxies), so the Fastify API never needs a
+# public port. Only /ws must bypass the BFF, because it is a WebSocket upgrade.
+
+{$NETRAM_DOMAIN} {
+	encode zstd gzip
+
+	# Realtime WebSocket (wss://…/ws → realtime :3002). Handled before the
+	# general reverse_proxy so the upgrade reaches the right service.
+	handle /ws* {
+		reverse_proxy realtime:3002
+	}
+
+	# Everything else is the Next.js web app (pages + /api/* BFF + media proxy).
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; include-subdomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

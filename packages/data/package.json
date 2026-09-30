@@ -12,7 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts -- action migrate",
     "db:reset": "tsx src/db/migrate.ts -- action reset",
-    "db:seed": "tsx ../../supabase/seed/index.ts",
+    "db:seed": "tsx ../../db/seed/index.ts",
     "db:setup": "pnpm db:reset && pnpm db:seed",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
