@@ -1,5 +1,5 @@
 /**
- * MediaMTX control client (Phase 3) — the gateway's ONLY way to talk to the
+ * MediaMTX control client (Phase 3) - the gateway's ONLY way to talk to the
  * media server. Encapsulates every MediaMTX REST operation so no other module
  * imports MediaMTX URLs or credentials.
  *
@@ -10,7 +10,7 @@
  *   POST /v3/webrtcsessions/kick/{uuid}     → 200 | 404 "session not found"
  *   POST /v3/rtspsessions/kick/{uuid}       → 200 | 404 "session not found"
  *   GET  /v3/webrtcsessions/list            → { itemCount, items: [...] }
- *  (v3/config/paths/set|remove/{name} do NOT exist in the OSS edition —
+ *  (v3/config/paths/set|remove/{name} do NOT exist in the OSS edition -
  *   provisioning is add-only; see ensurePath for idempotency handling.)
  *
  * All requests are bounded by timeouts; failures surface as MediamtxError so
@@ -141,7 +141,7 @@ export class MediamtxClient {
         const parsed: unknown = await res.json();
         if (isEnvelopeError(parsed)) detail = parsed.error;
       } catch {
-        // non-JSON error body — keep the HTTP status detail
+        // non-JSON error body - keep the HTTP status detail
       }
       throw new MediamtxError(`MediaMTX request failed: ${detail}`, res.status, detail);
     }
@@ -173,7 +173,7 @@ export class MediamtxClient {
    * Ensure a path exists with the given ingest source configuration.
    *
    * Idempotent: if the path already exists this succeeds without touching it
-   * (MediaMTX OSS has no config/paths/set route — see module doc). Use
+   * (MediaMTX OSS has no config/paths/set route - see module doc). Use
    * replacePathSource when a source change is genuinely required.
    */
   async ensurePath(

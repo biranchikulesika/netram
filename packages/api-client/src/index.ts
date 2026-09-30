@@ -177,7 +177,7 @@ export interface VcSessionPage {
  *
  * Web (Next.js) uses it server-side with cookie/SSR tokens; inspector-mobile
  * uses it with a bearer token. URLs and payload shapes mirror the OpenAPI
- * contract — do not diverge here without updating the contract first.
+ * contract - do not diverge here without updating the contract first.
  */
 export class NetramApiClient extends HttpClient {
   constructor(opts: ApiClientOptions) {

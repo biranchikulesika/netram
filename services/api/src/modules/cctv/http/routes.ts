@@ -139,7 +139,7 @@ export async function registerCctvRoutes(
     },
   );
 
-  // Explicit session end: viewer stop or admin revoke (§32 — audited).
+  // Explicit session end: viewer stop or admin revoke (§32 - audited).
   app.delete(
     "/cctv/cameras/:id/streams/:streamId",
     {
@@ -171,12 +171,12 @@ export async function registerCctvRoutes(
  *
  * Registered OUTSIDE /api/v1 and OUTSIDE the app-level auth hook: MediaMTX
  * presents a dedicated service secret, not a user JWT. This is the media/data
- * plane's authorization boundary — every RTSP publish, WHEP/HLS read, and
+ * plane's authorization boundary - every RTSP publish, WHEP/HLS read, and
  * playback action hits this endpoint (live-verified behavior: 2xx allows,
  * otherwise the client is rejected).
  *
  * Security: the hook secret gates the endpoint (query parameter embedded in
- * the MediaMTX-configured URL, or header for other callers — MediaMTX cannot
+ * the MediaMTX-configured URL, or header for other callers - MediaMTX cannot
  * send custom headers); decisions are fail-closed; denials are audited
  * (cctv.media_auth_denied) with NO credential material in the audit record.
  */
@@ -195,8 +195,8 @@ export async function registerMediaAuthHookRoute(
     },
     async (request, reply) => {
       const hookSecret = container.config.NETRAM_MEDIAMTX_HOOK_SECRET;
-      // MediaMTX posts ONLY its fixed JSON payload — it cannot send custom
-      // headers — so the shared secret is embedded in the configured
+      // MediaMTX posts ONLY its fixed JSON payload - it cannot send custom
+      // headers - so the shared secret is embedded in the configured
       // authHTTPAddress URL as a query parameter (standard webhook pattern
       // for fixed-URL callbacks). Non-MediaMTX callers may use the header.
       const header = request.headers["x-mediamtx-hook-secret"];

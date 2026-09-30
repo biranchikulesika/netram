@@ -78,7 +78,7 @@ export function AttendanceYearCalendar({
       present += r.present;
       absent += r.absent ?? 0;
     }
-    const avg = recorded > 0 ? (present / recorded).toFixed(1) : "—";
+    const avg = recorded > 0 ? (present / recorded).toFixed(1) : "-";
     return { recorded, present, absent, avg };
   }, [byDate, selectedYear]);
 
@@ -417,7 +417,7 @@ function MonthGrid({
                   {present}
                 </span>
               ) : (
-                <span style={{ fontSize: "0.55rem", color: "var(--text-subtle)", marginTop: "0.2rem" }}>—</span>
+                <span style={{ fontSize: "0.55rem", color: "var(--text-subtle)", marginTop: "0.2rem" }}>-</span>
               )}
             </>
           );

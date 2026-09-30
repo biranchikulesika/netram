@@ -1,4 +1,4 @@
-# Netram — single-VPS demo deployment (docker compose / podman-compose).
+# Netram - single-VPS demo deployment (docker compose / podman-compose).
 #
 # Topology (everything on one host, one compose network):
 #
@@ -315,7 +315,7 @@ services:
           if pnpm --filter @netram/data db:setup; then
             echo "[$(date -u +%FT%TZ)] Demo database restored."
           else
-            echo "[$(date -u +%FT%TZ)] Demo database reset FAILED — retrying next cycle." >&2
+            echo "[$(date -u +%FT%TZ)] Demo database reset FAILED - retrying next cycle." >&2
           fi
         done
     environment:
@@ -391,7 +391,7 @@ services:
 
   # Facility NVR stand-in: accepts the camera's RTSP push INSIDE the facility
   # network only (no route into NETRAM infra, no host ports). This is what
-  # netram-media pulls — exactly like a real site's NVR.
+  # netram-media pulls - exactly like a real site's NVR.
   facility-nvr:
     image: docker.io/bluenviron/mediamtx:latest
     container_name: netram-facility-nvr

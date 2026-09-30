@@ -5,7 +5,7 @@ import { getClient, getSessionUser } from "../../../../lib/api";
 /**
  * Server-side gate for a registry form page. Mirrors the capability matrix:
  * a user without the permission is redirected (the API also re-checks the
- * permission on submit — the page gate is usability, the 403 is enforcement).
+ * permission on submit - the page gate is usability, the 403 is enforcement).
  */
 export async function requireRegistryPermission(permission: string) {
   const session = await getSessionUser();

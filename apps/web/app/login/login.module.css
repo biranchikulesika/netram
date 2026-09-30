@@ -1,4 +1,4 @@
-/* Netram Login Page Styles — Strict Implementation of DESIGN.md */
+/* Netram Login Page Styles - Strict Implementation of DESIGN.md */
 
 .pageWrapper {
   min-height: 100vh;
@@ -16,7 +16,7 @@
 }
 
 /* Central Card */
-/* Masthead — shared by every public page, see ../components/masthead.module.css.
+/* Masthead - shared by every public page, see ../components/masthead.module.css.
    Do not re-add it here; a private copy is how the old, false "Government of
    India" identity survived across three pages at once. */
 
@@ -254,7 +254,7 @@
   background: rgba(220, 38, 38, 0.1);
 }
 
-/* Primary Action Button — Institutional Green per DESIGN.md */
+/* Primary Action Button - Institutional Green per DESIGN.md */
 .submitButton {
   display: inline-flex;
   align-items: center;

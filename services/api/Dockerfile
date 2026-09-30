@@ -39,9 +39,9 @@ WORKDIR /app/services/api
 EXPOSE 80
 
 # Default: run the API. Other entrypoints used by compose:
-#   pnpm workers        — background job workers (workers service)
-#   pnpm db:migrate     — apply pending migrations (one-shot)
-#   pnpm db:setup       — reset schema from zero + deterministic seed
+#   pnpm workers        - background job workers (workers service)
+#   pnpm db:migrate     - apply pending migrations (one-shot)
+#   pnpm db:setup       - reset schema from zero + deterministic seed
 #                         (demo reset job; requires NETRAM_ALLOW_DB_RESET=1
 #                         on non-local databases)
 CMD ["pnpm", "start"]

@@ -8,9 +8,9 @@
 Netram's oversight workflow (AGENTS.md §32, §35) separates two entry points into
 the accountability pipeline:
 
-1. **Inspections** — evidence → findings → authority review → confirmed finding
+1. **Inspections** - evidence → findings → authority review → confirmed finding
    → corrective action ordered → ATR → verification → closure.
-2. **Complaints** — a citizen or oversight input that may lead to review,
+2. **Complaints** - a citizen or oversight input that may lead to review,
    request for explanation, escalation, inspection, or no action. A complaint
    is **not** confirmed misconduct.
 
@@ -25,7 +25,7 @@ the outbox dispatcher, added in the institution-visibility change).
 This leaves a manual gap: an escalated complaint that the authority judges
 legitimate requires the officer to *also* walk over to the inspections/finding
 machinery and manufacture a finding record before any corrective action can be
-ordered — even when the complaint's own documentation (attachments are hashed
+ordered - even when the complaint's own documentation (attachments are hashed
 and stored server-side) is the evidence the authority is acting on. The result
 is either process theatre (rubber-stamp findings) or stalled accountability
 (escalated complaints that die in a queue).
@@ -39,7 +39,7 @@ inspections become a formality, or (c) breaking the finding-based audit chain?
 ## Decision
 
 Introduce a **complaint-derived corrective action** as a first-class, explicitly
-labelled pathway — not a synthetic finding:
+labelled pathway - not a synthetic finding:
 
 1. **New transition outcome.** Escalating a complaint gains an optional
    companion decision: `escalate + order corrective action`. The authority
@@ -67,7 +67,7 @@ labelled pathway — not a synthetic finding:
    CMP-2026-XXXX").
 
 4. **Disclosure unchanged.** The institution sees the corrective action (they
-   must act on it) and the determination summary they are responding to — but
+   must act on it) and the determination summary they are responding to - but
    never the complainant identity, contact info, or attachments (§34, §35).
    The complaint record itself remains invisible to the subject.
 
@@ -113,7 +113,7 @@ labelled pathway — not a synthetic finding:
   `corrective_action.created` outbox event drives the institution pulse with
   zero dispatcher changes.
 - **Enforcement:** `canSubmitAtr` and ATR verification logic are
-  source-agnostic — they operate on the corrective action lifecycle only.
+  source-agnostic - they operate on the corrective action lifecycle only.
   The institution's duties do not change.
 - **Auditability:** the determination text, the ordering officer, and the
   complaint linkage are permanent audit metadata; complaint closure is
@@ -125,6 +125,6 @@ labelled pathway — not a synthetic finding:
 
 ## Related
 
-- ADR-001 (modular monolith — no new service needed)
+- ADR-001 (modular monolith - no new service needed)
 - AGENTS.md §32 (inspection workflow), §35 (complaints), §14 (domain model
   separation), §25 (transactions), §34 (disclosure), §36 (AI is advisory)

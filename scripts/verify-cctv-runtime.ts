@@ -136,7 +136,7 @@ async function main() {
     console.log(`   - Expires At:  ${stream.expiresAt}`);
   }  // 6/7. Media-plane verification with a rig only; without one the fail-closed
   // behaviour was already verified in step 5 (the gateway no longer relays
-  // bytes — MediaMTX owns the data plane, so token enforcement happens at the
+  // bytes - MediaMTX owns the data plane, so token enforcement happens at the
   // WHEP auth hook).
   if (stream) {
     console.log(`\n6. WHEP handshake against the media rig with the issued token...`);

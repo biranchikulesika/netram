@@ -4,7 +4,7 @@ import { OfflineInspectionQueue, type ChecklistItem } from "./offline/queue";
 import { captureEvidenceOffline, computeSha256 } from "./offline/evidence";
 import type { Inspection } from "@netram/types";
 
-describe("Phase 2 — Inspection Workflow (Core) Specifications", () => {
+describe("Phase 2 - Inspection Workflow (Core) Specifications", () => {
   let db: InMemorySqliteDatabase;
   let queue: OfflineInspectionQueue;
   const inspectionId = "insp-phase2-spec-001";

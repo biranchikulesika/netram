@@ -2,7 +2,7 @@ import type { UUID, ISODateTime } from "./common.js";
 import type { PermissionCode } from "./authorization.js";
 
 /**
- * Registration capability matrix — the single source of truth for
+ * Registration capability matrix - the single source of truth for
  * "who can register what" in the Registry (see apps/web/app/registry).
  *
  * The API enforces `permission` server-side on every registry route;

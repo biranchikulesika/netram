@@ -1,5 +1,5 @@
 /**
- * app/check-in.tsx — Field Site Map
+ * app/check-in.tsx - Field Site Map
  *
  * Full-screen map for navigating to assigned inspection sites:
  *   • Full-bleed Leaflet map rendering every assigned site; zooming out
@@ -88,7 +88,7 @@ interface MapSite {
 const queue = new OfflineInspectionQueue();
 
 // ---------------------------------------------------------------------------
-// Leaflet HTML — injected into iframe / WebView
+// Leaflet HTML - injected into iframe / WebView
 // ---------------------------------------------------------------------------
 
 function buildLeafletHtml(params: {
@@ -125,7 +125,7 @@ function buildLeafletHtml(params: {
     html,body,#map{width:100%;height:100%;background:${isDark ? "#090d16" : "#f6f8fc"};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 
 
-    /* Focused site pin — teardrop, white ring, status-coloured */
+    /* Focused site pin - teardrop, white ring, status-coloured */
     .site-pin{
       width:40px;height:40px;border-radius:50% 50% 50% 0;
       transform:rotate(-45deg);
@@ -160,7 +160,7 @@ function buildLeafletHtml(params: {
     .user-dot{width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;
       box-shadow:0 1px 5px rgba(0,36,73,.45)}
 
-    /* Attribution is noise here — keep the map clean */
+    /* Attribution is noise here - keep the map clean */
     .leaflet-control-attribution{display:none}
   </style>
 </head>
@@ -172,7 +172,7 @@ function buildLeafletHtml(params: {
   let SELECTED_ID = "${selectedId}";
   const IS_DARK = ${isDark ? "true" : "false"};
 
-  // Site fields come from the API and land in raw HTML — escape once, here.
+  // Site fields come from the API and land in raw HTML - escape once, here.
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -383,7 +383,7 @@ export default function MapScreen() {
         if (geoRes.status === "fulfilled") setRemoteGeofences(geoRes.value);
       }
     } catch {
-      // offline — use cached data
+      // offline - use cached data
     } finally {
       setLoading(false);
     }
@@ -486,7 +486,7 @@ export default function MapScreen() {
     });
   }, [cachedInspections, remoteGeofences]);
 
-  // Live distance readouts for the bottom card — recomputed on every GPS tick
+  // Live distance readouts for the bottom card - recomputed on every GPS tick
   // without touching the map HTML.
   const distanceById = useMemo(() => {
     const distances = new Map<string, number | null>();
@@ -526,8 +526,8 @@ export default function MapScreen() {
   // Map HTML & center coordinates
   // ---------------------------------------------------------------------------
 
-  // The map HTML rebuilds only when the pins themselves change — never on a
-  // GPS tick — so the user's zoom survives while the card distance refreshes.
+  // The map HTML rebuilds only when the pins themselves change - never on a
+  // GPS tick - so the user's zoom survives while the card distance refreshes.
   const selectedPin = useMemo(
     () => mapSites.find((s) => s.id === selectedId) ?? null,
     [mapSites, selectedId],
@@ -621,7 +621,7 @@ export default function MapScreen() {
   };
 
   // Focus the map on the inspector's current position: fetch a fresh GPS fix
-  // and hand it to the map by message — the HTML itself stays GPS-free so the
+  // and hand it to the map by message - the HTML itself stays GPS-free so the
   // user's zoom is never reset by a rebuild.
   const handleFocusMyLocation = useCallback(async () => {
     const fix = await acquireLocation();
@@ -715,7 +715,7 @@ export default function MapScreen() {
             ]}
           >
             Netram uses your location to show where you are in relation to your assigned
-            sites. Access is optional — the map works without it.
+            sites. Access is optional - the map works without it.
           </Text>
 
           <View
@@ -804,7 +804,7 @@ export default function MapScreen() {
           <View style={styles.mapPlaceholder}>
             <Icon name="map-outline" size={28} color={colors.textMuted ?? "#64748b"} />
             <Text style={styles.mapPlaceholderText}>
-              No mapped sites yet — sites appear here once their projects have
+              No mapped sites yet - sites appear here once their projects have
               server geofences.
             </Text>
           </View>
@@ -862,7 +862,7 @@ export default function MapScreen() {
             >
               <Icon name="map-outline" size={22} color={theme.textMuted} />
               <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-                Assigned sites have no map coordinates yet — a geofence must be
+                Assigned sites have no map coordinates yet - a geofence must be
                 sealed for each project first.
               </Text>
             </View>
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6F8FC",
   },
 
-  // Map layer — fills full screen
+  // Map layer - fills full screen
   mapLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,

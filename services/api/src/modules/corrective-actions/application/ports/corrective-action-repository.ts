@@ -26,7 +26,7 @@ export interface CreateCorrectiveActionCommand extends CorrectiveActionWriteCont
 }
 
 /**
- * Corrective action status is a byproduct of recorded work — never a manual
+ * Corrective action status is a byproduct of recorded work - never a manual
  * toggle. The target status and work fields are persisted atomically with the
  * audit record and outbox event.
  */

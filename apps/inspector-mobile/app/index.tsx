@@ -27,7 +27,7 @@ import { formatInspectionType } from "../src/utils/formatters";
 
 /** Single consumer, so this stays local rather than in shared formatters. */
 function formatBytes(bytes: number): string {
-  if (!bytes) return "—";
+  if (!bytes) return "-";
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  // ── Header (web topbar parity — ignore dark mode) ──
+  // ── Header (web topbar parity - ignore dark mode) ──
   headerBar: {
     flexDirection: "row",
     alignItems: "center",

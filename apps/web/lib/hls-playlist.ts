@@ -1,6 +1,6 @@
 /**
  * HLS playlist rewriting for the same-origin authorized HLS proxy
- * (apps/web/app/api/cctv/media/hls — Phase 5 wall mode).
+ * (apps/web/app/api/cctv/media/hls - Phase 5 wall mode).
  *
  * Live-verified MediaMTX v1.21.1 playlist shape:
  *   index.m3u8 → variant URIs "video1_stream.m3u8?session=<id>&token=<tok>"
@@ -40,7 +40,7 @@ export function rewritePlaylist(body: string, token: string, basePath = ""): str
       p = url.pathname + url.search;
       absolute = true;
     } catch {
-      /* relative URI — resolve against the playlist's own directory */
+      /* relative URI - resolve against the playlist's own directory */
     }
     const q = p.indexOf("?");
     let file = q === -1 ? p : p.slice(0, q);
@@ -84,7 +84,7 @@ export function rewritePlaylist(body: string, token: string, basePath = ""): str
  * weight: it doubles the playlist reload rate (hls.js refreshes the audio
  * level alongside the video one) and adds a second SourceBuffer plus an AAC
  * decoder per tile. Dropping the AUDIO group leaves a valid video-only
- * master, and nothing plays HLS audio anyway — the interactive live view is
+ * master, and nothing plays HLS audio anyway - the interactive live view is
  * WebRTC. The interactive viewer's own stream is untouched by this.
  */
 function dropAudioRendition(line: string): string {

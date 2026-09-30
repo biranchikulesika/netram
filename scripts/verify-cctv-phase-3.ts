@@ -1,5 +1,5 @@
 /**
- * CCTV Phase 3 runtime verification — gateway as MEDIA CONTROL BRIDGE.
+ * CCTV Phase 3 runtime verification - gateway as MEDIA CONTROL BRIDGE.
  *
  * Verifies against a RUNNING dev stack (bounded; never hangs):
  *   1. MediaMTX control API reachable
@@ -43,11 +43,11 @@ const CDP_PORT = 9335;
 
 let failures = 0;
 function pass(step: string, detail = ""): void {
-  console.log(`  PASS  ${step}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  PASS  ${step}${detail ? ` - ${detail}` : ""}`);
 }
 function fail(step: string, detail = ""): void {
   failures += 1;
-  console.error(`  FAIL  ${step}${detail ? ` — ${detail}` : ""}`);
+  console.error(`  FAIL  ${step}${detail ? ` - ${detail}` : ""}`);
 }
 function assert(cond: boolean, step: string, detail = ""): void {
   if (cond) pass(step, detail);
@@ -256,7 +256,7 @@ async function main(): Promise<void> {
     endpoint: "rtsp://facility-nvr:8554/facility-vani/cam-gate",
   };
 
-  console.log(`CCTV Phase 3 runtime verification — gateway=${GATEWAY}\n`);
+  console.log(`CCTV Phase 3 runtime verification - gateway=${GATEWAY}\n`);
 
   // 1. MediaMTX control API reachable.
   try {
@@ -341,7 +341,7 @@ async function main(): Promise<void> {
 
   // 3. Real health from media state. Phase 4: suites often run back-to-back
   // and the rig's on-demand pull lingers for sourceOnDemandCloseAfter (20s)
-  // after a previous suite's viewers leave — during that window ready=true is
+  // after a previous suite's viewers leave - during that window ready=true is
   // honest `online`. Accept either, but require the health to be REAL: it
   // must be online-with-source or offline-with-reason, never fake.
   try {
@@ -430,7 +430,7 @@ async function main(): Promise<void> {
         }
         const tokenParam = playbackToken ? `&token=${encodeURIComponent(playbackToken)}` : "";
 
-        // The web app proxies through /api/cctv/[id]/streams (auth boundary) —
+        // The web app proxies through /api/cctv/[id]/streams (auth boundary) -
         // verify the full chain API → gateway → MediaMTX via the browser page.
         page1 = await newPage(
           `${values["web-base"]}/dev/cctv-test?autostart=1&path=${encodeURIComponent(MEDIA_PATH)}${tokenParam}`,
@@ -490,7 +490,7 @@ async function main(): Promise<void> {
   }
 
   // 7. After viewers leave, the on-demand pull stays up for
-  // sourceOnDemandCloseAfter (20s) — during that window ready=true IS honest
+  // sourceOnDemandCloseAfter (20s) - during that window ready=true IS honest
   // online state. Then the source closes and health must degrade honestly.
   try {
     let finalStatus: string | null = null;

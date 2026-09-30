@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PublicCctvCamera } from "@netram/types";
 
 /**
- * HLS wall tile (Phase 5 PART 8) — the wall/thumbnail playback mode.
+ * HLS wall tile (Phase 5 PART 8) - the wall/thumbnail playback mode.
  *
  * Wall grids must not open one WebRTC session per visible card (bounded
  * viewers, PART 7), so wall tiles use HLS via the same-origin authorized
@@ -19,10 +19,10 @@ import type { PublicCctvCamera } from "@netram/types";
  * opens the full-screen WebRTC viewer, as it did before auto-play.
  *
  * Every playlist/segment request re-presents the token and MediaMTX's
- * external auth hook validates it — HLS is under exactly the same
+ * external auth hook validates it - HLS is under exactly the same
  * authorization model as WHEP. Native HLS (Safari) plays directly;
  * elsewhere hls.js drives MSE (lazy-imported). Latency is higher than
- * WebRTC — acceptable for wall monitoring (target §1.2); the interactive
+ * WebRTC - acceptable for wall monitoring (target §1.2); the interactive
  * live viewer stays WebRTC.
  */
 
@@ -141,7 +141,7 @@ export function HlsWallTile({ camera, onOpen }: HlsWallTileProps) {
       // Wall tiles are a many-up low-fidelity overview, so the client is tuned
       // for cost, not latency:
       //  - lowLatencyMode off: no 200ms PART polling, full 1s segments only.
-      //    This is the single biggest saving — LL-HLS reloads every playlist
+      //    This is the single biggest saving - LL-HLS reloads every playlist
       //    ~5x/s per tile, which is 35 proxied requests/s for a 7-tile wall.
       //  - backBufferLength 0: a wall tile is live-only and never scrubbed, so
       //    hls.js's 90s default back buffer is pure wasted decoded memory.

@@ -32,7 +32,7 @@ const OFFICIAL_REGISTRABLE_ROLES = new Set([
  *
  * Every command re-checks its permission server-side; the Registry UI
  * merely mirrors the same capability matrix for presentation.
- * Invited people are created suspended — account activation happens
+ * Invited people are created suspended - account activation happens
  * through the normal authentication flow, never at registration time.
  */
 export class RegistryService {

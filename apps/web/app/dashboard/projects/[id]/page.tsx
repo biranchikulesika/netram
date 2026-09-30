@@ -38,11 +38,11 @@ interface AttentionRow {
 }
 
 /**
- * Facility overview — the minimal, permission-aware hub.
+ * Facility overview - the minimal, permission-aware hub.
  *
  * Every fetch below is gated on the caller's permissions BEFORE the request is
  * made: data the caller cannot see is never fetched, never serialized, never
- * sent (§34 — omission, not hiding). Sections with no visible data simply do
+ * sent (§34 - omission, not hiding). Sections with no visible data simply do
  * not exist for that viewer.
  */
 export default async function FacilityOverviewPage({

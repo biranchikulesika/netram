@@ -187,7 +187,7 @@ export class ProjectService {
   /**
    * Updates the facility's contact details (person in charge + contacts).
    * Permitted for anyone who can edit the facility (project:create) within
-   * jurisdiction, regardless of lifecycle status — contact correction is a
+   * jurisdiction, regardless of lifecycle status - contact correction is a
    * routine administrative task, not a workflow decision. Audited atomically.
    */
   async updateContact(

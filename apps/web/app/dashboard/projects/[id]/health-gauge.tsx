@@ -8,7 +8,7 @@ import type { ProjectRiskSnapshot } from "@netram/types";
  *
  * Advisory only (§36): this is a rendered view of the project-risk engine's
  * latest snapshot, never an administrative verdict. Rendered exclusively for
- * viewers holding `project_risk:read` — the score is never sent to anyone
+ * viewers holding `project_risk:read` - the score is never sent to anyone
  * else (§34: omission, not hiding).
  */
 
@@ -20,7 +20,7 @@ interface HealthGaugeProps {
 const RADIUS = 54;
 const CX = 64;
 const CY = 62;
-/** Pivot hub radius — solid disk carrying the score at the needle's rotation point. */
+/** Pivot hub radius - solid disk carrying the score at the needle's rotation point. */
 const HUB_RADIUS = 18;
 
 /** Point on the arc for a 0–100 score (0° = left, 180° = right). */
@@ -45,7 +45,7 @@ export function gradientOffset(score: number): number {
 /**
  * The one health ramp: red at score 0 (left), amber at score 50 (upright),
  * green at score 100 (right). The SVG track and every solid element read these
- * same stops, so a score can never be painted in two hues — the arc beneath
+ * same stops, so a score can never be painted in two hues - the arc beneath
  * the needle, the needle, the hub and the status dot always agree.
  */
 const RAMP_RED = "#dc2626";
@@ -114,8 +114,8 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
       // same words for assistive tech.
       title={
         health === null
-          ? "Health pending — awaiting the first scheduled risk evaluation"
-          : `Health ${health}/100 · ${statusLabel} — the inverse of the advisory composite risk score (${risk}/100). An input to oversight prioritisation, never a verdict.`
+          ? "Health pending - awaiting the first scheduled risk evaluation"
+          : `Health ${health}/100 · ${statusLabel} - the inverse of the advisory composite risk score (${risk}/100). An input to oversight prioritisation, never a verdict.`
       }
     >
       {" "}
@@ -156,7 +156,7 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
         />
         {/*
           * Filled stretch from 0 to the current health. Painted with the SAME
-          * ramp as the track — a solid status colour here would stripe the
+          * ramp as the track - a solid status colour here would stripe the
           * low-health end in the opposite hue (a green bar across the red
           * segment). userSpaceOnUse keeps both arcs on one spectrum.
           */}
@@ -170,7 +170,7 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
           />
         )}
         {/*
-         * Needle — tapered blade, drawn pointing up and rotated by
+         * Needle - tapered blade, drawn pointing up and rotated by
          * needleDeg − 90 so the tip lands on the track at the exact score
          * position (0 → left, 50 → up, 100 → right). The tip reaches 2px inside
          * the 9px track band, so it meets the scale instead of stopping short.
@@ -185,7 +185,7 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
             <circle cx={CX} cy={CY - RADIUS + 2} r={1.6} fill={color} />
           </g>
         )}
-        {/* Pivot hub — solid disk carrying the score at the rotation point */}
+        {/* Pivot hub - solid disk carrying the score at the rotation point */}
         <circle cx={CX} cy={CY} r={HUB_RADIUS} fill={color} />
         <text
           x={CX}
@@ -196,7 +196,7 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
           fontWeight="800"
           fill="#ffffff"
         >
-          {health ?? "—"}
+          {health ?? "-"}
         </text>
       </svg>
     </div>

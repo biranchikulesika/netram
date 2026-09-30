@@ -5,12 +5,12 @@ import type { StreamEndReason, StreamEndedBy } from "@netram/types";
 import type { CctvWriteContext } from "../modules/cctv/application/ports/cctv-repository.js";
 
 /**
- * CCTV stream-session sweeper (Phase 4 §3 — docs/history/cctv-phase-4.md).
+ * CCTV stream-session sweeper (Phase 4 §3 - docs/history/cctv-phase-4.md).
  *
  * Reaps active sessions that are:
- *   - token-expired (expiresAt <= now) — the token is dead, so the external
+ *   - token-expired (expiresAt <= now) - the token is dead, so the external
  *     auth hook already rejects new handshakes; this closes the record; or
- *   - heartbeat-stale (lastHeartbeatAt older than the grace window) — the
+ *   - heartbeat-stale (lastHeartbeatAt older than the grace window) - the
  *     viewer vanished without an explicit stop. Never runs before token
  *     expiry: a viewer that stops heartbeating keeps its session until the
  *     token itself expires unless the grace window applies.

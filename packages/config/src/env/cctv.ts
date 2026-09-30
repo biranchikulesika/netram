@@ -5,9 +5,9 @@ import { nodeEnvSchema } from "./schema.js";
  * CCTV / media-plane configuration (§7, §15, §42).
  *
  * Two deliberately distinct MediaMTX addresses:
- *  - NETRAM_MEDIAMTX_API_URL          — internal control API (gateway → MediaMTX,
+ *  - NETRAM_MEDIAMTX_API_URL          - internal control API (gateway → MediaMTX,
  *                                       server-side only, never browser-facing)
- *  - NETRAM_MEDIAMTX_WHEP_PUBLIC_URL  — browser-facing WHEP base minted into
+ *  - NETRAM_MEDIAMTX_WHEP_PUBLIC_URL  - browser-facing WHEP base minted into
  *                                       playback contracts
  * They are NOT necessarily the same host/port and must never be conflated.
  */

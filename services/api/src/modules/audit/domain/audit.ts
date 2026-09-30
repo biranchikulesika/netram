@@ -1,7 +1,7 @@
 import type { AuditAction } from "@netram/types";
 
 /**
- * Audit events are append-only. There are no lifecycle transitions — once
+ * Audit events are append-only. There are no lifecycle transitions - once
  * written, an audit record is immutable (AGENTS.md §37).
  *
  * This module exists to hold audit-specific domain rules such as

@@ -20,10 +20,10 @@ function getProjectTypeLabel(type: Project["type"]): string {
 
 /** Compact administrative date, e.g. "20 Sep, 2026" */
 export function formatRegisteredDate(dateInput: string | Date | null | undefined): string {
-  if (!dateInput) return "—";
+  if (!dateInput) return "-";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return "—";
+    if (isNaN(d.getTime())) return "-";
     const parts = new Intl.DateTimeFormat("en-IN", {
       day: "numeric",
       month: "short",
@@ -33,7 +33,7 @@ export function formatRegisteredDate(dateInput: string | Date | null | undefined
     const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
     return `${get("day")} ${get("month")}, ${get("year")}`;
   } catch {
-    return "—";
+    return "-";
   }
 }
 

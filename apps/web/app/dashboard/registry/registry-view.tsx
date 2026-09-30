@@ -13,7 +13,7 @@ import {
 
 /**
  * Registrations hub: one card per registrable entity, permission-filtered
- * server-side (page.tsx) — a user simply never sees a card they cannot use.
+ * server-side (page.tsx) - a user simply never sees a card they cannot use.
  * Every card links to its dedicated registration page; the API re-checks the
  * same permission on submit.
  */

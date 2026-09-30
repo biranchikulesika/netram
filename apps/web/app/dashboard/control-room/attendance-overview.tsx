@@ -221,7 +221,7 @@ export function AttendanceOverviewSection({
         )}
       </div>
 
-      {/* Anomaly alerts (Alerts view) — control-room row design */}
+      {/* Anomaly alerts (Alerts view) - control-room row design */}
       {view === "alerts" && (
         <div style={{ marginTop: "1.5rem", display: "grid", gap: "0.6rem" }}>
           {filteredAnomalies.length === 0 ? (
@@ -468,7 +468,7 @@ export function AttendanceOverviewSection({
                           )}
                         </td>
                         <td className="table-date">{calc.operationalDate}</td>
-                        <td className="table-align-right">{calc.expected !== null ? calc.expected : "—"}</td>
+                        <td className="table-align-right">{calc.expected !== null ? calc.expected : "-"}</td>
                         <td
                           className="table-align-right"
                           style={{
@@ -483,7 +483,7 @@ export function AttendanceOverviewSection({
                         >
                           {calc.present}
                         </td>
-                        <td className="table-align-right">{calc.absent !== null ? calc.absent : "—"}</td>
+                        <td className="table-align-right">{calc.absent !== null ? calc.absent : "-"}</td>
                         <td
                           className="table-align-right"
                           style={{

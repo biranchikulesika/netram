@@ -4,20 +4,20 @@ import "../globals.css";
 import DisclaimerModal from "./DisclaimerModal";
 import { RealtimeProvider } from "./components/realtime-provider";
 
-const NETRAM_TITLE = "Netram — Smart Real-Time Monitoring & Inspection Platform";
+const NETRAM_TITLE = "Netram - Smart Real-Time Monitoring & Inspection Platform";
 const NETRAM_DESCRIPTION =
-  "Real-time monitoring and inspection of social welfare institutions. A Smart India Hackathon 2026 project — not an official Government of India platform.";
+  "Real-time monitoring and inspection of social welfare institutions. A Smart India Hackathon 2026 project - not an official Government of India platform.";
 
 /**
  * Netram is a Smart India Hackathon 2026 project. It is NOT a Government of
- * India or DoSJE platform, and metadata must never imply that it is — these
+ * India or DoSJE platform, and metadata must never imply that it is - these
  * strings are what crawlers and link previews (Open Graph, Twitter cards,
  * Slack, WhatsApp) show to someone who has never seen the project, which makes
  * them the worst possible place to overstate provenance.
  *
  * The Open Graph block is explicit rather than inherited: without it Next.js
  * emits no og: tags at all, and link-preview scrapers fall back to <title> and
- * <meta name="description"> — which is how the old "official portal" wording
+ * <meta name="description"> - which is how the old "official portal" wording
  * reached previews. Next.js derives twitter:* from this block.
  */
 export const metadata: Metadata = {
@@ -35,8 +35,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * The web platform is a desktop application. There is no mobile web build —
- * field staff use the separate `apps/inspector-mobile` app — so phone browsers
+ * The web platform is a desktop application. There is no mobile web build -
+ * field staff use the separate `apps/inspector-mobile` app - so phone browsers
  * should render the desktop layout rather than a squashed approximation of it.
  *
  * `width: 1280` makes a mobile browser lay the page out at a fixed 1280 CSS
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
  *
  * Deliberately NOT set: `userScalable: false`, `maximumScale: 1` or
  * `minimumScale`. Those block pinch-zoom, which is an accessibility
- * requirement — forcing a desktop layout on a small screen is already hard
+ * requirement - forcing a desktop layout on a small screen is already hard
  * enough to read. Zoom stays available.
  */
 export const viewport: Viewport = {

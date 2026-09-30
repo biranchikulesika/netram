@@ -23,11 +23,11 @@ state.
 
 ## Alternatives considered
 
-- **Full microservices now** — rejected: no demonstrated technical requirement;
+- **Full microservices now** - rejected: no demonstrated technical requirement;
   adds operational cost without value at this stage (AGENTS.md §6).
-- **Relying on the old implementation** — rejected: it conflicts with the
+- **Relying on the old implementation** - rejected: it conflicts with the
   authoritative architecture (AGENTS.md §1).
-- **No shared packages** — rejected: web+mobile+api genuinely share contracts;
+- **No shared packages** - rejected: web+mobile+api genuinely share contracts;
   a junk-drawer is prevented by AGENTS.md §20 rules.
 
 ## Consequences

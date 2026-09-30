@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
 
 /**
- * PRODUCTION same-origin WHEP proxy (Phase 5) — the browser-facing media
+ * PRODUCTION same-origin WHEP proxy (Phase 5) - the browser-facing media
  * route of the target architecture (§11/§12):
  *
  *   Browser ──HTTPS same-origin──▶ /api/cctv/media/whep ──server-side──▶ MediaMTX WHEP
  *
  * Distinct from the dev rig proxy (/api/dev/cctv/whep): this route requires a
  * NETRAM playback token (Authorization: Bearer, minted by the CCTV API) and
- * never falls back to the internal Basic credential — fail-closed, matching
+ * never falls back to the internal Basic credential - fail-closed, matching
  * the Phase 4 external auth hook model. The MediaMTX host stays server-side.
  *
  * `netramSession` (the cctv_streams session id) is forwarded in the upstream
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse("Invalid or missing 'path' query parameter", { status: 400 });
   }
 
-  // The NETRAM playback token is mandatory here — no dev fallback.
+  // The NETRAM playback token is mandatory here - no dev fallback.
   const auth = request.headers.get("Authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (token.length === 0) {
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       body: offer,
       // The first WHEP handshake may trigger the on-demand RTSP pull, which
       // can legitimately take up to sourceOnDemandStartTimeout (10s) plus
-      // network margin — do not abort before the media server can answer.
+      // network margin - do not abort before the media server can answer.
       signal: AbortSignal.timeout(25_000),
     });
   } catch {

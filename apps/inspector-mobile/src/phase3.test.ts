@@ -8,7 +8,7 @@ import {
 import type { NetramApiClient } from "@netram/api-client";
 import type { Inspection } from "@netram/types";
 
-describe("Phase 3 — Offline Sync Specifications", () => {
+describe("Phase 3 - Offline Sync Specifications", () => {
   let db: InMemorySqliteDatabase;
   let queue: OfflineInspectionQueue;
   const inspectionIdA = "insp-phase3-a-001";

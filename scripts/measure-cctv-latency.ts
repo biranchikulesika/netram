@@ -1,7 +1,7 @@
 /**
- * CCTV Phase 5 — practical latency measurement (PART 11).
+ * CCTV Phase 5 - practical latency measurement (PART 11).
  *
- * Measurement model (honest decomposition — docs/history/cctv-phase-5.md):
+ * Measurement model (honest decomposition - docs/history/cctv-phase-5.md):
  *
  *   glass-to-glass ≈ capture+encode (camera side)   ← NOT measurable here*
  *                  + RTSP/MediaMTX ingest            ← near-zero (pass-through)

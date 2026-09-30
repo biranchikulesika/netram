@@ -7,12 +7,12 @@ import { AuditExplorerView } from "../../../audit/audit-explorer-view";
 export const dynamic = "force-dynamic";
 
 /**
- * Facility activity tab — the audit trail for this facility.
+ * Facility activity tab - the audit trail for this facility.
  *
  * Accessible only to viewers holding `audit:read` (authorities, auditors,
  * system administrators). Institutions never see who did what: the tab is
- * absent from the navigation and no audit events are fetched (§34 —
- * omission, not hiding; §37 — audit is authority-side oversight).
+ * absent from the navigation and no audit events are fetched (§34 -
+ * omission, not hiding; §37 - audit is authority-side oversight).
  */
 export default async function FacilityActivityPage({
   params,

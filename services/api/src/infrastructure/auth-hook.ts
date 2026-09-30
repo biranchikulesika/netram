@@ -35,7 +35,7 @@ export function createAuthHook(container: Container, log: FastifyBaseLogger) {
       // permissions).
       //
       // Anything that is NOT an AppError means we could not determine who the
-      // caller is — a dropped connection, a missing relation, a failing
+      // caller is - a dropped connection, a missing relation, a failing
       // repository. That is emphatically not "unauthorised": answering 401 here
       // makes an infrastructure outage indistinguishable from a bad token, and
       // a client that trusts the status code will sign the user out or show a

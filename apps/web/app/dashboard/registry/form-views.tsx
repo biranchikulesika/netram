@@ -20,7 +20,7 @@ import { useRotatingPlaceholder } from "../../../lib/use-rotating-placeholder";
  * Dedicated registry forms (agency, scheme, inspector, official).
  *
  * Each form renders inside a page-level FormShell: a header with back link.
- * The form body mirrors the project-registration layout — icon-chip sections
+ * The form body mirrors the project-registration layout - icon-chip sections
  * in the main column and a live summary rail (progress meter, jump checklist,
  * contextual notes, submit action) that stays sticky while scrolling.
  * After a successful submit the shell swaps to a success panel.
@@ -175,7 +175,7 @@ function SummaryRail({
         </div>
         <div className="reg-meter-caption">
           {pct === 100
-            ? "All sections complete — ready to submit."
+            ? "All sections complete - ready to submit."
             : `${completedCount} of ${sections.length} sections complete`}
         </div>
 
@@ -383,9 +383,9 @@ export function OrganisationForm({ onSuccess }: FormChrome) {
 /* ---------------- Scheme / Programme ---------------- */
 
 const SCOPE_LEVEL_OPTIONS: { value: "national" | "state" | "district"; label: string }[] = [
-  { value: "national", label: "National — open to all facilities" },
-  { value: "state", label: "State — facilities within one state" },
-  { value: "district", label: "District — facilities in a single district" },
+  { value: "national", label: "National - open to all facilities" },
+  { value: "state", label: "State - facilities within one state" },
+  { value: "district", label: "District - facilities in a single district" },
 ];
 
 export function ProgrammeForm({
@@ -417,7 +417,7 @@ export function ProgrammeForm({
         stateId: scopeLevel === "state" ? stateId : null,
         districtId: scopeLevel === "district" ? districtId : null,
       });
-      onSuccess(`Scheme "${name}" registered`, `Code ${code} — scope: ${scopeLevel}.`);
+      onSuccess(`Scheme "${name}" registered`, `Code ${code} - scope: ${scopeLevel}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setBusy(false);
@@ -604,13 +604,13 @@ export function ProgrammeForm({
           <>
             <ul className="reg-aside-list">
               <li>
-                <strong>National</strong> — any facility may link the scheme.
+                <strong>National</strong> - any facility may link the scheme.
               </li>
               <li>
-                <strong>State</strong> — only facilities inside the chosen state.
+                <strong>State</strong> - only facilities inside the chosen state.
               </li>
               <li>
-                <strong>District</strong> — only facilities in that district.
+                <strong>District</strong> - only facilities in that district.
               </li>
             </ul>
             <div className="registry-form-note">
@@ -790,7 +790,7 @@ export function InspectorForm({
         footnote={
           <ul className="reg-aside-list">
             <li>
-              The account is created <strong>suspended</strong> — no password is set.
+              The account is created <strong>suspended</strong> - no password is set.
             </li>
             <li>The inspector activates it by signing in through the official flow.</li>
             <li>Their jurisdiction limits which inspections they can be assigned.</li>
@@ -964,7 +964,7 @@ export function OfficialForm({
               >
                 {OFFICIAL_ROLE_OPTIONS.map((r) => (
                   <option key={r.code} value={r.code}>
-                    {r.label} — {r.hint}
+                    {r.label} - {r.hint}
                   </option>
                 ))}
               </select>

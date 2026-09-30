@@ -64,7 +64,7 @@ export function InspectionCard({ inspection }: { inspection: Inspection }) {
         </h3>
 
         <p className="facility-card-desc">
-          {isSurprise ? "Surprise inspection" : `${inspection.type.replace(/_/g, " ")} inspection`} —{" "}
+          {isSurprise ? "Surprise inspection" : `${inspection.type.replace(/_/g, " ")} inspection`} -{" "}
           {inspection.trigger.replace(/_/g, " ")} trigger
         </p>
 

@@ -448,13 +448,13 @@ export function AdminView({
                                 const j = safeJurisdictions.find((item) => item.id === a.jurisdictionId);
                                 if (j) return j.name;
                               }
-                              return a.scope ? a.scope.charAt(0).toUpperCase() + a.scope.slice(1) : "—";
+                              return a.scope ? a.scope.charAt(0).toUpperCase() + a.scope.slice(1) : "-";
                             }),
                           ),
                         );
 
                         if (dedupedScopes.length === 0) {
-                          return <span className="muted">—</span>;
+                          return <span className="muted">-</span>;
                         }
 
                         return (

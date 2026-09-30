@@ -7,7 +7,7 @@ import { Masthead } from "./components/masthead";
 // Title and description are inherited from the root layout on purpose. This
 // page is what a crawler or link preview sees (unauthenticated, it does not
 // redirect), so its provenance should have exactly one definition to drift
-// from — see app/layout.tsx.
+// from - see app/layout.tsx.
 
 export default async function HomePage() {
   const session = await getSessionUser();
@@ -37,7 +37,7 @@ export default async function HomePage() {
           --green-hover: #137e3a;
           --muted: var(--text-subtle);
           --line: var(--color-border-subtle);
-          /* type scale — one size per level, no ad-hoc values */
+          /* type scale - one size per level, no ad-hoc values */
           --fs-display: 5.5rem;
           --fs-tagline: 2rem;
           --fs-body: 1.0625rem;

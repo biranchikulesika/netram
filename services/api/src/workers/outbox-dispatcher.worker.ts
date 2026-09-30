@@ -175,7 +175,7 @@ export class OutboxDispatcher {
       /**
        * Corrective action ordered (from a confirmed inspection finding or an
        * escalated complaint): pulse every institution administrator so the
-       * order surfaces in their Corrections section (§41 — event-driven,
+       * order surfaces in their Corrections section (§41 - event-driven,
        * minimal payload; authoritative details are fetched on open).
        */
       case "corrective_action.created": {
@@ -186,7 +186,7 @@ export class OutboxDispatcher {
             {
               notificationId: `notif-ca-created-${record.id}-${uid}`,
               userId: uid,
-              title: "Corrective action ordered — action required",
+              title: "Corrective action ordered - action required",
               channel: "in_app",
               type: "corrective_action.overdue" satisfies NotificationType,
             },
@@ -204,7 +204,7 @@ export class OutboxDispatcher {
       /**
        * A complaint against an establishment was escalated: the institution
        * administrator is informed that review is required, without disclosing
-       * complainant identity or attachments (§35 — a complaint is not guilt).
+       * complainant identity or attachments (§35 - a complaint is not guilt).
        */
       case "complaint.escalated": {
         const payload = record.payload as { projectId?: string };
@@ -216,7 +216,7 @@ export class OutboxDispatcher {
             {
               notificationId: `notif-complaint-esc-${record.id}-${uid}`,
               userId: uid,
-              title: "Complaint escalated — review required",
+              title: "Complaint escalated - review required",
               channel: "in_app",
               type: "corrective_action.overdue" satisfies NotificationType,
             },

@@ -1,4 +1,4 @@
-# Deployment — netram.kulesika.in
+# Deployment - netram.kulesika.in
 
 Single-VPS deployment of the Netram stack on the host `biranchi`
 (`51.79.220.41`, Ubuntu, 11 GB RAM). This document describes the **current**
@@ -15,7 +15,7 @@ Internet ──▶ nginx  (:80/:443, TLS + Let's Encrypt)        ← the only ed
                                                         (WebSocket upgrade)
 
 media plane (bypasses the BFF):
-  netram-media :8189/udp + :8189/tcp  published publicly — WebRTC media
+  netram-media :8189/udp + :8189/tcp  published publicly - WebRTC media
   (ICE/SRTP) flows browser ↔ MediaMTX directly. Only *signalling* is
   proxied, same-origin, through the web app.
 
@@ -36,13 +36,13 @@ That cannot work on this host:
 
 nginx therefore remains the single edge and Netram is one more server block on
 the shared listeners. Vhosts are selected by SNI/Host, so no other tenant is
-affected. The Netram vhost deliberately does **not** declare `default_server` —
+affected. The Netram vhost deliberately does **not** declare `default_server` -
 the existing default vhost on port 80 belongs to another tenant and must keep
 answering unknown `Host` headers.
 
 Config lives in `infra/nginx/`; `scripts/deploy-nginx.sh` installs it.
 
-## 2. Container runtime — Podman, rootless
+## 2. Container runtime - Podman, rootless
 
 This deployment runs on **rootless Podman** (`podman-compose`, rootless, no
 daemon). Docker is not installed and is not required.
@@ -52,7 +52,7 @@ Consequences that shaped the configuration:
 | Constraint | Effect |
 |---|---|
 | Cannot bind `:80`/`:443` | Edge is nginx on the host, not a container |
-| `COPY dir ./` flattens `dir`'s contents | All Dockerfiles use an explicit destination (`COPY dir ./dir`) — see §7 |
+| `COPY dir ./` flattens `dir`'s contents | All Dockerfiles use an explicit destination (`COPY dir ./dir`) - see §7 |
 | `service_completed_successfully` = "stopped" | `podman-compose` does not inspect the exit code of one-shot services; verify `db-setup` by log after deploy |
 | Requires `default` network declared | `networks.default` is stated explicitly instead of being synthesised |
 
@@ -70,9 +70,9 @@ DNS-only is required, not a preference:
 
 ## 4. Environment
 
-- `.env.vps` — the **compose substitution** file, gitignored, holds the real
+- `.env.vps` - the **compose substitution** file, gitignored, holds the real
   secrets. Only parameterises the `environment:` blocks in `docker-compose.yml`.
-- `.env.vps.example` — committed template, placeholders only.
+- `.env.vps.example` - committed template, placeholders only.
 - Each service's **runtime** environment is declared in the service's
   `environment:` block, not in the env file.
 
@@ -104,7 +104,7 @@ db:seed    → deterministic synthetic seed
 ```
 
 So every visitor starts from the same coherent state and trial edits
-disappear — **including a visitor's own edits if they are mid-task when the
+disappear - **including a visitor's own edits if they are mid-task when the
 timer fires.** Raise `NETRAM_DEMO_RESET_SECONDS` (e.g. `21600` = 6 h) to reduce
 interruptions. The reset guard (`NETRAM_ALLOW_DB_RESET=1`) must be explicitly
 set; it stays closed otherwise.
@@ -141,7 +141,7 @@ the reserved `.dev.netram.in` domain. No real personal information and no real
 credentials.
 
 To add project detail, extend the `ProjectSpec` list in
-`project-operations.ts` — one entry per project, each carrying its inspection
+`project-operations.ts` - one entry per project, each carrying its inspection
 cycles and finding text. The module expands those into observations, evidence,
 corrective actions and risk snapshots. Do not hand-insert derived rows.
 
@@ -242,22 +242,22 @@ podman image prune -f --filter until=24h
 
 ## 8. Troubleshooting
 
-**`netram.kulesika.in` does not resolve** — the Cloudflare A record is missing
+**`netram.kulesika.in` does not resolve** - the Cloudflare A record is missing
 or still proxied. `dig +short netram.kulesika.in` must return `51.79.220.41`.
 
-**502 from nginx** — the web container is not publishing.
+**502 from nginx** - the web container is not publishing.
 `ss -tln | grep 3100`. If empty, the stack is down or the published port in
 `.env.vps` changed without re-running `up -d`.
 
-**Certificate fails to issue** — ACME needs DNS pointing here *and* `:80`
+**Certificate fails to issue** - ACME needs DNS pointing here *and* `:80`
 reachable from the internet. `sudo certbot certonly --webroot -w /var/www/certbot
 -d netram.kulesika.in` shows the reason. Note the OVH edge firewall, if
 enabled, must allow `:80`, `:443` and `:8189` (udp and tcp).
 
-**CCTV video will not play** — check `:8189/udp` is open in the edge firewall
+**CCTV video will not play** - check `:8189/udp` is open in the edge firewall
 and that DNS is DNS-only. A proxied DNS record silently breaks WebRTC.
 
-**Build fails with `no space left on device`** — the rootless image store. Check
+**Build fails with `no space left on device`** - the rootless image store. Check
 `podman system df`. The daily prune timer should prevent this; if it has not run
 (or is not installed), `podman image prune -f --filter until=24h` frees tens of
 GB immediately.

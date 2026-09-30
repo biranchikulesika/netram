@@ -185,7 +185,7 @@ class SmtpSession {
       const raw = this.buffer.slice(0, nl).replace(/\r$/, "");
       this.buffer = this.buffer.slice(nl + 1);
       if (raw.length >= 4 && /^\d{3} /.test(raw)) {
-        // Final line of a (possibly multi-line) reply — resolve the pending read.
+        // Final line of a (possibly multi-line) reply - resolve the pending read.
         const reply = this.replyParts.length
           ? `${this.replyParts.join("\n")}\n${raw}`
           : raw;

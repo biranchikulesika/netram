@@ -22,7 +22,7 @@ export interface WorkerOptions {
   redisUrl: string;
   databaseUrl: string;
   concurrency?: number;
-  /** smtp:// or smtps:// URL — enables the real SMTP email adapter. */
+  /** smtp:// or smtps:// URL - enables the real SMTP email adapter. */
   smtpUrl?: string;
   /** "production" disables dev transports for push/SMS/email fallback. */
   nodeEnv?: string;
@@ -62,7 +62,7 @@ export async function startNotificationWorker(
         meta,
       });
       job.log(
-        `'${channel}' via ${result.provider}: ${result.delivered ? "delivered" : `not delivered (${result.reason ?? "unknown reason"})`} — ${title}`,
+        `'${channel}' via ${result.provider}: ${result.delivered ? "delivered" : `not delivered (${result.reason ?? "unknown reason"})`} - ${title}`,
       );
       return result;
     },

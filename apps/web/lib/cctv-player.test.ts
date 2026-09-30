@@ -3,7 +3,7 @@ import { startCctvPlayback, readPlaybackStats } from "./cctv-player";
 
 /**
  * Unit tests for the production WHEP player controller (Phase 5 PART 1/14).
- * WebRTC and fetch are mocked — the tests verify lifecycle semantics
+ * WebRTC and fetch are mocked - the tests verify lifecycle semantics
  * (correlation param, Bearer propagation, cleanup, error paths), which is
  * the behavior this module owns.
  */

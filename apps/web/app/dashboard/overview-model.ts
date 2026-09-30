@@ -118,7 +118,7 @@ function wholeDaysBetween(fromMs: number, toMs: number): number {
   return Math.max(0, Math.floor((toMs - fromMs) / 86_400_000));
 }
 
-/** "3 hours ago" / "2 days ago" — the age phrasing used across the overview. */
+/** "3 hours ago" / "2 days ago" - the age phrasing used across the overview. */
 export function relativeAge(iso: string | null | undefined, nowMs: number): string | null {
   const then = ms(iso);
   if (then === null || then > nowMs) return null;
@@ -260,7 +260,7 @@ export function buildUpcoming(inspections: Inspection[], nowMs: number): Upcomin
     }));
 }
 
-/** "Tomorrow" / "4 Oct" — the phrasing used in the upcoming table. */
+/** "Tomorrow" / "4 Oct" - the phrasing used in the upcoming table. */
 export function relativeDayLabel(atMs: number, nowMs: number): string {
   const days = wholeDaysBetween(nowMs, atMs);
   if (days === 0) return "Today";

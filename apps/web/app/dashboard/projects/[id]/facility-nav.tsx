@@ -32,11 +32,11 @@ interface FacilityNavProps {
 /**
  * Facility contextual navigation ("which aspect of this facility am I
  * examining?"). This is NOT the global sidebar ("which system area am I working
- * in?") — both coexist by design (§CORE IA).
+ * in?") - both coexist by design (§CORE IA).
  *
  * Tabs mirror the global sidepanel sections and mirror the API's own
  * permission gates: a caller without the permission never sees the tab, and
- * the corresponding page never fetches the data at all (§34 — omission, not
+ * the corresponding page never fetches the data at all (§34 - omission, not
  * hiding).
  */
 export function FacilityNav({ projectId, permissions, currentStatus }: FacilityNavProps) {

@@ -22,7 +22,7 @@ pnpm db:setup            # migrate from zero + deterministic seed
 
 `pnpm db:setup` = `db:reset` (drop + migrate from zero) + `db:seed`
 (deterministic synthetic seed, idempotent). Migrations + seed are the source
-of truth — never hand-edit the local DB and call it done (AGENTS.md §11–13).
+of truth - never hand-edit the local DB and call it done (AGENTS.md §11–13).
 
 ## Running services
 
@@ -69,7 +69,7 @@ debugging. Details: [`../architecture/cctv.md`](../architecture/cctv.md) §10.
 
 Centralised + validated in `packages/config/src/env/` (Zod). `NEXT_PUBLIC_*`
 keys are client-safe; everything else is server-only. `.env.example` is the
-full documented list — notable entries:
+full documented list - notable entries:
 
 | Variable | Purpose |
 |---|---|
@@ -126,7 +126,7 @@ pnpm measure:cctv-latency          # receiver-side latency decomposition
 Ownership per area: [`../OWNERSHIP.md`](../OWNERSHIP.md) (enforced by
 `.github/CODEOWNERS`). Branching is strictly
 `feature/* → develop → preview → production` via PR + squash
-(AGENTS.md §68) — never commit directly to integration branches. Shared
+(AGENTS.md §68) - never commit directly to integration branches. Shared
 contract changes (`packages/types`, `packages/validation`, `packages/api-client`,
 `packages/config`) need owner review and consumer updates in the same change
 (AGENTS.md §19).

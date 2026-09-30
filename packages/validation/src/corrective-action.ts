@@ -70,7 +70,7 @@ export const createCorrectiveActionSchema = z
 
 /**
  * Institution lodges the Action Taken Report (docs/DoSJE.md §16). Recording
- * this evidence is what advances the order to `submitted` — no manual status
+ * this evidence is what advances the order to `submitted` - no manual status
  * toggle exists.
  */
 export const submitAtrSchema = z

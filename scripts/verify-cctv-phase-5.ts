@@ -1,5 +1,5 @@
 /**
- * CCTV Phase 5 runtime verification — production Control Room playback,
+ * CCTV Phase 5 runtime verification - production Control Room playback,
  * session correlation, reader kick, HLS wall mode, honest failure states
  * (docs/history/cctv-phase-5.md, PART 14).
  *
@@ -61,7 +61,7 @@ const MEDIAMTX_API_PASSWORD = cctvEnv.NETRAM_MEDIAMTX_API_PASSWORD;
 const results: { name: string; pass: boolean; detail?: string }[] = [];
 function check(name: string, pass: boolean, detail?: string): void {
   results.push({ name, pass, detail });
-  console.log(`  ${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` - ${detail}` : ""}`);
 }
 async function jsonFetch(url: string, init: RequestInit = {}, timeoutMs = 10_000): Promise<Response> {
   return fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
@@ -374,7 +374,7 @@ async function main(): Promise<void> {
   }
 
   // ---- 7. Correlation: the UI viewer's OWN session echoes into the reader
-  // record (poll — the browser session is separate from streamIdA). ----
+  // record (poll - the browser session is separate from streamIdA). ----
   let correlationReaderId: string | null = null;
   {
     for (let i = 0; i < 20 && !correlationReaderId; i++) {
@@ -407,7 +407,7 @@ async function main(): Promise<void> {
     );
     check("Viewer close ends the session (viewer_stop)", closeResult.closed, closeResult.text);
 
-    // The viewer's correlated reader must be gone (poll — DELETE, gateway
+    // The viewer's correlated reader must be gone (poll - DELETE, gateway
     // kick, and MediaMTX teardown are all async). The API session's reader
     // may still be present until check 10 ends that session.
     let stillThere = -1;

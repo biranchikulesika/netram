@@ -48,7 +48,7 @@ describe("formatAuditActivity", () => {
         metadata: { code: "PRJ-VANI-001", finding: "Kitchen hygiene" },
       }),
     );
-    expect(a.summary).toBe("Corrective action escalated — Kitchen hygiene");
+    expect(a.summary).toBe("Corrective action escalated - Kitchen hygiene");
     expect(a.category).toBe("remediations");
   });
 

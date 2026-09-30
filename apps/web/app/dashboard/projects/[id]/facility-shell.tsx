@@ -19,8 +19,8 @@ import { StatusBadge } from "./status-badge";
 
 /**
  * Status is part of the permanent identity (district/org/authority) and stays
- * in the meta row for most lifecycle states. Abnormal states — suspended or
- * archived — are promoted next to the facility name instead, so they read as
+ * in the meta row for most lifecycle states. Abnormal states - suspended or
+ * archived - are promoted next to the facility name instead, so they read as
  * an urgent condition on the title rather than routine metadata.
  */
 const PROMINENT_STATUSES = new Set(["Suspended", "Archived"]);

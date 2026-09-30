@@ -50,7 +50,7 @@ export class SimulatedCameraProvider implements CameraProvider {
   }
 
   /**
-   * Health is resolved from real media state by the MediaControlService —
+   * Health is resolved from real media state by the MediaControlService -
    * a source resolver alone cannot know camera health.
    */
   async cameraHealth(_cameraId: string): Promise<CameraRef["status"]> {

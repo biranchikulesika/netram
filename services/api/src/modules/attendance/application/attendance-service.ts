@@ -708,7 +708,7 @@ export class AttendanceService {
       resourceId: observation.id,
     });
 
-    // An observation can complete a previously partial window — recalculate.
+    // An observation can complete a previously partial window - recalculate.
     if (window) {
       await this.calculateWindow(ctx, window.id, input.operationalDate);
     }

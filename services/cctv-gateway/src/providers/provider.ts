@@ -2,7 +2,7 @@
  * CCTV provider abstraction (AGENTS.md §42).
  *
  * The gateway owns provider-specific stream acquisition. The rest of Netram
- * talks to this interface — never to RTSP URLs, NVR vendors, or camera
+ * talks to this interface - never to RTSP URLs, NVR vendors, or camera
  * credentials directly. Raw RTSP credentials must never reach browsers or
  * mobile clients; streams are re-served through an authorized relay.
  */

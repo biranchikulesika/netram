@@ -13,4 +13,4 @@ This directory archives historical architectural analyses, previous phase build 
 
 ## Historical Records
 
-- [`cctv-evolution.md`](cctv-evolution.md): Comprehensive compilation of the CCTV subsystem evolution — from the pre-build streaming audit, target requirements, and media rig setup to the 5-phase rollout of the MediaMTX data plane, external auth hooks, and background stream sweepers.
+- [`cctv-evolution.md`](cctv-evolution.md): Comprehensive compilation of the CCTV subsystem evolution - from the pre-build streaming audit, target requirements, and media rig setup to the 5-phase rollout of the MediaMTX data plane, external auth hooks, and background stream sweepers.

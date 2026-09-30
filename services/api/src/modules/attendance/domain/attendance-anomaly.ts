@@ -9,7 +9,7 @@ import type {
 import { ATTENDANCE_ANOMALY_TRANSITIONS } from "@netram/types";
 
 /**
- * Hybrid attendance anomaly detector (§26-§29). Statistical/rule-based — no
+ * Hybrid attendance anomaly detector (§26-§29). Statistical/rule-based - no
  * ML model required. AI/analytics output is evidence for human review, never
  * administrative authority.
  */
@@ -232,7 +232,7 @@ export function detectAnomalies(input: DetectorInput): DetectorCandidate[] {
     );
   }
 
-  // 4. Source quality (informational — "bad data" is not "bad behaviour") (§25).
+  // 4. Source quality (informational - "bad data" is not "bad behaviour") (§25).
   if (input.dataQuality === "POOR" || input.coverage === "INSUFFICIENT" || input.coverage === "UNAVAILABLE") {
     candidates.push(
       candidate("SOURCE_QUALITY", 0.25, input, {

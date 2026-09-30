@@ -77,7 +77,7 @@ export function DashboardOverviewView({
                       : "var(--text-muted)",
                 }}
               >
-                {metric.readable ? metric.value : "—"}
+                {metric.readable ? metric.value : "-"}
               </span>
               <span
                 className="kpi-label"
@@ -148,7 +148,7 @@ export function DashboardOverviewView({
                       </Link>
                     </td>
                     <td>{item.reason}</td>
-                    <td className="table-date">{item.meta ?? "—"}</td>
+                    <td className="table-date">{item.meta ?? "-"}</td>
                   </tr>
                 ))
               )}

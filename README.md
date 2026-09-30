@@ -13,20 +13,20 @@ anomaly review.
 
 ## What is implemented
 
-- **Core platform** — modular-monolith REST API (`/api/v1`) with
+- **Core platform** - modular-monolith REST API (`/api/v1`) with
   server-authoritative authorisation, jurisdiction scoping, project lifecycle,
   inspections → findings → corrective actions (ATR flow), evidence integrity,
   complaints, notifications, audit trail, outbox events, background workers.
-- **Web platform** — Next.js app: workspaces, registry, control room, admin.
-- **Inspector mobile app** — Expo/React Native with offline operation queue.
-- **Realtime** — outbox-driven authorised WebSocket delivery (delivery only,
+- **Web platform** - Next.js app: workspaces, registry, control room, admin.
+- **Inspector mobile app** - Expo/React Native with offline operation queue.
+- **Realtime** - outbox-driven authorised WebSocket delivery (delivery only,
   never truth).
-- **CCTV live streaming** — Camera → RTSP → MediaMTX → WebRTC/HLS → browser
+- **CCTV live streaming** - Camera → RTSP → MediaMTX → WebRTC/HLS → browser
   with a control-plane gateway, session lifecycle, tokens, and external auth
   ([`docs/architecture/cctv.md`](docs/architecture/cctv.md)). Production
   facility deployment (WireGuard, real cameras, TLS) is **not** implemented
-  yet — see [`docs/deployment.md`](docs/deployment.md).
-- **AI service** — small advisory Python service (anomaly scoring shape);
+  yet - see [`docs/deployment.md`](docs/deployment.md).
+- **AI service** - small advisory Python service (anomaly scoring shape);
   anomaly review lifecycle lives in the API.
 
 ## Repository layout

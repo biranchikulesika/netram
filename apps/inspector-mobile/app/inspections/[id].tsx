@@ -237,7 +237,7 @@ export default function InspectionDetailScreen() {
     }
   };
 
-  // Helper to acquire location at evidence capture time (§2.5) — instant with fallback
+  // Helper to acquire location at evidence capture time (§2.5) - instant with fallback
   const getCaptureLocation = async () => {
     try {
       const perm = await Location.getForegroundPermissionsAsync();
@@ -383,7 +383,7 @@ export default function InspectionDetailScreen() {
       }));
   }, [evidenceList, observations]);
 
-  // Color theme tokens — follows user's dark/light mode preference
+  // Color theme tokens - follows user's dark/light mode preference
   const bgCanvas = theme.bgCanvas;
   const bgSurface = theme.bgSurface;
   const bgSubtle = isPureDark ? "#18181B" : theme.bgSubtle;
@@ -460,7 +460,7 @@ export default function InspectionDetailScreen() {
             mono && { fontFamily: typography.mono, color: accentBlue },
           ]}
         >
-          {value ?? "—"}
+          {value ?? "-"}
         </Text>
       )}
     </View>
@@ -892,7 +892,7 @@ export default function InspectionDetailScreen() {
                     inspection?.district_id && `${inspection.district_id} District`,
                   ]
                     .filter(Boolean)
-                    .join(" · ") || "—"}
+                    .join(" · ") || "-"}
                 </Text>
               </View>
 

@@ -81,7 +81,7 @@ const ORGANISATIONS: OrgOption[] = [
 const PROGRAMMES: ProgrammeOption[] = [
   {
     id: "3c704771-9317-50bb-9479-7c4c9ff4f46c",
-    name: "National Scholarship Programme — Special Hostels",
+    name: "National Scholarship Programme - Special Hostels",
     code: "PGM-NSP",
   },
   {
@@ -104,7 +104,7 @@ const FACILITY_CATEGORIES = [
 ];
 
 /**
- * Hint ↔ example pairs per field — short and scannable. The placeholder
+ * Hint ↔ example pairs per field - short and scannable. The placeholder
  * alternates so the field first says what it wants, then shows an example.
  */
 const PLACEHOLDER_HINTS = {
@@ -536,7 +536,7 @@ export function ProjectRegistrationView({
       {!canCreate && (
         <div className="error-banner" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
           <IconShieldCheck width={16} height={16} />
-          <span>Your role does not include project registration rights — the form is read-only.</span>
+          <span>Your role does not include project registration rights - the form is read-only.</span>
         </div>
       )}
 
@@ -558,7 +558,7 @@ export function ProjectRegistrationView({
       <form onSubmit={handleSubmit} className="reg-layout">
         {/* ---------------- Main column ---------------- */}
         <div className="reg-main">
-          {/* 1 — Facility & Sanction */}
+          {/* 1 - Facility & Sanction */}
           <section className="reg-section" id="section-identity">
             <div className="reg-section-head">
               <span className="reg-step-chip" aria-hidden="true">
@@ -657,7 +657,7 @@ export function ProjectRegistrationView({
             </div>
           </section>
 
-          {/* 2 — Location */}
+          {/* 2 - Location */}
           <section className="reg-section" id="section-location">
             <div className="reg-section-head">
               <span className="reg-step-chip" aria-hidden="true">
@@ -741,7 +741,7 @@ export function ProjectRegistrationView({
             </div>
           </section>
 
-          {/* 3 — Agency & Contact */}
+          {/* 3 - Agency & Contact */}
           <section className="reg-section" id="section-agency">
             <div className="reg-section-head">
               <span className="reg-step-chip" aria-hidden="true">
@@ -826,7 +826,7 @@ export function ProjectRegistrationView({
             </div>
           </section>
 
-          {/* 4 — Programme & Capacity */}
+          {/* 4 - Programme & Capacity */}
           <section className="reg-section" id="section-programme">
             <div className="reg-section-head">
               <span className="reg-step-chip" aria-hidden="true">
@@ -898,7 +898,7 @@ export function ProjectRegistrationView({
             </div>
           </section>
 
-          {/* 5 — Photo Evidence */}
+          {/* 5 - Photo Evidence */}
           <section className="reg-section" id="section-photos">
             <div className="reg-section-head">
               <span className="reg-step-chip" aria-hidden="true">
@@ -938,7 +938,7 @@ export function ProjectRegistrationView({
               />
               <IconCamera width={18} height={18} />
               <span className="reg-dropzone-title">Add photos</span>
-              <span className="reg-dropzone-sub">Select images — capture time and note per photo</span>
+              <span className="reg-dropzone-sub">Select images - capture time and note per photo</span>
             </label>
 
             {photos.length > 0 && (
@@ -955,7 +955,7 @@ export function ProjectRegistrationView({
                     <div className="reg-photo-meta">
                       <input
                         type="text"
-                        placeholder="Short detail — e.g. Main gate"
+                        placeholder="Short detail - e.g. Main gate"
                         value={entry.caption}
                         onChange={(e) => updatePhoto(entry.key, { caption: e.target.value })}
                         maxLength={500}
@@ -1009,7 +1009,7 @@ export function ProjectRegistrationView({
             </div>
             <div className="reg-meter-caption">
               {completenessPct === 100
-                ? "All sections complete — ready to submit."
+                ? "All sections complete - ready to submit."
                 : `${completedCount} of 5 sections complete`}
             </div>
 
@@ -1045,7 +1045,7 @@ export function ProjectRegistrationView({
               </div>
             )}
 
-            {/* Actions — stacked at the end of the summary rail, primary last */}
+            {/* Actions - stacked at the end of the summary rail, primary last */}
             <div className="reg-actions">
               <button
                 type="button"

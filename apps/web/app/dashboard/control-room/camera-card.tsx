@@ -21,7 +21,7 @@ export interface CameraCardProps {
 /**
  * Production CCTV camera card (Phase 5).
  *
- * The card itself holds NO stream session — a camera being online does NOT
+ * The card itself holds NO stream session - a camera being online does NOT
  * mean this browser has an active WebRTC session (PART 7). This component
  * renders only for cameras the wall is NOT currently playing: once a camera
  * scrolls into view the wall swaps it for an HlsWallTile, which takes over
@@ -29,7 +29,7 @@ export interface CameraCardProps {
  * full-screen WebRTC viewer.
  *
  * Honest states: "Idle" vs "Camera offline" reflects the camera's
- * administrative status, not stream health — see the note on `online`
+ * administrative status, not stream health - see the note on `online`
  * below. Connection states surface inside the live viewer
  * ("Connecting to camera…", "LIVE", "Unable to connect…").
  */
@@ -40,7 +40,7 @@ export function CameraCard({ camera, onOpen }: CameraCardProps) {
   const online = camera.status === "active";
 
   // Deliberately NOT the gateway health value. Sources are on-demand, so a
-  // camera nobody is watching reports `offline` — gating the button on that
+  // camera nobody is watching reports `offline` - gating the button on that
   // would hide it on every idle camera and make it impossible to ever start
   // a stream. `active` is the administrative state: may this camera be used?
   // The tile label below is what carries honest stream state.

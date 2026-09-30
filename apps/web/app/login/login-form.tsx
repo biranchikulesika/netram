@@ -172,7 +172,7 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
             <div className={styles.alertTitle}>Reconnecting</div>
             <div>
               We could not confirm your existing session just now. You are still
-              signed in — retrying will take you straight back to your
+              signed in - retrying will take you straight back to your
               dashboard.
             </div>
             <button
@@ -439,7 +439,7 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
                       active ? styles.devAccountActive : ""
                     }`}
                     onClick={() => handleQuickFill(acc)}
-                    title={`${acc.email} — ${acc.description}`}
+                    title={`${acc.email} - ${acc.description}`}
                     aria-pressed={active}
                   >
                     <span className={styles.devAccountRole}>{acc.role}</span>

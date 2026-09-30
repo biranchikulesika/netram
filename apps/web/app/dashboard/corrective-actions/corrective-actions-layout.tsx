@@ -319,7 +319,7 @@ export function CorrectiveActionsLayout({
                           </span>
                         ) : (
                           <span className="muted" style={{ fontSize: "0.8rem" }}>
-                            —
+                            -
                           </span>
                         )}
                       </td>

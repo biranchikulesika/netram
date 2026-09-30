@@ -3,7 +3,7 @@ import type { ProjectRiskEvaluationContext } from "../../application/project-ris
 import { DEFAULT_OBSERVATION_WINDOWS } from "../../config/risk-config.js";
 
 /**
- * Complaint density dimension (§35 — complaints are oversight INPUTS).
+ * Complaint density dimension (§35 - complaints are oversight INPUTS).
  *
  * Real `ComplaintStatus` lifecycle: received → under_review → escalated →
  * resolved/closed. Scoring semantics:

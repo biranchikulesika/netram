@@ -82,7 +82,7 @@ export function DecisionConfirmModal({
               color: "var(--color-navy-brand)",
             }}
           >
-            {isReject ? "Reject" : "Verify"} — confirm this decision
+            {isReject ? "Reject" : "Verify"} - confirm this decision
           </h3>
           <p className="muted" style={{ fontSize: "0.8rem", margin: "0.3rem 0 0 0" }}>
             {item.title}
@@ -107,7 +107,7 @@ export function DecisionConfirmModal({
           {isReject ? (
             <>
               Rejecting sends this item back for correction (registration returns to Draft;
-              the expense/ATR goes back to the organisation to resubmit). Nothing is deleted —
+              the expense/ATR goes back to the organisation to resubmit). Nothing is deleted -
               the decision is audit-logged against your account.
             </>
           ) : (

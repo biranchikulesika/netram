@@ -2,7 +2,7 @@
 # NETRAM development-only simulated CCTV camera (facility side).
 #
 # Behaves like a camera: produces a real-time H.264 RTSP stream from the
-# repository sample video. The MP4 is NEVER served to a browser — it is only
+# repository sample video. The MP4 is NEVER served to a browser - it is only
 # the FFmpeg input.
 #
 # Ingest modes (target architecture Phase 1D). The camera always PUSHES;
@@ -29,7 +29,7 @@ if [ "${CAMERA_SOURCE:-}" = "clock" ]; then
   mkdir -p /tmp/cam
   # NOTE: the clock is burned ONCE at container start (wall-clock based) and
   # then looped. Latency measurement is valid while the loop position is
-  # accounted for — see docs/architecture/cctv-phase-1-2.md.
+  # accounted for - see docs/architecture/cctv-phase-1-2.md.
   ffmpeg -hide_banner -loglevel error -y \
     -f lavfi -i "testsrc2=size=640x360:rate=25" \
     -f lavfi -i "sine=frequency=1000" \

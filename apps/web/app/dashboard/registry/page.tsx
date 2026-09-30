@@ -12,7 +12,7 @@ export default async function RegistryPage() {
   const permissions = new Set(session.permissions);
   const canListRegistryData = permissions.has("project:read");
 
-  // Reference data for the "existing records" lists — fetched server-side so
+  // Reference data for the "existing records" lists - fetched server-side so
   // the hub renders complete on first paint. Failures leave the lists empty.
   const client = await getClient();
   const [organisations, programmes, states, districts] = canListRegistryData

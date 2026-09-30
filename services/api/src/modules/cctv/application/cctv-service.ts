@@ -21,7 +21,7 @@ export function toPublicCctvCamera(camera: CctvCamera): PublicCctvCamera {
 
 /**
  * Decision for the MediaMTX external auth hook (Phase 4 §13).
- * The hook rejects with 401 when this returns false — the reason is
+ * The hook rejects with 401 when this returns false - the reason is
  * audit-logged by the caller but NEVER returned to MediaMTX clients.
  */
 export type MediaAuthDecision =
@@ -167,7 +167,7 @@ export class CctvService {
         headers: this.serviceHeaders(),
         body: JSON.stringify({
           ttlSeconds: input.ttlSeconds,
-          // Camera context from the DB — the gateway's configuration input.
+          // Camera context from the DB - the gateway's configuration input.
           id: camera.id,
           provider: camera.provider,
           protocol: camera.protocol,
@@ -220,7 +220,7 @@ export class CctvService {
 
   /**
    * Viewer heartbeat (Phase 4 §2). Refreshes the session's liveness marker so
-   * the sweeper does not reap it. 404 when the session is already ended — the
+   * the sweeper does not reap it. 404 when the session is already ended - the
    * client should request a new stream.
    */
   async heartbeat(
@@ -255,7 +255,7 @@ export class CctvService {
   /**
    * Explicit session end (Phase 4 §3): viewer stop or admin revoke.
    * Ends the DB session atomically (audit + outbox), then kicks any live
-   * MediaMTX readers through the gateway (best-effort — media termination is
+   * MediaMTX readers through the gateway (best-effort - media termination is
    * eventual if the gateway is down; the token is dead the moment the DB row
    * flips because the auth hook validates against the session state).
    */
@@ -308,7 +308,7 @@ export class CctvService {
     // Best-effort media termination through the gateway control plane:
     // kick the MediaMTX WebRTC reader(s) correlated to this session via the
     // WHEP `netramSession` query echo (Phase 5 correlation, live-verified on
-    // v1.21.1). If the gateway or MediaMTX is down this is eventual — the
+    // v1.21.1). If the gateway or MediaMTX is down this is eventual - the
     // token is already dead because the auth hook validates session state.
     if (session.mediaPath) {
       try {
@@ -322,7 +322,7 @@ export class CctvService {
           },
         );
       } catch {
-        // Gateway unreachable — token is already dead; nothing to do now.
+        // Gateway unreachable - token is already dead; nothing to do now.
       }
     }
 
@@ -359,7 +359,7 @@ export class CctvService {
     }
 
     // Live-verified v1.21.1 behavior: the playback token reaches the hook in
-    // DIFFERENT fields per protocol — WHEP fills `token`; HLS leaves `token`
+    // DIFFERENT fields per protocol - WHEP fills `token`; HLS leaves `token`
     // empty and carries the WHEP-style query string (containing token=…) in
     // `query`. Resolve both before hashing; fail closed when neither has one.
     const token =

@@ -22,7 +22,7 @@ export type SessionPayload = Awaited<ReturnType<NetramApiClient["me"]>>;
  * Why the session state is three-valued rather than "user or null".
  *
  * Collapsing "nobody is signed in" and "we could not find out" into the same
- * value is fine for a page guard — an unknown session must fail closed. It is
+ * value is fine for a page guard - an unknown session must fail closed. It is
  * NOT fine for the login page, which renders a sign-in form whenever it sees
  * no user: during any transient API failure (the demo database being rebuilt,
  * the API restarting) an already-authenticated visitor would be shown the

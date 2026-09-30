@@ -228,7 +228,7 @@ export class RegistryRepository {
     return rows.length > 0;
   }
 
-  /** District IDs belonging to a state — used for state-scope authorization. */
+  /** District IDs belonging to a state - used for state-scope authorization. */
   async districtsInState(stateId: string): Promise<string[]> {
     const rows = await this.db
       .select({ id: districts.id })
@@ -237,7 +237,7 @@ export class RegistryRepository {
     return rows.map((r) => r.id);
   }
 
-  /** All states — for scheme scope pickers. */
+  /** All states - for scheme scope pickers. */
   async listStates(): Promise<{ id: string; code: string; name: string }[]> {
     return this.db
       .select({ id: states.id, code: states.code, name: states.name })
@@ -245,7 +245,7 @@ export class RegistryRepository {
       .orderBy(states.name);
   }
 
-  /** All districts with their state name — for scope and agency pickers. */
+  /** All districts with their state name - for scope and agency pickers. */
   async listDistrictsWithState(): Promise<
     { id: string; code: string; name: string; stateId: string; stateName: string }[]
   > {

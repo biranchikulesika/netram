@@ -26,7 +26,7 @@ interface GeofenceConfig {
   auditTx?: string;
 }
 
-// District gazetteer for map positioning — a static geographic reference
+// District gazetteer for map positioning - a static geographic reference
 // (display config, not application data), keyed by district NAME. Never keyed
 // by database IDs: records carry the server-resolved `districtName`.
 export const districtCoords: Record<string, { lat: number; lng: number; name: string }> = {
@@ -378,7 +378,7 @@ export default function RealLeafletMap({
     };
 
     // Sealing is an authoritative, audited server action. If the API call
-    // fails, the seal did not happen — surface the error instead of faking
+    // fails, the seal did not happen - surface the error instead of faking
     // success locally (the old code fabricated an "auditTx" hash here).
     let serverGeofence: GeofenceConfig | null = null;
     try {
@@ -522,7 +522,7 @@ export default function RealLeafletMap({
 
   const isDrawing = geofenceMode !== "view";
 
-  // Toast bridge — shell exposes pushToast via ref
+  // Toast bridge - shell exposes pushToast via ref
   const mapHandleRef = useRef<{ pushToast(message: string): void } | null>(null);
   const notify = useCallback((msg: string) => {
     mapHandleRef.current?.pushToast(msg);

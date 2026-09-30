@@ -22,7 +22,7 @@ export default async function FacilityLayout({
 
   // The health gauge is authority-side oversight information (§34): the
   // snapshot is fetched only for viewers holding project_risk:read and is
-  // never sent to anyone else. Institutions see no gauge at all — not even a
+  // never sent to anyone else. Institutions see no gauge at all - not even a
   // placeholder, since its absence would itself hint that a score exists.
   const canViewRisk = can(session.permissions, "project_risk:read");
   const snapshot = canViewRisk
@@ -39,7 +39,7 @@ export default async function FacilityLayout({
       />
 
       <div className="facility-page">
-        {/* Facility identity + section tabs — one compact shell */}
+        {/* Facility identity + section tabs - one compact shell */}
         <FacilityShell
           project={project}
           permissions={session.permissions}

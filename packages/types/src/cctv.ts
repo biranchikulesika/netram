@@ -7,7 +7,7 @@ export type StreamSessionStatus = "active" | "ended";
 /** Who drove a session's end (Phase 4 lifecycle). */
 export type StreamEndedBy = "viewer" | "sweeper" | "admin";
 
-/** Why a session ended (Phase 4 vocabulary — docs/history/cctv-phase-4.md). */
+/** Why a session ended (Phase 4 vocabulary - docs/history/cctv-phase-4.md). */
 export type StreamEndReason =
   | "viewer_stop"
   | "token_expired"

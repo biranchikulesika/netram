@@ -1,4 +1,4 @@
-# CCTV / Live Streaming — Current Architecture
+# CCTV / Live Streaming - Current Architecture
 
 **Authority:** this is the single current reference for CCTV in NETRAM. It
 describes the system as implemented (Phases 1–5, complete as of 2026-09-23).
@@ -58,39 +58,39 @@ MediaMTX control API :9997
 
 ## 4. Playback flow (WebRTC/WHEP, primary)
 
-1. **Create session** — Control Room →
+1. **Create session** - Control Room →
    `POST /api/cctv/:cameraId/streams` (cookie) → API checks `cctv:stream` +
    jurisdiction, resolves camera config from DB, asks the gateway to provision
    the MediaMTX path, creates the `cctv_streams` row + audit + outbox event
    atomically, returns `{ streamId, playback: { protocol: "webrtc", token,
    whepUrl, mediaPath } }`.
-2. **Handshake** — browser POSTs its SDP offer to
+2. **Handshake** - browser POSTs its SDP offer to
    `POST /api/cctv/media/whep?path=<mediaPath>&netramSession=<streamId>` with
    `Authorization: Bearer <playback token>`; the web route forwards to
    MediaMTX WHEP server-side (`apps/web/app/api/cctv/media/whep/route.ts`).
-3. **Authorisation** — MediaMTX calls the NETRAM external auth hook
+3. **Authorisation** - MediaMTX calls the NETRAM external auth hook
    (`POST /media/auth` on the API, secret-gated). The hook validates the hook
    secret, hashes the token (sha256) and checks the session is active,
    unexpired, and path-matched; permits `read`/`playback` for live consumers.
    Decisions are fail-closed and audited (`cctv.media_auth_granted` /
    `cctv.media_auth_denied`).
-4. **Play** — `RTCPeerConnection` (recvonly) attaches the MediaStream to
+4. **Play** - `RTCPeerConnection` (recvonly) attaches the MediaStream to
    `<video>` (`apps/web/lib/cctv-player.ts`, driven by
    `apps/web/lib/use-cctv-live-stream.ts`).
 
 ## 5. Session lifecycle
 
-- **Playback token** — short-lived TTL (seconds, chosen per session),
+- **Playback token** - short-lived TTL (seconds, chosen per session),
   path-bound, stored only as a sha256 hash (`token_hash`); the raw token never
   touches the database. Ended/expired sessions are rejected by the hook, so
   MediaMTX itself refuses new handshakes.
-- **Heartbeat** — the player sends `POST /api/cctv/:id/streams/:streamId/heartbeat`
+- **Heartbeat** - the player sends `POST /api/cctv/:id/streams/:streamId/heartbeat`
   every 30 s while playing (`HEARTBEAT_INTERVAL_MS` in `use-cctv-live-stream.ts`).
-- **Sweeper** — `services/api/src/workers/cctv-sweeper.worker.ts` runs every
+- **Sweeper** - `services/api/src/workers/cctv-sweeper.worker.ts` runs every
   15 s and ends sessions that are token-expired (`expiresAt <= now`) or
   heartbeat-stale (90 s grace = 3 missed heartbeats), with atomic audit +
   outbox records (`endedBy=sweeper`).
-- **Termination** — explicit `DELETE /api/cctv/cameras/:id/streams/:streamId`
+- **Termination** - explicit `DELETE /api/cctv/cameras/:id/streams/:streamId`
   (`endReason` recorded, e.g. `viewer_stop`). The API ends the DB session and
   then kicks the MediaMTX reader (below), so the video actually stops.
 
@@ -101,14 +101,14 @@ MediaMTX v1.21.1 echoes the WHEP URL query into each WebRTC session record's
 the API asks the gateway to locate the reader carrying that correlation id and
 kick it (`kickReadersByNetramSession` in
 `services/cctv-gateway/src/mediamtx/client.ts`, wired into `endStream`). This
-closes the loop: **end of session ⇒ MediaMTX reader disconnected** — no
+closes the loop: **end of session ⇒ MediaMTX reader disconnected** - no
 schema extension needed (correlation rides in MediaMTX's own session record).
 
 ## 7. HLS (wall / secondary mode)
 
 HLS is the secondary mode for multi-camera walls and thumbnails; WHEP remains
 the primary live path. The wall is explicitly user-enabled per tile and
-bounded (`MAX_WALL_TILES = 9` in `control-room-layout.tsx`) — a camera being
+bounded (`MAX_WALL_TILES = 9` in `control-room-layout.tsx`) - a camera being
 online never auto-opens sessions.
 
 - Route: `GET /api/cctv/media/hls/<mediaPath>/<file>` → forwards to MediaMTX
@@ -122,13 +122,13 @@ online never auto-opens sessions.
 
 ## 8. Health
 
-Health is derived from real media state — never hardcoded:
+Health is derived from real media state - never hardcoded:
 
 - MediaMTX path/source state and reader counts (via the gateway's MediaMTX
   client) determine `online` / `degraded` / `offline`; cameras never probed by
   media infrastructure report `unknown`. A DB row alone never means "online".
 - Exposed via `GET /api/cctv/cameras/:id/health`; the API has no independent
-  media knowledge — it reflects what the gateway reports.
+  media knowledge - it reflects what the gateway reports.
 
 ## 9. Camera configuration source
 
@@ -147,7 +147,7 @@ Runs `camera-sim` (FFmpeg H.264 push) → `facility-nvr` (always-on RTSP) →
 `netram-media` (MediaMTX, on-demand pull; `sourceOnDemand` with 10 s start
 timeout / 20 s close-after). Cameras seeded with `facility-nvr:8554` endpoints
 are watchable end-to-end; `sim.local` endpoints represent unprovisioned
-facilities (health: `offline`/`unknown` — intentional honesty, see §8).
+facilities (health: `offline`/`unknown` - intentional honesty, see §8).
 
 Debug page: `/dev/cctv-test` (kept deliberately as a regression tool; uses the
 dev proxy `/api/dev/cctv/whep`).
@@ -175,7 +175,7 @@ browser playback), plus phase 2/3/4 suites (`verify:runtime:cctv-phase2|3|4`).
   no TURN. The dev rig simulates the facility; production topology design
   lives in [`docs/history/cctv-evolution.md`](../history/cctv-evolution.md).
 - Hook secret travels as a query param on the configured hook URL (MediaMTX
-  cannot send custom headers) — acceptable for dev; production must move it to
+  cannot send custom headers) - acceptable for dev; production must move it to
   a secret-managed reverse-proxy front.
 - Glass-to-glass latency not yet measured end-to-end (receiver-side
   decomposition measured: jitter buffer ≈ 3–11 ms, RTT ≈ 1 ms;

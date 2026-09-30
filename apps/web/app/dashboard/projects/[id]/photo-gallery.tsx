@@ -67,7 +67,7 @@ export function PhotoGallery({ photos }: PhotoGalleryProps) {
               photo.caption ? `Open photo: ${photo.caption}` : `Open photo ${i + 1}`
             }
           >
-            {/* Proxied binary content route, not a static asset — plain img. */}
+            {/* Proxied binary content route, not a static asset - plain img. */}
             <img
               src={`/api/projects/photos/${photo.id}/content`}
               alt={photo.caption ?? "Facility photo"}
@@ -132,7 +132,7 @@ export function PhotoGallery({ photos }: PhotoGalleryProps) {
               </>
             )}
 
-            {/* Proxied binary content route, not a static asset — plain img. */}
+            {/* Proxied binary content route, not a static asset - plain img. */}
             <img
               src={`/api/projects/photos/${current.id}/content`}
               alt={current.caption ?? "Facility photo"}

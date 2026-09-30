@@ -7,7 +7,7 @@ import { v5 as uuidv5 } from "uuid";
  * logical record ("project:vani", "finding:vani-2") always maps to the same
  * UUID. That is what makes the seed idempotent (every insert can use
  * `onConflictDoNothing`) and what lets a fresh reset reproduce byte-identical
- * ids — a hard requirement for deterministic development and demo data
+ * ids - a hard requirement for deterministic development and demo data
  * (AGENTS.md §13), because mobile offline operations and audit rows reference
  * these ids across process restarts.
  *

@@ -1,5 +1,5 @@
 /**
- * CCTV Phase 4 runtime verification — session lifecycle + MediaMTX external
+ * CCTV Phase 4 runtime verification - session lifecycle + MediaMTX external
  * auth hook (docs/history/cctv-phase-4.md).
  *
  * Verifies against a RUNNING dev stack (bounded; never hangs):
@@ -40,7 +40,7 @@ const results: { name: string; pass: boolean; detail?: string }[] = [];
 
 function check(name: string, pass: boolean, detail?: string): void {
   results.push({ name, pass, detail });
-  console.log(`  ${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` - ${detail}` : ""}`);
 }
 
 async function jsonFetch(url: string, init: RequestInit = {}, timeoutMs = 10_000): Promise<Response> {

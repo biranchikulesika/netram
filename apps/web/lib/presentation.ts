@@ -87,15 +87,15 @@ function getCalendarParts(
  * Formats date into short administrative format: "12 Sep 2026"
  */
 export function formatDate(dateInput: string | Date | null | undefined): string {
-  if (!dateInput) return "—";
+  if (!dateInput) return "-";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return "—";
+    if (isNaN(d.getTime())) return "-";
     const p = getCalendarParts(d, false);
-    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "-";
     return `${p.day} ${month} ${p.year}`;
   } catch {
-    return "—";
+    return "-";
   }
 }
 
@@ -103,21 +103,21 @@ export function formatDate(dateInput: string | Date | null | undefined): string 
  * Formats date into standard short administrative format: "12 Sep 2026"
  */
 export function formatShortDate(dateInput: string | Date | null | undefined): string {
-  if (!dateInput) return "—";
+  if (!dateInput) return "-";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return "—";
+    if (isNaN(d.getTime())) return "-";
     const p = getCalendarParts(d, false);
-    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "-";
     return `${p.day} ${month} ${p.year}`;
   } catch {
-    return "—";
+    return "-";
   }
 }
 
 function formatDateTimeParts(d: Date): string {
   const p = getCalendarParts(d, true);
-  const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+  const month = SHORT_MONTHS[Number(p.month) - 1] ?? "-";
   const period = (p.dayPeriod ?? "").toUpperCase();
   return `${p.day} ${month}, ${p.year} at ${p.hour}:${p.minute} ${period}`;
 }
@@ -126,13 +126,13 @@ function formatDateTimeParts(d: Date): string {
  * Formats datetime into short administrative format: "12 Sep, 2026 at 10:58 PM"
  */
 export function formatDateTime(dateInput: string | Date | null | undefined): string {
-  if (!dateInput) return "—";
+  if (!dateInput) return "-";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return "—";
+    if (isNaN(d.getTime())) return "-";
     return formatDateTimeParts(d);
   } catch {
-    return "—";
+    return "-";
   }
 }
 
@@ -140,17 +140,17 @@ export function formatDateTime(dateInput: string | Date | null | undefined): str
  * Formats datetime into exact administrative timestamp with seconds: "12 Sep, 2026 at 10:58:24 PM"
  */
 export function formatTimestamp(dateInput: string | Date | null | undefined): string {
-  if (!dateInput) return "—";
+  if (!dateInput) return "-";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return "—";
+    if (isNaN(d.getTime())) return "-";
     const p = getCalendarParts(d, true, true);
-    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "—";
+    const month = SHORT_MONTHS[Number(p.month) - 1] ?? "-";
     const period = (p.dayPeriod ?? "").toUpperCase();
     const second = p.second ? p.second.padStart(2, "0") : "00";
     return `${p.day} ${month}, ${p.year} at ${p.hour}:${p.minute}:${second} ${period}`;
   } catch {
-    return "—";
+    return "-";
   }
 }
 
@@ -170,7 +170,7 @@ const ROLE_TITLE_MAP: Record<string, string> = {
  * into human-readable, executive administrative role titles.
  */
 export function formatRoleTitle(roleCode?: string | null, rawName?: string | null): string {
-  if (!roleCode && !rawName) return "—";
+  if (!roleCode && !rawName) return "-";
   const code = (roleCode || "").toLowerCase().trim();
   if (code && ROLE_TITLE_MAP[code]) {
     return ROLE_TITLE_MAP[code];
@@ -180,7 +180,7 @@ export function formatRoleTitle(roleCode?: string | null, rawName?: string | nul
     if (ROLE_TITLE_MAP[rawLower]) return ROLE_TITLE_MAP[rawLower];
     return rawName.trim();
   }
-  if (!code) return rawName?.trim() || "—";
+  if (!code) return rawName?.trim() || "-";
   return code
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())

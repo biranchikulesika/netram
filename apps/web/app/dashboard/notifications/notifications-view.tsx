@@ -19,10 +19,10 @@ interface NotificationsViewProps {
 }
 
 function formatRelativeTime(dateInput: string | Date | null | undefined): string {
-  if (!dateInput) return "—";
+  if (!dateInput) return "-";
   try {
     const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return "—";
+    if (isNaN(d.getTime())) return "-";
     const now = Date.now();
     const diffMs = now - d.getTime();
     if (diffMs < 0) return formatDateTime(d);
@@ -37,7 +37,7 @@ function formatRelativeTime(dateInput: string | Date | null | undefined): string
     if (diffDays < 7) return `${diffDays}d ago`;
     return formatDateTime(d);
   } catch {
-    return "—";
+    return "-";
   }
 }
 

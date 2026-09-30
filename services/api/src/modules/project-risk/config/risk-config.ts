@@ -63,7 +63,7 @@ export const SCORING_VERSION = "project-risk-v2";
  * signal must matter: a signal a human has reviewed to a conclusion must not
  * keep contributing its full detector weight, and a signal a human has
  * declared NOT real must contribute nothing at all (AI is an informer, not an
- * authority — a dismissal is the human decision that overrides the detector).
+ * authority - a dismissal is the human decision that overrides the detector).
  *
  * - RESOLVED_OUTCOME_ATTENUATION applies to signals a human acted upon to a
  *   concluded outcome (resolved complaint, actioned attendance anomaly): the

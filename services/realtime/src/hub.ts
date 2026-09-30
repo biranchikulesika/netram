@@ -17,7 +17,7 @@ function matches(subscription: string, eventType: string): boolean {
 }
 
 /**
- * Realtime is delivery only — never authority. The hub relays outbox events
+ * Realtime is delivery only - never authority. The hub relays outbox events
  * to sockets whose (API-authorized) subscriptions match the event type.
  * Payloads are the minimal outbox payload; clients fetch authoritative state
  * through the REST API after receiving a notification.

@@ -653,11 +653,11 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Institution / Organisation Admin",
       // The establishment is the oversight SUBJECT, not an oversight reader.
       // Deliberately lacks:
-      //   project:approve  — institutions cannot approve themselves.
-      //   project:create   — authorities register facilities and link the
+      //   project:approve  - institutions cannot approve themselves.
+      //   project:create   - authorities register facilities and link the
       //                      organisation; institutions do not self-register.
-      //   inspection:read  — they never see inspections against themselves.
-      //   complaint:read / inspection_flag:read / risk reads — oversight
+      //   inspection:read  - they never see inspections against themselves.
+      //   complaint:read / inspection_flag:read / risk reads - oversight
       //                      instruments against them are not disclosed (§34).
       // They are PULSED through notifications + their section queues when the
       // authority orders an action: ATR submission (corrective_action:submit)
@@ -1182,7 +1182,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       name: "Puri Model Boys' Hostel",
       type: "institution",
       description:
-        "Proposed model boys' hostel in Puri district. Record is still a draft: the site has been identified and the District Welfare Officer has been named as the interim contact, but there is no sanctioned capacity, no scheme component mapping and no fund allocation yet. Nothing operational is attached to this project until it is verified and approved — no inspections, cameras, devices or funds exist for it, by design.",
+        "Proposed model boys' hostel in Puri district. Record is still a draft: the site has been identified and the District Welfare Officer has been named as the interim contact, but there is no sanctioned capacity, no scheme component mapping and no fund allocation yet. Nothing operational is attached to this project until it is verified and approved - no inspections, cameras, devices or funds exist for it, by design.",
       organisationId: did("org:puri-model"),
       authorityId: did("authority:dosje"),
       districtId: did("district:puri"),
@@ -1260,7 +1260,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       type: "village",
       schemeComponentId: did("component:pmajay-adarsh"),
       description:
-        "SC-majority village under the PM-AJAY Adarsh Gram component, Dharmasala, Jajapur. The village itself is the audited unit, not an institution: audits cover the gram panchayat's delivery of the component's works and entitlements rather than a residential facility. Household-level checks cover the roll, the works executed and the panchayat's own records. No implementing institute exists — the official calendar shows institute N/A for Jajapur village audits — so there is no organisation and no facility contact; the district welfare office coordinates. There is no CCTV and no biometric attendance at a village target.",
+        "SC-majority village under the PM-AJAY Adarsh Gram component, Dharmasala, Jajapur. The village itself is the audited unit, not an institution: audits cover the gram panchayat's delivery of the component's works and entitlements rather than a residential facility. Household-level checks cover the roll, the works executed and the panchayat's own records. No implementing institute exists - the official calendar shows institute N/A for Jajapur village audits - so there is no organisation and no facility contact; the district welfare office coordinates. There is no CCTV and no biometric attendance at a village target.",
       organisationId: null,
       authorityId: did("authority:dosje"),
       districtId: did("district:jajapur"),
@@ -2214,7 +2214,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     ])
     .onConflictDoNothing();
 
-  // Population members (roster for Vani beneficiaries — match simulator range).
+  // Population members (roster for Vani beneficiaries - match simulator range).
   for (let n = 1; n <= 160; n++) {
     await db
       .insert(s.attendancePopulationMembers)
@@ -2228,7 +2228,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       .onConflictDoNothing();
   }
 
-  // Population members for Cuttack — match simulator range.
+  // Population members for Cuttack - match simulator range.
   for (let n = 1; n <= 142; n++) {
     await db
       .insert(s.attendancePopulationMembers)
@@ -2424,7 +2424,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         confidence: 0.6,
         coverage: "PARTIAL",
         health: "ONLINE",
-        note: "CCTV coverage partial — only main gate camera operational.",
+        note: "CCTV coverage partial - only main gate camera operational.",
       },
       {
         id: did("attobs:cuttack-cctv-2026-03-01"),
@@ -2625,7 +2625,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         state: "REVIEWED",
         reviewedBy: did("user:officer-khordha"),
         reviewedAt: new Date("2026-03-01T09:00:00Z"),
-        reviewNotes: "Reviewed — attendance within acceptable range; monitoring continued.",
+        reviewNotes: "Reviewed - attendance within acceptable range; monitoring continued.",
         groupId: did("attgroup:vani-low-persistent"),
         linkedInspectionId: null,
         linkedComplaintId: null,
@@ -2644,7 +2644,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         anomalyId: did("atanom:vani-low-reviewed"),
         actorUserId: did("user:officer-khordha"),
         action: "acknowledge",
-        note: "Reviewed — attendance within acceptable range; monitoring continued.",
+        note: "Reviewed - attendance within acceptable range; monitoring continued.",
         createdAt: new Date("2026-03-01T09:00:00Z"),
       },
     ])
@@ -3513,7 +3513,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         status: "closed",
         receivedAt: new Date("2025-12-20T09:00:00Z"),
         resolutionText:
-          "Verified on two night visits — no consistent pattern; closed after review.",
+          "Verified on two night visits - no consistent pattern; closed after review.",
         resolvedAt: new Date("2026-01-10T10:00:00Z"),
       },
       {
@@ -4614,7 +4614,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         reviewedBy: did("user:dept-admin"),
         reviewedAt: new Date("2026-01-15T09:00:00Z"),
         reviewNotes:
-          "Verified manually — low biometric count was caused by a device offline window, not absenteeism.",
+          "Verified manually - low biometric count was caused by a device offline window, not absenteeism.",
         groupId: did("attgroup:ganjam-low-dismissed"),
         linkedInspectionId: null,
         linkedComplaintId: null,
@@ -4632,7 +4632,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         anomalyId: did("atanom:ganjam-low-2026-01-12"),
         actorUserId: did("user:dept-admin"),
         action: "dismiss",
-        note: "Verified manually — low biometric count was caused by a device offline window, not absenteeism.",
+        note: "Verified manually - low biometric count was caused by a device offline window, not absenteeism.",
         createdAt: new Date("2026-01-15T09:00:00Z"),
       },
     ])
@@ -5130,7 +5130,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   // ===========================================================================
   // Funds Action Inbox variety (§32): a Rourkela allocation, a submitted
   // expense, an under-review expense, a pending verification document, and an
-  // open inspection flag — so verifiers and reviewers have deterministic
+  // open inspection flag - so verifiers and reviewers have deterministic
   // pending work in every funds queue after db:setup.
   // ===========================================================================
 
@@ -5479,7 +5479,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
   // ===========================================================================
 
   // Pending attendance correction awaiting an authority decision (approver is
-  // a different user than the requester — §34 independence rule).
+  // a different user than the requester - §34 independence rule).
   await db
     .insert(s.attendanceCorrections)
     .values({

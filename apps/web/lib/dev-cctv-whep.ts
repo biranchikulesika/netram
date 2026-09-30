@@ -2,7 +2,7 @@
 
 /**
  * DEVELOPMENT-ONLY WHEP (WebRTC-HTTP Egress Protocol) client for the CCTV
- * media rig — Phase 2 of docs/history/cctv-target-architecture.md.
+ * media rig - Phase 2 of docs/history/cctv-target-architecture.md.
  *
  * Proves the media pipeline: RTSP -> MediaMTX -> WebRTC -> browser <video>.
  * Not part of the CCTV API contract; must not be consumed by any production
@@ -10,7 +10,7 @@
  *
  * WHEP flow (RFC 9725-style, as implemented by MediaMTX):
  *   1. RTCPeerConnection with recvonly transceivers
- *   2. createOffer (no ICE gathering — MediaMTX answers non-trickle)
+ *   2. createOffer (no ICE gathering - MediaMTX answers non-trickle)
  *   3. POST SDP offer -> /api/dev/cctv/whep?path=<path> (same-origin proxy)
  *   4. apply answer, ICE runs in-band, media flows
  */
@@ -60,7 +60,7 @@ export async function startWhep(
     try {
       pc.getSenders().forEach((s) => s.track?.stop());
     } catch {
-      // receiver-only session — nothing to stop
+      // receiver-only session - nothing to stop
     }
     pc.close();
     videoEl.srcObject = null;

@@ -7,7 +7,7 @@ import styles from "./masthead.module.css";
  *
  * This is the whole masthead, deliberately. It used to carry the National
  * Emblem of India and the words "Government of India", which told any visitor
- * that Netram is an official government portal. It is not — Netram is a
+ * that Netram is an official government portal. It is not - Netram is a
  * Smart India Hackathon 2026 project, and the SIH mark is the only attribution
  * here that is actually true.
  *
@@ -24,7 +24,7 @@ export function Masthead() {
         target="_blank"
         rel="noreferrer noopener"
         className={styles.link}
-        aria-label="Netram is a Smart India Hackathon project — visit sih.gov.in"
+        aria-label="Netram is a Smart India Hackathon project - visit sih.gov.in"
       >
         <Image
           src="/sih-logo.png"

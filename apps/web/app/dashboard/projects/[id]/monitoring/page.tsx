@@ -16,7 +16,7 @@ export default async function FacilityMonitoringPage({
   params: Promise<{ id: string }>;
 }) {
   // AI signals and CCTV coverage are oversight-side intelligence: institutions
-  // are never shown them, on any entry path (§34 — omission, not hiding).
+  // are never shown them, on any entry path (§34 - omission, not hiding).
   const session = await getSessionUser();
   if (!session || !canAny(session.permissions, ["cctv:read", "ai:anomaly:read"])) notFound();
 

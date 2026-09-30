@@ -352,7 +352,7 @@ describe("CctvService media auth hook decision (Phase 4)", () => {
     expect(decision).toEqual({ allowed: false, reason: "token_expired" });
   });
 
-  it("denies publish and control-plane actions — the session token is consumer-only", async () => {
+  it("denies publish and control-plane actions - the session token is consumer-only", async () => {
     for (const action of ["publish", "api", "metrics", "pprof"]) {
       const decision = await service.mediaAuthDecision({
         token: TOKEN,

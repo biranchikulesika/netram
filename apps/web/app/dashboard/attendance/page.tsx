@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Seeded monitoring day — the attendance overview/calculations sample dataset lands here. */
+/** Seeded monitoring day - the attendance overview/calculations sample dataset lands here. */
 const DEFAULT_DATE = "2026-09-12";
 
 export default async function AttendancePage({

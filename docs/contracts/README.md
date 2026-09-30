@@ -118,7 +118,7 @@ otherwise noted.
 - `GET /inspections/:id/findings`
 - `POST /inspections/:id/findings`
 - `POST /findings/:id/transitions`
-- `GET /findings/awaiting-order` (`inspection:review` + `corrective_action:read`; confirmed findings without a corrective action, scoped to the caller's jurisdictions — the authority "pending remediation orders" queue)
+- `GET /findings/awaiting-order` (`inspection:review` + `corrective_action:read`; confirmed findings without a corrective action, scoped to the caller's jurisdictions - the authority "pending remediation orders" queue)
 
 ### Corrective Actions
 
@@ -128,7 +128,7 @@ otherwise noted.
 - `POST /corrective-actions/:id/submit-atr` (institution lodges the Action Taken Report; automatically advances the order to `submitted`)
 - `POST /corrective-actions/:id/review` (authority records a review decision; automatically advances the workflow to `under_review`/`accepted`/`rejected`)
 
-Corrective action status is derived from recorded work — there is no manual status-transition endpoint. `overdue` is produced by the SLA scheduled job; `escalated` is reserved for job-driven escalation.
+Corrective action status is derived from recorded work - there is no manual status-transition endpoint. `overdue` is produced by the SLA scheduled job; `escalated` is reserved for job-driven escalation.
 
 ### Observations
 
@@ -156,7 +156,7 @@ Corrective action status is derived from recorded work — there is no manual st
 
 ### Action Inbox
 
-- `GET /action-inbox` (read-only; no extra permission of its own — each section
+- `GET /action-inbox` (read-only; no extra permission of its own - each section
   appears only when the caller holds the section's decision permission and stays
   within its jurisdiction, AGENTS.md §16-§17, §34)
 
@@ -356,7 +356,7 @@ implemented Phase 3–5 behaviour.
 ## Registry capability matrix
 
 **Location of truth:** `REGISTRY_CAPABILITIES` in `packages/types/src/registry.ts`.
-This documentation and the web UI must mirror it — the exported constant is
+This documentation and the web UI must mirror it - the exported constant is
 authoritative. Server-side enforcement happens in
 `services/api/src/modules/registry/application/registry-service.ts` via
 `AuthorizationService.requirePermission`; the web Registry page
@@ -384,7 +384,7 @@ Rules bound to the matrix:
 3. **Registrable officials allow-list.** `POST /registry/officials` accepts
    only roles on the service-level allow-list (`authority_official`,
    `district_officer`, `institution_admin`, `inspector`, `viewer`). Requests
-   for any other role are rejected with 403 — official registration cannot be
+   for any other role are rejected with 403 - official registration cannot be
    used to mint unlisted privileged roles.
 4. **Invited people start suspended.** Inspector and official registration
    create the user with `status: suspended`; there is no password at
@@ -398,7 +398,7 @@ Rules bound to the matrix:
 6. **Adding a capability.** Add the permission to `PERMISSIONS`
    (`packages/types/src/authorization.ts`), the capability to
    `REGISTRY_CAPABILITIES`, the route + service check, the seed grants, and a
-   row here — in the same change.
+   row here - in the same change.
 
 The corresponding permission definitions (code, name, description) that the
 seed inserts into the `permissions` table are part of the same contract; when
@@ -415,7 +415,7 @@ authoritative chart; invalid transitions are rejected server-side).
 **Who approves.** Any authenticated user holding `project:approve` whose
 jurisdiction reach covers the project's district. The seeded
 `authority_officer` and `system_admin` roles carry it; institution roles never
-do — an institution cannot approve its own registration.
+do - an institution cannot approve its own registration.
 
 **Where.** The **Projects page** renders a verification-queue section at the
 top for approvers only (`GET /projects/verification-queue`, scoped to the
@@ -432,7 +432,7 @@ facility dossier, where `POST /projects/:id/transitions` (via the standard
   lifecycle (Approved → Active).
 - **Reject** (`Pending Verification → Draft`): a normal transition (`project:transition`);
   the registration returns to Draft for correction and resubmission. Nothing
-  is deleted — history stays traceable (AGENTS.md §33).
+  is deleted - history stays traceable (AGENTS.md §33).
 - After approval the authority seals the facility **geofence**
   (`POST /projects/:id/geofence`, `project:approve`) and links programmes if
   not already linked; then the facility can be activated.
@@ -442,7 +442,7 @@ not user-created records: project types (`institution`, `authority_project`,
 `other`) and organisation categories are fixed constants in
 `packages/types`/`packages/validation`, extended by developers through a
 contract change. The registry creates *instances* (agencies, schemes,
-facilities, people) — never new categories.
+facilities, people) - never new categories.
 
 ## Programme (scheme) geographic scope
 

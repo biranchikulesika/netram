@@ -267,7 +267,7 @@ describe("ActionInboxService", () => {
     const res = await service.list(mockCtx());
 
     const section = res.sections.find((s) => s.kind === "finding_review");
-    // null, not a fabricated id — the client falls back to its own selection.
+    // null, not a fabricated id - the client falls back to its own selection.
     expect(section!.items[0]!.context.organisationId).toBeNull();
   });
 

@@ -33,7 +33,7 @@ interface ProjectFundsClientProps {
   canSubmitExpense: boolean;
   canVerifyExpense: boolean;
   canAllocate: boolean;
-  /** Risk/flag visibility (financial_risk:read | project_risk:read | *) — the
+  /** Risk/flag visibility (financial_risk:read | project_risk:read | *) - the
    *  API omits flags for callers without it, so the tab mirrors the disclosure. */
   canViewFlags: boolean;
   /** Escalating an alert into a field inspection needs inspection:create. */
@@ -69,7 +69,7 @@ function fyOf(iso: string | null | undefined): string | null {
   return `${start}-${start + 1}`;
 }
 
-/** Current Indian fiscal year (April start) — mirrors the dashboard helper. */
+/** Current Indian fiscal year (April start) - mirrors the dashboard helper. */
 function currentFy(): string {
   const now = new Date();
   const start = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
@@ -209,7 +209,7 @@ export function ProjectFundsClient({
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"expenses" | "flags" | "allocations">("expenses");
   const [fyFilter, setFyFilter] = useState<string>("");
-  // Status filters — same pop-up screen as the funds dashboard, one selection
+  // Status filters - same pop-up screen as the funds dashboard, one selection
   // per list so switching tabs keeps each list's own filter.
   const [expenseStatuses, setExpenseStatuses] = useState<string[]>(
     EXPENSE_STATUS_FILTERS.filter((f) => f.value !== "ALL").map((f) => f.value),
@@ -521,7 +521,7 @@ export function ProjectFundsClient({
     allocationStatuses,
     search,
   ]);
-  // FY strip options — same derivation as the funds dashboard (current-year capped).
+  // FY strip options - same derivation as the funds dashboard (current-year capped).
   const fyOptions = useMemo(() => {
     const present: number[] = [];
     const collect = (fy: string | null) => {
@@ -567,7 +567,7 @@ export function ProjectFundsClient({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      {/* KPI strip — dashboard stats idiom: Sanctioned / Pending / Verified / Rejected */}
+      {/* KPI strip - dashboard stats idiom: Sanctioned / Pending / Verified / Rejected */}
       <div
         style={{
           display: "grid",
@@ -590,7 +590,7 @@ export function ProjectFundsClient({
         <StatKpi label="Rejected" value={formatCompact(statsOverview.rejected)} color="#dc2626" />
       </div>
 
-      {/* Toolbar — registry-toolbar + filter-tabs idiom from the dashboard */}
+      {/* Toolbar - registry-toolbar + filter-tabs idiom from the dashboard */}
       <div className="registry-toolbar">
         <div className="search-filter-group">
           <div className="search-input-wrap">
@@ -632,7 +632,7 @@ export function ProjectFundsClient({
         </div>
 
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginLeft: "auto" }}>
-          {/* Status filter pop-up — the funds section's screen, applied to the
+          {/* Status filter pop-up - the funds section's screen, applied to the
               expenditure and allocations lists. Flags carry their own
               lifecycle, so no status filter there. */}
           {activeTab === "expenses" && (
@@ -680,7 +680,7 @@ export function ProjectFundsClient({
             </button>
           )}
 
-          {/* FY selector — dashboard toolbar idiom, applies to every section */}
+          {/* FY selector - dashboard toolbar idiom, applies to every section */}
           {fyOptions.length > 0 && (
             <div
               style={{
@@ -759,7 +759,7 @@ export function ProjectFundsClient({
         </div>
       </div>
 
-      {/* Tab: Expenditures — dashboard columns + click-for-details rows */}
+      {/* Tab: Expenditures - dashboard columns + click-for-details rows */}
       {activeTab === "expenses" && (
         <div className="table-card">
           <table>
@@ -836,7 +836,7 @@ export function ProjectFundsClient({
         </div>
       )}
 
-      {/* Tab: Alerts (inspection review flags) — oversight-only disclosure */}
+      {/* Tab: Alerts (inspection review flags) - oversight-only disclosure */}
       {canViewFlags && activeTab === "flags" && (
         <div className="table-card">
           <table>
@@ -963,7 +963,7 @@ export function ProjectFundsClient({
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 500 }}>{a.description ?? "—"}</div>
+                        <div style={{ fontWeight: 500 }}>{a.description ?? "-"}</div>
                       </td>
                       <td>
                         <span className="badge" style={{ fontSize: "0.75rem" }}>
@@ -1003,7 +1003,7 @@ export function ProjectFundsClient({
         </div>
       )}
 
-      {/* Record Expense Modal — dashboard modal idiom: overlay + card + X close */}
+      {/* Record Expense Modal - dashboard modal idiom: overlay + card + X close */}
       {showExpenseModal && (
         <div
           role="dialog"
@@ -1236,7 +1236,7 @@ export function ProjectFundsClient({
         </div>
       )}
 
-      {/* MODAL: EXPENSE ROW DETAIL — dashboard idiom (overlay + card + actions) */}
+      {/* MODAL: EXPENSE ROW DETAIL - dashboard idiom (overlay + card + actions) */}
       {detailFlag && (
         <FlagDetailModal
           flag={detailFlag}
@@ -1539,7 +1539,7 @@ export function ProjectFundsClient({
         </div>
       )}
 
-      {/* Sanction Allocation modal — dashboard idiom (overlay + card + sections) */}
+      {/* Sanction Allocation modal - dashboard idiom (overlay + card + sections) */}
       {showAllocationModal && (
         <div
           role="dialog"

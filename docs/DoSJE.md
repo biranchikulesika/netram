@@ -26,7 +26,7 @@ Justice and Empowerment (DoSJE), Government of India. This file records:
 - the mapping between that reality and NETRAM's data model,
 - every source used, and every place where NETRAM had to make a judgement call.
 
-Update this file whenever a domain decision is made in code (AGENTS.md §60 — document domain decisions when made in code).
+Update this file whenever a domain decision is made in code (AGENTS.md §60 - document domain decisions when made in code).
 
 ## 2. NETRAM and DoSJE
 
@@ -671,7 +671,7 @@ See the table in section 31 for the change list. The pre-change gaps in words:
    organisation pointer, although the public MIS tracks issues by category and
    ATRs issue-wise.
 4. **ATR** - corrective actions tracked status but had no record of what was
-   actually done (`atr_submitted = true` anti-pattern (anti-pattern: deriving status from flags — see AGENTS.md §24 on where business truth lives)
+   actually done (`atr_submitted = true` anti-pattern (anti-pattern: deriving status from flags - see AGENTS.md §24 on where business truth lives)
    about).
 5. **Geography** - no sub-district units, so a PM-AJAY village could not be
    addressed beyond its district.

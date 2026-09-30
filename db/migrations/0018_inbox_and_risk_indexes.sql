@@ -3,10 +3,10 @@
 -- The inbox aggregates "awaiting decision" queues across modules (AGENTS.md
 -- §32): status + recency reads scoped by joining projects on district. Each
 -- index below backs one such read that previously scanned:
---   attendance_anomalies(state, created_at)     — NEW-anomaly review queue
---   attendance_corrections(status, created_at)  — pending approval queue
---   expenses(status, submitted_at)              — submitted/under_review queue
---   financial_documents(verification_status, created_at) — pending verification
+--   attendance_anomalies(state, created_at)     - NEW-anomaly review queue
+--   attendance_corrections(status, created_at)  - pending approval queue
+--   expenses(status, submitted_at)              - submitted/under_review queue
+--   financial_documents(verification_status, created_at) - pending verification
 --
 -- Also adds a complaint received-date index: the complaint queue orders and
 -- filters on received_at with status predicates (§35 oversight flow). Complaint

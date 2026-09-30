@@ -2,7 +2,7 @@
 #
 # Simulates the on-site NVR/RTSP server that a real facility camera would
 # register itself with. Accepts RTSP publishers on :8554 inside the facility
-# network ONLY — it has no route into NETRAM infrastructure; netram-media
+# network ONLY - it has no route into NETRAM infrastructure; netram-media
 # pulls from it across the compose network boundary (pilot topology).
 #
 # Everything except RTSP is disabled: this box is a dumb recording headend.

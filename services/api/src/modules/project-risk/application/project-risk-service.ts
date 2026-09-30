@@ -60,7 +60,7 @@ export class ProjectRiskService {
       // A high-risk project whose inspection scheduling failed is an
       // operationally significant condition (§53): log it loudly and record
       // the failure in the snapshot's audit trail, but do not discard the
-      // (valid) risk score — the next sweep cycle will retry scheduling.
+      // (valid) risk score - the next sweep cycle will retry scheduling.
       schedulingFailed = true;
       console.warn(
         `[project-risk] Inspection scheduling failed for project ${projectId}:`,

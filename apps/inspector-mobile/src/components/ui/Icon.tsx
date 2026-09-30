@@ -1,5 +1,5 @@
 /**
- * CDN Icon — High-performance vector icon loaded exclusively from the Iconify CDN.
+ * CDN Icon - High-performance vector icon loaded exclusively from the Iconify CDN.
  *
  * CDN Endpoint:
  *   https://api.iconify.design/{collection}/{name}.svg?width={size}&height={size}&color={color}

@@ -6,14 +6,14 @@ import { useCctvLiveStream } from "../../../lib/use-cctv-live-stream";
 import { IconX } from "../../components/icons";
 
 /**
- * Camera detail / live viewer (Phase 5 PART 10) — an in-Control-Room modal
+ * Camera detail / live viewer (Phase 5 PART 10) - an in-Control-Room modal
  * following the existing lightbox pattern (ai-anomaly-modal), so the user
  * watches a camera without navigating to a separate CCTV administration
  * page. WebRTC (interactive live view) is primary; the HLS wall tile is the
  * passive mode.
  *
  * The viewer owns one stream session: created on open, heartbeat while
- * open, ended (viewer_stop + correlated reader kick) on close — including
+ * open, ended (viewer_stop + correlated reader kick) on close - including
  * Escape and backdrop click (PART 6 cleanup).
  */
 export function CameraLiveViewer({

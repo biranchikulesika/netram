@@ -3,9 +3,9 @@
 /**
  * Production CCTV WHEP playback controller (Phase 5).
  *
- * Extracted from the Phase 1–2 dev client (lib/dev-cctv-whep.ts) — the
+ * Extracted from the Phase 1–2 dev client (lib/dev-cctv-whep.ts) - the
  * handshake mechanics are the proven ones (recvonly transceivers, non-trickle
- * answer, same-origin proxy) — with production lifecycle semantics added:
+ * answer, same-origin proxy) - with production lifecycle semantics added:
  *
  *  - Same-origin media proxy (`/api/cctv/media/whep`) instead of the dev route.
  *  - Correlation: the NETRAM stream session id rides the WHEP request as
@@ -23,7 +23,7 @@ export interface CctvPlaybackOptions {
   mediaPath: string;
   /** NETRAM playback token from the playback contract (Bearer credential). */
   token: string;
-  /** NETRAM stream session id — the correlation key carried in the WHEP query. */
+  /** NETRAM stream session id - the correlation key carried in the WHEP query. */
   netramSession: string;
   /** Same-origin WHEP proxy route. Defaults to the production media proxy. */
   proxyUrl?: string;

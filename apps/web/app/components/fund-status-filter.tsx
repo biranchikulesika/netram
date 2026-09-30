@@ -5,7 +5,7 @@ import { IconChevronRight } from "./icons";
 
 /**
  * Lifecycle bucket for the funds status filter. Buckets must be disjoint and,
- * taken together, cover every status the API can return — otherwise a
+ * taken together, cover every status the API can return - otherwise a
  * fully-selected filter silently hides rows.
  */
 export interface StatusBucket {
@@ -15,7 +15,7 @@ export interface StatusBucket {
 }
 
 /**
- * Expenditure buckets — mirrors the expense lifecycle in
+ * Expenditure buckets - mirrors the expense lifecycle in
  * `packages/types/src/fund.ts` (draft → submitted → under_review → verified,
  * plus the rejected/voided terminal states).
  */
@@ -28,7 +28,7 @@ export const EXPENSE_STATUS_FILTERS: StatusBucket[] = [
   { value: "draft", label: "Draft", statuses: ["draft"] },
 ];
 
-/** Allocation buckets — `FundAllocationStatus` is active | revised | cancelled. */
+/** Allocation buckets - `FundAllocationStatus` is active | revised | cancelled. */
 export const ALLOCATION_STATUS_FILTERS: StatusBucket[] = [
   { value: "ALL", label: "All", statuses: [] },
   { value: "active", label: "Active", statuses: ["active"] },

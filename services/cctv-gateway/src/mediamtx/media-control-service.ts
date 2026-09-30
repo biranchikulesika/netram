@@ -1,5 +1,5 @@
 /**
- * Media control bridge (Phase 3) — the gateway's media-plane operations layer.
+ * Media control bridge (Phase 3) - the gateway's media-plane operations layer.
  *
  * Sits between the HTTP surface and the MediaMTX client + provider registry:
  *   HTTP routes → MediaControlService → MediamtxClient (control API)
@@ -7,7 +7,7 @@
  *
  * Responsibilities: path provisioning, health derivation from REAL media
  * state, statistics, playback-contract preparation. It carries NO media bytes
- * — MediaMTX owns the data plane (target architecture §26).
+ * - MediaMTX owns the data plane (target architecture §26).
  */
 
 import type { MediamtxClient, MediamtxPathState } from "./client.js";
@@ -56,7 +56,7 @@ export interface PathStatistics {
 
 export interface MediaControlServiceOptions {
   mediamtx: MediamtxClient;
-  /** Provider registry — resolves/validates the camera source for provisioning. */
+  /** Provider registry - resolves/validates the camera source for provisioning. */
   providers: CameraProvider;
   whepPublicUrl: string;
   devIngestSource: string;
@@ -67,19 +67,19 @@ export interface MediaControlServiceOptions {
 }
 
 /**
- * Health semantics (Phase 3 §10 — derived from LIVE-VERIFIED MediaMTX state;
+ * Health semantics (Phase 3 §10 - derived from LIVE-VERIFIED MediaMTX state;
  * a configured-but-idle on-demand path reports ready:false, available:false,
  * online:true, readyTime:null):
  *
- *  online    — path exists AND ready (stream flowing now).
- *  degraded  — path exists, not ready, but has delivered a stream before in
+ *  online    - path exists AND ready (stream flowing now).
+ *  degraded  - path exists, not ready, but has delivered a stream before in
  *              this MediaMTX process (readyTime set): source previously
  *              worked but is not flowing now (on-demand idle after history,
  *              or source lost). details distinguish via available/readers.
- *  offline   — path not provisioned, MediaMTX control API unreachable, or
+ *  offline   - path not provisioned, MediaMTX control API unreachable, or
  *              the source has never delivered (readyTime null). "Stream is
- *              not actually available" — never a DB-row-only claim.
- *  unknown   — defensive: path reports ready but no interpretable source.
+ *              not actually available" - never a DB-row-only claim.
+ *  unknown   - defensive: path reports ready but no interpretable source.
  *
  * A camera is NEVER reported online merely because a DB row exists.
  */
@@ -134,7 +134,7 @@ export class MediaControlService {
     return { mediaPath, created: result.created };
   }
 
-  /** Real health derived from MediaMTX state — never from DB existence. */
+  /** Real health derived from MediaMTX state - never from DB existence. */
   async cameraHealth(camera: CameraContext): Promise<CameraHealthResult> {
     const lastCheckedAt = new Date().toISOString();
     const startedAt = Date.now();
@@ -242,7 +242,7 @@ export class MediaControlService {
   /**
    * Verify a playback token's signature/expiry and check it against the LIVE
    * media state: the token's mediaPath must still exist in MediaMTX. Signature
-   * validity alone does not prove the stream is still running — this is what
+   * validity alone does not prove the stream is still running - this is what
    * the NETRAM API's external auth hook layers session state on top of.
    */
   async verifyPlaybackToken(

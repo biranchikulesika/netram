@@ -12,7 +12,7 @@ COPY packages/data ./packages/data
 COPY services/realtime ./services/realtime
 COPY db/seed ./db/seed
 
-# Trailing `...` installs the workspace dependency graph too — see the note in
+# Trailing `...` installs the workspace dependency graph too - see the note in
 # services/api/Dockerfile. @netram/data's own dependencies are required here.
 RUN pnpm install --frozen-lockfile --filter @netram/realtime... --include-workspace-root
 

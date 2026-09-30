@@ -175,7 +175,7 @@ export default function CallsScreen() {
   const loadDatabaseData = useCallback(async () => {
     try {
       // 1. Authoritative local SQLite database read (offline-first cache of
-      //    server directory/history — never fabricated client-side)
+      //    server directory/history - never fabricated client-side)
       const [localContacts, localHistory] = await Promise.all([
         queue.getCallContacts(),
         queue.getCallHistory(),
@@ -204,7 +204,7 @@ export default function CallsScreen() {
             await queue.cacheCallHistory(remoteHistory);
           }
         } catch {
-          // Offline mode — local SQLite database remains authoritative
+          // Offline mode - local SQLite database remains authoritative
         }
       }
     } catch (err) {
@@ -752,7 +752,7 @@ export default function CallsScreen() {
             )}
           </View>
 
-          {/* Floating Picture-In-Picture (PIP) Inspector Camera — Face View (Draggable) */}
+          {/* Floating Picture-In-Picture (PIP) Inspector Camera - Face View (Draggable) */}
           <Animated.View
             style={[
               styles.pipCameraBox,
@@ -1177,7 +1177,7 @@ export default function CallsScreen() {
                         </View>
                       ) : null}
 
-                      {/* Play Recorded Video in Call History — Simultaneous Dual Feed */}
+                      {/* Play Recorded Video in Call History - Simultaneous Dual Feed */}
                       {item.videoUri && (
                         <View style={[styles.historyVideoBox, { borderColor }]}>
                           <InteractiveVideoPlayer
@@ -1236,7 +1236,7 @@ export default function CallsScreen() {
                 contentContainerStyle={styles.modalScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* Recorded Call Video Player — Simultaneous Dual Feed */}
+                {/* Recorded Call Video Player - Simultaneous Dual Feed */}
                 {endedCallData.videoUri && (
                   <View style={styles.modalVideoPlayerCard}>
                     <InteractiveVideoPlayer

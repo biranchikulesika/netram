@@ -4,7 +4,7 @@
  * This list is shared between the API (which marks these routes public and skips
  * authentication for them) and the web BFF (which must proxy them through
  * WITHOUT a session token, otherwise the unauthenticated entry points can never
- * be reached — see `apps/web/app/api/v1/[...path]/route.ts`).
+ * be reached - see `apps/web/app/api/v1/[...path]/route.ts`).
  *
  * It lives here rather than in the API because it is a contract between the API
  * and its callers, not an implementation detail of the API. Both sides depend on

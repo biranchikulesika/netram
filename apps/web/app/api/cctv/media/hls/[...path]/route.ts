@@ -14,7 +14,7 @@ import { rewritePlaylist } from "../../../../../../lib/hls-playlist";
  * Authorization model is identical to WHEP (PART 13): every playlist and
  * segment request carries the NETRAM playback token (minted per session by
  * the CCTV API) and MediaMTX's external auth hook validates it against the
- * live session record. The proxy is a transport bridge only — it never
+ * live session record. The proxy is a transport bridge only - it never
  * bypasses the hook, and the MediaMTX host stays server-side.
  *
  * Live-verified v1.21.1 playlist shape (docs/history/cctv-phase-5.md):

@@ -1,11 +1,11 @@
-# MediaMTX configuration — NETRAM media infrastructure (development rig).
+# MediaMTX configuration - NETRAM media infrastructure (development rig).
 #
 # This instance is the "NETRAM media server" of the target architecture:
 #   - it PULLS the simulated camera's RTSP stream across the compose network
 #     boundary (pull mode = the pilot topology, on-demand);
 #   - it serves WHEP (WebRTC) and HLS to browsers;
 #   - push mode (facility FFmpeg pushes directly into this instance) is the
-#     alternative dev mode — see docs/history/cctv-phase-1-2.md.
+#     alternative dev mode - see docs/history/cctv-phase-1-2.md.
 #
 # AUTHENTICATION (Phase 4): every publish/read/playback action is delegated
 # to the NETRAM API's external auth hook (POST /media/auth), which validates
@@ -24,7 +24,7 @@
 # e.g.:
 #   "~^(?P<campath>.*)$":
 #     source: rtsp://facility-nvr:8554/{{.campath}}
-# (a bare {{.Path}} is NOT a supported template variable — it is sent
+# (a bare {{.Path}} is NOT a supported template variable - it is sent
 # literally, which presents as 400 Bad Request upstream).
 paths:
   facility-vani/cam-gate:
@@ -46,7 +46,7 @@ srt: no
 
 webrtc: yes
 # WHEP handshake address inside the container. The browser never talks to
-# this port directly in this rig — Next.js proxies it (same-origin).
+# this port directly in this rig - Next.js proxies it (same-origin).
 webrtcAddress: :8189
 # Host candidates handed to the browser. The container publishes 8189/udp to
 # the host, and the browser resolves "localhost", so the host's own IP is a
@@ -59,7 +59,7 @@ hlsVariant: lowLatency
 hlsSegmentDuration: 1s
 hlsPartDuration: 200ms
 
-# REST control API — enabled for the Phase 3 gateway control bridge.
+# REST control API - enabled for the Phase 3 gateway control bridge.
 # Protected by authInternalUsers below (Basic auth). Bound inside the compose
 # network; port is published to the host for dev verification only.
 api: yes
@@ -76,7 +76,7 @@ apiTrustedProxies: []
 # 2xx only then.
 authMethod: http
 # Literal address (MediaMTX does NOT env-substitute config files). Default
-# points at the HOST bridge gateway where the host-run dev API listens — the
+# points at the HOST bridge gateway where the host-run dev API listens - the
 # container cannot resolve "localhost" to the host. Compose overrides this
 # via the MTX_AUTHHTTPADDRESS environment variable, which also embeds the
 # hook secret as a query parameter (MediaMTX cannot send custom headers, so
@@ -84,7 +84,7 @@ authMethod: http
 authHTTPAddress: http://172.20.0.1:3001/media/auth?hookSecret=replace-me-with-a-32-char-plus-mediamtx-hook-secret
 
 # Control-plane actions are excluded from the hook and stay protected by
-# authInternalUsers (Basic auth) below — they are server-side only and never
+# authInternalUsers (Basic auth) below - they are server-side only and never
 # carry NETRAM playback tokens.
 authHTTPExclude:
   - action: api
@@ -96,7 +96,7 @@ authHTTPExclude:
 # must narrow this (see cctv-phase-4.md). The Phase 3 gateway client sends
 # Basic auth.
 authInternalUsers:
-  # Control plane (API/metrics/pprof) — used by the gateway and probes.
+  # Control plane (API/metrics/pprof) - used by the gateway and probes.
   - user: admin
     pass: netram-dev-internal
     ips: ["::1", "127.0.0.1", "::/0", "0.0.0.0/0"]
@@ -105,7 +105,7 @@ authInternalUsers:
       - action: metrics
       - action: pprof
   # Media-plane fallback for non-token flows in DEV ONLY (publish from the
-  # facility; ffprobe verification). Read/playback are NOT granted here —
+  # facility; ffprobe verification). Read/playback are NOT granted here -
   # those must go through the external auth hook with NETRAM tokens.
   - user: any
     pass:

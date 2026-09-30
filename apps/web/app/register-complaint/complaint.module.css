@@ -1,4 +1,4 @@
-/* Register Complaint — compact single-column filing form.
+/* Register Complaint - compact single-column filing form.
    Same palette as the landing page and login page. */
 
 .wrapper {
@@ -7,7 +7,7 @@
   padding: 0 1.25rem 3rem;
 }
 
-/* Masthead lives in ../components/masthead.module.css — it is shared by every
+/* Masthead lives in ../components/masthead.module.css - it is shared by every
    public page. Do not re-add it here; a private copy is how the old, false
    "Government of India" identity survived across three pages at once. */
 

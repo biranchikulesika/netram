@@ -9,8 +9,8 @@ interface AnomalyReviewProps {
 }
 
 const REVIEW_ACTIONS: { action: AttendanceReviewAction; label: string; description: string }[] = [
-  { action: "acknowledge", label: "Acknowledge", description: "Mark as reviewed — monitoring continues" },
-  { action: "dismiss", label: "Dismiss", description: "False alarm — no further action" },
+  { action: "acknowledge", label: "Acknowledge", description: "Mark as reviewed - monitoring continues" },
+  { action: "dismiss", label: "Dismiss", description: "False alarm - no further action" },
   { action: "false_positive", label: "False Positive", description: "Confirmed not an anomaly" },
   { action: "investigate", label: "Investigate", description: "Escalate for field verification" },
   { action: "actioned", label: "Actioned", description: "Corrective action taken" },

@@ -35,7 +35,7 @@ export interface BuildServerOptions {
 }
 
 /**
- * CCTV Gateway — MEDIA CONTROL BRIDGE (Phase 3, AGENTS.md §7, §42).
+ * CCTV Gateway - MEDIA CONTROL BRIDGE (Phase 3, AGENTS.md §7, §42).
  *
  * The gateway NO LONGER relays video bytes. MediaMTX owns the data plane:
  * RTSP ingest, fan-out, WebRTC/WHEP. This service is control-plane only:
@@ -131,7 +131,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   // List cameras known to the provider layer (dev/diagnostics; the NETRAM DB
-  // remains the authoritative catalog — this reflects provider-side view).
+  // remains the authoritative catalog - this reflects provider-side view).
   app.get("/cameras", async () => {
     const cameras: CameraRef[] = await provider.listCameras();
     return { cameras };
@@ -179,7 +179,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       });
     }
 
-    // Derivation fails closed for unusable camera endpoints — surface as a
+    // Derivation fails closed for unusable camera endpoints - surface as a
     // controlled 4xx, never a 500 (the caller passed an unusable camera).
     // (Phase 4: ensureCameraPath below performs the same fail-closed
     // derivation; this pre-check keeps the contract explicit.)
@@ -300,7 +300,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   // Locate the MediaMTX WebRTC reader(s) correlated to a NETRAM session
-  // (Phase 5 correlation — input for the API's session-end flow and sweeper).
+  // (Phase 5 correlation - input for the API's session-end flow and sweeper).
   app.get("/media/sessions/by-netram-session/:netramSessionId", async (request, reply) => {
     if (!requireServiceSecret(reply, request)) return reply;
     const { netramSessionId } = request.params as { netramSessionId: string };

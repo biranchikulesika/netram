@@ -948,7 +948,7 @@ const NetramOverviewMap = function NetramOverviewMap({
             </>
           ) : (
             <>
-              {/* List Header — compact */}
+              {/* List Header - compact */}
               <div
                 style={{
                   padding: "0.45rem 0.5rem 0.45rem 0.65rem",

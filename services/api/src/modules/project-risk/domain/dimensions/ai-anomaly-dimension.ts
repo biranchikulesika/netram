@@ -7,7 +7,7 @@ import {
 } from "../../config/risk-config.js";
 
 /**
- * AI anomaly dimension (§36 — AI is an informer, not an authority).
+ * AI anomaly dimension (§36 - AI is an informer, not an authority).
  *
  * Consumes the REAL `AnomalyStatus` lifecycle
  * (new → reviewed → dismissed/investigated/acted_upon) with attenuation:
@@ -15,13 +15,13 @@ import {
  *                        the detector must not out-vote that decision)
  *   - investigated /
  *     acted_upon       → 0 (human has taken the signal to a conclusion; the
- *                        residual risk now lives in the outcome it produced —
- *                        findings, actions, inspections — not in the alert)
+ *                        residual risk now lives in the outcome it produced -
+ *                        findings, actions, inspections - not in the alert)
  *   - reviewed         → 0.75 (acknowledged but not yet concluded)
  *   - new              → 1.0
  *
  * Each anomaly is weighted by ITS OWN confidence (§36: outputs carry
- * confidence; one low-confidence alert must not be masked by — or inflate —
+ * confidence; one low-confidence alert must not be masked by - or inflate -
  * a high-confidence one).
  */
 export class AiAnomalyDimensionCalculator {

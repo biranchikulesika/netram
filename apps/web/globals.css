@@ -2,7 +2,7 @@
   color-scheme: light;
 
   /* ============================================================
-     Netram Global Colour System — the ONLY approved colours.
+     Netram Global Colour System - the ONLY approved colours.
      White #FFFFFF · Netram Navy #0C2A52 · Deep Navy #002449 ·
      Netram Orange #DD501E · Netram Green #137E3A ·
      Cool Neutral #45556C · Light Neutral #EDF0F5 · Red #DC2626.
@@ -1448,7 +1448,7 @@ td {
   box-shadow: 0 1px 2px rgba(12, 42, 82, 0.05);
 }
 
-/* Facility Grid View (Cards) — masonry with equal widths,
+/* Facility Grid View (Cards) - masonry with equal widths,
    natural heights, uniform gaps, and left-to-right fill order.
    Columns are built in JS (round-robin) so card #2 is always
    to the right of card #1; CSS multi-columns cannot do this. */
@@ -2253,7 +2253,7 @@ td {
   font-weight: 600;
 }
 
-/* Programme & Capacity — selectable scheme list + capacity box */
+/* Programme & Capacity - selectable scheme list + capacity box */
 .reg-scheme-list {
   display: flex;
   flex-direction: column;
@@ -4091,7 +4091,7 @@ a:hover {
   transform: scale(1.08);
 }
 
-/* Close gets a real surface — a white cross on transparent video disappears
+/* Close gets a real surface - a white cross on transparent video disappears
    against pale walls and sky. Navy tint reads over any scene and matches the
    palette; the fullscreen button stays transparent, hence the drop-shadow
    above that this one no longer needs. */
@@ -4917,11 +4917,11 @@ a:hover {
 }
 
 /* ==========================================================================
-   Facility Console — dense, professional facility workspace
+   Facility Console - dense, professional facility workspace
    ========================================================================== */
 
 /* Facility shell header: masthead + integrated tab strip.
-   NOTE: no overflow:hidden here — it would clip the absolutely-positioned
+   NOTE: no overflow:hidden here - it would clip the absolutely-positioned
    lifecycle transition dropdown (§: popovers must escape their card). The
    tab strip's square corners are handled by .facility-nav itself. */
 .facility-header {
@@ -5133,7 +5133,7 @@ a:hover {
 }
 
 /* Unscored state: same 128px footprint as the gauge SVG so the masthead does
-   not reflow when a project gains its first snapshot. Muted, not alarming —
+   not reflow when a project gains its first snapshot. Muted, not alarming -
    a missing advisory score is not itself a finding. */
 .facility-gauge-empty {
   flex-direction: column;
@@ -5191,7 +5191,7 @@ a:hover {
   }
 }
 
-/* Polished lifecycle transition trigger — aligned with tab strip */
+/* Polished lifecycle transition trigger - aligned with tab strip */
 .transition-trigger-btn {
   display: inline-flex;
   align-items: center;
@@ -5232,7 +5232,7 @@ a:hover {
   opacity: 1;
 }
 
-/* Rare lifecycle transition control — quiet overflow affordance (fallback) */
+/* Rare lifecycle transition control - quiet overflow affordance (fallback) */
 .transition-trigger {
   display: inline-flex;
   align-items: center;
@@ -5813,7 +5813,7 @@ a:hover {
   font-size: 0.82rem;
 }
 
-/* Facility facts — grouped sections in a deliberate reading order:
+/* Facility facts - grouped sections in a deliberate reading order:
    programme → lifecycle. */
 .ff-section {
   padding: 0.75rem 1rem 0.85rem;
@@ -6199,7 +6199,7 @@ body.has-portal-sidebar:has(.map-view-wrapper) main {
 }
 
 /* ==========================================================================
-   Verification queue — registrations awaiting an authority decision
+   Verification queue - registrations awaiting an authority decision
    ========================================================================== */
 
 .verification-queue {
@@ -6463,7 +6463,7 @@ body.has-portal-sidebar:has(.map-view-wrapper) main {
 }
 
 /*
- * Decision CTAs — flat, borderless text+icon actions (no box around them).
+ * Decision CTAs - flat, borderless text+icon actions (no box around them).
  * Hierarchy comes from colour and weight: approve = strong green,
  * reject = quiet muted that reveals red on hover. Busy/done states
  * communicate in-flight and completed decisions.
@@ -6493,7 +6493,7 @@ body.has-portal-sidebar:has(.map-view-wrapper) main {
   outline-offset: 2px;
 }
 
-/* Approve / Verify / Accept — strong green action. */
+/* Approve / Verify / Accept - strong green action. */
 .ai-btn-approve {
   color: #137e3a;
 }
@@ -6502,7 +6502,7 @@ body.has-portal-sidebar:has(.map-view-wrapper) main {
   color: #137e3a;
 }
 
-/* Reject — quiet destructive: muted until hover reveals red intent. */
+/* Reject - quiet destructive: muted until hover reveals red intent. */
 .ai-btn-reject {
   color: var(--text-muted);
 }
@@ -6531,7 +6531,7 @@ body.has-portal-sidebar:has(.map-view-wrapper) main {
   }
 }
 
-/* Decision recorded — buttons stop competing for attention. */
+/* Decision recorded - buttons stop competing for attention. */
 .ai-btn-done {
   color: var(--text-subtle);
   cursor: default;

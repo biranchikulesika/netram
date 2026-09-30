@@ -2248,19 +2248,19 @@ The next cycle starts again from the latest `production`.
 
 When an agent receives a development request, follow this decision process:
 
-- **Case 1** — Already on an appropriate feature branch: continue on the
+- **Case 1** - Already on an appropriate feature branch: continue on the
   current branch. Do not create a new branch.
-- **Case 2** — On `develop` and the user requests a new feature: create a new
+- **Case 2** - On `develop` and the user requests a new feature: create a new
   feature branch from the latest `develop`.
-- **Case 3** — On `production`, `preview`, or another inappropriate branch: do
+- **Case 3** - On `production`, `preview`, or another inappropriate branch: do
   not begin feature development there. Determine the correct feature branch
   workflow before modifying code.
-- **Case 4** — User explicitly requests a new branch: follow the user's
+- **Case 4** - User explicitly requests a new branch: follow the user's
   explicit branch instruction, provided it does not violate this policy.
-- **Case 5** — User asks to merge work: verify the current and target branches.
+- **Case 5** - User asks to merge work: verify the current and target branches.
   Confirm the merge direction is `feature/* → develop`, `develop → preview`, or
   `preview → production`. Then use a Pull Request and Squash and Merge.
-- **Case 6** — A branch has already been merged: do not continue working on it.
+- **Case 6** - A branch has already been merged: do not continue working on it.
   Prune remote references and delete the local merged branch.
 
 ---

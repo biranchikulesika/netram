@@ -294,7 +294,7 @@ describe("current state", () => {
 
   it("marks a refused list as unreadable instead of reporting zero", () => {
     // A role that cannot read complaints must not be shown "0 unresolved
-    // complaints" — that reads as good news and is not true.
+    // complaints" - that reads as good news and is not true.
     const metrics = summariseState(
       overview({ totals: { ...overview().totals, openComplaints: 0 } }),
       0,

@@ -7,7 +7,7 @@ import type { UUID, ISODateTime } from "./common.js";
  * - `conflict`: violence/altercation detected in a camera feed (active).
  * - `attendance_deviation`: head count compared against the day's attendance
  *   register; sustained deviation over a long period raises an alert
- *   (planned — not yet produced by the model).
+ *   (planned - not yet produced by the model).
  *
  * Nothing other than these two is a supported AI detection today.
  */

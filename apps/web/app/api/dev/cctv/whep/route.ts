@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
 
 /**
- * DEVELOPMENT-ONLY same-origin WHEP proxy (CCTV Phase 2 — throwaway rig).
+ * DEVELOPMENT-ONLY same-origin WHEP proxy (CCTV Phase 2 - throwaway rig).
  *
  * Proves the media pipeline: RTSP -> MediaMTX -> WebRTC/WHEP -> browser.
  * This route is NOT part of the CCTV API contract and must not be consumed
@@ -16,7 +16,7 @@ import { loadClientEnv } from "@netram/config";
  * on HTTPS 443 (target architecture §11).
  *
  * PHASE 4: when the caller supplies `?token=`, the proxy forwards it to
- * MediaMTX as `Authorization: Bearer <token>` — the external auth hook
+ * MediaMTX as `Authorization: Bearer <token>` - the external auth hook
  * (NETRAM API /media/auth) validates it against the live session record.
  * Without a token, the proxy falls back to the internal Basic credential
  * (dev-open media plane, documented in cctv-phase-1-2/3/4.md). Production
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   const env = loadClientEnv();
   const base = env.NETRAM_MEDIAMTX_WHEP_URL.replace(/\/+$/, "");
 
-  // Credential resolution (server-side only — the browser never sees either
+  // Credential resolution (server-side only - the browser never sees either
   // credential form): a NETRAM playback token takes precedence and is handed
   // to the MediaMTX external auth hook; otherwise the dev-rig internal
   // Basic credential applies (Phase 1-4 dev-open media plane).

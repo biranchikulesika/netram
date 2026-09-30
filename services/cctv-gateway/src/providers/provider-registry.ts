@@ -30,7 +30,7 @@ export class ProviderRegistry implements CameraProvider {
 
   /**
    * Marks a provider as the fallback for cameras no provider claims.
-   * Dev-rig mechanism only — never set in production-oriented configs.
+   * Dev-rig mechanism only - never set in production-oriented configs.
    */
   setDefaultProvider(providerName: string): this {
     if (!this.providers.has(providerName)) {

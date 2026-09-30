@@ -336,7 +336,7 @@ export function InspectionsView({
                     ? `Started: ${formatDate(i.startedAt)}`
                     : i.scheduledStart
                       ? `Sched: ${formatDate(i.scheduledStart)}`
-                      : "—";
+                      : "-";
 
                   const assignedCount = Array.isArray(i.assignedUserIds)
                     ? i.assignedUserIds.length

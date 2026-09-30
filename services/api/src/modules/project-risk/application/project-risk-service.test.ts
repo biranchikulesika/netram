@@ -402,7 +402,7 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
     expect(snapshots[1]!.totalScore).toBe(40);
   });
 
-  // Case I: Sweep resilience — one failing project must not abort the sweep,
+  // Case I: Sweep resilience - one failing project must not abort the sweep,
   // and the failure must be observable in the result (§53, §29).
   it("Case I: sweep continues past a failing project and reports the failure", async () => {
     mockProjectRiskRepo.findAllActiveProjects.mockResolvedValue([

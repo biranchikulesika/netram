@@ -3,7 +3,7 @@
  *
  * Pages use these to decide which data to FETCH and which sections to render.
  * Information the caller is not authorised to see must not be sent to the
- * client at all — omission happens here, server-side, before serialization.
+ * client at all - omission happens here, server-side, before serialization.
  *
  * NOTE: this mirrors the caller's granted permissions; the API independently
  * re-enforces every authorisation decision server-side.

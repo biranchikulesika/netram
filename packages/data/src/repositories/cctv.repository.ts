@@ -19,7 +19,7 @@ import type {
 } from "@netram/types";
 
 /**
- * Hash a playback token for persistence (§22 — plaintext bearer material is
+ * Hash a playback token for persistence (§22 - plaintext bearer material is
  * never stored). The external auth hook presents the token; the API compares
  * its SHA-256 against this column.
  */
@@ -261,7 +261,7 @@ export class CctvRepository {
 
   /**
    * Refresh the heartbeat of an active session (viewer liveness, Phase 4).
-   * Returns false when the session is missing or already ended — the caller
+   * Returns false when the session is missing or already ended - the caller
    * surfaces that as a controlled 404 so the client re-requests a stream.
    */
   async touchHeartbeatBySessionId(sessionId: string): Promise<boolean> {

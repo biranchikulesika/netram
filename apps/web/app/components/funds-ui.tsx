@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Expense, FundAllocation, InspectionFlag } from "@netram/types";
 import { IconChevronRight, IconX } from "./icons";
 
-/** Only what the beneficiary card shows — satisfied by both `Project` and the
+/** Only what the beneficiary card shows - satisfied by both `Project` and the
  *  dashboard's narrower `ProjectOption`, so neither caller needs casting. */
 export interface ExpenseDetailProject {
   name: string;
@@ -36,7 +36,7 @@ export function formatCurrency(val: string | number | null | undefined): string 
 }
 
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Date(iso).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -208,7 +208,7 @@ export function FundsModal({
 }
 
 /**
- * Allocation detail pop-up — one screen, used by the funds dashboard and the
+ * Allocation detail pop-up - one screen, used by the funds dashboard and the
  * facility funds tab.
  */
 export function AllocationDetailModal({
@@ -249,7 +249,7 @@ export function AllocationDetailModal({
         </DetailRow>
         {allocation.description && <DetailRow label="Description">{allocation.description}</DetailRow>}
         <DetailRow label="Sanctioned At">
-          {allocation.sanctionedAt ? formatDate(allocation.sanctionedAt) : "—"}
+          {allocation.sanctionedAt ? formatDate(allocation.sanctionedAt) : "-"}
         </DetailRow>
         <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end" }}>
           <Link
@@ -274,7 +274,7 @@ export function AllocationDetailModal({
 }
 
 /**
- * Expenditure detail pop-up — one screen, used by the funds dashboard and the
+ * Expenditure detail pop-up - one screen, used by the funds dashboard and the
  * facility funds tab. The status pill and the whole body live here so the two
  * pages cannot drift apart again.
  */
@@ -395,7 +395,7 @@ export function ExpenseDetailModal({
                   color: "var(--text-primary)",
                 }}
               >
-                {expense.description || "—"}
+                {expense.description || "-"}
               </div>
               <div
                 style={{
@@ -636,7 +636,7 @@ const alertButton = {
 } as const;
 
 /**
- * Financial alert pop-up — one screen, used by the funds dashboard and the
+ * Financial alert pop-up - one screen, used by the funds dashboard and the
  * facility funds tab. `projectName` / `projectCode` are resolved by the caller
  * so both screens fall back to the id the same way.
  */
@@ -805,7 +805,7 @@ const flagActionCopy: Record<FlagAction, { title: string; blurb: string; placeho
   },
 };
 
-/** Review / resolve / dismiss form for a financial alert — the audited write. */
+/** Review / resolve / dismiss form for a financial alert - the audited write. */
 export function FlagActionModal({
   action,
   note,

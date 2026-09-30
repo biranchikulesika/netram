@@ -830,7 +830,7 @@ export class AttendanceRepository {
       .from(projectsTable)
       .where(eq(projectsTable.id, projectId))
       .limit(1);
-    return rows[0] ?? { code: "—", name: "Unknown facility" };
+    return rows[0] ?? { code: "-", name: "Unknown facility" };
   }
 
   async listCalculations(filter: AttendanceCalculationListFilter): Promise<{
@@ -899,7 +899,7 @@ export class AttendanceRepository {
     return rows[0] ? toCalculation(rows[0], await this.projectRef(rows[0].projectId)) : null;
   }
 
-  /** All calculations matching scope/filters (unpaginated) — for CSV exports. */
+  /** All calculations matching scope/filters (unpaginated) - for CSV exports. */
   async listAllCalculations(filter: {
     projectId?: string;
     jurisdictionIds?: string[];

@@ -45,12 +45,12 @@ const CHROME_CANDIDATES = [
 let failures = 0;
 
 function pass(step: string, detail: string): void {
-  console.log(`  PASS  ${step}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  PASS  ${step}${detail ? ` - ${detail}` : ""}`);
 }
 
 function fail(step: string, detail: string): void {
   failures += 1;
-  console.error(`  FAIL  ${step}${detail ? ` — ${detail}` : ""}`);
+  console.error(`  FAIL  ${step}${detail ? ` - ${detail}` : ""}`);
 }
 
 function assert(cond: boolean, step: string, detail: string): void {
@@ -137,7 +137,7 @@ async function evaluate<T>(conn: CdpConn, expression: string): Promise<T> {
 
 async function newPage(pageUrl: string): Promise<{ conn: CdpConn; targetId: string }> {
   // Create about:blank, connect, then navigate via CDP and wait until the
-  // app shell is present — evaluating too early can land in the stale
+  // app shell is present - evaluating too early can land in the stale
   // about:blank context and observe nothing forever.
   const createRes = await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: "PUT" });
   const target = (await createRes.json()) as CdpTarget;
@@ -174,7 +174,7 @@ const READ_STATS = `(async () => {
   const el = document.querySelector('video');
   const pc = el && el.__whepSession ? el.__whepSession.pc : null;
   if (!pc) return 'no-session';
-  // Poll until the first frames are decoded — 'connected' fires slightly
+  // Poll until the first frames are decoded - 'connected' fires slightly
   // before the decoder produces output.
   let framesDecoded = 0, jitterDelaySec = 0, jitterEmitted = 0;
   for (let i = 0; i < 40; i++) {
@@ -205,11 +205,11 @@ function parseLatency(statsText: string): string | null {
 // --------------------------------------------------------------- main checks
 
 async function main(): Promise<void> {
-  console.log(`CCTV Phase 1+2 runtime verification — web=${WEB_BASE} path=${WHEP_PATH}\n`);
+  console.log(`CCTV Phase 1+2 runtime verification - web=${WEB_BASE} path=${WHEP_PATH}\n`);
 
   // 1. Media rig reachable AND closed: the WHEP endpoint answers, but
   // Phase 4 delegates playback auth to the NETRAM hook, so a request without
-  // a NETRAM playback token must be rejected (401) — reachability + closure
+  // a NETRAM playback token must be rejected (401) - reachability + closure
   // in one probe.
   try {
     const res = await fetch(`http://localhost:8189/${WHEP_PATH}/whep`, { method: "OPTIONS" });

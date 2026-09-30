@@ -11,7 +11,7 @@ import type { InspectionFlagRiskLevel } from "./fund.js";
  *
  * A unified, permission-gated queue of every item awaiting an authoritative
  * decision from the caller: approvals, reviews, verifications, and oversight
- * requests. The server decides what lands in the inbox — a section is included
+ * requests. The server decides what lands in the inbox - a section is included
  * only when the caller holds the permission that authorises the corresponding
  * action, and only within the caller's jurisdiction (§16, §17). The client
  * merely renders what the server discloses.
@@ -21,7 +21,7 @@ import type { InspectionFlagRiskLevel } from "./fund.js";
  * because each section queries only its "awaiting decision" state.
  */
 
-/** Discriminator for the `kind` field — keep in sync with sections below. */
+/** Discriminator for the `kind` field - keep in sync with sections below. */
 export const ACTION_INBOX_KINDS = [
   "project_verification",
   "finding_review",
@@ -96,7 +96,7 @@ export interface ActionInboxItem {
   context: Record<string, unknown>;
 }
 
-/** Canonical web route for each kind — single source for deep links. */
+/** Canonical web route for each kind - single source for deep links. */
 export const ACTION_INBOX_ROUTES: Record<ActionInboxKind, string> = {
   project_verification: "/dashboard/projects",
   finding_review: "/dashboard/inspections",

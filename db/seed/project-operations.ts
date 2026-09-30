@@ -205,7 +205,7 @@ const PROFILES: ProjectSpec[] = [
             category: "ROLLS",
             severity: "medium",
             description:
-              "Eleven beneficiaries on the muster roll had not been physically present for over 60 days, and four of those had a recorded discharge date of March 2025 — over a year before the inspection. The hostel was drawing ration for them.",
+              "Eleven beneficiaries on the muster roll had not been physically present for over 60 days, and four of those had a recorded discharge date of March 2025 - over a year before the inspection. The hostel was drawing ration for them.",
             remediation:
               "Strike the long-absent and discharged entries from the roll, recover the drawn ration value, and re-verify residency monthly.",
             outcome: "open",
@@ -264,19 +264,19 @@ const PROFILES: ProjectSpec[] = [
         date: "2026-04-09",
         vendor: "Not registered",
         gstin: "N/A",
-        invoice: "—",
+        invoice: "-",
         status: "void",
         voidReason:
           "No tax invoice supplied and vendor is not registered; rejected pending documentation.",
       },
     ],
     cameras: [
-      "Vani Vihar — Main Gate (Entry)",
-      "Vani Vihar — Dining Hall",
-      "Vani Vihar — Kitchen Dry Store",
+      "Vani Vihar - Main Gate (Entry)",
+      "Vani Vihar - Dining Hall",
+      "Vani Vihar - Kitchen Dry Store",
     ],
     oversightCall: {
-      title: "Vani Vihar — food procurement findings review",
+      title: "Vani Vihar - food procurement findings review",
       date: "2026-03-18T10:30:00Z",
       durationMin: 52,
     },
@@ -394,7 +394,7 @@ const PROFILES: ProjectSpec[] = [
         status: "verified",
       },
     ],
-    cameras: ["Cuttack Girls' Hostel — Main Gate", "Cuttack Girls' Hostel — Kitchen"],
+    cameras: ["Cuttack Girls' Hostel - Main Gate", "Cuttack Girls' Hostel - Kitchen"],
   },
 
   // ------------------------------------------------------------- Ganjam ----
@@ -437,7 +437,7 @@ const PROFILES: ProjectSpec[] = [
             category: "INFRA",
             severity: "medium",
             description:
-              "The boundary wall on the northern side had a 4 m section collapsed, and the gate had no lock — the rear-gate device was therefore not a meaningful control.",
+              "The boundary wall on the northern side had a 4 m section collapsed, and the gate had no lock - the rear-gate device was therefore not a meaningful control.",
             remediation:
               "Rebuild the wall section, fit a lock to the gate, and record a monthly structural check.",
             outcome: "done",
@@ -467,7 +467,7 @@ const PROFILES: ProjectSpec[] = [
         status: "verified",
       },
     ],
-    cameras: ["Ganjam School Hostel — Main Entry", "Ganjam School Hostel — Rear Gate"],
+    cameras: ["Ganjam School Hostel - Main Entry", "Ganjam School Hostel - Rear Gate"],
   },
 
   // ----------------------------------------------------------- Rourkela ----
@@ -539,7 +539,7 @@ const PROFILES: ProjectSpec[] = [
         status: "verified",
       },
     ],
-    cameras: ["Rourkela Hostel — Gatehouse", "Rourkela Hostel — Dining Hall"],
+    cameras: ["Rourkela Hostel - Gatehouse", "Rourkela Hostel - Dining Hall"],
   },
 
   // --------------------------------------------------------------- Puri ----
@@ -629,9 +629,9 @@ const PROFILES: ProjectSpec[] = [
         status: "verified",
       },
     ],
-    cameras: ["Astaraag Home — Entrance Hall"],
+    cameras: ["Astaraag Home - Entrance Hall"],
     oversightCall: {
-      title: "Astaraag Home — assisted access review",
+      title: "Astaraag Home - assisted access review",
       date: "2026-05-12T09:00:00Z",
       durationMin: 35,
     },
@@ -646,7 +646,7 @@ const PROFILES: ProjectSpec[] = [
     officer: USERS.programme,
     inspector: USERS.inspector2,
     photos: [
-      "Integrated Rehabilitation Centre for Addicts — residential wing.",
+      "Integrated Rehabilitation Centre for Addicts - residential wing.",
       "Group-therapy hall with the session timetable on the wall.",
       "Counselling room and the pharmacy store.",
     ],
@@ -736,7 +736,7 @@ const PROFILES: ProjectSpec[] = [
         status: "verified",
       },
     ],
-    cameras: ["IRCA Puri — Gate", "IRCA Puri — Therapy Hall"],
+    cameras: ["IRCA Puri - Gate", "IRCA Puri - Therapy Hall"],
   },
 
   // ------------------------------------------------------------ Rajdhani ----
@@ -849,7 +849,7 @@ const PROFILES: ProjectSpec[] = [
 ];
 
 /**
- * ISO timestamp helper — everything in this module is date-literal, not
+ * ISO timestamp helper - everything in this module is date-literal, not
  * relative, so a reset always reproduces the same instants.
  *
  * Accepts either a bare `YYYY-MM-DD` day (combined with a time-of-day) or a
@@ -1227,7 +1227,7 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
         transactionDate: at(e.date),
         vendorName: e.vendor,
         vendorGstin: e.gstin === "N/A" ? null : e.gstin,
-        invoiceNumber: e.invoice === "—" ? null : e.invoice,
+        invoiceNumber: e.invoice === "-" ? null : e.invoice,
         invoiceDate: at(e.date),
         paymentReference: `UTR${fakeSha(e.key).slice(0, 12).toUpperCase()}`,
         paymentMethod: "NEFT",
@@ -1466,7 +1466,7 @@ type ComplaintSpec = {
 /**
  * Complaints are oversight inputs, not findings (AGENTS.md §35). None of these
  * is treated as proof of misconduct; the two that are "resolved" record a
- * review outcome, and the one that is "escalated" went to inspection — which is
+ * review outcome, and the one that is "escalated" went to inspection - which is
  * exactly the distinction the seed is meant to demonstrate.
  */
 const COMPLAINTS: Record<string, ComplaintSpec> = {

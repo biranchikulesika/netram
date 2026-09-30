@@ -38,7 +38,7 @@ const SECTION_TITLES: Record<ActionInboxKind, string> = {
   inspection_flag_review: "Risk flags awaiting review",
 };
 
-/** Upper bound per section — the inbox is a worklist, not an export. */
+/** Upper bound per section - the inbox is a worklist, not an export. */
 const MAX_ITEMS_PER_SECTION = 100;
 
 export interface ActionInboxServiceDeps {
@@ -181,7 +181,7 @@ export class ActionInboxService {
       title: "Review Action Taken Report",
       summary:
         a.actionSummary ??
-        `Remediation evidence ${a.status === "overdue" ? "overdue — deadline passed without submission" : "submitted"} for authority review.`,
+        `Remediation evidence ${a.status === "overdue" ? "overdue - deadline passed without submission" : "submitted"} for authority review.`,
       actionType: "review" as const,
       project: a.project
         ? {
@@ -352,7 +352,7 @@ export class ActionInboxService {
       id: e.id,
       kind: "expense_verification" as const,
       title: "Verify expenditure",
-      summary: `${e.category} — ${e.description}`.trim(),
+      summary: `${e.category} - ${e.description}`.trim(),
       actionType: "approve" as const,
       project: {
         id: e.projectId,
@@ -390,7 +390,7 @@ export class ActionInboxService {
       id: d.id,
       kind: "financial_document_verification" as const,
       title: "Verify financial document",
-      summary: `${d.documentType} — ${d.fileName}`,
+      summary: `${d.documentType} - ${d.fileName}`,
       actionType: "approve" as const,
       project: {
         id: d.projectId,

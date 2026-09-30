@@ -44,7 +44,7 @@ export default function ProfileScreen() {
   const displayName =
     user?.displayName ||
     (emailPrefix ? emailPrefix.replace(/[._-]/g, " ") : "Inspector");
-  const officerId = user?.id ? `INSP-${user.id.slice(0, 8).toUpperCase()}` : "—";
+  const officerId = user?.id ? `INSP-${user.id.slice(0, 8).toUpperCase()}` : "-";
   const initials =
     displayName
       .split(" ")
@@ -79,7 +79,7 @@ export default function ProfileScreen() {
             <View style={styles.infoCol}>
               <Text style={[styles.infoLabel, { color: textMuted }]}>Official Email</Text>
               <Text style={[styles.infoValue, { color: textPrimary }]}>
-                {user?.email ?? "—"}
+                {user?.email ?? "-"}
               </Text>
             </View>
           </View>
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
             <View style={styles.infoCol}>
               <Text style={[styles.infoLabel, { color: textMuted }]}>Designation</Text>
               <Text style={[styles.infoValue, { color: textPrimary }]}>
-                {user ? `Field Inspection Officer (${user.type})` : "—"}
+                {user ? `Field Inspection Officer (${user.type})` : "-"}
               </Text>
             </View>
           </View>
@@ -107,7 +107,7 @@ export default function ProfileScreen() {
             <View style={styles.infoCol}>
               <Text style={[styles.infoLabel, { color: textMuted }]}>Account Type</Text>
               <Text style={[styles.infoValue, { color: textPrimary }]}>
-                {user?.type ?? "—"}
+                {user?.type ?? "-"}
               </Text>
             </View>
           </View>

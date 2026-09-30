@@ -95,7 +95,7 @@ export function FacilityInspectionsTable({
 
   return (
     <div>
-      {/* Toolbar — the inspections section's, minus the view-mode toggle */}
+      {/* Toolbar - the inspections section's, minus the view-mode toggle */}
       <div className="registry-toolbar" style={{ marginBottom: "1.25rem" }}>
         <div className="search-filter-group">
           <div className="search-input-wrap">
@@ -168,7 +168,7 @@ export function FacilityInspectionsTable({
                   ? `Started: ${formatDate(i.startedAt)}`
                   : i.scheduledStart
                     ? `Sched: ${formatDate(i.scheduledStart)}`
-                    : "—";
+                    : "-";
                 const assignedCount = Array.isArray(i.assignedUserIds) ? i.assignedUserIds.length : 0;
 
                 return (

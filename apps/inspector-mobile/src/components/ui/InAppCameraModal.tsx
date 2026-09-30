@@ -454,7 +454,7 @@ export function InAppCameraModal({
       onRequestClose={confirmClose}
     >
       <View style={styles.container}>
-        {/* Top Controls — overlaid on the full-bleed preview */}
+        {/* Top Controls - overlaid on the full-bleed preview */}
         <View
           style={[
             styles.topHeader,
@@ -493,7 +493,7 @@ export function InAppCameraModal({
           </View>
         </View>
 
-        {/* Viewfinder Area — full screen, controls float above it */}
+        {/* Viewfinder Area - full screen, controls float above it */}
         <View style={styles.viewfinderContainer}>
           {Platform.OS === "web" ? (
             <div
@@ -568,7 +568,7 @@ export function InAppCameraModal({
           )}
         </View>
 
-        {/* Bottom Controls — overlaid on the preview */}
+        {/* Bottom Controls - overlaid on the preview */}
         <View
           style={[
             styles.bottomBar,
@@ -654,7 +654,7 @@ export function InAppCameraModal({
               )}
             </View>
 
-            {/* Gallery button — right of the shutter, like a standard camera app */}
+            {/* Gallery button - right of the shutter, like a standard camera app */}
             <View style={styles.shutterSide}>
               {latestCapture ? (
                 <Pressable

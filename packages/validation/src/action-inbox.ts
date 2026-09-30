@@ -4,7 +4,7 @@ import { uuidSchema } from "./common.js";
 
 /**
  * Runtime validation for the Action Inbox contract (AGENTS.md §19, §52).
- * The inbox is read-only: no request body schemas are required — the server
+ * The inbox is read-only: no request body schemas are required - the server
  * derives every section from the caller's permissions and jurisdiction.
  */
 export const actionInboxActorSchema = z

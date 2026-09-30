@@ -124,7 +124,7 @@ export function CameraWall({
         <>
           {visibleActive > MAX_WALL_TILES && (
             <p className="muted" role="status" style={{ margin: "0 0 0.5rem 0" }}>
-              {visibleActive} cameras in view — playing the first {MAX_WALL_TILES}.
+              {visibleActive} cameras in view - playing the first {MAX_WALL_TILES}.
             </p>
           )}
           <div className={`camera-wall camera-wall-${columns}`} ref={wallRef}>

@@ -1,7 +1,7 @@
 # NETRAM development-only simulated facility camera.
 #
 # Provides FFmpeg for the camera simulator (see entrypoint.sh): real-time
-# H.264 RTSP serving (pull mode) or pushing (push mode). Dev-only image —
+# H.264 RTSP serving (pull mode) or pushing (push mode). Dev-only image -
 # never deployed outside the `facility` compose profile.
 FROM docker.io/library/alpine:3.20
 

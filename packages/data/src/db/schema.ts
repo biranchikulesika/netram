@@ -560,7 +560,7 @@ export const cctvStreams = pgTable("cctv_streams", {
   lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
   /** Token expiry; the sweeper never ends a session before this. */
   expiresAt: timestamp("expires_at", { withTimezone: true }),
-  /** "viewer" | "sweeper" | "admin" — who drove the end. */
+  /** "viewer" | "sweeper" | "admin" - who drove the end. */
   endedBy: varchar("ended_by", { length: 20 }),
   /** "viewer_stop" | "token_expired" | "heartbeat_timeout" | "admin_revoke". */
   endReason: varchar("end_reason", { length: 40 }),

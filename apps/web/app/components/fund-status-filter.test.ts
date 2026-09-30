@@ -13,7 +13,7 @@ const ALL_ALLOCATION_BUCKETS = ALLOCATION_STATUS_FILTERS.filter((f) => f.value !
   (f) => f.value,
 );
 
-/** Mirrors the unions in packages/types/src/fund.ts — a status added there but
+/** Mirrors the unions in packages/types/src/fund.ts - a status added there but
  *  not to a bucket must fail here rather than silently disappear from the list. */
 const EXPENSE_STATUSES: ExpenseStatus[] = [
   "draft",

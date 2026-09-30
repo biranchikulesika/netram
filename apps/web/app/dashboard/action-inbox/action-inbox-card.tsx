@@ -43,7 +43,7 @@ function AiSpinner() {
 }
 
 /**
- * Quick decision CTAs per kind — every endpoint is the workflow's own canonical
+ * Quick decision CTAs per kind - every endpoint is the workflow's own canonical
  * write path. Only self-contained decisions may be taken from the card: the
  * whole change is visible in the summary (attendance correction before/after),
  * or the decision popup itself carries the full record (expenditure payment

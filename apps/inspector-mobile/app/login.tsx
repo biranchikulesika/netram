@@ -17,7 +17,7 @@ import { Icon } from "../src/components/ui";
 
 /**
  * Development quick-fill accounts. These are the dev/test seed users shared
- * with the web app via the same API and local database — development-only
+ * with the web app via the same API and local database - development-only
  * credentials, not production secrets. The dev-login provider resolves the
  * account by email; the password field is the shared dev placeholder kept for
  * form completeness.
@@ -39,7 +39,7 @@ const DEV_ACCOUNTS = [
 
 const DEFAULT_DEV_ACCOUNT = DEV_ACCOUNTS[0];
 
-/* Web login palette (does not follow the app's dark mode — the web has none). */
+/* Web login palette (does not follow the app's dark mode - the web has none). */
 const palette = {
   canvas: "#ffffff",
   surface: "#ffffff",

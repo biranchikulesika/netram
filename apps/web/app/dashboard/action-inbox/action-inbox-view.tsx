@@ -263,7 +263,7 @@ export function ActionInboxView({
         </div>
         <h1 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Action Inbox</h1>
         <p className="muted" style={{ fontSize: "0.9rem" }}>
-          All caught up — nothing is awaiting your decision.
+          All caught up - nothing is awaiting your decision.
         </p>
         <p className="muted" style={{ fontSize: "0.75rem", marginTop: "2rem" }}>
           Checked {formatDateTime(generatedAt)} ·{" "}

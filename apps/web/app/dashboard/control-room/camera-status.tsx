@@ -7,7 +7,7 @@ import { formatDateTime } from "../../../lib/presentation";
 import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
 export function formatCameraDuration(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const diffMs = Date.now() - new Date(iso).getTime();
   if (diffMs < 0) return "now";
   const mins = Math.floor(diffMs / 60_000);
@@ -54,7 +54,7 @@ export function CameraStatusView({
         cam,
         facility,
         place,
-        district: cam.districtId ? (districtNames[cam.districtId] ?? "Unknown district") : "—",
+        district: cam.districtId ? (districtNames[cam.districtId] ?? "Unknown district") : "-",
       };
     });
     if (!q) return withMeta;
@@ -180,7 +180,7 @@ export function CameraStatusView({
                       </td>
                       <td className="table-date">{formatDateTime(r.cam.updatedAt)}</td>
                       <td className="table-date">
-                        {isDown ? formatCameraDuration(r.cam.updatedAt) : "—"}
+                        {isDown ? formatCameraDuration(r.cam.updatedAt) : "-"}
                       </td>
                     </tr>
                   );

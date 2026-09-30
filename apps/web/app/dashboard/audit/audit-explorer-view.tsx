@@ -303,7 +303,7 @@ export function AuditExplorerView({
             onClick={openDateRangeModal}
             aria-haspopup="dialog"
             aria-expanded={dateRangeModalOpen}
-            title={isCustomRangeActive ? "Date range filter active — click to edit" : "Select date range"}
+            title={isCustomRangeActive ? "Date range filter active - click to edit" : "Select date range"}
             style={{
               padding: "0.42rem 0.75rem",
               border: isCustomRangeActive

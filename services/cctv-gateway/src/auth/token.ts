@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export interface StreamTokenPayload {
   streamId: string;
   cameraId: string;
-  /** MediaMTX path the token is scoped to (Phase 4 — enforced by the external auth hook). */
+  /** MediaMTX path the token is scoped to (Phase 4 - enforced by the external auth hook). */
   mediaPath: string;
   exp: number; // Unix timestamp in seconds
 }

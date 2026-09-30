@@ -19,10 +19,10 @@ import {
  *
  * Heartbeat cadence: the server sweeper (Phase 4) reaps sessions whose
  * last_heartbeat_at is older than 90 s (3 missed 30 s heartbeats), so the
- * viewer beats every 30 s — comfortably inside the grace window.
+ * viewer beats every 30 s - comfortably inside the grace window.
  *
  * StrictMode safety: every async transition is generation-guarded exactly
- * like the Phase 2 dev page — an orphaned session (double-mount or camera
+ * like the Phase 2 dev page - an orphaned session (double-mount or camera
  * switch) is stopped and never drives state.
  */
 
@@ -92,7 +92,7 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
     }
   }, []);
 
-  /** Best-effort session end — fire-and-forget DELETE (also on page hide). */
+  /** Best-effort session end - fire-and-forget DELETE (also on page hide). */
   const endSession = useCallback((streamId: string): void => {
     void fetch(`/api/cctv/${cameraId}/streams/${streamId}`, {
       method: "DELETE",
@@ -176,7 +176,7 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
     }
 
     if (gen !== generationRef.current) {
-      // Superseded while creating — release the session we just made.
+      // Superseded while creating - release the session we just made.
       endSession(streamId);
       return;
     }
@@ -229,7 +229,7 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
           .then((res) => {
             if (res.status === 404 && gen === generationRef.current) {
               // Session ended server-side (admin revoke / sweeper). Stop
-              // cleanly — the token is dead, playback will fail next.
+              // cleanly - the token is dead, playback will fail next.
               clearTimers();
               setState((s) => ({ ...s, phase: "ended", message: "Stream session ended." }));
             }

@@ -151,7 +151,7 @@ describe("InAppCameraModal capture roll", () => {
   });
 
   it("caps a web recording at 60s from the clock tick it captured at start", async () => {
-    // MediaRecorder has no duration limit, so the cap is the tick's job — and
+    // MediaRecorder has no duration limit, so the cap is the tick's job - and
     // the tick holds the handler from the render before recording began.
     const onSaveMedia = vi.fn(async (_items: CapturedMediaItem[]) => true);
     fakeWebRecording();

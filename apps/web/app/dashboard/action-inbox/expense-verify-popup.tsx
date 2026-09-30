@@ -7,7 +7,7 @@ import { VendorPaymentInfo } from "../../components/funds-ui";
 
 /**
  * Context fields the server discloses for expense_verification items (see
- * ActionInboxService.fetchExpenses). Omitted fields stay absent — never
+ * ActionInboxService.fetchExpenses). Omitted fields stay absent - never
  * rendered as blank placeholders (§34).
  */
 interface ExpensePopupContext {
@@ -40,8 +40,8 @@ export interface ExpenseVerifyPopupProps {
 
 /**
  * Verify-payment popup for expenditure items (mirrors the funds workspace's
- * expense detail modal). Everything the authority needs for this decision —
- * amount, purpose, vendor/payment detail — is carried by the item itself, so
+ * expense detail modal). Everything the authority needs for this decision -
+ * amount, purpose, vendor/payment detail - is carried by the item itself, so
  * the decision completes on the inbox page without opening the record.
  */
 export function ExpenseVerifyPopup({
@@ -98,7 +98,7 @@ export function ExpenseVerifyPopup({
               color: "var(--color-navy-brand)",
             }}
           >
-            Verify payment — expenditure
+            Verify payment - expenditure
           </h3>
           <p className="muted" style={{ fontSize: "0.8rem", margin: "0.3rem 0 0 0" }}>
             {item.project.name
@@ -175,7 +175,7 @@ export function ExpenseVerifyPopup({
                   Expenditure type
                 </div>
                 <div style={{ marginTop: "0.2rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                  {ctx.category ?? "—"}
+                  {ctx.category ?? "-"}
                 </div>
               </div>
               <div>
@@ -191,7 +191,7 @@ export function ExpenseVerifyPopup({
                   Expenditure date
                 </div>
                 <div style={{ marginTop: "0.2rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                  {ctx.transactionDate ? formatDate(ctx.transactionDate) : "—"}
+                  {ctx.transactionDate ? formatDate(ctx.transactionDate) : "-"}
                 </div>
               </div>
             </div>

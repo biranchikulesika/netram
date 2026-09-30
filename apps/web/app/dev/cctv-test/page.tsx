@@ -12,7 +12,7 @@ import { startWhep, type WhepSession } from "@/lib/dev-cctv-whep";
  * docs/history/cctv-phase-1-2.md.
  *
  * Deliberately OUTSIDE the dashboard layout: no auth, no navigation, no
- * production surface — Phase 3 deletes it.
+ * production surface - Phase 3 deletes it.
  */
 
 const DEFAULT_PATH = "facility-vani/cam-gate";
@@ -39,7 +39,7 @@ export default function DevCctvTestPage() {
     // Verify harness and manual tests select the MediaMTX path via ?path=.
     return searchParams.current.get("path") ?? DEFAULT_PATH;
   });
-  // Phase 4: optional NETRAM playback token (?token=...) — forwarded by the
+  // Phase 4: optional NETRAM playback token (?token=...) - forwarded by the
   // proxy as Bearer and validated by the MediaMTX external auth hook.
   const token = searchParams.current.get("token") ?? undefined;
   const [stats, setStats] = useState<PlaybackStats>(EMPTY_STATS);
@@ -101,7 +101,7 @@ export default function DevCctvTestPage() {
       if (!video) throw new Error("video element not mounted");
       const session = await startWhep(video, { path, token });
       // A newer start() superseded this one (e.g. React StrictMode's
-      // double-mount firing start twice) — discard the orphaned session.
+      // double-mount firing start twice) - discard the orphaned session.
       if (gen !== sessionGenRef.current) {
         session.stop();
         return;
@@ -113,7 +113,7 @@ export default function DevCctvTestPage() {
         const s = session.pc.connectionState;
         if (s === "connected") {
           setPhase("playing");
-          setMessage("WebRTC connected — live stream playing");
+          setMessage("WebRTC connected - live stream playing");
           startStatsPolling(session.pc);
         } else if (s === "failed" || s === "closed") {
           setPhase("error");
@@ -166,7 +166,7 @@ export default function DevCctvTestPage() {
     >
       <header>
         <p style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-subtle)", margin: 0 }}>
-          Development only — throwaway rig
+          Development only - throwaway rig
         </p>
         <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", margin: "0.25rem 0" }}>CCTV Phase 2: WHEP playback test</h1>
         <p style={{ marginTop: "0.25rem", fontSize: "0.875rem", color: "var(--text-subtle)", margin: 0 }}>
@@ -240,7 +240,7 @@ export default function DevCctvTestPage() {
                   : "var(--text-subtle)",
           }}
         >
-          {phase}: {message || "—"}
+          {phase}: {message || "-"}
         </span>
       </section>
 
@@ -260,7 +260,7 @@ export default function DevCctvTestPage() {
         </div>
         <p style={{ marginTop: "0.25rem", color: "var(--text-subtle)", margin: 0 }}>
           Latency is the receiver jitter-buffer contribution only. Glass-to-glass measurement uses
-          the burned-in clock source (CAMERA_SOURCE=clock) — see the phase doc.
+          the burned-in clock source (CAMERA_SOURCE=clock) - see the phase doc.
         </p>
       </section>
     </main>

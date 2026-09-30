@@ -124,7 +124,7 @@ export class CorrectiveActionService {
 
   /**
    * Institution lodges its Action Taken Report (§32, §16). Recording this work
-   * is what automatically moves the order to `submitted` — there is no manual
+   * is what automatically moves the order to `submitted` - there is no manual
    * status toggle anywhere.
    */
   async submitAtr(

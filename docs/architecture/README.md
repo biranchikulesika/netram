@@ -65,7 +65,7 @@ flowchart LR
 
 ### 📇 Tier 1: Field & Ingestion
 * **Components:**
-  * **Inspector Mobile Application** (`apps/inspector-mobile` — React Native / Expo)
+  * **Inspector Mobile Application** (`apps/inspector-mobile` - React Native / Expo)
   * **Facility CCTV Cameras & NVRs** (Edge RTSP feeds)
 * **Responsibilities:**
   * Captures on-site inspection observations, geotags, and photographic evidence.
@@ -80,9 +80,9 @@ flowchart LR
 
 ### 📇 Tier 2: Secure Core Platform & Gateway
 * **Components:**
-  * **Core REST API** (`services/api` — Fastify modular monolith)
-  * **Real-Time Hub** (`services/realtime` — Fastify + WebSockets)
-  * **CCTV Gateway** (`services/cctv-gateway` — MediaMTX integration bridge)
+  * **Core REST API** (`services/api` - Fastify modular monolith)
+  * **Real-Time Hub** (`services/realtime` - Fastify + WebSockets)
+  * **CCTV Gateway** (`services/cctv-gateway` - MediaMTX integration bridge)
 * **Responsibilities:**
   * Acts as the single authoritative enforcement point for RBAC, Jurisdiction, and Workflow rules.
   * Bridges internal RTSP cameras to browser-friendly WebRTC (WHEP) without exposing camera credentials.
@@ -98,7 +98,7 @@ flowchart LR
 * **Components:**
   * **Relational Database** (PostgreSQL 16 via Drizzle ORM in `packages/data`)
   * **Object Storage Vault** (MinIO S3 Bucket)
-  * **Advisory AI Engine** (`services/ai` — Python / FastAPI)
+  * **Advisory AI Engine** (`services/ai` - Python / FastAPI)
   * **Distributed Broker & Background Workers** (Redis 7 + BullMQ)
 * **Responsibilities:**
   * Houses all authoritative project records, user identities, inspection findings, and append-only audit trails.
@@ -112,7 +112,7 @@ flowchart LR
 
 ### 📇 Tier 4: Command, Control & Oversight
 * **Components:**
-  * **Next.js Web Platform** (`apps/web` — App Router + React 19)
+  * **Next.js Web Platform** (`apps/web` - App Router + React 19)
   * **Control Room & Monitoring Dashboards**
   * **Public Grievance & Tracking Portal**
 * **Responsibilities:**
@@ -180,7 +180,7 @@ sequenceDiagram
 
 1. **Persistence Boundary:** Database access lives strictly in `packages/data`. Drizzle ORM, `postgres` drivers, and raw SQL never appear in presentation applications or secondary services (AGENTS.md §8, §9).
 2. **Configuration Boundary:** Environment variables flow exclusively through `packages/config` via typed, validated Zod schemas. No naked `process.env` calls outside configuration definitions (AGENTS.md §21).
-3. **Cross-Service Contracts:** Communication across service boundaries occurs strictly via typed clients, HTTP REST APIs, or outbox events — never direct source-code imports (AGENTS.md §63).
+3. **Cross-Service Contracts:** Communication across service boundaries occurs strictly via typed clients, HTTP REST APIs, or outbox events - never direct source-code imports (AGENTS.md §63).
 4. **Server Authority:** The server is the single source of truth for authorization, jurisdiction enforcement, and workflow state. Realtime WebSockets, AI outputs, and client caches are never authoritative (AGENTS.md §16, §28, §36).
 5. **No Vendor Leakage:** Infrastructure tools (PostgreSQL, MinIO, MediaMTX, Redis) sit behind abstract domain adapters (AGENTS.md §64).
 6. **Server-Side Information Disclosure:** Fields a user is not authorized to view are omitted entirely from backend responses, never hidden client-side via UI logic (AGENTS.md §34).

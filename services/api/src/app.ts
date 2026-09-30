@@ -231,7 +231,7 @@ export async function buildApp(container: Container) {
   await app.register(async (api) => {
     await registerHealthRoutes(api, container);
     // MediaMTX external auth hook (Phase 4 §13): media-plane authorization
-    // boundary. Lives outside /api/v1 with its own service secret — MediaMTX
+    // boundary. Lives outside /api/v1 with its own service secret - MediaMTX
     // authenticates with NETRAM_MEDIAMTX_HOOK_SECRET, not user JWTs.
     await registerMediaAuthHookRoute(api, container);
   });

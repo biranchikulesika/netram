@@ -17,7 +17,7 @@ import {
  *   - DISMISSED / FALSE_POSITIVE are human-declared non-issues → contribute 0.
  *   - ACTIONED (remediated) keeps a small residual weight (the signal was
  *     real; current risk is mostly retired).
- *   - Everything else (NEW, REVIEWED, INVESTIGATING) contributes full weight —
+ *   - Everything else (NEW, REVIEWED, INVESTIGATING) contributes full weight -
  *     review so far has NOT contradicted the detector.
  */
 export class AttendanceAnomalyDimensionCalculator {

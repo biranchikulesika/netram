@@ -41,7 +41,7 @@ log() { printf '\n=== %s\n' "$*"; }
 log "Preflight"
 for port in 80 443; do
   if ! ss -tln 2>/dev/null | grep -q ":$port "; then
-    echo "ERROR: nothing is listening on :$port — this script assumes nginx already owns it." >&2
+    echo "ERROR: nothing is listening on :$port - this script assumes nginx already owns it." >&2
     exit 1
   fi
 done
@@ -51,7 +51,7 @@ echo "nginx owns :80/:443  OK"
 for spec in "3100:web" "3202:realtime"; do
   port="${spec%%:*}"; what="${spec##*:}"
   if ! ss -tln 2>/dev/null | grep -q "127.0.0.1:$port "; then
-    echo "WARNING: nothing on 127.0.0.1:$port — the $what container is not publishing." >&2
+    echo "WARNING: nothing on 127.0.0.1:$port - the $what container is not publishing." >&2
     echo "         Start the stack first:  podman-compose -f docker-compose.yml --env-file .env.vps up -d" >&2
   else
     echo "127.0.0.1:$port  OK ($what)"
@@ -72,7 +72,7 @@ echo "bootstrap vhost live on http://$DOMAIN"
 # ------------------------------------------------------------- 2. certificate
 log "2/4  Obtaining TLS certificate for $DOMAIN"
 if [[ -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" ]]; then
-  echo "Certificate already exists — skipping issuance."
+  echo "Certificate already exists - skipping issuance."
   certbot renew --cert-name "$CERT_NAME" || true
 else
   if [[ -z "$ACME_EMAIL" ]]; then
@@ -106,7 +106,7 @@ fi
 # ------------------------------------------------------ 3. final HTTPS vhost
 log "3/4  Installing final vhost (HTTP -> HTTPS + reverse proxy)"
 [[ -f "/etc/letsencrypt/live/$CERT_NAME/fullchain.pem" ]] || {
-  echo "ERROR: certificate missing at /etc/letsencrypt/live/$CERT_NAME — aborting." >&2
+  echo "ERROR: certificate missing at /etc/letsencrypt/live/$CERT_NAME - aborting." >&2
   exit 1
 }
 install -m 0644 "$REPO_DIR/infra/nginx/netram.conf" "$AVAIL"

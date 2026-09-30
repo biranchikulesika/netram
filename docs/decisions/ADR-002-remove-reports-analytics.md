@@ -48,10 +48,10 @@ Remove the Reports and Analytics domains entirely:
 
 ## Alternatives Considered
 
-- **Keep reports, add formats (PDF/docx):** rejected — investment in a retired
+- **Keep reports, add formats (PDF/docx):** rejected - investment in a retired
   presentation layer while statutory output is already served by inspection
   evidence bundles and corrective-action ATR files.
-- **Keep analytics, rename to dashboards:** rejected — same coupling, same
+- **Keep analytics, rename to dashboards:** rejected - same coupling, same
   duplication; the control room and project risk views already answer the
   oversight questions.
 
@@ -59,7 +59,7 @@ Remove the Reports and Analytics domains entirely:
 
 - The `reports` table is dropped; any historical report artefacts in object
   storage become unreachable through the product (they were derived, never
-  authoritative — no truth is lost).
+  authoritative - no truth is lost).
 - `report:read`, `report:generate`, `report:finalize` permissions and
   `report.*` audit/domain event types no longer exist. Audit rows referencing
   `report.*` actions from before the migration remain append-only history.

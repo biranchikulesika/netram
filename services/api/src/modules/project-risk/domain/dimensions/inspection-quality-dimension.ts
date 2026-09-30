@@ -16,7 +16,7 @@ import { RESOLVED_OUTCOME_ATTENUATION } from "../../config/risk-config.js";
  *                            closed
  *
  * Risk semantics:
- *   - dismissed findings contribute 0 (authority review rejected them — §32);
+ *   - dismissed findings contribute 0 (authority review rejected them - §32);
  *     they are still reported in signals for transparency.
  *   - Corrective actions with a concluded outcome (accepted / rejected) keep a
  *     small residual weight via RESOLVED_OUTCOME_ATTENUATION: the finding was

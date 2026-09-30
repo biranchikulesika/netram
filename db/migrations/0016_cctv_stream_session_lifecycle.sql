@@ -1,16 +1,16 @@
 -- 0016: CCTV stream session lifecycle (Phase 4).
 --
 -- Sessions become first-class lifecycle entities (docs/architecture/cctv-phase-4.md):
---   - mediaPath        — MediaMTX path the session's playback token is scoped to
+--   - mediaPath        - MediaMTX path the session's playback token is scoped to
 --                        (the media-plane contract; the token carries it and the
 --                        external auth hook validates it against this row).
---   - tokenHash        — SHA-256 of the playback token. The plaintext token is
+--   - tokenHash        - SHA-256 of the playback token. The plaintext token is
 --                        NEVER persisted; the hash identifies the session to the
 --                        auth hook without storing bearer material.
---   - lastHeartbeatAt  — refreshed by POST /streams/:id/heartbeat.
---   - expiresAt        — token expiry; the sweeper never ends a session before it.
---   - endedBy          — 'viewer' | 'sweeper' | 'admin' (who drove the end).
---   - endReason        — 'viewer_stop' | 'token_expired' | 'heartbeat_timeout' |
+--   - lastHeartbeatAt  - refreshed by POST /streams/:id/heartbeat.
+--   - expiresAt        - token expiry; the sweeper never ends a session before it.
+--   - endedBy          - 'viewer' | 'sweeper' | 'admin' (who drove the end).
+--   - endReason        - 'viewer_stop' | 'token_expired' | 'heartbeat_timeout' |
 --                        'admin_revoke' (Phase 4 vocabulary).
 -- No column is written during the normal start path's hot window beyond what
 -- the gateway already returns, so Phase 3 clients keep working (tokenHash and

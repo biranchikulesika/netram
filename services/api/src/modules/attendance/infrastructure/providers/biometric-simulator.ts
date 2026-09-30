@@ -114,7 +114,7 @@ export class BiometricSimulatorProvider implements AttendanceProviderPort {
     return { status: "ONLINE", lastEventAt: device.lastEventAt ? new Date(device.lastEventAt) : null };
   }
 
-  /** Deterministic event generation per scenario — used directly by tests too. */
+  /** Deterministic event generation per scenario - used directly by tests too. */
   generate(device: AttendanceDevice, opts: SimulatorSyncOptions): ProviderDeviceEvent[] {
     const scenario = opts.scenario ?? ((this.deviceDeviceConfig(device)?.scenario ?? "normal") as SimulatorScenario);
     const events: ProviderDeviceEvent[] = [];
@@ -124,7 +124,7 @@ export class BiometricSimulatorProvider implements AttendanceProviderPort {
         events.push(...baseEventsFor(device, opts, 160, true));
         break;
       case "discrepancy":
-        // Biometric observes 142 of 180 — the institution reports 168 via the
+        // Biometric observes 142 of 180 - the institution reports 168 via the
         // INSTITUTION_REPORTED observation endpoint, producing a discrepancy.
         events.push(...baseEventsFor(device, opts, 142, true));
         break;
@@ -156,7 +156,7 @@ export class BiometricSimulatorProvider implements AttendanceProviderPort {
       }
       case "unmatched": {
         events.push(...baseEventsFor(device, opts, 150, true));
-        // Two unknown identities — preserved as unmatched, never fabricated.
+        // Two unknown identities - preserved as unmatched, never fabricated.
         const dayStart = new Date(`${opts.operationalDate}T00:00:00.000Z`);
         events.push({
           deviceEventId: `${device.deviceExternalId}-unmatched-1`,

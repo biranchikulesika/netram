@@ -233,14 +233,14 @@ describe("ProviderRegistry Composite Adapter", () => {
     expect(registry.name).toBe("registry");
     expect(registry.listProviders()).toHaveLength(3);
 
-    // Aggregates provider-side cameras (simulated has NO catalog by design —
+    // Aggregates provider-side cameras (simulated has NO catalog by design -
     // the DB is the camera source of truth; it only resolves the rig source).
     const cameras = await registry.listCameras();
     expect(cameras.map((c) => c.id)).toContain("cctv:rtsp-library"); // from rtsp
     expect(cameras.map((c) => c.id)).toContain("cctv:onvif-entrance"); // from onvif
 
     // Routes health to the claiming provider; unclaimed cameras use the
-    // configured default (simulated resolver reports "unknown" — real health
+    // configured default (simulated resolver reports "unknown" - real health
     // comes from media state, not provider presence).
     expect(await registry.cameraHealth("cctv:rtsp-library")).toBe("online");
     expect(await registry.cameraHealth("cctv:onvif-entrance")).toBe("online");

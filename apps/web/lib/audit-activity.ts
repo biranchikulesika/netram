@@ -6,7 +6,7 @@
  * Every summary is generated from the actual `action` plus the metadata the
  * backend really writes (verified against the services/api application services
  * and the live `audit_events` table). When domain context is missing the
- * formatter degrades to a plain, honest summary — it never invents names,
+ * formatter degrades to a plain, honest summary - it never invents names,
  * roles or values.
  *
  * Category mapping mirrors the server's own event taxonomy
@@ -18,7 +18,7 @@ import type { AuditEvent } from "@netram/types";
 /**
  * The audit `action` column stores the writer's event vocabulary. Several
  * backend writers (and the seed) use the DomainEventType spelling, which is a
- * superset of `AuditAction` — so the formatter works on the raw string and
+ * superset of `AuditAction` - so the formatter works on the raw string and
  * treats the typed const as advisory, never as the wire truth.
  */
 type AuditActionLike = AuditEvent["action"] | (string & {});
@@ -109,7 +109,7 @@ function roleCodeForUser(userId: string | null | undefined): string | null {
 /**
  * Resolves the actor for an audit event. NETRAM's account model (§19 of the
  * activity spec): institution/project/organisation accounts act as the
- * institution itself — the account is the actor, not a person. A display name
+ * institution itself - the account is the actor, not a person. A display name
  * (which may name the responsible operator) is shown as the account line.
  */
 export function resolveActor(
@@ -259,7 +259,7 @@ function humanizeEnum(value: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Summary generation — one branch per real backend action family      */
+/* Summary generation - one branch per real backend action family      */
 /* ------------------------------------------------------------------ */
 
 function str(v: unknown): string | null {
@@ -270,7 +270,7 @@ function str(v: unknown): string | null {
 function projectSubject(event: AuditEvent): string | null {
   // Project audit events carry the project's own name/code. Never guess a name
   // from the UUID: an unknown subject stays absent rather than becoming fiction.
-  // Bare `name`/`code` are only read on project events — on inspection events
+  // Bare `name`/`code` are only read on project events - on inspection events
   // `code` is the inspection reference (e.g. "INS-1"), not a facility.
   return (
     str(event.metadata?.projectName) ??
@@ -294,7 +294,7 @@ function buildSummary({ event, subject }: SummaryInput): string {
   // Corrective-action events name the finding they address, which is the only
   // thing that makes "overdue" or "escalated" meaningful to a reader.
   const finding = str(event.metadata?.finding);
-  const aboutFinding = finding ? ` — ${finding}` : "";
+  const aboutFinding = finding ? ` - ${finding}` : "";
 
   switch (a) {
     /* Security & accounts */
@@ -630,7 +630,7 @@ function buildContext(input: SummaryInput, actor: AuditActor | null): AuditActiv
   if (actor) {
     ctx.push({
       label: actor.isInstitution ? "Account" : "Performed by",
-      value: actor.isInstitution ? actor.account : `${actor.account} — ${actor.role}`,
+      value: actor.isInstitution ? actor.account : `${actor.account} - ${actor.role}`,
     });
   }
 

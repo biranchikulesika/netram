@@ -554,13 +554,13 @@ export function FundsDashboardClient({
     const empty = () => ({ sanctioned: 0, pending: 0, verified: 0, rejected: 0, voided: 0 });
     const byYear = new Map<string, ReturnType<typeof empty>>();
     for (const a of allocations) {
-      const fy = a.fiscalYear || "—";
+      const fy = a.fiscalYear || "-";
       const rec = byYear.get(fy) ?? empty();
       rec.sanctioned += parseFloat(a.allocatedAmount) || 0;
       byYear.set(fy, rec);
     }
     for (const e of expenses) {
-      const fy = fyOf(e.transactionDate) ?? "—";
+      const fy = fyOf(e.transactionDate) ?? "-";
       const rec = byYear.get(fy) ?? empty();
       const amount = parseFloat(e.amount) || 0;
       if (e.status === "verified") rec.verified += amount;
@@ -590,7 +590,7 @@ export function FundsDashboardClient({
     return { sanctioned, pending, verified, rejected, voided };
   }, [statsByYear]);
 
-  // Expenditure grouped by category (pending + verified only — the real spend)
+  // Expenditure grouped by category (pending + verified only - the real spend)
   const statsByCategory = useMemo(() => {
     const byCat = new Map<string, number>();
     for (const e of expenses) {
@@ -1514,7 +1514,7 @@ export function FundsDashboardClient({
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 500 }}>{a.description ?? "—"}</div>
+                        <div style={{ fontWeight: 500 }}>{a.description ?? "-"}</div>
                       </td>
                       <td>
                         <span className="badge" style={{ fontSize: "0.75rem" }}>
@@ -1871,7 +1871,7 @@ export function FundsDashboardClient({
                     {projects.length === 0 && <option value="">No establishments available</option>}
                     {projects.map((project) => (
                       <option key={project.id} value={project.id}>
-                        {project.code} — {project.name}
+                        {project.code} - {project.name}
                       </option>
                     ))}
                   </select>
@@ -2639,7 +2639,7 @@ export function FundsDashboardClient({
               <strong style={{ textAlign: "right" }}>{expenseForm.amount}</strong>
               <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Establishment</span>
               <span style={{ textAlign: "right" }}>
-                {selectedExpenseEstablishment?.name ?? "—"}
+                {selectedExpenseEstablishment?.name ?? "-"}
               </span>
             </div>
 

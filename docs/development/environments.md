@@ -7,7 +7,7 @@ Day-to-day setup: [`setup.md`](setup.md).
 This document defines the configuration, network topology, persistence rules,
 and security isolation across all Netram deployment targets. The `dev` and
 `ci` columns are **implemented**; `demo` and `prod` rows describe required
-properties of future environments (**Planned** — nothing is deployed there
+properties of future environments (**Planned** - nothing is deployed there
 yet).
 
 ---
@@ -66,6 +66,6 @@ yet).
 ## 4. Verification Workflow
 
 To verify environment consistency:
-1. `pnpm check:architecture` — Validates file boundaries and .gitignore rules.
-2. `pnpm check:security` — Scans for leaked keys, tokens, or credential strings.
-3. `pnpm verify:runtime:*` — Executes runtime verification against active local/demo services.
+1. `pnpm check:architecture` - Validates file boundaries and .gitignore rules.
+2. `pnpm check:security` - Scans for leaked keys, tokens, or credential strings.
+3. `pnpm verify:runtime:*` - Executes runtime verification against active local/demo services.

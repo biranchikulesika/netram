@@ -58,7 +58,7 @@ interface AlertsScreenProps {
 /**
  * Unified alert list: AI anomaly alerts (ranked by severity, newest first) and
  * camera offline alerts (longest outage first). Each row opens a basic detail
- * popup modal — the anomaly review modal for AI alerts, a simple info modal
+ * popup modal - the anomaly review modal for AI alerts, a simple info modal
  * for camera outages.
  */
 export function AlertsScreen({
@@ -414,7 +414,7 @@ export function AlertsScreen({
                   Status
                 </span>
                 {offlineCamera.status === "maintenance"
-                  ? "Under maintenance — feed temporarily unavailable."
+                  ? "Under maintenance - feed temporarily unavailable."
                   : "The camera is offline and its feed is unavailable."}
               </div>
               <div>

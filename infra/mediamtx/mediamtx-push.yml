@@ -1,4 +1,4 @@
-# MediaMTX configuration — PUSH mode variant (development rig).
+# MediaMTX configuration - PUSH mode variant (development rig).
 #
 # Used only for the alternative dev demo where the facility FFmpeg camera
 # PUSHES its RTSP stream across the network boundary into MediaMTX

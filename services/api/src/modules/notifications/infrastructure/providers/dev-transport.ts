@@ -9,7 +9,7 @@ import type {
  * Development transport for channels without a configured production vendor
  * (push/SMS today, and email when `NETRAM_SMTP_URL` is absent). Logging the
  * structured outbound notification IS the dev delivery (mirrors the
- * dev-auth-provider pattern — never enabled in production).
+ * dev-auth-provider pattern - never enabled in production).
  */
 export class DevLogNotificationProvider implements NotificationProviderPort {
   constructor(

@@ -113,7 +113,7 @@ export default async function DashboardPage() {
   /**
    * Audit events only ever carry a project code. Resolve it to a facility name
    * for the activity line, and drop the subject entirely when the facility is
-   * outside what this user may see — a raw reference is not worth showing.
+   * outside what this user may see - a raw reference is not worth showing.
    */
   const facilityNames = new Map(data.projects.map((p) => [p.code, p.name]));
 

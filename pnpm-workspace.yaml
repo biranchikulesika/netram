@@ -28,7 +28,7 @@ overrides:
   postcss: ^8.5.28
   # GHSA-5p2g-fcmc-qvqq + ICNS advisory: JXL/HEIF/ICNS parser DoS.
   # The only consumer is metro@0.81's Assets.js, which calls the module
-  # directly — that incompatibility with image-size 2.x is fixed by the
+  # directly - that incompatibility with image-size 2.x is fixed by the
   # metro patch in patchedDependencies below.
   "image-size": ">=2.0.3"
   # GHSA-67mh-4wv8-2f99: dev-server request forgery (fixed in 0.25.0).
