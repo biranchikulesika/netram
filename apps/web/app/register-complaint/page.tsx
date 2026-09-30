@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import type { Complaint } from "@netram/types";
+import { Masthead } from "../components/masthead";
 import styles from "./complaint.module.css";
 
 interface FacilityRef {
@@ -163,40 +163,7 @@ function RegisterComplaintContent() {
 
   return (
     <>
-      <div className={styles.masthead}>
-        <a
-          href="https://socialjustice.gov.in"
-          target="_blank"
-          rel="noreferrer noopener"
-          className={styles.mastheadLink}
-        >
-          <Image
-            src="/National-Emblem-1.svg"
-            alt="Department of Social Justice & Empowerment logo"
-            width={72}
-            height={72}
-            className={styles.emblem}
-          />
-          <div className={styles.mastheadName}>
-            <strong>Department of Social Justice and Empowerment</strong>
-            <span>Government of India</span>
-          </div>
-        </a>
-        <a
-          href="https://sih.gov.in"
-          target="_blank"
-          rel="noreferrer noopener"
-          className={styles.mastheadEnd}
-        >
-          <Image
-            src="/sih-logo.png"
-            alt="Smart India Hackathon"
-            width={208}
-            height={96}
-            className={styles.sihLogo}
-          />
-        </a>
-      </div>
+      <Masthead />
 
       <div className={styles.wrapper}>
         <div className={styles.heading}>

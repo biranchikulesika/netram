@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { loadClientEnv } from "@netram/config";
-import { getSessionUser } from "../../lib/api";
+import { getSessionState } from "../../lib/api";
+import { Masthead } from "../components/masthead";
 import { Branding } from "./branding";
 import { LoginForm } from "./login-form";
 import styles from "./login.module.css";
 
+// Title only. The description is inherited from the root layout so the site has
+// a single, honest statement of what Netram is — see app/layout.tsx. Netram is
+// a Smart India Hackathon 2026 project, not an official DoSJE or Government of
+// India portal.
 export const metadata: Metadata = {
-  title: "Sign In — Netram Monitoring Platform",
-  description:
-    "Official access portal for the Department of Social Justice & Empowerment (DoSJE) monitoring system.",
+  title: "Sign In",
 };
 
 export default async function LoginPage() {
-  const session = await getSessionUser();
-  if (session) redirect("/dashboard");
+  const { status } = await getSessionState();
+  if (status === "authenticated") redirect("/dashboard");
 
   const env = loadClientEnv();
   // Demo deployment: the platform intentionally runs the dev auth provider so
@@ -26,46 +28,13 @@ export default async function LoginPage() {
   return (
     <div className={styles.pageWrapper}>
       {/* Masthead */}
-      <div className={styles.masthead}>
-        <a
-          href="https://socialjustice.gov.in"
-          target="_blank"
-          rel="noreferrer noopener"
-          className={styles.mastheadLink}
-        >
-          <Image
-            src="/National-Emblem-1.svg"
-            alt="Department of Social Justice & Empowerment logo"
-            width={72}
-            height={72}
-            className={styles.emblem}
-          />
-          <div className={styles.mastheadName}>
-            <strong>Department of Social Justice and Empowerment</strong>
-            <span>Government of India</span>
-          </div>
-        </a>
-        <a
-          href="https://sih.gov.in"
-          target="_blank"
-          rel="noreferrer noopener"
-          className={styles.mastheadEnd}
-        >
-          <Image
-            src="/sih-logo.png"
-            alt="Smart India Hackathon"
-            width={208}
-            height={96}
-            className={styles.sihLogo}
-          />
-        </a>
-      </div>
+      <Masthead />
 
       {/* Main Login Card */}
       <main className={styles.mainContainer}>
         <div className={styles.loginCard}>
           <Branding />
-          <LoginForm isDev={isDev} />
+          <LoginForm isDev={isDev} sessionCheckFailed={status === "unverified"} />
         </div>
       </main>
     </div>

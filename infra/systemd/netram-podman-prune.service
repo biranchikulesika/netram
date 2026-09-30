@@ -1,0 +1,15 @@
+[Unit]
+Description=Prune dangling Podman images from the Netram rootless store
+Documentation=man:podman-image-prune(1)
+
+[Service]
+Type=oneshot
+# Dangling (untagged) images only. Every deploy retags localhost/netram_*:latest
+# onto a new image, orphaning the previous one, so these accumulate quickly --
+# the store reached 507 images / 66GB and filled the filesystem, which made the
+# next build fail with "no space left on device".
+#
+# `image prune` without --all never touches an image a container references, so
+# running containers and the pracg tenant (separate root store) are safe.
+# until=24h keeps an image that is mid-build in the hour it was created.
+ExecStart=/usr/bin/podman image prune --force --filter until=24h

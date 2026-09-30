@@ -2,7 +2,7 @@
 
 This document defines the authoritative visual language, colour palette, typography, and styling rules for the Netram platform across **all web applications (`apps/web`) and mobile applications (`apps/inspector-mobile`)**.
 
-Netram is a **mission-critical public-sector product** built for the Department of Social Justice & Empowerment (DoSJE), Government of India. 
+Netram is a **mission-critical public-sector product** addressing a problem statement from the Department of Social Justice & Empowerment (DoSJE). It is a **Smart India Hackathon 2026 project, not an official Government of India or DoSJE platform**, and no screen, document or metadata may present it as one.
 
 > ### 🏛️ Core Principle: Government Product Standards
 > * **Zero decorative animation**: Strictly no bouncy animations, floating elements, spinning loops, or distracting micro-animations.

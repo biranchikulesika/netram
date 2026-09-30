@@ -135,6 +135,60 @@ podman-compose -f docker-compose.yml --env-file .env.vps down
 two pure-Python dependencies (`PyYAML`, `python-dotenv`) in the user
 site-packages. The box has no `pip`, so they are vendored by extraction.
 
+### Redeploying one service
+
+`up -d --build` does not recreate containers whose image was unchanged by the
+last build, and `podman-compose` does not check the exit code of the `db-setup`
+one-shot, so a partial redeploy can silently leave the old image running. After
+any build, **wait for it to finish completely**, then recreate explicitly:
+
+```bash
+podman-compose -f docker-compose.yml --env-file .env.vps build web   # or: api
+podman-compose -f docker-compose.yml --env-file .env.vps \
+  up -d --no-build --no-deps --force-recreate web
+
+# confirm the running container really is the image you just built
+podman inspect netram-web --format '{{.Image}}'
+podman images localhost/netram_web --format '{{.Id}}'
+```
+
+The two IDs must match. Recreating mid-build deploys the *previous* image.
+
+### Disk: the rootless image store is not self-cleaning
+
+Each deploy retags `localhost/netram_*:latest` onto a newly built image, which
+orphans the old one. Nothing garbage-collects it, so the store grew to 507
+images / 66GB and a build died with `no space left on device` while
+`/dev/sda1` was 90% full.
+
+A daily prune of *dangling* images is installed as a user timer:
+
+```bash
+./scripts/install-prune-timer.sh        # idempotent
+systemctl --user start netram-podman-prune.service   # run once now
+journalctl --user -u netram-podman-prune.service -n 20 --no-pager
+```
+
+It is deliberately conservative:
+
+- runs as the deploying user, so it can only touch the **rootless** store; the
+  `pracg` tenant runs root Podman with entirely separate storage;
+- `podman image prune` **without** `--all`, so it never removes an image a
+  running container references;
+- `--filter until=24h`, so an in-flight build cannot lose its layers.
+
+It needs lingering, or it stops when the user logs out:
+
+```bash
+sudo loginctl enable-linger "$(id -un)"
+```
+
+Manual equivalent, if the timer is not installed:
+
+```bash
+podman image prune -f --filter until=24h
+```
+
 ## 7. Repository changes made for this deployment
 
 | Change | Reason |
@@ -145,6 +199,7 @@ site-packages. The box has no `pip`, so they are vendored by extraction.
 | `db-setup` one-shot service added; api/workers/realtime wait on it | a fresh volume otherwise has no schema until the first 30-min reset tick |
 | All four Dockerfiles use explicit COPY destinations | Buildah's `COPY dir ./` flattens the directory and breaks the pnpm workspace layout |
 | `infra/nginx/` + `scripts/deploy-nginx.sh` | edge configuration and its idempotent installer |
+| `infra/systemd/` + `scripts/install-prune-timer.sh` | daily dangling-image prune; the rootless image store otherwise fills the disk |
 
 ## 8. Troubleshooting
 
@@ -162,3 +217,8 @@ enabled, must allow `:80`, `:443` and `:8189` (udp and tcp).
 
 **CCTV video will not play** — check `:8189/udp` is open in the edge firewall
 and that DNS is DNS-only. A proxied DNS record silently breaks WebRTC.
+
+**Build fails with `no space left on device`** — the rootless image store. Check
+`podman system df`. The daily prune timer should prevent this; if it has not run
+(or is not installed), `podman image prune -f --filter until=24h` frees tens of
+GB immediately.

@@ -8,6 +8,13 @@ import styles from "./login.module.css";
 
 export interface LoginFormProps {
   isDev?: boolean;
+  /**
+   * The server holds a session cookie but could not verify it, because the API
+   * could not be asked (restarting, database rebuilding). Showing the sign-in
+   * form here would tell an already-authenticated visitor that they are signed
+   * out, so the page holds a reconnecting state instead.
+   */
+  sessionCheckFailed?: boolean;
 }
 
 const SEED_ACCOUNTS = [
@@ -43,7 +50,7 @@ const SEED_ACCOUNTS = [
   },
 ];
 
-export function LoginForm({ isDev = true }: LoginFormProps) {
+export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFormProps) {
   const router = useRouter();
 
   // Form states
@@ -136,6 +143,50 @@ export function LoginForm({ isDev = true }: LoginFormProps) {
     setEmailError(null);
     setPasswordError(null);
     setServerError(null);
+  }
+
+  // A held session that could not be verified is not the same as being signed
+  // out. Rendering the sign-in form would tell an authenticated visitor they
+  // have no session, so hold the page in a reconnecting state that retries the
+  // server render instead.
+  if (sessionCheckFailed) {
+    return (
+      <div className={styles.formContainer}>
+        <div className={styles.alertBanner} role="status">
+          <svg
+            className={styles.alertIcon}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <div className={styles.alertContent}>
+            <div className={styles.alertTitle}>Reconnecting</div>
+            <div>
+              We could not confirm your existing session just now. You are still
+              signed in — retrying will take you straight back to your
+              dashboard.
+            </div>
+            <button
+              type="button"
+              className={styles.crossBtn}
+              style={{ marginTop: "12px" }}
+              onClick={() => router.refresh()}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

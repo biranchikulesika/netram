@@ -1,15 +1,13 @@
 import Link from "next/link";
-import type { Metadata } from "next";
 import { getSessionUser } from "../lib/api";
 import { redirect } from "next/navigation";
 import TypingHeadline from "./TypingHeadline";
-import Image from "next/image";
+import { Masthead } from "./components/masthead";
 
-export const metadata: Metadata = {
-  title: "Netram Monitoring Platform",
-  description:
-    "Official portal of the Department of Social Justice & Empowerment (DoSJE) monitoring system.",
-};
+// Title and description are inherited from the root layout on purpose. This
+// page is what a crawler or link preview sees (unauthenticated, it does not
+// redirect), so its provenance should have exactly one definition to drift
+// from — see app/layout.tsx.
 
 export default async function HomePage() {
   const session = await getSessionUser();
@@ -119,79 +117,11 @@ export default async function HomePage() {
         @media (max-width: 720px) {
           .hero-heading { font-size: 3rem; }
           .hero-tagline { font-size: 1.25rem; word-spacing: 0.2em; }
-          .masthead-sih { width: 120px; height: auto; }
         }
       `}</style>
 
-      {/* Masthead, top-left */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          padding: "1.5rem 2rem 0",
-        }}
-      >
-        <a
-          href="https://socialjustice.gov.in"
-          target="_blank"
-          rel="noreferrer noopener"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            minWidth: 0,
-            textDecoration: "none",
-          }}
-        >
-          <Image
-            src="/National-Emblem-1.svg"
-            alt="Department of Social Justice & Empowerment logo"
-            width={72}
-            height={72}
-            style={{ borderRadius: "8px", flexShrink: 0, objectFit: "contain" }}
-          />
-          <div style={{ maxWidth: "17rem", minWidth: 0 }}>
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: "1.0625rem",
-                color: "var(--navy)",
-                lineHeight: 1.3,
-                textWrap: "balance",
-              }}
-            >
-              Department of Social Justice and Empowerment
-            </div>
-            <div
-              style={{
-                fontSize: "0.8125rem",
-                color: "var(--muted)",
-                lineHeight: 1.3,
-                marginTop: "0.2rem",
-              }}
-            >
-              Government of India
-            </div>
-          </div>
-        </a>
-
-        <a
-          href="https://sih.gov.in"
-          target="_blank"
-          rel="noreferrer noopener"
-          style={{ marginLeft: "auto", flexShrink: 0, lineHeight: 0 }}
-        >
-          <Image
-            className="masthead-sih"
-            src="/sih-logo.png"
-            alt="Smart India Hackathon"
-            width={208}
-            height={96}
-            style={{ objectFit: "contain" }}
-          />
-        </a>
-      </div>
+      {/* Masthead */}
+      <Masthead />
 
       {/* Hero */}
       <section

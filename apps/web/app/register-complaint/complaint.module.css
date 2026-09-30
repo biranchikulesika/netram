@@ -7,76 +7,9 @@
   padding: 0 1.25rem 3rem;
 }
 
-/* Masthead — full-bleed, identical geometry to the landing page */
-.masthead {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 1.5rem 2rem 0;
-  margin-bottom: 1.5rem;
-}
-
-.mastheadLink {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-  text-decoration: none;
-}
-
-.emblem {
-  border-radius: 8px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.mastheadName {
-  max-width: 17rem;
-  min-width: 0;
-}
-
-.mastheadName strong {
-  display: block;
-  font-weight: 700;
-  font-size: 1.0625rem;
-  line-height: 1.3;
-  text-wrap: balance;
-  color: var(--navy, #0c2a52);
-}
-.mastheadName span {
-  display: block;
-  font-size: 0.8125rem;
-  line-height: 1.3;
-  margin-top: 0.2rem;
-  color: var(--muted, var(--text-subtle));
-}
-
-.mastheadEnd {
-  margin-left: auto;
-  flex-shrink: 0;
-  line-height: 0;
-  text-decoration: none;
-}
-
-.mastheadLink:hover,
-.mastheadLink:focus-visible,
-.mastheadEnd:hover,
-.mastheadEnd:focus-visible {
-  text-decoration: none;
-}
-
-.sihLogo {
-  object-fit: contain;
-}
-
-@media (max-width: 720px) {
-  .sihLogo {
-    width: 120px;
-    height: auto;
-  }
-}
+/* Masthead lives in ../components/masthead.module.css — it is shared by every
+   public page. Do not re-add it here; a private copy is how the old, false
+   "Government of India" identity survived across three pages at once. */
 
 /* Heading */
 .heading {
