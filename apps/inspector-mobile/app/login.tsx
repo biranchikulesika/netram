@@ -150,7 +150,7 @@ export default function LoginScreen() {
             <View style={styles.branding}>
               <Text style={styles.brandTitle}>Netram</Text>
               <Text style={styles.brandSubtitle}>
-                {"Smart real-time monitoring\nand inspection platform"}
+                {"Smart real-time monitoring and inspection platform"}
               </Text>
             </View>
 
