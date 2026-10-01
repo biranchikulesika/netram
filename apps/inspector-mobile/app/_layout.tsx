@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { Tabs } from "expo-router";
 import { Platform } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { Icon } from "../src/components/ui/Icon";
 import { colors } from "../src/theme/colors";
 
@@ -38,7 +39,7 @@ function SyncStatusWrapper({ children }: { children: ReactNode }) {
 
 const RootContent = () => {
   const { token } = useAuth();
-  const { isPureDark } = useSettings();
+  const { isPureDark, theme } = useSettings();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -49,56 +50,78 @@ const RootContent = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const statusBar = (
+    <StatusBar
+      style={isPureDark ? "light" : "dark"}
+      backgroundColor={theme.bgCanvas}
+    />
+  );
+
   // -------------------------
   // SPLASH
   // -------------------------
   if (showSplash) {
-    return <SplashScreen />;
+    return (
+      <>
+        {statusBar}
+        <SplashScreen />
+      </>
+    );
   }
 
   // -------------------------
   // LOGIN
   // -------------------------
   if (!token) {
-    return <LoginScreen />;
+    return (
+      <>
+        {statusBar}
+        <LoginScreen />
+      </>
+    );
   }
 
   // -------------------------
   // MAIN APP
   // -------------------------
   return (
-    <Tabs
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: isPureDark ? "#0A0A0A" : (colors?.bgSurface ?? "#ffffff"),
-          borderBottomColor: isPureDark ? "#27272A" : (colors?.borderSubtle ?? "#e2e8f0"),
-          borderBottomWidth: 1,
-        },
-        headerTintColor: isPureDark ? "#FFFFFF" : (colors?.navyDark ?? "#002449"),
-        headerTitleStyle: {
-          fontWeight: "700",
-          fontSize: 17,
-        },
-        tabBarStyle: {
-          backgroundColor: isPureDark ? "#0A0A0A" : (colors?.bgSurface ?? "#ffffff"),
-          borderTopColor: isPureDark ? "#27272A" : (colors?.borderSubtle ?? "#e2e8f0"),
-          borderTopWidth: 1,
-          height: Platform.OS === "web" ? 56 : 64,
-          paddingTop: 4,
-          paddingBottom: Platform.OS === "web" ? 4 : 8,
-          elevation: 0,
-        },
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: isPureDark ? "#3B82F6" : (colors?.navyDark ?? "#002449"),
-        tabBarInactiveTintColor: isPureDark ? "#71717A" : (colors?.textSubtle ?? "#64748b"),
-        tabBarItemStyle: {
-          justifyContent: "center",
-          alignItems: "center",
-          paddingVertical: 2,
-        },
-        tabBarHideOnKeyboard: true,
-      }}
-    >
+    <>
+      {statusBar}
+      <Tabs
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: theme.bgSurface,
+            borderBottomColor: theme.borderSubtle,
+            borderBottomWidth: 1,
+          },
+          headerTintColor: theme.navyDark,
+          headerTitleStyle: {
+            fontWeight: "700",
+            fontSize: 17,
+          },
+          tabBarStyle: {
+            backgroundColor: theme.bgSurface,
+            borderTopColor: "transparent",
+            borderTopWidth: 0,
+            height: Platform.OS === "web" ? 56 : 64,
+            paddingTop: 4,
+            paddingBottom: Platform.OS === "web" ? 4 : 8,
+            elevation: 0,
+            shadowOpacity: 0,
+            shadowOffset: { width: 0, height: 0 },
+            shadowRadius: 0,
+          },
+          tabBarShowLabel: false,
+          tabBarActiveTintColor: isPureDark ? "#3B82F6" : theme.navyDark,
+          tabBarInactiveTintColor: isPureDark ? "#71717A" : theme.textSubtle,
+          tabBarItemStyle: {
+            justifyContent: "center",
+            alignItems: "center",
+            paddingVertical: 2,
+          },
+          tabBarHideOnKeyboard: true,
+        }}
+      >
       {/* 1: DASHBOARD */}
       <Tabs.Screen
         name="index"
@@ -205,5 +228,6 @@ const RootContent = () => {
         }}
       />
     </Tabs>
+    </>
   );
 };
