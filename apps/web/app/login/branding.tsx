@@ -4,8 +4,8 @@ import styles from "./login.module.css";
 export function Branding() {
   return (
     <div className={styles.branding}>
-      <h1 className={styles.brandTitle}>NETRAM</h1>
-      <p className={styles.brandSubtitle}>Smart Real-Time Monitoring &amp; Inspection Platform</p>
+      <h1 className={styles.brandTitle}>Netram</h1>
+      <p className={styles.brandSubtitle}>Smart real-time monitoring &amp; inspection platform</p>
     </div>
   );
 }

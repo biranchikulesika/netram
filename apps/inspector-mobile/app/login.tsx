@@ -148,9 +148,9 @@ export default function LoginScreen() {
           <View style={styles.formContainer}>
             {/* ── Branding ── */}
             <View style={styles.branding}>
-              <Text style={styles.brandTitle}>NETRAM</Text>
+              <Text style={styles.brandTitle}>Netram</Text>
               <Text style={styles.brandSubtitle}>
-                Smart Real-Time Monitoring &amp; Inspection Platform
+                Smart real-time monitoring &amp; inspection platform
               </Text>
             </View>
 

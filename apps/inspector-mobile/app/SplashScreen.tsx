@@ -17,12 +17,9 @@ export default function SplashScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.bgCanvas }]}>
       <Animated.View style={[styles.content, { opacity }]}>
-        <Text style={[styles.brand, { color: theme.navyDark }]}>NETRAM</Text>
+        <Text style={[styles.brand, { color: theme.navyDark }]}>Netram</Text>
         <Text style={[styles.tagline, { color: theme.textMuted }]}>
-          SMART REAL-TIME MONITORING &amp; INSPECTION
-        </Text>
-        <Text style={[styles.motto, { color: theme.tagRust }]}>
-          सत्य · दृष्टि · दायित्व
+          Smart real-time monitoring &amp; inspection platform
         </Text>
       </Animated.View>
     </View>
@@ -45,23 +42,15 @@ const styles = StyleSheet.create({
   brand: {
     color: "#002449",
     fontSize: 32,
-    fontWeight: "900",
-    letterSpacing: 3,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 
   tagline: {
-    color: "#475569",
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 1.2,
-    marginTop: 10,
-    textAlign: "center",
-  },
-  motto: {
-    color: "#dd501e",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.8,
+    color: "#45556c",
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.2,
     marginTop: 8,
     textAlign: "center",
   },
