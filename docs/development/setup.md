@@ -1,10 +1,9 @@
 # Development
 
 Setup, database lifecycle, service startup, and verification. For team
-ownership and parallel-work rules see [`../OWNERSHIP.md`](../OWNERSHIP.md) and
-AGENTS.md (§68 branching, §61–62 ownership). Environment matrix and isolation
-rules: [`environments.md`](environments.md). Deployment status:
-[`../deployment.md`](../deployment.md).
+ownership and parallel-work rules see [`../OWNERSHIP.md`](../OWNERSHIP.md).
+Environment matrix and isolation rules: [`environments.md`](environments.md).
+Deployment status: [`../deployment.md`](../deployment.md).
 
 ## Requirements
 
@@ -21,8 +20,8 @@ pnpm db:setup            # migrate from zero + deterministic seed
 ```
 
 `pnpm db:setup` = `db:reset` (drop + migrate from zero) + `db:seed`
-(deterministic synthetic seed, idempotent). Migrations + seed are the source
-of truth - never hand-edit the local DB and call it done (AGENTS.md §11–13).
+(deterministic synthetic seed, idempotent). Migrations and seeds are the authoritative source
+of truth - never hand-edit the local DB directly.
 
 ## Running services
 
@@ -125,8 +124,7 @@ pnpm measure:cctv-latency          # receiver-side latency decomposition
 
 Ownership per area: [`../OWNERSHIP.md`](../OWNERSHIP.md) (enforced by
 `.github/CODEOWNERS`). Branching is strictly
-`feature/* → develop → preview → production` via PR + squash
-(AGENTS.md §68) - never commit directly to integration branches. Shared
+`feature/* → develop → preview → production` via PR + squash;
+never commit directly to integration branches. Shared
 contract changes (`packages/types`, `packages/validation`, `packages/api-client`,
-`packages/config`) need owner review and consumer updates in the same change
-(AGENTS.md §19).
+`packages/config`) need owner review and consumer updates in the same change.

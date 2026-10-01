@@ -99,6 +99,7 @@ coverage/
 !README.md
 !AGENTS.md
 !DESIGN.md
+!SECURITY.md
 
 # Canonical documentation suite
 !docs/*.md

@@ -1,8 +1,6 @@
 # Netram Domain Model
 
-**Authority:** AGENTS.md §14–17, §30–36.
-
-Netram strictly enforces domain concept separation. Entities must never be collapsed or overloaded merely because they happen to share similar database fields (AGENTS.md §14).
+Netram strictly enforces domain concept separation. Entities are never collapsed or overloaded merely because they happen to share similar database fields. Every operational concept maintains an explicit boundary and lifecycle.
 
 > [!TIP]
 > For the comprehensive real-world operational guidelines of the Department of Social Justice & Empowerment (DoSJE), welfare scheme breakdowns (AVYAY, NAPDDR, PM-AJAY, SHRESHTA), and social audit protocols, see [`docs/DoSJE.md`](../DoSJE.md).
@@ -31,7 +29,7 @@ Access control in Netram is a multi-dimensional, server-evaluated policy:
 - **`RoleAssignment`**: The binding of a User to a Role, bounded by an Authority, a Jurisdiction, and an explicit Scope (`national` vs `jurisdiction`).
 - **`Policy`**: Server-side evaluators (`AuthorizationService`) that decide access based on identity, active role assignments, resource jurisdiction, and operational context.
 
-_Rule:_ Client-side UI visibility toggles are cosmetic. The server re-evaluates complete authorization and jurisdiction on every single API request (AGENTS.md §16–17).
+_Rule:_ Client-side UI visibility toggles are cosmetic. The server independently re-evaluates complete authorization, role assignments, and jurisdiction on every single API request.
 
 ---
 
@@ -52,8 +50,8 @@ stateDiagram-v2
     Closed --> Archived: Record Retention
 ```
 
-- **Geofence Enforcement:** Projects are bounded by coordinates and radius. Geofences are verified against field evidence capture metadata (AGENTS.md §40).
-- **Audit Immutability:** Every state transition is recorded transactionally in `audit_events` with the actor's identity, timestamp, and justification (AGENTS.md §33).
+- **Geofence Enforcement:** Projects are bounded by coordinates and radius. Geofences are verified against field evidence capture metadata and capture-time coordinates.
+- **Audit Immutability:** Every state transition is recorded transactionally in `audit_events` with the actor's identity, timestamp, and justification. Historical records are immutable.
 
 ---
 
@@ -86,7 +84,7 @@ The inspection lifecycle enforces strict separation between observation, evaluat
 
 ## 5. Citizen Grievances & Complaint Escalation
 
-- **Complaints ≠ Confirmed Fraud:** A complaint is an input for inquiry, not a judicial conviction (AGENTS.md §35).
+- **Complaints ≠ Confirmed Fraud:** A complaint is an input for inquiry, not a judicial conviction. Complaints undergo preliminary assessment before triggering formal proceedings.
 - **Escalation Pathway ([`ADR-003`](../decisions/ADR-003-complaint-escalation-corrective-action.md)):** When an escalated complaint provides unequivocal documented evidence, authorities may issue a direct corrective action order with a recorded "Reviewer's Determination" without fabricating artificial inspection findings.
 
 ---
@@ -98,12 +96,12 @@ Raw Media / Attendance Logs ──▶ Advisory AI Engine (FastAPI) ──▶ Pyd
 ```
 
 - **Advisory Role:** AI models detect potential attendance anomalies, occupancy divergence, and suspicious activity.
-- **Non-Authoritative:** Model outputs represent probabilities and confidence intervals. AI is strictly prohibited from modifying official records, suspending projects, or issuing violation notices (AGENTS.md §36).
+- **Non-Authoritative:** Model outputs represent probabilities and confidence intervals. AI is strictly prohibited from modifying official records, suspending projects, or issuing violation notices.
 - **Review Lifecycle:** Anomalies enter states: `New → Reviewed → Dismissed | Investigated | Acted Upon`.
 
 ---
 
 ## 7. Tamper-Evident Evidence & Transactional Outbox
 
-- **Evidence Integrity:** Evidence media is hashed client-side at capture time. Backend upload verification confirms byte-equality before marking evidence `verified` (AGENTS.md §30).
-- **Durable Events (Transactional Outbox):** State mutations, audit records, and domain events are persisted in a single ACID transaction. The `outbox-dispatcher` worker guarantees durable delivery to subscribers without dual-write inconsistencies (AGENTS.md §26–27).
+- **Evidence Integrity:** Evidence media is hashed client-side at capture time. Backend upload verification confirms byte-equality before marking evidence `verified`.
+- **Durable Events (Transactional Outbox):** State mutations, audit records, and domain events are persisted in a single ACID transaction. The `outbox-dispatcher` worker guarantees durable delivery to subscribers without dual-write inconsistencies.

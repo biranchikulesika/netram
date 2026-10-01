@@ -2,7 +2,7 @@
 
 This directory records all significant, irreversible, or cross-cutting architectural decisions made in the Netram codebase.
 
-Decisions are documented according to **AGENTS.md §1 & §2** to ensure historical context, options considered, and structural rationale are preserved transparently.
+Decisions are formally documented to ensure historical context, options considered, and structural rationale are preserved transparently.
 
 ---
 
@@ -27,4 +27,4 @@ When proposing an architectural boundary change, persistence model shift, or new
    - **Decision:** The chosen design, changes made, and boundaries established.
    - **Alternatives Considered:** What other designs were evaluated and why they were rejected.
    - **Consequences:** Trade-offs, migrations, and structural outcomes.
-3. **Review:** Cross-boundary ADRs require review by the relevant area owners listed in [`docs/OWNERSHIP.md`](../OWNERSHIP.md) and final authorization per AGENTS.md §1.
+3. **Review:** Cross-boundary ADRs require review by the relevant area owners listed in [`docs/OWNERSHIP.md`](../OWNERSHIP.md) and team consensus.

@@ -26,7 +26,7 @@ Justice and Empowerment (DoSJE), Government of India. This file records:
 - the mapping between that reality and NETRAM's data model,
 - every source used, and every place where NETRAM had to make a judgement call.
 
-Update this file whenever a domain decision is made in code (AGENTS.md §60 - document domain decisions when made in code).
+Update this file whenever a domain decision is made in code to ensure domain documentation remains aligned with implementation.
 
 ## 2. NETRAM and DoSJE
 
@@ -510,7 +510,7 @@ Observed institution/unit types in DoSJE audit data (used for seed + UI labels):
 - Garima Greh (SMILE scheme)
 
 **Observed implementation** (MIS labels + scheme documents). Keep as an open
-enum (strings with labels), not a hard-coded closed list, per AGENTS.md §14 (extensible domain concepts).
+enum (strings with labels), not a hard-coded closed list, preserving domain model extensibility.
 
 ## 25. Village-Based Targets
 
@@ -675,8 +675,8 @@ See the table in section 31 for the change list. The pre-change gaps in words:
    organisation pointer, although the public MIS tracks issues by category and
    ATRs issue-wise.
 4. **ATR** - corrective actions tracked status but had no record of what was
-   actually done (`atr_submitted = true` anti-pattern (anti-pattern: deriving status from flags - see AGENTS.md §24 on where business truth lives)
-   about).
+   actually done (avoiding the anti-pattern of deriving business state from loose
+   boolean flags rather than domain transitions).
 5. **Geography** - no sub-district units, so a PM-AJAY village could not be
    addressed beyond its district.
 6. **Seed data** - synthetic schemes/organisations presented without labelling;
@@ -738,7 +738,7 @@ Real records used in the deterministic seed (all public, no fabrication):
    pilot, not history.
 6. **Users, staff, attendance devices, CCTV cameras, AI anomaly rows** -
    remain synthetic demo data, marked as demo in the seed file; emails are
-   `@dev.netram.in`; no real personal data (AGENTS.md §13, §28).
+   `@dev.netram.in`; no real personal data is ever committed.
 
 Where the public record names an organisation but not a specific unit
 (e.g. "Prayas Voluntary Organisation" with a SrCH audit), the seed stores the
@@ -812,7 +812,7 @@ organisation and an institution row named from the record verbatim.
 
 | Assumption                                                                                                                | Confidence | Basis                                                                                                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Project` remains the single monitored-target entity with a widened type enum instead of a new `ImplementationUnit` table | High       | Preserves all existing modules; domain distinction achieved by type + geography + component (AGENTS.md §14 (distinct domain concepts, no overbuilding per §78)) |
+| `Project` remains the single monitored-target entity with a widened type enum instead of a new `ImplementationUnit` table | High       | Preserves all existing modules; domain distinction achieved by type + geography + component while preventing overbuilding |
 | Village targets have `organisationId = NULL` and are located via village geography                                        | High       | Observed "N/A" institute column for village audits                                                                                                              |
 | Scheme components are a real table rather than strings                                                                    | High       | PM-AJAY/AVYAY/SHRESHTA all have official named components with distinct target kinds                                                                            |
 | `social_audit` inspection type distinct from surprise/routine                                                             | High       | Social audit is a legally distinct process with its own actors (SJC) and forums                                                                                 |
@@ -820,4 +820,4 @@ organisation and an institution row named from the record verbatim.
 | Corrective action = ATR equivalent, extended with submission content                                                      | High       | Handbook ATR requirements map 1:1 onto corrective-action lifecycle already present                                                                              |
 | Seeded organisations from the audit calendar are real public records                                                      | High       | Extracted verbatim from the official calendar                                                                                                                   |
 | Seeded Odisha social audit inspections represent a pilot, not existing practice                                           | High       | Annual Report 2025-26 (3.38): Odisha did not conduct DoSJE social audits in FY 2024-25                                                                          |
-| Attendance/CCTV/anomaly demo rows stay synthetic                                                                          | High       | No public source exists; AGENTS.md §13 permits labelled synthetic seed data                                                                                     |
+| Attendance/CCTV/anomaly demo rows stay synthetic                                                                          | High       | No public source exists; development and demo rely on labelled synthetic seed data                                                                             |

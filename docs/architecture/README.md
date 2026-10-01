@@ -182,12 +182,12 @@ sequenceDiagram
 
 ## 5. Mandatory Engineering Boundaries
 
-1. **Persistence Boundary:** Database access lives strictly in `packages/data`. Drizzle ORM, `postgres` drivers, and raw SQL never appear in presentation applications or secondary services (AGENTS.md §8, §9).
-2. **Configuration Boundary:** Environment variables flow exclusively through `packages/config` via typed, validated Zod schemas. No naked `process.env` calls outside configuration definitions (AGENTS.md §21).
-3. **Cross-Service Contracts:** Communication across service boundaries occurs strictly via typed clients, HTTP REST APIs, or outbox events - never direct source-code imports (AGENTS.md §63).
-4. **Server Authority:** The server is the single source of truth for authorization, jurisdiction enforcement, and workflow state. Realtime WebSockets, AI outputs, and client caches are never authoritative (AGENTS.md §16, §28, §36).
-5. **No Vendor Leakage:** Infrastructure tools (PostgreSQL, MinIO, MediaMTX, Redis) sit behind abstract domain adapters (AGENTS.md §64).
-6. **Server-Side Information Disclosure:** Fields a user is not authorized to view are omitted entirely from backend responses, never hidden client-side via UI logic (AGENTS.md §34).
+1. **Persistence Boundary:** Database access lives strictly in `packages/data`. Drizzle ORM, `postgres` drivers, and raw SQL queries never leak into presentation applications or secondary services.
+2. **Configuration Boundary:** Environment variables flow exclusively through `packages/config` via typed, validated Zod schemas. Direct `process.env` calls are strictly forbidden across application layers.
+3. **Cross-Service Contracts:** Communication across service boundaries occurs strictly via typed clients, HTTP REST APIs, or outbox events — never direct source-code coupling.
+4. **Server Authority:** The server is the single source of truth for authorization, jurisdiction enforcement, and workflow state. Realtime WebSockets, AI outputs, and client caches are never authoritative.
+5. **No Vendor Leakage:** Infrastructure tools (PostgreSQL, MinIO, MediaMTX, Redis) sit behind abstract domain repository interfaces.
+6. **Server-Side Information Disclosure:** Fields a user is not authorized to view within their assigned jurisdiction are omitted entirely from backend responses, never merely hidden client-side via UI logic.
 
 ---
 

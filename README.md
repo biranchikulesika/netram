@@ -1,103 +1,110 @@
 # Netram
 
-Smart real-time monitoring & inspection platform for the Department of Social
-Justice & Empowerment (DoSJE), Government of India (Smart India Hackathon
-problem statement SIH26095). Netram gives authorities a single, accountable
-window into government-funded institutions: live project monitoring,
-structured inspections, complaint oversight, CCTV integration and AI-assisted
-anomaly review.
+Smart real-time monitoring and inspection platform for the Department of Social Justice & Empowerment (DoSJE), Government of India (Smart India Hackathon problem statement **SIH26095**). Netram provides public authorities with an accountable, centralized window into government-funded institutions: live project monitoring, structured mobile inspections, grievance redressal, CCTV surveillance, and AI-assisted anomaly detection.
 
-> **AI is advice, not authority.** No model output declares fraud or modifies
-> official truth; every signal remains reviewable information routed through
-> the normal human workflow (AGENTS.md §36).
+> **AI is advisory, not authoritative.** Machine learning models detect anomalies and assist decision-makers, but never declare fraud or alter official records autonomously. Every signal remains reviewable information routed through verified administrative workflows.
 
-## What is implemented
+---
 
-- **Core platform** - modular-monolith REST API (`/api/v1`) with
-  server-authoritative authorisation, jurisdiction scoping, project lifecycle,
-  inspections → findings → corrective actions (ATR flow), evidence integrity,
-  complaints, notifications, audit trail, outbox events, background workers.
-- **Web platform** - Next.js app: workspaces, registry, control room, admin.
-- **Inspector mobile app** - Expo/React Native with offline operation queue.
-- **Realtime** - outbox-driven authorised WebSocket delivery (delivery only,
-  never truth).
-- **CCTV live streaming** - Camera → RTSP → MediaMTX → WebRTC/HLS → browser
-  with a control-plane gateway, session lifecycle, tokens, and external auth
-  ([`docs/architecture/cctv.md`](docs/architecture/cctv.md)). Production
-  facility deployment (WireGuard, real cameras, TLS) is **not** implemented
-  yet - see [`docs/deployment.md`](docs/deployment.md).
-- **AI service** - small advisory Python service (anomaly scoring shape);
-  anomaly review lifecycle lives in the API.
+## What is Implemented
 
-## Repository layout
+- **Core Platform** — Modular-monolith REST API (`/api/v1`) with server-authoritative authorization, jurisdiction scoping, project lifecycle, inspections → findings → corrective actions (ATR workflow), tamper-evident evidence capture, complaints, notifications, audit trails, and transactional outbox event delivery.
+- **Web Platform** — Next.js 15 web application with React Server Components: role-based workspaces, project registry, live CCTV control room, administrative review queues, and Action Inbox.
+- **Inspector Mobile App** — Standalone React Native / Expo Android application with offline operation queue, GPS-fenced check-in, and capture-time SHA-256 evidence hashing.
+- **Realtime Hub** — Outbox-driven authorized WebSocket delivery (transient event transport; authoritative state lives in PostgreSQL).
+- **CCTV Live Streaming** — Camera → RTSP → MediaMTX → WebRTC (WHEP) / HLS with control-plane tokenization, session lifecycle management, and protocol abstraction ([`docs/architecture/cctv.md`](docs/architecture/cctv.md)).
+- **Advisory AI Service** — Python / FastAPI service evaluating attendance discrepancy and computer-vision anomaly scores, mapped to human review lifecycles.
+- **Financial & Attendance Reconciliations** — Strict mathematical tracking ensuring $\text{Allocated} \ge \text{Released} \ge \text{Utilised}$ across schemes, and multi-source cross-checking (biometric vs. institution-reported vs. CCTV headcount).
 
-| Path                                                    | Purpose                                              |
-| ------------------------------------------------------- | ---------------------------------------------------- |
-| `apps/web`                                              | Next.js web platform (Server Components default)     |
-| `apps/inspector-mobile`                                 | Expo app, offline-first inspection workflows         |
-| `services/api`                                          | Modular monolith REST API (`/api/v1`)                |
-| `services/realtime`                                     | Authorised event delivery (outbox → WS; never truth) |
-| `services/ai`                                           | Advisory anomaly detection (Python/FastAPI)          |
-| `services/cctv-gateway`                                 | CCTV media control plane (no media bytes)            |
-| `packages/{types,validation,api-client,data,ui,config}` | Shared contracts, persistence, config                |
-| `supabase/`                                             | Migrations + deterministic seed                      |
-| `infra/`                                                | MediaMTX + facility-sim configuration                |
-| `scripts/`                                              | Architecture/security guards + runtime verifiers     |
+---
 
-## Development
+## Repository Layout
 
-Requirements: Node ≥ 22, pnpm 12, Docker.
+| Path | Purpose |
+| :--- | :--- |
+| `apps/web` | Next.js web platform (Server Components by default) |
+| `apps/inspector-mobile` | Standalone Expo / React Native Android inspector application |
+| `services/api` | Core modular monolith REST API (`/api/v1`) |
+| `services/realtime` | Authorized event delivery (outbox → WebSocket) |
+| `services/ai` | Advisory anomaly detection service (Python / FastAPI) |
+| `services/cctv-gateway` | CCTV media control plane and stream abstraction |
+| `packages/{types,validation,api-client,data,ui,config}` | Shared domain contracts, persistence, and typed clients |
+| `db/seed` | Deterministic synthetic development & hackathon demo seed |
+| `infra/` | MediaMTX and camera simulation configurations |
+| `scripts/` | Architecture guards, security checks, and verification scripts |
+
+---
+
+## Development Quickstart
+
+**Requirements:** Node.js ≥ 22, pnpm ≥ 9, Docker / Podman.
 
 ```bash
-cp .env.example .env          # fill DATABASE_URL etc.
+# 1. Install dependencies
 pnpm install
-pnpm infra:up                 # Postgres + Redis + MinIO via Docker
-pnpm db:setup                 # migrate from zero + deterministic seed
-pnpm --filter @netram/api dev # API on :3001
-pnpm --filter @netram/web dev # web on :3000
-pnpm --filter @netram/inspector-mobile start # Expo dev server (a = Android, i = iOS, w = web)
+
+# 2. Configure environment variables
+cp .env.example .env
+
+# 3. Start local backing infrastructure (PostgreSQL, Redis, MinIO)
+pnpm infra:up
+
+# 4. Migrate database from zero and seed deterministic demo dataset
+pnpm db:setup
+
+# 5. Start development servers
+pnpm --filter @netram/api dev               # Core API on :3001
+pnpm --filter @netram/web dev               # Web application on :3000
+pnpm --filter @netram/inspector-mobile start # Mobile dev server
 ```
 
-Full setup, database lifecycle, verification scripts and the CCTV media rig:
-[`docs/development/setup.md`](docs/development/setup.md).
+For full setup instructions, database lifecycle commands, and verification scripts, see [`docs/development/setup.md`](docs/development/setup.md).
 
-| Command                                                 | Purpose                                              |
-| ------------------------------------------------------- | ---------------------------------------------------- |
-| `pnpm db:setup` / `db:reset` / `db:migrate` / `db:seed` | Database lifecycle                                   |
-| `pnpm typecheck` · `lint` · `test` · `build`            | Workspace checks                                     |
-| `pnpm check:architecture` · `check:security`            | Mechanical guards                                    |
-| `pnpm verify:runtime:*`                                 | Full-stack runtime verifiers (need running services) |
-| `pnpm api:export-openapi`                               | Regenerate the OpenAPI contract                      |
-| `pnpm infra:up` / `infra:down`                          | Local infrastructure                                 |
+| Command | Purpose |
+| :--- | :--- |
+| `pnpm db:setup` / `db:reset` / `db:seed` | Reset and apply deterministic seed data from scratch |
+| `pnpm typecheck` · `lint` · `test` · `build` | Workspace validation and unit tests |
+| `pnpm check:architecture` · `check:security` | Mechanical architectural and secret scanning guards |
+| `pnpm api:export-openapi` | Export canonical OpenAPI schema (`openapi.json`) |
+| `pnpm infra:up` / `infra:down` | Manage local Docker support containers |
 
-## Documentation map
+---
 
-| Subject                                            | Authoritative document                                                 |
-| -------------------------------------------------- | ---------------------------------------------------------------------- |
-| **Master documentation index**                     | [`docs/README.md`](docs/README.md)                                     |
-| Engineering rules & boundaries (agents and humans) | [`AGENTS.md`](AGENTS.md)                                               |
-| Current architecture & visual flowcards            | [`docs/architecture/README.md`](docs/architecture/README.md)           |
-| CCTV / live streaming                              | [`docs/architecture/cctv.md`](docs/architecture/cctv.md)               |
-| Domain model                                       | [`docs/domain/README.md`](docs/domain/README.md)                       |
-| DoSJE domain knowledge base                        | [`docs/DoSJE.md`](docs/DoSJE.md)                                       |
-| API & shared package contracts                     | [`docs/contracts/README.md`](docs/contracts/README.md)                 |
-| Development setup                                  | [`docs/development/setup.md`](docs/development/setup.md)               |
-| Environments & isolation                           | [`docs/development/environments.md`](docs/development/environments.md) |
-| Deployment status (single-VPS topology)            | [`docs/deployment.md`](docs/deployment.md)                             |
-| Design system (colours, typography, components)    | [`DESIGN.md`](DESIGN.md)                                               |
-| Ownership & CODEOWNERS                             | [`docs/OWNERSHIP.md`](docs/OWNERSHIP.md)                               |
-| Architecture decisions                             | [`docs/decisions/`](docs/decisions/)                                   |
-| CCTV evolution & historical records                | [`docs/history/`](docs/history/)                                       |
+## Documentation Map
 
-## Security rules you inherit
+| Subject | Authoritative Document |
+| :--- | :--- |
+| **Master Documentation Index** | [`docs/README.md`](docs/README.md) |
+| Engineering Operating Manual & Boundaries | [`AGENTS.md`](AGENTS.md) |
+| System Architecture & Operational Flows | [`docs/architecture/README.md`](docs/architecture/README.md) |
+| CCTV & Live Streaming Infrastructure | [`docs/architecture/cctv.md`](docs/architecture/cctv.md) |
+| Domain Concepts & Lifecycle State Machines | [`docs/domain/README.md`](docs/domain/README.md) |
+| DoSJE Welfare Schemes & Social Audit Standards | [`docs/DoSJE.md`](docs/DoSJE.md) |
+| API Contracts & Shared Packages Catalogue | [`docs/contracts/README.md`](docs/contracts/README.md) |
+| Local Development & Environment Setup | [`docs/development/setup.md`](docs/development/setup.md) |
+| Production Single-VPS Deployment Topology | [`docs/deployment.md`](docs/deployment.md) |
+| UI/UX Design System Specification | [`DESIGN.md`](DESIGN.md) |
+| Team Ownership & Codeowners | [`docs/OWNERSHIP.md`](docs/OWNERSHIP.md) |
+| Architecture Decision Records (ADRs) | [`docs/decisions/`](docs/decisions/) |
+| Security Policy & Vulnerability Disclosure | [`SECURITY.md`](SECURITY.md) |
+| License & Intellectual Property Terms | [`LICENSE`](LICENSE) |
 
-- Server is authoritative for authZ, jurisdiction, workflows, disclosure.
-- Never send what the user may not see (§34). Never leak DB/provider errors
-  (§18).
-- Secrets stay out of the repo (§22); `pnpm check:security` enforces the
-  high-signal cases.
-- Tests must cover failure paths: unauthorised, wrong jurisdiction, invalid
-  transition, duplicate offline op, evidence-integrity failure (§49).
+---
 
-See [`docs/development/setup.md`](docs/development/setup.md) for day-to-day
-workflows and [`AGENTS.md`](AGENTS.md) for the full operating manual.
+## Security & Responsible Disclosure
+
+- **Server Authority:** The server is the authoritative decision-maker for authentication, role-based access control (RBAC), jurisdiction boundaries, and lifecycle mutations.
+- **Server-Side Selective Disclosure:** Unauthorized fields and sensitive records are omitted at the API level rather than hidden in the client interface.
+- **Sanitized Responses:** Stack traces, internal SQL exceptions, and cloud provider details are never leaked in client-facing HTTP payloads.
+- **Zero Committed Secrets:** Credentials, tokens, and private keys remain strictly excluded from repository history, validated via `pnpm check:security`.
+- **Reporting Security Issues:** Please consult [`SECURITY.md`](SECURITY.md) for disclosure guidelines. Security reports must be sent directly to **[netram@kulesika.in](mailto:netram@kulesika.in)**.
+
+---
+
+## License & Intellectual Property Notice
+
+**Copyright © 2026 The Netram Team (Smart India Hackathon 2026 — Team SIH26095). All Rights Reserved.**
+
+This repository is made **public solely for evaluation, review, and judging purposes** in connection with Smart India Hackathon 2026. 
+
+Public visibility on GitHub does **not** grant permission for open-source redistribution, commercial use, copying of UI/UX design components, or claiming this project as your own. Unauthorized copying, mirroring, re-branding, or presenting this work without prior written permission and prominent attribution is strictly prohibited. Refer to [`LICENSE`](LICENSE) for complete terms.

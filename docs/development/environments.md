@@ -1,6 +1,5 @@
 # Netram Environment Matrix & Isolation Specification
 
-**Authority:** AGENTS.md §11–13, §21–22, §28, §30.
 Deployment status (what is actually running): [`../deployment.md`](../deployment.md).
 Day-to-day setup: [`setup.md`](setup.md).
 
@@ -45,7 +44,7 @@ yet).
 
 ---
 
-## 3. Strict Isolation Rules (AGENTS.md Compliance)
+## 3. Strict Isolation Rules
 
 ### 3.1 Database Isolation
 

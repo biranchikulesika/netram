@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Security scan (AGENTS.md §22, §65).
+ * Security scan.
  * Blocks commits / CI that would leak secrets into the repository.
  */
 import { readdirSync, readFileSync } from "node:fs";
@@ -19,6 +19,7 @@ function walk(dir, out = []) {
           "node_modules",
           ".next",
           "dist",
+          "build",
           ".turbo",
           ".expo",
           "coverage",

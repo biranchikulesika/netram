@@ -1,10 +1,10 @@
 """
-AI is an informer, not an authority (AGENTS.md §36).
+AI is an advisory informer, not an authority.
 
-AI outputs are reviewable information. They must never declare fraud as fact,
-never modify official truth, and never bypass authority workflows. Consumers
-(watchlists, control room, inspectors) route findings through the normal
-domain pipeline: New -> Reviewed -> Dismissed/Investigated/Acted Upon.
+AI outputs are reviewable signals and recommendations. They must never declare
+fraud as fact, never modify official truth, and never bypass authority workflows.
+Consumers (watchlists, control room, inspectors) route findings through the normal
+human review pipeline: New -> Reviewed -> Dismissed / Investigated / Acted Upon.
 """
 
 from pydantic import BaseModel, Field

@@ -5,7 +5,7 @@
 
 ## Context
 
-Netram's oversight workflow (AGENTS.md §32, §35) separates two entry points into
+Netram's oversight workflow separates two primary entry points into
 the accountability pipeline:
 
 1. **Inspections** - evidence → findings → authority review → confirmed finding
@@ -68,8 +68,8 @@ labelled pathway - not a synthetic finding:
 
 4. **Disclosure unchanged.** The institution sees the corrective action (they
    must act on it) and the determination summary they are responding to - but
-   never the complainant identity, contact info, or attachments (§34, §35).
-   The complaint record itself remains invisible to the subject.
+   never the complainant identity, contact info, or attachments per strict privacy
+   and selective disclosure policy. The complaint record itself remains invisible to the subject.
 
 5. **Complaint closure coupling.** The complaint can only be `resolved` when
    its derived corrective action(s) reach a terminal state (`verified` /
@@ -87,14 +87,14 @@ labelled pathway - not a synthetic finding:
 ## Alternatives considered
 
 - **Auto-create a confirmed finding from the complaint.** Rejected: collapses
-  two distinct domain concepts (§14), pollutes inspection-derived statistics,
+  two distinct domain concepts, pollutes inspection-derived statistics,
   and makes "inspection found this" a lie in the audit trail.
 - **Fully automatic ordering on escalation (no reviewer determination).**
-  Rejected: encodes "complaint escalated = organisation guilty", which §35
-  explicitly forbids; escalation can also mean "needs higher-level review",
+  Rejected: encodes "complaint escalated = organisation guilty", which violates
+  our core oversight principle; escalation can also mean "needs higher-level review",
   not "substantiated".
 - **AI triage decides which complaints warrant orders.** Rejected for this
-  decision: AI is advisory (§36). A rule-assisted _queue prioritisation_ may
+  decision: AI is strictly advisory. A rule-assisted _queue prioritisation_ may
   come later as a separate, advisory ADR.
 - **Status quo (manual two-step).** Rejected: it incentivises rubber-stamp
   findings or lets escalated complaints stall; both are worse for the audit
@@ -109,7 +109,7 @@ labelled pathway - not a synthetic finding:
 - **Contracts:** OpenAPI + validation schemas for the escalate-and-order
   command; `CorrectiveAction` type gains the discriminated source union.
 - **Workflow:** `transitionComplaint` may optionally create the order in the
-  same transaction (state change + audit + outbox, §25); the existing
+  same atomic transaction (state change + audit + outbox); the existing
   `corrective_action.created` outbox event drives the institution pulse with
   zero dispatcher changes.
 - **Enforcement:** `canSubmitAtr` and ATR verification logic are
@@ -125,6 +125,5 @@ labelled pathway - not a synthetic finding:
 
 ## Related
 
-- ADR-001 (modular monolith - no new service needed)
-- AGENTS.md §32 (inspection workflow), §35 (complaints), §14 (domain model
-  separation), §25 (transactions), §34 (disclosure), §36 (AI is advisory)
+- ADR-001 (modular monolith backend architecture)
+- Domain specification: Inspection workflow, complaint escalation, transactional integrity, and information disclosure rules.

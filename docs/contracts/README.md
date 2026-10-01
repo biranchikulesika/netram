@@ -23,12 +23,12 @@ the typed client in `packages/api-client`.
    ```
 
 4. No stack traces, SQL errors, or provider internals in responses.
-5. Information disclosure is server-side: unauthorised fields are **omitted**,
-   never merely hidden in the UI (AGENTS.md §34).
+5. Information disclosure is server-side: unauthorised fields are **omitted** at the API layer,
+   never merely hidden in the UI.
 
 ## Changing a Contract Boundary
 
-The change checklist (AGENTS.md §19):
+The change checklist for contract boundaries:
 
 1. Update domain types (`packages/types`)
 2. Update validation schemas (`packages/validation`)
@@ -159,7 +159,7 @@ Corrective action status is derived from recorded work - there is no manual stat
 
 - `GET /action-inbox` (read-only; no extra permission of its own - each section
   appears only when the caller holds the section's decision permission and stays
-  within its jurisdiction, AGENTS.md §16-§17, §34)
+  within its jurisdiction)
 
   Unified pending-decision queue aggregating: project verification
   (`project:approve`), finding review (`inspection:review`), ATR review
@@ -338,8 +338,8 @@ implemented Phase 3–5 behaviour.
 ## API client source of truth
 
 - `packages/api-client` is **hand-written**, not generated. It mirrors the
-  server routes and the OpenAPI document. There is intentionally no code
-  generator in this repository (see AGENTS.md §19 and the OpenAPI document).
+  server routes and the OpenAPI document to maintain full control over client
+  abstractions without generative drift.
 - The authoritative wire contract is the server route definitions in
   `services/api/src/modules/*/http/routes.ts` plus the processed validation
   schemas from `packages/validation`. `services/api/openapi/openapi.json` is
@@ -362,7 +362,7 @@ authoritative. Server-side enforcement happens in
 `services/api/src/modules/registry/application/registry-service.ts` via
 `AuthorizationService.requirePermission`; the web Registry page
 (`apps/web/app/registry`) renders the same matrix for presentation only.
-Client gating never substitutes for the server check (AGENTS.md §16, §65).
+Client gating is purely cosmetic and never substitutes for strict server-side authorization.
 
 The matrix defines **who can register what** in the Registrations hub:
 
@@ -404,7 +404,7 @@ Rules bound to the matrix:
 The corresponding permission definitions (code, name, description) that the
 seed inserts into the `permissions` table are part of the same contract; when
 a permission is added, the seed's `permissionRows` and the role grant lists
-must be updated together (AGENTS.md §13, §19).
+must be updated together.
 
 ## Registration verification (approval) flow
 
@@ -433,7 +433,7 @@ facility dossier, where `POST /projects/:id/transitions` (via the standard
   lifecycle (Approved → Active).
 - **Reject** (`Pending Verification → Draft`): a normal transition (`project:transition`);
   the registration returns to Draft for correction and resubmission. Nothing
-  is deleted - history stays traceable (AGENTS.md §33).
+  is deleted - history remains fully traceable in the immutable audit log.
 - After approval the authority seals the facility **geofence**
   (`POST /projects/:id/geofence`, `project:approve`) and links programmes if
   not already linked; then the facility can be activated.

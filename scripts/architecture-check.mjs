@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Mechanical architecture guards (AGENTS.md §66).
- * Fails the build when the architectural dependency boundaries are violated.
+ * Mechanical architecture guards.
+ * Fails the build when architectural dependency boundaries are violated.
  */
 import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -18,6 +18,7 @@ function walk(dir, out = []) {
           ".git",
           "node_modules",
           "dist",
+          "build",
           ".next",
           ".turbo",
           ".expo",

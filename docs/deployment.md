@@ -128,7 +128,7 @@ rebuilt every 30 minutes and another developer must be able to reproduce it:
 - **Deterministic.** No `Date.now()`, no randomness, no dependence on Map
   iteration order. Every timestamp is a literal. A fresh reset produces the same
   ids and the same instants, which is what keeps client-generated offline
-  operation ids meaningful across restarts (AGENTS.md §13, §31).
+  operation ids meaningful across restarts.
 - **Interconnected.** Findings reference real inspections; corrective actions
   reference those findings; evidence references both; risk snapshots reference
   flags raised against the same inspections. A query for orphans should return
