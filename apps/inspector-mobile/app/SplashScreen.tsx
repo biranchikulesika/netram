@@ -19,7 +19,7 @@ export default function SplashScreen() {
       <Animated.View style={[styles.content, { opacity }]}>
         <Text style={[styles.brand, { color: theme.navyDark }]}>Netram</Text>
         <Text style={[styles.tagline, { color: theme.textMuted }]}>
-          Smart real-time monitoring &amp; inspection platform
+          {"Smart real-time monitoring\n& inspection platform"}
         </Text>
       </Animated.View>
     </View>
@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     letterSpacing: 0.2,
+    lineHeight: 18,
     marginTop: 8,
     textAlign: "center",
   },
