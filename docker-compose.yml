@@ -29,8 +29,8 @@
 #     visitor starts from the same state. Requires NETRAM_ALLOW_DB_RESET=1
 #     (the reset guard stays closed otherwise).
 #
-# All secrets/URLs come from the environment file: cp .env.vps.example .env
-# and edit it before `docker compose up -d`.
+# All secrets/URLs come from the environment file: cp .env.vps.example .env.vps
+# and edit it before `podman-compose -f docker-compose.yml --env-file .env.vps up -d`.
 
 name: netram
 

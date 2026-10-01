@@ -52,7 +52,7 @@ Consequences that shaped the configuration:
 | Constraint                                   | Effect                                                                                                      |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Cannot bind `:80`/`:443`                     | Edge is nginx on the host, not a container                                                                  |
-| `COPY dir ./` flattens `dir`'s contents      | All Dockerfiles use an explicit destination (`COPY dir ./dir`) - see §7                                     |
+| `COPY dir ./` flattens `dir`'s contents      | All Dockerfiles use an explicit destination (`COPY dir ./dir`) - see §8                                     |
 | `service_completed_successfully` = "stopped" | `podman-compose` does not inspect the exit code of one-shot services; verify `db-setup` by log after deploy |
 | Requires `default` network declared          | `networks.default` is stated explicitly instead of being synthesised                                        |
 
@@ -72,7 +72,10 @@ DNS-only is required, not a preference:
 
 - `.env.vps` - the **compose substitution** file, gitignored, holds the real
   secrets. Only parameterises the `environment:` blocks in `docker-compose.yml`.
-- `.env.vps.example` - committed template, placeholders only.
+- `.env.vps.example` - committed template, placeholders only. **Every `${VAR}`
+  in `docker-compose.yml` has a default or a placeholder in the template;
+  generate the four shared secrets with `openssl rand -hex 32` and keep each
+  one identical across every service that shares it** (table below).
 - Each service's **runtime** environment is declared in the service's
   `environment:` block, not in the env file.
 
@@ -145,37 +148,82 @@ To add project detail, extend the `ProjectSpec` list in
 cycles and finding text. The module expands those into observations, evidence,
 corrective actions and risk snapshots. Do not hand-insert derived rows.
 
-Verified per-project depth after a clean `db:setup` (9 projects, 26
+Verified per-project depth after a clean `db:setup` (9 projects, 30
 inspections, 37 findings, 50 evidence, 34 corrective actions, 29 photos, 13
 complaints, 20 risk snapshots, 37 sync operations). `PRJ-PURI-004` is
 deliberately empty of operations: it is a `Draft`, and a draft cannot have
 inspections, funds or findings.
 
-## 6. Operating the stack
+## 6. Installing the prerequisites
+
+`podman` (5.7) and `podman-compose` both come from Ubuntu's apt repository on
+this release. `podman-compose` is installed at `~/.local/bin/podman-compose`
+here, along with its two pure-Python dependencies (`PyYAML`,
+`python-dotenv`) in the user site-packages - the box has no `pip`, so they
+were vendored by extraction. On a fresh host, `sudo apt install podman
+podman-compose` gives you both.
+
+The **host needs no Node toolchain to build or run the stack**: every image
+installs pnpm itself via `corepack` inside the Dockerfile, and builds run in
+containers. Repo working tree: `git clone` + `git checkout develop` is enough
+- `.env.vps` is the only file you must create by hand. (Only the optional
+`pnpm verify:runtime:*` scripts at the end of the first-deploy sequence need
+a host Node toolchain; nothing before them does.)
+
+### First deploy, end to end
 
 ```bash
-# up (first time builds images; takes several minutes)
-podman-compose -f docker-compose.yml --env-file .env.vps up -d --build
+sudo apt install podman podman-compose
+git clone <repo-url> netram && cd netram
+cp .env.vps.example .env.vps            # then generate the 4 secrets (see §4)
+./scripts/install-prune-timer.sh        # daily prune; see §7 Disk
+sudo loginctl enable-linger "$(id -un)"        # keeps the timer alive after logout
+podman-compose -f docker-compose.yml --env-file .env.vps up -d --build   # 10-20 min
+podman logs netram-db-setup             # MUST show migrations + seed success
+sudo scripts/deploy-nginx.sh you@example.com   # TLS vhost; DNS must be set (§3)
+pnpm verify:runtime:web                 # optional; needs a host Node toolchain
+```
 
+The stack is started before `deploy-nginx.sh` on purpose: the installer's
+preflight checks that the containers are publishing on loopback and warns
+when they are not.
+
+## 7. Operating the stack
+
+```bash
 # status / logs
 podman ps -a
 podman logs -f netram-api
 podman logs netram-db-setup          # one-shot: MUST show success after deploy
 podman logs -f netram-db-reset       # the 30-min reset loop
 
-# redeploy after a code change (rebuild + recreate)
+# redeploy after a code change - prefer the scoped deploy below
 podman-compose -f docker-compose.yml --env-file .env.vps up -d --build
 
 # stop / down
 podman-compose -f docker-compose.yml --env-file .env.vps down
 ```
 
-`podman-compose` is installed at `~/.local/bin/podman-compose`, along with its
-two pure-Python dependencies (`PyYAML`, `python-dotenv`) in the user
-site-packages. The box has no `pip`, so they are vendored by extraction.
-
 ### Redeploying one service
 
+**Scoped deploy (preferred).** `scripts/deploy-scoped.sh` rebuilds only the
+services whose build inputs changed since the last scoped deploy (marker:
+`.freebuff/deploy-ref`, gitignored). Inputs are each service's Dockerfile plus
+every `COPY` source in it, parsed at run time. Shared Dockerfiles fan out
+(api, workers, db-setup and db-reset all build `services/api/Dockerfile`);
+root-level files that images copy (`pnpm-lock.yaml`, ...) and compose/env
+changes rebuild everything. Without a valid marker it does one full build,
+then records HEAD. Inspect the plan first with `--dry-run`. After any build,
+**wait for it to finish completely**, then recreate - the script does this for
+you, and recreates only what it built:
+
+```bash
+scripts/deploy-scoped.sh --dry-run   # show what would rebuild
+scripts/deploy-scoped.sh             # scoped build + recreate
+podman logs netram-db-setup          # if db-setup was recreated: MUST show success
+```
+
+Manual equivalent (also how to force a single service).
 `up -d --build` does not recreate containers whose image was unchanged by the
 last build, and `podman-compose` does not check the exit code of the `db-setup`
 one-shot, so a partial redeploy can silently leave the old image running. After
@@ -200,21 +248,25 @@ orphans the old one. Nothing garbage-collects it, so the store grew to 507
 images / 66GB and a build died with `no space left on device` while
 `/dev/sda1` was 90% full.
 
-A daily prune of _dangling_ images is installed as a user timer:
+A daily prune runs as a user timer (`infra/systemd/netram-podman-prune.{service,timer,sh}`,
+installed by `scripts/install-prune-timer.sh`):
 
-```bash
-./scripts/install-prune-timer.sh        # idempotent
-systemctl --user start netram-podman-prune.service   # run once now
-journalctl --user -u netram-podman-prune.service -n 20 --no-pager
-```
+- dangling images older than 24 h (the original nightly scope);
+- ALL dangling images - same-day build intermediates included - but skipped
+  while a build is in flight (an in-flight build's untagged layers must not be
+  pruned; the next run reclaims them);
+- persistent build cache (`image prune --build-cache`);
+- stopped netram containers older than 24 h (one-shot `db-setup` runs) -
+  podman's `container prune` has no age filter, so the script inspects
+  `FinishedAt` itself.
 
 It is deliberately conservative:
 
 - runs as the deploying user, so it can only touch the **rootless** store; the
   `pracg` tenant runs root Podman with entirely separate storage;
-- `podman image prune` **without** `--all`, so it never removes an image a
-  running container references;
-- `--filter until=24h`, so an in-flight build cannot lose its layers.
+- every image prune is dangling-only (no `--all`), so it never removes an
+  image a running container references;
+- the same-day pass is build-guarded; the 24 h passes are age-gated.
 
 It needs lingering, or it stops when the user logs out:
 
@@ -225,10 +277,11 @@ sudo loginctl enable-linger "$(id -un)"
 Manual equivalent, if the timer is not installed:
 
 ```bash
-podman image prune -f --filter until=24h
+podman image prune -f                      # same-day + older dangling; ONLY with no build running
+podman image prune -f --filter until=24h   # conservative subset (yesterday's scope)
 ```
 
-## 7. Repository changes made for this deployment
+## 8. Repository changes made for this deployment
 
 | Change                                                                  | Reason                                                                                       |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -238,9 +291,10 @@ podman image prune -f --filter until=24h
 | `db-setup` one-shot service added; api/workers/realtime wait on it      | a fresh volume otherwise has no schema until the first 30-min reset tick                     |
 | All four Dockerfiles use explicit COPY destinations                     | Buildah's `COPY dir ./` flattens the directory and breaks the pnpm workspace layout          |
 | `infra/nginx/` + `scripts/deploy-nginx.sh`                              | edge configuration and its idempotent installer                                              |
-| `infra/systemd/` + `scripts/install-prune-timer.sh`                     | daily dangling-image prune; the rootless image store otherwise fills the disk                |
+| `infra/systemd/` + `scripts/install-prune-timer.sh`                     | daily prune (dangling images, build cache, stale one-shot containers); the rootless image store otherwise fills the disk                |
+| `scripts/deploy-scoped.sh`                                             | scoped redeploys: rebuild only services whose build inputs changed; full builds on this box take ~10 min and orphan gigabytes of intermediates |
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 **`netram.kulesika.in` does not resolve** - the Cloudflare A record is missing
 or still proxied. `dig +short netram.kulesika.in` must return `51.79.220.41`.
@@ -258,6 +312,9 @@ enabled, must allow `:80`, `:443` and `:8189` (udp and tcp).
 and that DNS is DNS-only. A proxied DNS record silently breaks WebRTC.
 
 **Build fails with `no space left on device`** - the rootless image store. Check
-`podman system df`. The daily prune timer should prevent this; if it has not run
-(or is not installed), `podman image prune -f --filter until=24h` frees tens of
-GB immediately.
+`podman system df`. The daily prune timer should prevent this; if it has not
+run (or is not installed), `podman image prune -f` can free tens of GB
+immediately - but verify no build is running first (`ps aux | grep -E '[p]odman|[b]uildah'`):
+without the 24h filter it also prunes an in-flight build's intermediate
+layers. Note that same-day debris (today's dangling images) survives
+`--filter until=24h`; only the unfiltered prune reclaims it.

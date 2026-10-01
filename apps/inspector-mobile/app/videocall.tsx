@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Platform,
   TextInput,
@@ -12,6 +11,9 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
+// The RN-core SafeAreaView is an iOS-only no-op; edge-to-edge Android (SDK 35)
+// draws content under the status bar unless insets come from this package.
+import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { Audio as ExpoAudio, Video as ExpoVideo, ResizeMode } from "expo-av";
 import { Icon } from "../src/components/ui/Icon";

@@ -19,7 +19,6 @@ import {
   StyleSheet,
   Platform,
   Pressable,
-  ActivityIndicator,
   Linking,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -393,7 +392,8 @@ export default function MapScreen() {
   const { theme, isPureDark } = useSettings();
   const params = useLocalSearchParams<{ inspectionId?: string }>();
 
-  const [loading, setLoading] = useState(true);
+  // The busy flag is observed through `locationStatus`; only the setter is used.
+  const [, setLoading] = useState(true);
   const [cachedInspections, setCachedInspections] = useState<CachedInspectionRecord[]>([]);
   const [remoteGeofences, setRemoteGeofences] = useState<ProjectGeofence[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(params.inspectionId ?? null);

@@ -5,13 +5,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+// The RN-core SafeAreaView is an iOS-only no-op; edge-to-edge Android (SDK 35)
+// draws content under the status bar unless insets come from this package.
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth/auth-context";
 import { Icon } from "../src/components/ui";
 

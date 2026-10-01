@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+// The RN-core SafeAreaView is an iOS-only no-op; edge-to-edge Android (SDK 35)
+// draws content under the status bar unless insets come from this package.
+import { SafeAreaView } from "react-native-safe-area-context";
 import { typography } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { EmptyState, NetramButton, NetramCard, ScreenHeader, Icon } from "../src/components/ui";

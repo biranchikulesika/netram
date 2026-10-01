@@ -3,7 +3,6 @@ import { Tabs } from "expo-router";
 import { Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Icon } from "../src/components/ui/Icon";
-import { colors } from "../src/theme/colors";
 
 import SplashScreen from "./SplashScreen";
 import LoginScreen from "./login";

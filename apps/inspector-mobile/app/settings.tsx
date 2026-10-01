@@ -1,5 +1,8 @@
 import React from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+// The RN-core SafeAreaView is an iOS-only no-op; edge-to-edge Android (SDK 35)
+// draws content under the status bar unless insets come from this package.
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Tabs, useRouter } from "expo-router";
 import { Icon } from "../src/components/ui/Icon";
 import { NetramCard } from "../src/components/ui/NetramCard";
