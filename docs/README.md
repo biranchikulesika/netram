@@ -10,8 +10,8 @@ Netram is a real-time smart monitoring and inspection platform developed for the
 
 | Document                           | Description                                                                                                                                                               |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **[`../AGENTS.md`](../AGENTS.md)** | **The Authoritative Engineering Operating Manual.** Defines architectural priorities, boundaries, transaction rules, authority models, privacy, and development behavior. |
-| **[`../DESIGN.md`](../DESIGN.md)** | **Design System Specification.** Government product standards, strict 8-color palette, typography tokens, status mappings, and WCAG accessibility standards.              |
+| **[`../AGENTS.md`](../AGENTS.md)** | **The Authoritative Engineering Operating Manual.** Defines architectural priorities, boundaries, transaction rules, authority models, privacy, and development behaviour. |
+| **[`../DESIGN.md`](../DESIGN.md)** | **Design System Specification.** Government product standards, strict 8-colour palette, typography tokens, status mappings, and WCAG accessibility standards.              |
 | **[`OWNERSHIP.md`](OWNERSHIP.md)** | **Team Ownership & Governance.** Review responsibilities, GitHub handles, area breakdown, and CODEOWNERS rules.                                                           |
 
 ---

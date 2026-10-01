@@ -185,9 +185,9 @@ sequenceDiagram
 1. **Persistence Boundary:** Database access lives strictly in `packages/data`. Drizzle ORM, `postgres` drivers, and raw SQL queries never leak into presentation applications or secondary services.
 2. **Configuration Boundary:** Environment variables flow exclusively through `packages/config` via typed, validated Zod schemas. Direct `process.env` calls are strictly forbidden across application layers.
 3. **Cross-Service Contracts:** Communication across service boundaries occurs strictly via typed clients, HTTP REST APIs, or outbox events — never direct source-code coupling.
-4. **Server Authority:** The server is the single source of truth for authorization, jurisdiction enforcement, and workflow state. Realtime WebSockets, AI outputs, and client caches are never authoritative.
+4. **Server Authority:** The server is the single source of truth for authorisation, jurisdiction enforcement, and workflow state. Realtime WebSockets, AI outputs, and client caches are never authoritative.
 5. **No Vendor Leakage:** Infrastructure tools (PostgreSQL, MinIO, MediaMTX, Redis) sit behind abstract domain repository interfaces.
-6. **Server-Side Information Disclosure:** Fields a user is not authorized to view within their assigned jurisdiction are omitted entirely from backend responses, never merely hidden client-side via UI logic.
+6. **Server-Side Information Disclosure:** Fields a user is not authorised to view within their assigned jurisdiction are omitted entirely from backend responses, never merely hidden client-side via UI logic.
 
 ---
 

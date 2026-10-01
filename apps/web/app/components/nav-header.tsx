@@ -204,7 +204,7 @@ export function NavHeader({
   actionInboxCount = 0,
   activeSection,
 }: NavHeaderProps) {
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(unreadNotificationsCount ?? 0);
@@ -295,12 +295,14 @@ export function NavHeader({
 
   useEffect(() => {
     const stored = localStorage.getItem("netram_sidebar_pinned");
-    if (stored === "true") {
-      setIsPinned(true);
-      document.body.classList.add("sidebar-expanded");
-    } else {
+    if (stored === "false") {
       setIsPinned(false);
       document.body.classList.remove("sidebar-expanded");
+      document.body.classList.add("sidebar-collapsed");
+    } else {
+      setIsPinned(true);
+      document.body.classList.add("sidebar-expanded");
+      document.body.classList.remove("sidebar-collapsed");
     }
     document.body.classList.add("has-portal-sidebar");
 
@@ -315,6 +317,7 @@ export function NavHeader({
     return () => {
       document.body.classList.remove("has-portal-sidebar");
       document.body.classList.remove("sidebar-expanded");
+      document.body.classList.remove("sidebar-collapsed");
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
@@ -328,8 +331,10 @@ export function NavHeader({
         localStorage.setItem("netram_sidebar_pinned", String(next));
         if (next) {
           document.body.classList.add("sidebar-expanded");
+          document.body.classList.remove("sidebar-collapsed");
         } else {
           document.body.classList.remove("sidebar-expanded");
+          document.body.classList.add("sidebar-collapsed");
         }
         return next;
       });

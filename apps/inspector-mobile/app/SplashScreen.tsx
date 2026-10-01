@@ -19,7 +19,10 @@ export default function SplashScreen() {
       <Animated.View style={[styles.content, { opacity }]}>
         <Text style={[styles.brand, { color: theme.navyDark }]}>NETRAM</Text>
         <Text style={[styles.tagline, { color: theme.textMuted }]}>
-          DEPARTMENT OF SOCIAL JUSTICE & EMPOWERMENT
+          SMART REAL-TIME MONITORING &amp; INSPECTION
+        </Text>
+        <Text style={[styles.motto, { color: theme.tagRust }]}>
+          सत्य · दृष्टि · दायित्व
         </Text>
       </Animated.View>
     </View>
@@ -52,6 +55,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 1.2,
     marginTop: 10,
+    textAlign: "center",
+  },
+  motto: {
+    color: "#dd501e",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+    marginTop: 8,
     textAlign: "center",
   },
 });

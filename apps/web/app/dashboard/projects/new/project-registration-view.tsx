@@ -409,7 +409,7 @@ export function ProjectRegistrationView({
 
   async function saveDraft() {
     if (!canCreate) {
-      setError("Unauthorized: You lack permission to register projects.");
+      setError("Unauthorised: You lack permission to register projects.");
       return;
     }
     if (!validateIdentity()) return;
@@ -451,7 +451,7 @@ export function ProjectRegistrationView({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canCreate) {
-      setError("Unauthorized: You lack permission to register projects.");
+      setError("Unauthorised: You lack permission to register projects.");
       return;
     }
     if (!validateIdentity()) return;

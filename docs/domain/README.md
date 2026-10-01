@@ -77,7 +77,7 @@ The inspection lifecycle enforces strict separation between observation, evaluat
 ```
 
 1. **Inspector Observation & Evidence:** Inspectors capture tamper-evident field observations with SHA-256 capture-time checksums. Inspectors **never** issue administrative orders or declare guilt.
-2. **Authority Review:** Only authorized officers review submitted findings and decide whether to confirm or dismiss them.
+2. **Authority Review:** Only authorised officers review submitted findings and decide whether to confirm or dismiss them.
 3. **Corrective Action Tracking (ATR):** Once confirmed, an Action Taken Report (ATR) order is dispatched to the institution. The institution uploads remediation proof. The authority inspects the proof before closing the action order.
 
 ---

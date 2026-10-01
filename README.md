@@ -1,6 +1,6 @@
 # Netram
 
-Smart real-time monitoring and inspection platform for the Department of Social Justice & Empowerment (DoSJE), Government of India (Smart India Hackathon problem statement **SIH26095**). Netram provides public authorities with an accountable, centralized window into government-funded institutions: live project monitoring, structured mobile inspections, grievance redressal, CCTV surveillance, and AI-assisted anomaly detection.
+Smart real-time monitoring and inspection platform for the Department of Social Justice & Empowerment (DoSJE), Government of India (Smart India Hackathon problem statement **SIH26095**). Netram provides public authorities with an accountable, centralised window into government-funded institutions: live project monitoring, structured mobile inspections, grievance redressal, CCTV surveillance, and AI-assisted anomaly detection.
 
 > **AI is advisory, not authoritative.** Machine learning models detect anomalies and assist decision-makers, but never declare fraud or alter official records autonomously. Every signal remains reviewable information routed through verified administrative workflows.
 
@@ -8,11 +8,11 @@ Smart real-time monitoring and inspection platform for the Department of Social 
 
 ## What is Implemented
 
-- **Core Platform** — Modular-monolith REST API (`/api/v1`) with server-authoritative authorization, jurisdiction scoping, project lifecycle, inspections → findings → corrective actions (ATR workflow), tamper-evident evidence capture, complaints, notifications, audit trails, and transactional outbox event delivery.
+- **Core Platform** — Modular-monolith REST API (`/api/v1`) with server-authoritative authorisation, jurisdiction scoping, project lifecycle, inspections → findings → corrective actions (ATR workflow), tamper-evident evidence capture, complaints, notifications, audit trails, and transactional outbox event delivery.
 - **Web Platform** — Next.js 15 web application with React Server Components: role-based workspaces, project registry, live CCTV control room, administrative review queues, and Action Inbox.
 - **Inspector Mobile App** — Standalone React Native / Expo Android application with offline operation queue, GPS-fenced check-in, and capture-time SHA-256 evidence hashing.
-- **Realtime Hub** — Outbox-driven authorized WebSocket delivery (transient event transport; authoritative state lives in PostgreSQL).
-- **CCTV Live Streaming** — Camera → RTSP → MediaMTX → WebRTC (WHEP) / HLS with control-plane tokenization, session lifecycle management, and protocol abstraction ([`docs/architecture/cctv.md`](docs/architecture/cctv.md)).
+- **Realtime Hub** — Outbox-driven authorised WebSocket delivery (transient event transport; authoritative state lives in PostgreSQL).
+- **CCTV Live Streaming** — Camera → RTSP → MediaMTX → WebRTC (WHEP) / HLS with control-plane tokenisation, session lifecycle management, and protocol abstraction ([`docs/architecture/cctv.md`](docs/architecture/cctv.md)).
 - **Advisory AI Service** — Python / FastAPI service evaluating attendance discrepancy and computer-vision anomaly scores, mapped to human review lifecycles.
 - **Financial & Attendance Reconciliations** — Strict mathematical tracking ensuring $\text{Allocated} \ge \text{Released} \ge \text{Utilised}$ across schemes, and multi-source cross-checking (biometric vs. institution-reported vs. CCTV headcount).
 
@@ -25,7 +25,7 @@ Smart real-time monitoring and inspection platform for the Department of Social 
 | `apps/web` | Next.js web platform (Server Components by default) |
 | `apps/inspector-mobile` | Standalone Expo / React Native Android inspector application |
 | `services/api` | Core modular monolith REST API (`/api/v1`) |
-| `services/realtime` | Authorized event delivery (outbox → WebSocket) |
+| `services/realtime` | Authorised event delivery (outbox → WebSocket) |
 | `services/ai` | Advisory anomaly detection service (Python / FastAPI) |
 | `services/cctv-gateway` | CCTV media control plane and stream abstraction |
 | `packages/{types,validation,api-client,data,ui,config}` | Shared domain contracts, persistence, and typed clients |
@@ -94,8 +94,8 @@ For full setup instructions, database lifecycle commands, and verification scrip
 ## Security & Responsible Disclosure
 
 - **Server Authority:** The server is the authoritative decision-maker for authentication, role-based access control (RBAC), jurisdiction boundaries, and lifecycle mutations.
-- **Server-Side Selective Disclosure:** Unauthorized fields and sensitive records are omitted at the API level rather than hidden in the client interface.
-- **Sanitized Responses:** Stack traces, internal SQL exceptions, and cloud provider details are never leaked in client-facing HTTP payloads.
+- **Server-Side Selective Disclosure:** Unauthorised fields and sensitive records are omitted at the API level rather than hidden in the client interface.
+- **Sanitised Responses:** Stack traces, internal SQL exceptions, and cloud provider details are never leaked in client-facing HTTP payloads.
 - **Zero Committed Secrets:** Credentials, tokens, and private keys remain strictly excluded from repository history, validated via `pnpm check:security`.
 - **Reporting Security Issues:** Please consult [`SECURITY.md`](SECURITY.md) for disclosure guidelines. Security reports must be sent directly to **[netram@kulesika.in](mailto:netram@kulesika.in)**.
 
@@ -107,4 +107,4 @@ For full setup instructions, database lifecycle commands, and verification scrip
 
 This repository is made **public solely for evaluation, review, and judging purposes** in connection with Smart India Hackathon 2026. 
 
-Public visibility on GitHub does **not** grant permission for open-source redistribution, commercial use, copying of UI/UX design components, or claiming this project as your own. Unauthorized copying, mirroring, re-branding, or presenting this work without prior written permission and prominent attribution is strictly prohibited. Refer to [`LICENSE`](LICENSE) for complete terms.
+Public visibility on GitHub does **not** grant permission for open-source redistribution, commercial use, copying of UI/UX design components, or claiming this project as your own. Unauthorised copying, mirroring, rebranding, or presenting this work without prior written permission and prominent attribution is strictly prohibited. Refer to [`LICENSE`](LICENSE) for complete terms.

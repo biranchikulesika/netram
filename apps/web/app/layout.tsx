@@ -7,7 +7,7 @@ import { RealtimeProvider } from "./components/realtime-provider";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f6f8fc",
+  themeColor: "#002449",
 };
 
 const SITE_TITLE =
