@@ -1,5 +1,9 @@
 import type { FinancialRiskRule } from "@netram/types";
-import type { RiskEvaluationContext, RuleEvaluationResult, RuleEvaluator } from "../rule-evaluator.js";
+import type {
+  RiskEvaluationContext,
+  RuleEvaluationResult,
+  RuleEvaluator,
+} from "../rule-evaluator.js";
 
 export class Exp003FrontLoadingRule implements RuleEvaluator {
   readonly code = "EXP-003";

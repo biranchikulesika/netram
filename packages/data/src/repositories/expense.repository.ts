@@ -134,15 +134,18 @@ export class ExpenseRepository {
   ): Promise<{ items: Expense[]; total: number }> {
     const conditions: ReturnType<typeof eq>[] = [];
     if (filter.projectId) conditions.push(eq(expensesTable.projectId, filter.projectId));
-    if (filter.organisationId) conditions.push(eq(expensesTable.organisationId, filter.organisationId));
+    if (filter.organisationId)
+      conditions.push(eq(expensesTable.organisationId, filter.organisationId));
     if (filter.allocationId) conditions.push(eq(expensesTable.allocationId, filter.allocationId));
     if (filter.status) conditions.push(eq(expensesTable.status, filter.status));
     if (filter.category) conditions.push(eq(expensesTable.category, filter.category));
     if (filter.vendorName) conditions.push(eq(expensesTable.vendorName, filter.vendorName));
 
     const whereClauses = [...conditions];
-    if (filter.startDate) whereClauses.push(gte(expensesTable.transactionDate, new Date(filter.startDate)));
-    if (filter.endDate) whereClauses.push(lte(expensesTable.transactionDate, new Date(filter.endDate)));
+    if (filter.startDate)
+      whereClauses.push(gte(expensesTable.transactionDate, new Date(filter.startDate)));
+    if (filter.endDate)
+      whereClauses.push(lte(expensesTable.transactionDate, new Date(filter.endDate)));
 
     const where = and(...whereClauses);
     const joinScope = jurisdictionDistrictIds?.length
@@ -187,10 +190,7 @@ export class ExpenseRepository {
       .select()
       .from(expensesTable)
       .where(
-        and(
-          eq(expensesTable.projectId, projectId),
-          eq(expensesTable.invoiceNumber, invoiceNumber),
-        ),
+        and(eq(expensesTable.projectId, projectId), eq(expensesTable.invoiceNumber, invoiceNumber)),
       )
       .limit(1);
     if (!rows[0]) return null;

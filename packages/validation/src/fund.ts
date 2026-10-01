@@ -125,7 +125,9 @@ export const expenseListQuerySchema = paginationSchema.extend({
   projectId: uuidSchema.optional(),
   organisationId: uuidSchema.optional(),
   allocationId: uuidSchema.optional(),
-  status: z.enum(["draft", "submitted", "under_review", "verified", "rejected", "voided"]).optional(),
+  status: z
+    .enum(["draft", "submitted", "under_review", "verified", "rejected", "voided"])
+    .optional(),
   category: z.string().optional(),
   vendorName: z.string().optional(),
   startDate: z.string().datetime().optional(),

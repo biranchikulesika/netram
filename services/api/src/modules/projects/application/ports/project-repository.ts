@@ -99,24 +99,33 @@ export interface ProjectListFilter {
 
 export interface ProjectRepositoryPort {
   findById(id: string): Promise<Project | null>;
-  findAllActiveProjects(): Promise<Array<{ id: string; code: string; name: string; districtId: string | null; organisationId: string | null }>>;
+  findAllActiveProjects(): Promise<
+    Array<{
+      id: string;
+      code: string;
+      name: string;
+      districtId: string | null;
+      organisationId: string | null;
+    }>
+  >;
   findByCode?(code: string): Promise<Project | null>;
   list(filter: ProjectListFilter): Promise<Page<Project>>;
   createWithAuditAndEvent(cmd: CreateProjectCommand): Promise<Project>;
   updateWithAuditAndEvent(cmd: UpdateProjectCommand): Promise<Project>;
-  updateContactWithAuditAndEvent(cmd: UpdateProjectContactCommand & {
-    projectId: string;
-    actorUserId: string | null;
-    requestId: string | null;
-    ipAddress: string | null;
-    auditAction: AuditAction;
-    auditMetadata: Record<string, unknown>;
-    eventType: DomainEventType;
-    eventPayload: Record<string, unknown>;
-  }): Promise<Project>;
+  updateContactWithAuditAndEvent(
+    cmd: UpdateProjectContactCommand & {
+      projectId: string;
+      actorUserId: string | null;
+      requestId: string | null;
+      ipAddress: string | null;
+      auditAction: AuditAction;
+      auditMetadata: Record<string, unknown>;
+      eventType: DomainEventType;
+      eventPayload: Record<string, unknown>;
+    },
+  ): Promise<Project>;
   transitionProjectWithAuditAndEvent(cmd: TransitionProjectCommand): Promise<Project>;
   findGeofenceByProjectId(projectId: string): Promise<ProjectGeofence | null>;
   listGeofences(projectIds?: string[]): Promise<ProjectGeofence[]>;
   sealGeofenceWithAuditAndEvent(cmd: SealGeofencePortCommand): Promise<ProjectGeofence>;
 }
-

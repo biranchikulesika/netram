@@ -14,13 +14,13 @@ enforced in code):
 
 ## 1. Components
 
-| Component | Location | Role |
-|---|---|---|
-| NETRAM API | `services/api` (`src/modules/cctv/`, sweeper in `src/workers/`) | Auth, jurisdiction, session records, token lifecycle, audit, outbox, external-auth decision endpoint |
-| CCTV Gateway | `services/cctv-gateway` (Fastify, :3003) | Media **control plane only**: path provisioning, health, stats, token verify, reader correlation/kick |
-| MediaMTX | `netram-media` container (`infra/mediamtx/`) | The media server: RTSP ingest, fan-out, WebRTC/WHEP, HLS |
-| Camera / NVR | facility side | RTSP source; in dev simulated by `camera-sim` + `facility-nvr` containers (`infra/facility-sim/`) |
-| Web app | `apps/web` | Control Room playback UI + same-origin media proxies (`apps/web/app/api/cctv/`) |
+| Component    | Location                                                        | Role                                                                                                  |
+| ------------ | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| NETRAM API   | `services/api` (`src/modules/cctv/`, sweeper in `src/workers/`) | Auth, jurisdiction, session records, token lifecycle, audit, outbox, external-auth decision endpoint  |
+| CCTV Gateway | `services/cctv-gateway` (Fastify, :3003)                        | Media **control plane only**: path provisioning, health, stats, token verify, reader correlation/kick |
+| MediaMTX     | `netram-media` container (`infra/mediamtx/`)                    | The media server: RTSP ingest, fan-out, WebRTC/WHEP, HLS                                              |
+| Camera / NVR | facility side                                                   | RTSP source; in dev simulated by `camera-sim` + `facility-nvr` containers (`infra/facility-sim/`)     |
+| Web app      | `apps/web`                                                      | Control Room playback UI + same-origin media proxies (`apps/web/app/api/cctv/`)                       |
 
 ## 2. Data plane (media bytes)
 
@@ -63,7 +63,7 @@ MediaMTX control API :9997
    jurisdiction, resolves camera config from DB, asks the gateway to provision
    the MediaMTX path, creates the `cctv_streams` row + audit + outbox event
    atomically, returns `{ streamId, playback: { protocol: "webrtc", token,
-   whepUrl, mediaPath } }`.
+whepUrl, mediaPath } }`.
 2. **Handshake** - browser POSTs its SDP offer to
    `POST /api/cctv/media/whep?path=<mediaPath>&netramSession=<streamId>` with
    `Authorization: Bearer <playback token>`; the web route forwards to

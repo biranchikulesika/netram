@@ -364,8 +364,7 @@ export class CorrectiveActionRepository {
               : current.verifiedAt
                 ? new Date(current.verifiedAt)
                 : null,
-          verifiedByUserId:
-            cmd.to === "accepted" ? cmd.actorUserId : current.verifiedByUserId,
+          verifiedByUserId: cmd.to === "accepted" ? cmd.actorUserId : current.verifiedByUserId,
           reviewRemarks: cmd.note ?? current.reviewRemarks,
           updatedAt: new Date(),
         })
@@ -453,10 +452,7 @@ export class CorrectiveActionRepository {
       })
       .from(correctiveActionsTable)
       .where(
-        and(
-          eq(correctiveActionsTable.status, "pending"),
-          lt(correctiveActionsTable.deadline, now),
-        ),
+        and(eq(correctiveActionsTable.status, "pending"), lt(correctiveActionsTable.deadline, now)),
       );
 
     if (candidates.length === 0) {

@@ -45,7 +45,8 @@ export class DevLogNotificationProvider implements NotificationProviderPort {
  * retrying forever on jobs that can never succeed.
  */
 export class UnconfiguredChannelProvider implements NotificationProviderPort {
-  constructor(readonly channel: NotificationChannel) {}  async send(_notification: OutboundNotification): Promise<NotificationDeliveryResult> {
+  constructor(readonly channel: NotificationChannel) {}
+  async send(_notification: OutboundNotification): Promise<NotificationDeliveryResult> {
     return {
       channel: this.channel,
       provider: "unconfigured",

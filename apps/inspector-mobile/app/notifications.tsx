@@ -10,13 +10,7 @@ import {
 } from "react-native";
 import { typography } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
-import {
-  EmptyState,
-  NetramButton,
-  NetramCard,
-  ScreenHeader,
-  Icon,
-} from "../src/components/ui";
+import { EmptyState, NetramButton, NetramCard, ScreenHeader, Icon } from "../src/components/ui";
 import { useAuth } from "../src/auth/auth-context";
 import type { Notification, NotificationType } from "@netram/types";
 
@@ -108,9 +102,7 @@ export default function NotificationsScreen() {
 
   const handleNotificationPress = async (item: Notification) => {
     if (item.status === "pending") {
-      setItems((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, status: "read" } : n)),
-      );
+      setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, status: "read" } : n)));
       setUnreadCount((c) => Math.max(0, c - 1));
 
       if (client) {
@@ -224,9 +216,7 @@ export default function NotificationsScreen() {
                       <View style={[styles.iconContainer, { backgroundColor: theme.bgSubtle }]}>
                         <Icon name={details.icon} size={18} color={navyColor} />
                       </View>
-                      <Text style={[styles.typeLabel, { color: mutedColor }]}>
-                        {details.label}
-                      </Text>
+                      <Text style={[styles.typeLabel, { color: mutedColor }]}>{details.label}</Text>
                     </View>
 
                     <View style={styles.metaRight}>
@@ -234,12 +224,7 @@ export default function NotificationsScreen() {
                         {formatRelativeTime(item.createdAt)}
                       </Text>
                       {isUnread && (
-                        <View
-                          style={[
-                            styles.unreadDot,
-                            { backgroundColor: navyColor },
-                          ]}
-                        />
+                        <View style={[styles.unreadDot, { backgroundColor: navyColor }]} />
                       )}
                     </View>
                   </View>
@@ -264,16 +249,9 @@ export default function NotificationsScreen() {
                   )}
 
                   {/* Clean Footer Row */}
-                  <View
-                    style={[
-                      styles.cardFooter,
-                      { borderTopColor: theme.borderSubtle },
-                    ]}
-                  >
+                  <View style={[styles.cardFooter, { borderTopColor: theme.borderSubtle }]}>
                     <View style={styles.footerPrompt}>
-                      <Text style={[styles.actionPrompt, { color: navyColor }]}>
-                        View Details
-                      </Text>
+                      <Text style={[styles.actionPrompt, { color: navyColor }]}>View Details</Text>
                       <Icon name="chevron-forward" size={13} color={navyColor} />
                     </View>
                     <View

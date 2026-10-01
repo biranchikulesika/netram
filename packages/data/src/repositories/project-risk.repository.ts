@@ -39,11 +39,14 @@ export interface InsertProjectRiskSnapshotParams {
   scheduledInspectionId?: string | null;
 }
 
-export function toProjectRiskSnapshot(row: typeof snapshotsTable.$inferSelect): ProjectRiskSnapshot {
+export function toProjectRiskSnapshot(
+  row: typeof snapshotsTable.$inferSelect,
+): ProjectRiskSnapshot {
   return {
     id: row.id,
     projectId: row.projectId,
-    calculatedAt: row.calculatedAt instanceof Date ? row.calculatedAt.toISOString() : String(row.calculatedAt),
+    calculatedAt:
+      row.calculatedAt instanceof Date ? row.calculatedAt.toISOString() : String(row.calculatedAt),
     scoringVersion: row.scoringVersion,
     totalScore: row.totalScore,
     riskLevel: row.riskLevel as CompositeRiskLevel,
@@ -91,7 +94,9 @@ export class ProjectRiskRepository {
         attendanceAnomalySignals: params.attendanceAnomalySignals ?? {},
         complaintDensitySignals: params.complaintDensitySignals ?? {},
         aiAnomalySignals: params.aiAnomalySignals ?? {},
-        topContributors: (params.topContributors ?? []) as unknown as Array<Record<string, unknown>>,
+        topContributors: (params.topContributors ?? []) as unknown as Array<
+          Record<string, unknown>
+        >,
         explanation: params.explanation,
         inspectionFlagId: params.inspectionFlagId ?? null,
         scheduledInspectionId: params.scheduledInspectionId ?? null,
@@ -141,7 +146,9 @@ export class ProjectRiskRepository {
   /**
    * Returns active projects ranked by their latest Composite Risk Score (descending).
    */
-  async listRanked(query: ProjectRiskRankingQuery): Promise<{ items: ProjectRankEntry[]; total: number }> {
+  async listRanked(
+    query: ProjectRiskRankingQuery,
+  ): Promise<{ items: ProjectRankEntry[]; total: number }> {
     const page = Math.max(1, query.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
     const offset = (page - 1) * pageSize;
@@ -164,9 +171,7 @@ export class ProjectRiskRepository {
         openCount: sql<number>`count(*)::int`.as("open_count"),
       })
       .from(inspectionsTable)
-      .where(
-        sql`${inspectionsTable.status} NOT IN ('completed', 'rejected', 'cancelled')`,
-      )
+      .where(sql`${inspectionsTable.status} NOT IN ('completed', 'rejected', 'cancelled')`)
       .groupBy(inspectionsTable.projectId)
       .as("open_insp");
 
@@ -177,15 +182,11 @@ export class ProjectRiskRepository {
         flagCount: sql<number>`count(*)::int`.as("flag_count"),
       })
       .from(flagsTable)
-      .where(
-        sql`${flagsTable.status} NOT IN ('resolved', 'dismissed')`,
-      )
+      .where(sql`${flagsTable.status} NOT IN ('resolved', 'dismissed')`)
       .groupBy(flagsTable.projectId)
       .as("open_flg");
 
-    const conditions = [
-      sql`${projectsTable.status} = 'Active'`,
-    ];
+    const conditions = [sql`${projectsTable.status} = 'Active'`];
 
     if (query.districtId) {
       conditions.push(eq(projectsTable.districtId, query.districtId));
@@ -194,7 +195,9 @@ export class ProjectRiskRepository {
       conditions.push(eq(projectsTable.organisationId, query.organisationId));
     }
     if (query.programmeId) {
-      conditions.push(sql`${projectsTable.programmeIds}::jsonb @> ${JSON.stringify([query.programmeId])}::jsonb`);
+      conditions.push(
+        sql`${projectsTable.programmeIds}::jsonb @> ${JSON.stringify([query.programmeId])}::jsonb`,
+      );
     }
     if (query.riskLevel) {
       conditions.push(eq(snapshotsTable.riskLevel, query.riskLevel));
@@ -273,7 +276,9 @@ export class ProjectRiskRepository {
       totalScore: Number(r.totalScore),
       riskLevel: r.riskLevel as CompositeRiskLevel,
       topContributors: (r.topContributors ?? []) as unknown as RiskContributor[],
-      lastCalculatedAt: r.lastCalculatedAt ? new Date(r.lastCalculatedAt).toISOString() : new Date().toISOString(),
+      lastCalculatedAt: r.lastCalculatedAt
+        ? new Date(r.lastCalculatedAt).toISOString()
+        : new Date().toISOString(),
       openInspectionCount: Number(r.openInspectionCount),
       hasOpenFlag: Boolean(r.hasOpenFlag),
       scoringVersion: r.scoringVersion,
@@ -282,7 +287,15 @@ export class ProjectRiskRepository {
     return { items, total };
   }
 
-  async findAllActiveProjects(): Promise<Array<{ id: string; code: string; name: string; districtId: string | null; organisationId: string | null }>> {
+  async findAllActiveProjects(): Promise<
+    Array<{
+      id: string;
+      code: string;
+      name: string;
+      districtId: string | null;
+      organisationId: string | null;
+    }>
+  > {
     return this.db
       .select({
         id: projectsTable.id,
@@ -318,10 +331,7 @@ export class ProjectRiskRepository {
       .select({ submittedAt: inspectionsTable.submittedAt })
       .from(inspectionsTable)
       .where(
-        and(
-          eq(inspectionsTable.projectId, projectId),
-          eq(inspectionsTable.status, "completed"),
-        ),
+        and(eq(inspectionsTable.projectId, projectId), eq(inspectionsTable.status, "completed")),
       )
       .orderBy(desc(inspectionsTable.submittedAt))
       .limit(1);

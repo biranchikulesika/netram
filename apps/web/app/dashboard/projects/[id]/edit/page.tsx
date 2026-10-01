@@ -7,11 +7,7 @@ export const dynamic = "force-dynamic";
 
 const EDITABLE_STATUSES = new Set(["Draft", "Pending Verification"]);
 
-export default async function EditProjectPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionUser();
   if (!session) redirect("/login");
 

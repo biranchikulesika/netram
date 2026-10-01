@@ -180,7 +180,10 @@ export class UserAdminService {
   }
 
   async listJurisdictions(ctx: RequestUserContext): Promise<JurisdictionView[]> {
-    if (!this.authz.hasPermission(ctx, ROLE_MANAGE) && !this.authz.hasPermission(ctx, USER_MANAGE)) {
+    if (
+      !this.authz.hasPermission(ctx, ROLE_MANAGE) &&
+      !this.authz.hasPermission(ctx, USER_MANAGE)
+    ) {
       this.authz.requirePermission(ctx, ROLE_MANAGE);
     }
     return this.repository.listJurisdictions();

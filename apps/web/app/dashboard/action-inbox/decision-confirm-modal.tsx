@@ -106,9 +106,9 @@ export function DecisionConfirmModal({
         >
           {isReject ? (
             <>
-              Rejecting sends this item back for correction (registration returns to Draft;
-              the expense/ATR goes back to the organisation to resubmit). Nothing is deleted -
-              the decision is audit-logged against your account.
+              Rejecting sends this item back for correction (registration returns to Draft; the
+              expense/ATR goes back to the organisation to resubmit). Nothing is deleted - the
+              decision is audit-logged against your account.
             </>
           ) : (
             <>

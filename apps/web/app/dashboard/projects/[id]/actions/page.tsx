@@ -1,13 +1,13 @@
-import { getFacility, getFacilityCorrectiveActions, getFacilityInspections } from "../../../../../lib/facility";
+import {
+  getFacility,
+  getFacilityCorrectiveActions,
+  getFacilityInspections,
+} from "../../../../../lib/facility";
 import { CorrectiveActionsLayout } from "../../../corrective-actions/corrective-actions-layout";
 
 export const dynamic = "force-dynamic";
 
-export default async function FacilityActionsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function FacilityActionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const project = await getFacility(id);
   if (!project) return null;

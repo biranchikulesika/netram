@@ -52,8 +52,5 @@ export interface RuleEvaluator {
   readonly defaultSeverity: FinancialRiskSeverity;
   readonly defaultWeight: number;
 
-  evaluate(
-    ctx: RiskEvaluationContext,
-    rule: FinancialRiskRule,
-  ): Promise<RuleEvaluationResult[]>;
+  evaluate(ctx: RiskEvaluationContext, rule: FinancialRiskRule): Promise<RuleEvaluationResult[]>;
 }

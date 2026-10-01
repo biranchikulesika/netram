@@ -203,12 +203,15 @@ export class InspectionSyncService {
       }
 
       case "draft_finding": {
-        if (!this.findingRepo) throw new Error("Finding repository is required for finding drafts.");
-        const findingId = typeof op.payload.findingId === "string" ? op.payload.findingId : randomUUID();
+        if (!this.findingRepo)
+          throw new Error("Finding repository is required for finding drafts.");
+        const findingId =
+          typeof op.payload.findingId === "string" ? op.payload.findingId : randomUUID();
         const finding = await this.findingRepo.createWithAuditAndEvent({
           id: findingId,
           inspectionId: op.inspectionId,
-          observationId: typeof op.payload.observationId === "string" ? op.payload.observationId : null,
+          observationId:
+            typeof op.payload.observationId === "string" ? op.payload.observationId : null,
           severity: op.payload.severity as "critical" | "high" | "medium" | "low",
           description: String(op.payload.description ?? ""),
           remediation: typeof op.payload.remediation === "string" ? op.payload.remediation : null,
@@ -225,11 +228,19 @@ export class InspectionSyncService {
           requestId: ctx.requestId ?? null,
           ipAddress: ctx.ipAddress ?? null,
           auditAction: "finding.created",
-          auditMetadata: { inspectionId: op.inspectionId, operationId: op.operationId, source: "inspector_draft" },
+          auditMetadata: {
+            inspectionId: op.inspectionId,
+            operationId: op.operationId,
+            source: "inspector_draft",
+          },
           eventType: "finding.created",
           eventPayload: { inspectionId: op.inspectionId, findingId, source: "inspector_draft" },
         });
-        resultData = { findingId: finding.id, inspectionId: op.inspectionId, status: finding.status };
+        resultData = {
+          findingId: finding.id,
+          inspectionId: op.inspectionId,
+          status: finding.status,
+        };
         break;
       }
 

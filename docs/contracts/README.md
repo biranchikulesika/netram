@@ -29,6 +29,7 @@ the typed client in `packages/api-client`.
 ## Changing a Contract Boundary
 
 The change checklist (AGENTS.md §19):
+
 1. Update domain types (`packages/types`)
 2. Update validation schemas (`packages/validation`)
 3. Update backend implementation & routes (`services/api`)
@@ -44,45 +45,45 @@ The CI job strictly validates that `openapi.json` does not drift from code (`git
 
 The monorepo defines shared contracts in isolated workspace packages to maintain strict synchronization across the web, mobile, and backend services:
 
-| Package | Path | Purpose | Key Consumers |
-|---|---|---|---|
-| **`@netram/types`** | `packages/types/src/` | Canonical domain definitions, contract interfaces, enums, and event shapes | Web, Mobile, API, Workers, Realtime |
-| **`@netram/validation`** | `packages/validation/src/` | Zod runtime boundary validation schemas and input parsers | Web, Mobile, API |
-| **`@netram/api-client`** | `packages/api-client/src/` | Strongly-typed HTTP client wrapping all REST endpoints | Web, Mobile |
-| **`@netram/config`** | `packages/config/src/` | Validated, typed environment variable schemas (server and client) | All apps & services |
-| **`@netram/data`** | `packages/data/src/` | Persistence schemas (Drizzle ORM) and repository interfaces | API, Seed, Workers |
+| Package                  | Path                       | Purpose                                                                    | Key Consumers                       |
+| ------------------------ | -------------------------- | -------------------------------------------------------------------------- | ----------------------------------- |
+| **`@netram/types`**      | `packages/types/src/`      | Canonical domain definitions, contract interfaces, enums, and event shapes | Web, Mobile, API, Workers, Realtime |
+| **`@netram/validation`** | `packages/validation/src/` | Zod runtime boundary validation schemas and input parsers                  | Web, Mobile, API                    |
+| **`@netram/api-client`** | `packages/api-client/src/` | Strongly-typed HTTP client wrapping all REST endpoints                     | Web, Mobile                         |
+| **`@netram/config`**     | `packages/config/src/`     | Validated, typed environment variable schemas (server and client)          | All apps & services                 |
+| **`@netram/data`**       | `packages/data/src/`       | Persistence schemas (Drizzle ORM) and repository interfaces                | API, Seed, Workers                  |
 
 ### Domain Type Inventory (`packages/types/src/`)
 
-| File | Domain Area & Core Concepts |
-|---|---|
-| `auth.ts` | `AuthenticatedUser`, `RequestUserContext`, dev token structures |
-| `authorization.ts` | `Role`, `Permission`, `RoleAssignment`, `Scope`, `Policy` |
-| `user.ts` | `User`, `UserProfile`, user status transitions |
-| `geography.ts` | `State`, `District`, `Jurisdiction` hierarchy |
-| `project.ts` | `Project`, `ProjectStatus`, lifecycle transitions, facility profiles |
-| `project-photo.ts` | `ProjectPhoto`, photo metadata, capture checksums |
-| `inspection.ts` | `Inspection`, `InspectionStatus`, workflow states, random assignment |
-| `inspection-assignment.ts` | `InspectionAssignment`, team allocation rules |
-| `finding.ts` | `Finding`, `FindingSeverity`, `FindingStatus` |
-| `corrective-action.ts` | `CorrectiveAction`, `CorrectiveActionStatus`, ATR records |
-| `evidence.ts` | `Evidence`, `EvidenceIntegrityState`, `EvidenceUploadState` |
-| `observation.ts` | `Observation`, `ObservationType` |
-| `complaint.ts` | `Complaint`, `ComplaintStatus`, escalation pathways |
-| `notification.ts` | `Notification`, notification channels (in-app, email, sms, push) |
-| `audit.ts` | `AuditEvent`, append-only audit trail entries |
-| `ai-anomaly.ts` | `AIAnomaly`, `AnomalyScore`, `AnomalySeverity`, confidence intervals |
-| `attendance.ts` | `AttendanceCalculation`, `AttendanceAnomaly`, `AttendanceCorrection` |
-| `cctv.ts` | `PublicCctvCamera`, `CameraHealthStatus`, `AuthorizedStream`, WHEP playback |
-| `vc.ts` | `VideoConferenceSession`, `VCSessionStatus`, participant state |
-| `fund.ts` | `FundAllocation`, `FundRelease`, `Expense`, `FinancialDocument`, `InspectionFlag` |
-| `project-risk.ts` | `ProjectRiskSnapshot`, composite multi-dimensional scoring types |
-| `action-inbox.ts` | `ActionInboxItem`, `ActionInboxSection`, kind-to-permission mapping |
-| `scheme-component.ts` | `SchemeComponent` (DoSJE welfare scheme components) |
-| `registry.ts` | `AgencyRegistration`, `OfficialRegistration`, `REGISTRY_CAPABILITIES` |
-| `sync.ts` | Offline operation batch contracts (`OfflineOperation`, `SyncResult`, `ConflictResult`) |
-| `domain-events.ts` | Strongly-typed event payloads (`InspectionAssigned`, `EvidenceCaptured`, etc.) |
-| `common.ts` | Shared primitives (`UUID`, `Timestamp`, `Pagination`, `ApiError`) |
+| File                       | Domain Area & Core Concepts                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `auth.ts`                  | `AuthenticatedUser`, `RequestUserContext`, dev token structures                        |
+| `authorization.ts`         | `Role`, `Permission`, `RoleAssignment`, `Scope`, `Policy`                              |
+| `user.ts`                  | `User`, `UserProfile`, user status transitions                                         |
+| `geography.ts`             | `State`, `District`, `Jurisdiction` hierarchy                                          |
+| `project.ts`               | `Project`, `ProjectStatus`, lifecycle transitions, facility profiles                   |
+| `project-photo.ts`         | `ProjectPhoto`, photo metadata, capture checksums                                      |
+| `inspection.ts`            | `Inspection`, `InspectionStatus`, workflow states, random assignment                   |
+| `inspection-assignment.ts` | `InspectionAssignment`, team allocation rules                                          |
+| `finding.ts`               | `Finding`, `FindingSeverity`, `FindingStatus`                                          |
+| `corrective-action.ts`     | `CorrectiveAction`, `CorrectiveActionStatus`, ATR records                              |
+| `evidence.ts`              | `Evidence`, `EvidenceIntegrityState`, `EvidenceUploadState`                            |
+| `observation.ts`           | `Observation`, `ObservationType`                                                       |
+| `complaint.ts`             | `Complaint`, `ComplaintStatus`, escalation pathways                                    |
+| `notification.ts`          | `Notification`, notification channels (in-app, email, sms, push)                       |
+| `audit.ts`                 | `AuditEvent`, append-only audit trail entries                                          |
+| `ai-anomaly.ts`            | `AIAnomaly`, `AnomalyScore`, `AnomalySeverity`, confidence intervals                   |
+| `attendance.ts`            | `AttendanceCalculation`, `AttendanceAnomaly`, `AttendanceCorrection`                   |
+| `cctv.ts`                  | `PublicCctvCamera`, `CameraHealthStatus`, `AuthorizedStream`, WHEP playback            |
+| `vc.ts`                    | `VideoConferenceSession`, `VCSessionStatus`, participant state                         |
+| `fund.ts`                  | `FundAllocation`, `FundRelease`, `Expense`, `FinancialDocument`, `InspectionFlag`      |
+| `project-risk.ts`          | `ProjectRiskSnapshot`, composite multi-dimensional scoring types                       |
+| `action-inbox.ts`          | `ActionInboxItem`, `ActionInboxSection`, kind-to-permission mapping                    |
+| `scheme-component.ts`      | `SchemeComponent` (DoSJE welfare scheme components)                                    |
+| `registry.ts`              | `AgencyRegistration`, `OfficialRegistration`, `REGISTRY_CAPABILITIES`                  |
+| `sync.ts`                  | Offline operation batch contracts (`OfflineOperation`, `SyncResult`, `ConflictResult`) |
+| `domain-events.ts`         | Strongly-typed event payloads (`InspectionAssigned`, `EvidenceCaptured`, etc.)         |
+| `common.ts`                | Shared primitives (`UUID`, `Timestamp`, `Pagination`, `ApiError`)                      |
 
 ---
 
@@ -365,13 +366,13 @@ Client gating never substitutes for the server check (AGENTS.md §16, §65).
 
 The matrix defines **who can register what** in the Registrations hub:
 
-| Capability key | Entity registered | Required permission | Intended holders | Created record starts |
-|---|---|---|---|---|
-| `facility` | Welfare facility / project | `project:create` | Institution admins, authority officers | Pending (Draft → Pending Verification) |
-| `organisation` | Agency / society | `organisation:create` | Authority officers | Active |
-| `programme` | Scheme / programme | `programme:create` | Authority officers | Active |
-| `inspector` | Inspector (user + role assignment) | `inspector:register` | Authority officers | Suspended until first sign-in |
-| `official` | Authority official / admin (user + role + authority + jurisdiction) | `official:register` | System administrators only | Suspended until first sign-in |
+| Capability key | Entity registered                                                   | Required permission   | Intended holders                       | Created record starts                  |
+| -------------- | ------------------------------------------------------------------- | --------------------- | -------------------------------------- | -------------------------------------- |
+| `facility`     | Welfare facility / project                                          | `project:create`      | Institution admins, authority officers | Pending (Draft → Pending Verification) |
+| `organisation` | Agency / society                                                    | `organisation:create` | Authority officers                     | Active                                 |
+| `programme`    | Scheme / programme                                                  | `programme:create`    | Authority officers                     | Active                                 |
+| `inspector`    | Inspector (user + role assignment)                                  | `inspector:register`  | Authority officers                     | Suspended until first sign-in          |
+| `official`     | Authority official / admin (user + role + authority + jurisdiction) | `official:register`   | System administrators only             | Suspended until first sign-in          |
 
 Rules bound to the matrix:
 
@@ -441,7 +442,7 @@ facility dossier, where `POST /projects/:id/transitions` (via the standard
 not user-created records: project types (`institution`, `authority_project`,
 `other`) and organisation categories are fixed constants in
 `packages/types`/`packages/validation`, extended by developers through a
-contract change. The registry creates *instances* (agencies, schemes,
+contract change. The registry creates _instances_ (agencies, schemes,
 facilities, people) - never new categories.
 
 ## Programme (scheme) geographic scope
@@ -449,11 +450,11 @@ facilities, people) - never new categories.
 Schemes differ in territorial reach; the scope is chosen at registration and
 governs which facilities may link the scheme.
 
-| Scope | Meaning | Required reference |
-|---|---|---|
-| `national` | Linkable from any facility | none |
-| `state` | Only facilities inside one state | `stateId` |
-| `district` | Only facilities in one district | `districtId` |
+| Scope      | Meaning                          | Required reference |
+| ---------- | -------------------------------- | ------------------ |
+| `national` | Linkable from any facility       | none               |
+| `state`    | Only facilities inside one state | `stateId`          |
+| `district` | Only facilities in one district  | `districtId`       |
 
 - Validation (`createProgrammeSchema` in `packages/validation`) enforces the
   scope/reference pairing at every boundary; the registry service re-checks

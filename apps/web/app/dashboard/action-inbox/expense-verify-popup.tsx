@@ -133,8 +133,19 @@ export function ExpenseVerifyPopup({
             >
               Expenditure amount
             </div>
-            <div style={{ marginTop: "0.2rem", fontSize: "1.7rem", fontWeight: 800, color: "var(--text-primary)" }}>
-              ₹ {item.amountInr?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
+            <div
+              style={{
+                marginTop: "0.2rem",
+                fontSize: "1.7rem",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+              }}
+            >
+              ₹{" "}
+              {item.amountInr?.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }) ?? "0.00"}
             </div>
           </div>
           <div style={{ flex: "2 1 300px" }}>
@@ -149,7 +160,14 @@ export function ExpenseVerifyPopup({
             >
               Purpose of expenditure
             </div>
-            <div style={{ marginTop: "0.25rem", fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-primary)" }}>
+            <div
+              style={{
+                marginTop: "0.25rem",
+                fontSize: "0.85rem",
+                lineHeight: 1.5,
+                color: "var(--text-primary)",
+              }}
+            >
               {ctx.description ?? item.summary}
             </div>
             <div
@@ -174,7 +192,14 @@ export function ExpenseVerifyPopup({
                 >
                   Expenditure type
                 </div>
-                <div style={{ marginTop: "0.2rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                <div
+                  style={{
+                    marginTop: "0.2rem",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    color: "var(--text-primary)",
+                  }}
+                >
                   {ctx.category ?? "-"}
                 </div>
               </div>
@@ -190,7 +215,14 @@ export function ExpenseVerifyPopup({
                 >
                   Expenditure date
                 </div>
-                <div style={{ marginTop: "0.2rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                <div
+                  style={{
+                    marginTop: "0.2rem",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    color: "var(--text-primary)",
+                  }}
+                >
                   {ctx.transactionDate ? formatDate(ctx.transactionDate) : "-"}
                 </div>
               </div>
@@ -215,9 +247,17 @@ export function ExpenseVerifyPopup({
         <div style={{ marginBottom: "0.9rem" }}>
           <label
             htmlFor="expense-reject-reason"
-            style={{ fontSize: "0.8rem", fontWeight: 600, display: "block", marginBottom: "0.35rem" }}
+            style={{
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              display: "block",
+              marginBottom: "0.35rem",
+            }}
           >
-            Rejection reason <span className="muted" style={{ fontWeight: 400 }}>(required to reject)</span>
+            Rejection reason{" "}
+            <span className="muted" style={{ fontWeight: 400 }}>
+              (required to reject)
+            </span>
           </label>
           <textarea
             id="expense-reject-reason"

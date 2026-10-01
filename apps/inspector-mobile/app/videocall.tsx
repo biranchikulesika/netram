@@ -12,18 +12,15 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
-import {
-  CameraView,
-  useCameraPermissions,
-  useMicrophonePermissions,
-} from "expo-camera";
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { Audio as ExpoAudio, Video as ExpoVideo, ResizeMode } from "expo-av";
 import { Icon } from "../src/components/ui/Icon";
 import { InteractiveVideoPlayer } from "../src/components/ui/InteractiveVideoPlayer";
 import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { useAuth } from "../src/auth/auth-context";
-import { OfflineInspectionQueue } from "../src/offline/queue";import {
+import { OfflineInspectionQueue } from "../src/offline/queue";
+import {
   startCallingSound,
   playCallPickupSound,
   stopAllCallSounds,
@@ -40,7 +37,6 @@ export type ReviewCondition = CallCondition;
 
 const queue = new OfflineInspectionQueue();
 // All contact and history records are loaded directly from the database (§5, §8, §9).
-
 
 function renderWebVideo(
   videoRef: React.RefObject<HTMLVideoElement | null>,
@@ -139,7 +135,7 @@ export default function CallsScreen() {
       onPanResponderRelease: () => {
         pan.flattenOffset();
       },
-    })
+    }),
   ).current;
 
   // Media state
@@ -161,7 +157,6 @@ export default function CallsScreen() {
   const webCallRecorderRef = useRef<MediaRecorder | null>(null);
   const webCallChunksRef = useRef<BlobPart[]>([]);
   const webRecordedUriRef = useRef<string | null>(null);
-
 
   // Theme Colors
   const bgCanvas = theme.bgCanvas;
@@ -233,16 +228,18 @@ export default function CallsScreen() {
         }
       })();
     },
-    [client]
+    [client],
   );
 
   // Call timer (strictly 1-second interval based on Date.now())
   useEffect(() => {
     if (activeCall?.status === "connected") {
-      const callStartTime = Date.now() - ((activeCall.duration || 0) * 1000);
+      const callStartTime = Date.now() - (activeCall.duration || 0) * 1000;
       timerRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
-        setActiveCall((prev) => (prev && prev.status === "connected" ? { ...prev, duration: elapsed } : null));
+        setActiveCall((prev) =>
+          prev && prev.status === "connected" ? { ...prev, duration: elapsed } : null,
+        );
       }, 250);
     } else {
       if (timerRef.current) {
@@ -276,7 +273,11 @@ export default function CallsScreen() {
 
   // Start local camera on Web and Native
   const startCamera = useCallback(async () => {
-    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+    if (
+      Platform.OS === "web" &&
+      typeof navigator !== "undefined" &&
+      navigator.mediaDevices?.getUserMedia
+    ) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: isFacingFront ? "user" : "environment" },
@@ -302,7 +303,13 @@ export default function CallsScreen() {
         console.warn("Native camera permissions error:", err);
       }
     }
-  }, [isFacingFront, cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
+  }, [
+    isFacingFront,
+    cameraPermission,
+    micPermission,
+    requestCameraPermission,
+    requestMicPermission,
+  ]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -322,15 +329,19 @@ export default function CallsScreen() {
     webRecordedUriRef.current = null;
 
     if (Platform.OS === "web") {
-      if (streamRef.current && (!webCallRecorderRef.current || webCallRecorderRef.current.state === "inactive")) {
+      if (
+        streamRef.current &&
+        (!webCallRecorderRef.current || webCallRecorderRef.current.state === "inactive")
+      ) {
         try {
           webCallChunksRef.current = [];
           const mimeType =
-            typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+            typeof MediaRecorder !== "undefined" &&
+            MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
               ? "video/webm;codecs=vp9,opus"
               : typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm")
-              ? "video/webm"
-              : "video/mp4";
+                ? "video/webm"
+                : "video/mp4";
 
           const recorder = new MediaRecorder(streamRef.current, { mimeType });
           recorder.ondataavailable = (e) => {
@@ -397,7 +408,7 @@ export default function CallsScreen() {
                           ...prev,
                           inspectorVideoUri: url,
                         }
-                      : null
+                      : null,
                   );
                   resolve(url);
                 } else {
@@ -520,10 +531,7 @@ export default function CallsScreen() {
       // inspector recording there is no inspector video to store.
       const finalRemoteVideoUri = c.videoUri ?? null;
       const finalInspectorVideoUri =
-        recordedUri ||
-        nativeRecordedUriRef.current ||
-        webRecordedUriRef.current ||
-        null;
+        recordedUri || nativeRecordedUriRef.current || webRecordedUriRef.current || null;
 
       // Auto-recording option for evidence storing (§30)
       if (autoRecordEvidence && dur > 0) {
@@ -531,7 +539,7 @@ export default function CallsScreen() {
           try {
             await queue.recordObservation(
               c.projectCode,
-              `[STATUTORY VIDEO CALL EVIDENCE · SEC. 30]\nParticipant: ${c.name} (${c.title})\nProject: ${c.projectName} [${c.projectCode}]\nDuration: ${formatDuration(dur)}\nCryptographic Seal: ${callHash}\nStatus: Officially Stored in Offline Vault`
+              `[STATUTORY VIDEO CALL EVIDENCE · SEC. 30]\nParticipant: ${c.name} (${c.title})\nProject: ${c.projectName} [${c.projectCode}]\nDuration: ${formatDuration(dur)}\nCryptographic Seal: ${callHash}\nStatus: Officially Stored in Offline Vault`,
             );
           } catch {
             // quiet save
@@ -650,7 +658,7 @@ export default function CallsScreen() {
         c.name.toLowerCase().includes(q) ||
         c.title.toLowerCase().includes(q) ||
         c.projectName.toLowerCase().includes(q) ||
-        c.projectCode.toLowerCase().includes(q)
+        c.projectCode.toLowerCase().includes(q),
     );
   }, [contacts, searchQuery]);
 
@@ -662,7 +670,7 @@ export default function CallsScreen() {
       (h) =>
         h.contactName.toLowerCase().includes(q) ||
         h.projectName.toLowerCase().includes(q) ||
-        h.projectCode.toLowerCase().includes(q)
+        h.projectCode.toLowerCase().includes(q),
     );
   }, [callHistory, searchQuery]);
 
@@ -980,7 +988,9 @@ export default function CallsScreen() {
           {filteredContacts.length === 0 ? (
             <View style={styles.emptyBox}>
               <Icon name="people-outline" size={40} color={textMuted} />
-              <Text style={[styles.emptyText, { color: textPrimary }]}>No assigned contacts found</Text>
+              <Text style={[styles.emptyText, { color: textPrimary }]}>
+                No assigned contacts found
+              </Text>
             </View>
           ) : (
             filteredContacts.map((contact) => {
@@ -996,10 +1006,14 @@ export default function CallsScreen() {
                   key={contact.id}
                   style={[styles.whatsAppRowWrapper, { borderBottomColor: borderColor }]}
                 >
-                  <View style={[styles.whatsAppMainRow, isExpanded && styles.whatsAppMainRowExpanded]}>
+                  <View
+                    style={[styles.whatsAppMainRow, isExpanded && styles.whatsAppMainRowExpanded]}
+                  >
                     {/* Compact Profile Avatar */}
                     <View style={[styles.avatarWrapper, isExpanded && { marginTop: 2 }]}>
-                      <View style={[styles.avatarCircle50, { backgroundColor: contact.avatarColor }]}>
+                      <View
+                        style={[styles.avatarCircle50, { backgroundColor: contact.avatarColor }]}
+                      >
                         <Text style={styles.avatarInitialsText}>{initials}</Text>
                       </View>
                       {contact.isOnline && <View style={styles.onlineBadgeGreen} />}
@@ -1045,7 +1059,9 @@ export default function CallsScreen() {
           {filteredCallHistory.length === 0 ? (
             <View style={styles.emptyBox}>
               <Icon name="time-outline" size={40} color={textMuted} />
-              <Text style={[styles.emptyText, { color: textPrimary }]}>No video call history recorded</Text>
+              <Text style={[styles.emptyText, { color: textPrimary }]}>
+                No video call history recorded
+              </Text>
             </View>
           ) : (
             filteredCallHistory.map((item) => {
@@ -1058,7 +1074,9 @@ export default function CallsScreen() {
                 .join("")
                 .slice(0, 2);
 
-              const isPickedUp = item.status ? item.status === "answered" : item.durationSeconds > 0;
+              const isPickedUp = item.status
+                ? item.status === "answered"
+                : item.durationSeconds > 0;
               const isIncoming = item.direction === "incoming";
 
               // Icon, Color, Badge, and Label
@@ -1091,7 +1109,9 @@ export default function CallsScreen() {
                   key={item.id}
                   style={[styles.whatsAppRowWrapper, { borderBottomColor: borderColor }]}
                 >
-                  <View style={[styles.whatsAppMainRow, isExpanded && styles.whatsAppMainRowExpanded]}>
+                  <View
+                    style={[styles.whatsAppMainRow, isExpanded && styles.whatsAppMainRowExpanded]}
+                  >
                     {/* Compact Avatar with Direction Mini Badge */}
                     <View style={[styles.avatarWrapper, isExpanded && { marginTop: 2 }]}>
                       <View style={[styles.avatarCircle50, { backgroundColor: avatarColor }]}>
@@ -1106,11 +1126,7 @@ export default function CallsScreen() {
                           },
                         ]}
                       >
-                        <Icon
-                          name={iconName}
-                          size={11}
-                          color={arrowColor}
-                        />
+                        <Icon name={iconName} size={11} color={arrowColor} />
                       </View>
                     </View>
 
@@ -1119,10 +1135,16 @@ export default function CallsScreen() {
                       style={styles.whatsAppInfoCol}
                       onPress={() => setExpandedCallId(isExpanded ? null : item.id)}
                     >
-                      <Text style={[styles.contactNameBold, { color: textPrimary }]} numberOfLines={1}>
+                      <Text
+                        style={[styles.contactNameBold, { color: textPrimary }]}
+                        numberOfLines={1}
+                      >
                         {item.contactName}
                       </Text>
-                      <Text style={[styles.contactSubtitleMuted, { color: textMuted }]} numberOfLines={1}>
+                      <Text
+                        style={[styles.contactSubtitleMuted, { color: textMuted }]}
+                        numberOfLines={1}
+                      >
                         {item.timestamp} •{" "}
                         <Text
                           style={{
@@ -1162,12 +1184,18 @@ export default function CallsScreen() {
                   {isExpanded && (
                     <View style={styles.detailsCard}>
                       <Text style={[styles.contactSubtitleMuted, { color: textMuted }]}>
-                        {item.contactTitle || (item.role === "staff" ? "Staff" : "Beneficiary")} • {item.projectName}
+                        {item.contactTitle || (item.role === "staff" ? "Staff" : "Beneficiary")} •{" "}
+                        {item.projectName}
                       </Text>
 
                       {/* Observations Note Box */}
                       {item.reviewText ? (
-                        <View style={[styles.reviewNoteCallout, { backgroundColor: bgSubtle, borderColor }]}>
+                        <View
+                          style={[
+                            styles.reviewNoteCallout,
+                            { backgroundColor: bgSubtle, borderColor },
+                          ]}
+                        >
                           <Text style={[styles.reviewNoteCalloutTitle, { color: textMuted }]}>
                             Note
                           </Text>
@@ -1259,7 +1287,8 @@ export default function CallsScreen() {
                     style={[
                       styles.conditionOptionBtn,
                       { backgroundColor: bgCard, borderColor: borderColor },
-                      reviewCondition === "satisfactory" && styles.conditionOptionSatisfactoryActive,
+                      reviewCondition === "satisfactory" &&
+                        styles.conditionOptionSatisfactoryActive,
                     ]}
                     onPress={() => setReviewCondition("satisfactory")}
                   >
@@ -1307,7 +1336,8 @@ export default function CallsScreen() {
                     style={[
                       styles.conditionOptionBtn,
                       { backgroundColor: bgCard, borderColor: borderColor },
-                      reviewCondition === "critical_problem" && styles.conditionOptionCriticalActive,
+                      reviewCondition === "critical_problem" &&
+                        styles.conditionOptionCriticalActive,
                     ]}
                     onPress={() => setReviewCondition("critical_problem")}
                   >
@@ -1721,7 +1751,6 @@ const styles = StyleSheet.create({
     color: colors.navyDark,
     letterSpacing: 0.8,
   },
-
 
   // Local PIP Camera (Draggable)
   pipCameraBox: {

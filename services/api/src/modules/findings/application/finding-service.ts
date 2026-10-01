@@ -5,12 +5,7 @@ import type { AuthorizationService } from "../../authorization/application/autho
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { InspectionService } from "../../inspections/application/inspection-service.js";
 import type { FindingRepositoryPort } from "./ports/finding-repository.js";
-import type {
-  Finding,
-  FindingAwaitingOrder,
-  FindingStatus,
-  FindingSeverity,
-} from "@netram/types";
+import type { Finding, FindingAwaitingOrder, FindingStatus, FindingSeverity } from "@netram/types";
 import { evaluateFindingTransition } from "../domain/finding.js";
 
 const REVIEW = "inspection:review" as const;

@@ -89,7 +89,10 @@ async function main(): Promise<void> {
   ]);
   const cleanup = async (code: number): Promise<never> => {
     chrome.kill("SIGKILL");
-    rmSync(chrome.spawnargs.find((a) => a.includes("user-data-dir"))!, { recursive: true, force: true });
+    rmSync(
+      chrome.spawnargs.find((a) => a.includes("user-data-dir"))!,
+      { recursive: true, force: true },
+    );
     process.exit(code);
   };
   chrome.on("error", () => void cleanup(2));
@@ -118,7 +121,11 @@ async function main(): Promise<void> {
   let msgId = 0;
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
   ws.addEventListener("message", (ev) => {
-    const data = JSON.parse(String(ev.data)) as { id?: number; error?: { message: string }; result?: unknown };
+    const data = JSON.parse(String(ev.data)) as {
+      id?: number;
+      error?: { message: string };
+      result?: unknown;
+    };
     if (data.id && pending.has(data.id)) {
       const p = pending.get(data.id)!;
       pending.delete(data.id);
@@ -126,7 +133,7 @@ async function main(): Promise<void> {
       else p.resolve(data.result);
     }
   });
-  const send = <T,>(method: string, params?: Record<string, unknown>): Promise<T> =>
+  const send = <T>(method: string, params?: Record<string, unknown>): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const id = ++msgId;
       pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
@@ -134,17 +141,28 @@ async function main(): Promise<void> {
     });
 
   const pageUrl = `${WEB_BASE}/dev/cctv-test?path=${encodeURIComponent(WHEP_PATH)}&token=${encodeURIComponent(created.playback.token)}&autostart=1`;
-  const target = (await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: "PUT" })).json()) as {
+  const target = (await (
+    await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: "PUT" })
+  ).json()) as {
     targetId: string;
   };
-  const pageWs = new WebSocket((target as unknown as { webSocketDebuggerUrl: string }).webSocketDebuggerUrl);
+  const pageWs = new WebSocket(
+    (target as unknown as { webSocketDebuggerUrl: string }).webSocketDebuggerUrl,
+  );
   await new Promise<void>((res, rej) => {
     pageWs.addEventListener("open", () => res(), { once: true });
     pageWs.addEventListener("error", () => rej(new Error("page ws failed")), { once: true });
   });
-  const pagePending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  const pagePending = new Map<
+    number,
+    { resolve: (v: unknown) => void; reject: (e: Error) => void }
+  >();
   pageWs.addEventListener("message", (ev) => {
-    const data = JSON.parse(String(ev.data)) as { id?: number; error?: { message: string }; result?: unknown };
+    const data = JSON.parse(String(ev.data)) as {
+      id?: number;
+      error?: { message: string };
+      result?: unknown;
+    };
     if (data.id && pagePending.has(data.id)) {
       const p = pagePending.get(data.id)!;
       pagePending.delete(data.id);
@@ -152,7 +170,7 @@ async function main(): Promise<void> {
       else p.resolve(data.result);
     }
   });
-  const pageSend = <T,>(method: string, params?: Record<string, unknown>): Promise<T> =>
+  const pageSend = <T>(method: string, params?: Record<string, unknown>): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const id = ++msgId;
       pagePending.set(id, { resolve: resolve as (v: unknown) => void, reject });

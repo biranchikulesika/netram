@@ -1,11 +1,5 @@
 import { type ReactNode } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { colors } from "../../theme/colors";
 import { useSettings } from "../../theme/settings-context";
 
@@ -17,12 +11,7 @@ export interface NetramCardProps {
   testID?: string;
 }
 
-export function NetramCard({
-  children,
-  style,
-  onPress,
-  testID,
-}: NetramCardProps) {
+export function NetramCard({ children, style, onPress, testID }: NetramCardProps) {
   const { theme } = useSettings();
 
   const dynamicCardStyle: ViewStyle = {

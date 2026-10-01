@@ -17,8 +17,7 @@ export default async function CorrectiveActionDetailPage({
   if (!session) redirect("/login");
 
   const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
-  const isAuthorized =
-    permissions.includes("corrective_action:read") || permissions.includes("*");
+  const isAuthorized = permissions.includes("corrective_action:read") || permissions.includes("*");
 
   if (!isAuthorized) {
     return (
@@ -136,7 +135,8 @@ export default async function CorrectiveActionDetailPage({
             className="muted"
             style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}
           >
-            The requested corrective action does not exist or is not accessible within your jurisdiction.
+            The requested corrective action does not exist or is not accessible within your
+            jurisdiction.
           </p>
 
           <Link
@@ -162,7 +162,8 @@ export default async function CorrectiveActionDetailPage({
 
   const finding = findings.find((f) => f.id === action.findingId) || null;
 
-  const canSubmitAtr = permissions.includes("corrective_action:submit") || permissions.includes("*");
+  const canSubmitAtr =
+    permissions.includes("corrective_action:submit") || permissions.includes("*");
   const canReview = permissions.includes("corrective_action:approve") || permissions.includes("*");
 
   return (

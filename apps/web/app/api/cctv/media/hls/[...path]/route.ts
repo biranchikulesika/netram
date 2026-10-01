@@ -41,7 +41,10 @@ function badRequest(message: string): NextResponse {
   return new NextResponse(message, { status: 400 });
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> },
+) {
   const store = await cookies();
   const jwt = store.get(SESSION_COOKIE)?.value;
   if (!jwt) return unauthorized();
@@ -52,7 +55,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const { path: segments } = await params;
-  if (!Array.isArray(segments) || segments.length === 0 || segments.some((s) => !SEGMENT_PATTERN.test(s))) {
+  if (
+    !Array.isArray(segments) ||
+    segments.length === 0 ||
+    segments.some((s) => !SEGMENT_PATTERN.test(s))
+  ) {
     return badRequest("Invalid media path");
   }
 
@@ -94,9 +101,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return new NextResponse(rewritePlaylist(text, token, dir), {
       status: 200,
       headers: {
-        "Content-Type": contentType.includes("mpegurl") || contentType.includes("m3u8")
-          ? contentType
-          : "application/vnd.apple.mpegurl",
+        "Content-Type":
+          contentType.includes("mpegurl") || contentType.includes("m3u8")
+            ? contentType
+            : "application/vnd.apple.mpegurl",
         "Cache-Control": "no-store",
       },
     });

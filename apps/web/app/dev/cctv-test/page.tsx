@@ -33,7 +33,9 @@ export default function DevCctvTestPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
   const searchParams = useRef<URLSearchParams>(
-    typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search),
+    typeof window === "undefined"
+      ? new URLSearchParams()
+      : new URLSearchParams(window.location.search),
   );
   const [path, setPath] = useState(() => {
     // Verify harness and manual tests select the MediaMTX path via ?path=.
@@ -53,33 +55,36 @@ export default function DevCctvTestPage() {
     }
   }, []);
 
-  const startStatsPolling = useCallback((pc: RTCPeerConnection) => {
-    stopStatsPolling();
-    statsTimerRef.current = setInterval(() => {
-      const video = videoRef.current;
-      void (async () => {
-        const report = await pc.getStats();
-        let framesDecoded = 0;
-        let jitterDelaySec = 0;
-        let jitterEmitted = 0;
-        report.forEach((s) => {
-          if (s.type === "inbound-rtp" && s.kind === "video") {
-            framesDecoded = s.framesDecoded ?? 0;
-            // jitterBufferDelay/-EmittedCount live on inbound-rtp (Chrome).
-            jitterDelaySec += s.jitterBufferDelay ?? 0;
-            jitterEmitted += s.jitterBufferEmittedCount ?? 0;
-          }
-        });
-        const latencyMs =
-          jitterEmitted > 0 ? ((jitterDelaySec / jitterEmitted) * 1000).toFixed(0) : null;
-        setStats({
-          currentTime: (video?.currentTime ?? 0).toFixed(2),
-          framesDecoded: String(framesDecoded),
-          latencyMs,
-        });
-      })();
-    }, 2_000);
-  }, [stopStatsPolling]);
+  const startStatsPolling = useCallback(
+    (pc: RTCPeerConnection) => {
+      stopStatsPolling();
+      statsTimerRef.current = setInterval(() => {
+        const video = videoRef.current;
+        void (async () => {
+          const report = await pc.getStats();
+          let framesDecoded = 0;
+          let jitterDelaySec = 0;
+          let jitterEmitted = 0;
+          report.forEach((s) => {
+            if (s.type === "inbound-rtp" && s.kind === "video") {
+              framesDecoded = s.framesDecoded ?? 0;
+              // jitterBufferDelay/-EmittedCount live on inbound-rtp (Chrome).
+              jitterDelaySec += s.jitterBufferDelay ?? 0;
+              jitterEmitted += s.jitterBufferEmittedCount ?? 0;
+            }
+          });
+          const latencyMs =
+            jitterEmitted > 0 ? ((jitterDelaySec / jitterEmitted) * 1000).toFixed(0) : null;
+          setStats({
+            currentTime: (video?.currentTime ?? 0).toFixed(2),
+            framesDecoded: String(framesDecoded),
+            latencyMs,
+          });
+        })();
+      }, 2_000);
+    },
+    [stopStatsPolling],
+  );
 
   const stop = useCallback(() => {
     sessionRef.current?.stop();
@@ -165,18 +170,46 @@ export default function DevCctvTestPage() {
       }}
     >
       <header>
-        <p style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-subtle)", margin: 0 }}>
+        <p
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "var(--text-subtle)",
+            margin: 0,
+          }}
+        >
           Development only - throwaway rig
         </p>
-        <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", margin: "0.25rem 0" }}>CCTV Phase 2: WHEP playback test</h1>
-        <p style={{ marginTop: "0.25rem", fontSize: "0.875rem", color: "var(--text-subtle)", margin: 0 }}>
+        <h1
+          style={{
+            fontSize: "1.25rem",
+            fontWeight: 600,
+            color: "var(--text-primary)",
+            margin: "0.25rem 0",
+          }}
+        >
+          CCTV Phase 2: WHEP playback test
+        </h1>
+        <p
+          style={{
+            marginTop: "0.25rem",
+            fontSize: "0.875rem",
+            color: "var(--text-subtle)",
+            margin: 0,
+          }}
+        >
           RTSP → MediaMTX → WebRTC. Proves the media plane; the production control-room player is
           Phase 3. This page is deleted in Phase 3.
         </p>
       </header>
 
       <section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" }}>
-        <label htmlFor="whep-path" style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginRight: "0.25rem" }}>
+        <label
+          htmlFor="whep-path"
+          style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginRight: "0.25rem" }}
+        >
           MediaMTX path
         </label>
         <input
@@ -186,14 +219,27 @@ export default function DevCctvTestPage() {
           disabled={busy}
           suppressHydrationWarning
           className="rounded"
-          style={{ width: "16rem", border: "1px solid var(--color-border-strong)", background: "#ffffff", color: "var(--text-primary)", fontSize: "0.875rem", padding: "0.25rem 0.5rem" }}
+          style={{
+            width: "16rem",
+            border: "1px solid var(--color-border-strong)",
+            background: "#ffffff",
+            color: "var(--text-primary)",
+            fontSize: "0.875rem",
+            padding: "0.25rem 0.5rem",
+          }}
         />
         <button
           type="button"
           onClick={start}
           disabled={busy || path.trim().length === 0}
           className="rounded disabled:opacity-50"
-          style={{ background: "var(--action-green)", color: "#ffffff", fontSize: "0.875rem", fontWeight: 500, padding: "0.375rem 0.75rem" }}
+          style={{
+            background: "var(--action-green)",
+            color: "#ffffff",
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            padding: "0.375rem 0.75rem",
+          }}
         >
           Play
         </button>
@@ -202,7 +248,14 @@ export default function DevCctvTestPage() {
           onClick={stop}
           disabled={busy}
           className="rounded disabled:opacity-50"
-          style={{ background: "var(--bg-subtle)", color: "var(--text-primary)", border: "1px solid var(--color-border-strong)", fontSize: "0.875rem", fontWeight: 500, padding: "0.375rem 0.75rem" }}
+          style={{
+            background: "var(--bg-subtle)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--color-border-strong)",
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            padding: "0.375rem 0.75rem",
+          }}
         >
           Stop
         </button>
@@ -211,13 +264,27 @@ export default function DevCctvTestPage() {
           onClick={() => void start()}
           disabled={busy}
           className="rounded disabled:opacity-50"
-          style={{ background: "var(--bg-subtle)", color: "var(--text-primary)", border: "1px solid var(--color-border-strong)", fontSize: "0.875rem", fontWeight: 500, padding: "0.375rem 0.75rem" }}
+          style={{
+            background: "var(--bg-subtle)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--color-border-strong)",
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            padding: "0.375rem 0.75rem",
+          }}
         >
           Restart
         </button>
       </section>
 
-      <section style={{ overflow: "hidden", borderRadius: "0.5rem", border: "1px solid var(--color-border-subtle)", background: "#002449" }}>
+      <section
+        style={{
+          overflow: "hidden",
+          borderRadius: "0.5rem",
+          border: "1px solid var(--color-border-subtle)",
+          background: "#002449",
+        }}
+      >
         <video
           ref={videoRef}
           autoPlay

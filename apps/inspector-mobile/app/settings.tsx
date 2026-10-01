@@ -1,21 +1,10 @@
 import React from "react";
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Tabs, useRouter } from "expo-router";
 import { Icon } from "../src/components/ui/Icon";
 import { NetramCard } from "../src/components/ui/NetramCard";
 import { SectionHeader } from "../src/components/ui/SectionHeader";
-import {
-  useSettings,
-  type ThemeMode,
-} from "../src/theme/settings-context";
+import { useSettings, type ThemeMode } from "../src/theme/settings-context";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -30,7 +19,12 @@ export default function SettingsScreen() {
       />
 
       {/* ── Header ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.bgSurface, borderBottomColor: theme.borderSubtle }]}>
+      <View
+        style={[
+          styles.topBar,
+          { backgroundColor: theme.bgSurface, borderBottomColor: theme.borderSubtle },
+        ]}
+      >
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}

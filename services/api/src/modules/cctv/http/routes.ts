@@ -17,7 +17,6 @@ import { timingSafeEqual } from "node:crypto";
 import type { ListCamerasQuery } from "@netram/validation";
 import { z } from "zod";
 
-
 export async function registerCctvRoutes(
   app: FastifyInstance,
   container: Container,
@@ -130,7 +129,12 @@ export async function registerCctvRoutes(
         security: [{ bearerAuth: [] }],
         params: streamParamsSchema,
         body: toJsonSchema("StreamHeartbeatInput", streamHeartbeatSchema),
-        response: { 200: toJsonSchema("StreamHeartbeatResult", z.object({ lastHeartbeatAt: z.string().datetime() })) },
+        response: {
+          200: toJsonSchema(
+            "StreamHeartbeatResult",
+            z.object({ lastHeartbeatAt: z.string().datetime() }),
+          ),
+        },
       },
     },
     async (request) => {

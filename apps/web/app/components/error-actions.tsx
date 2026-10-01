@@ -91,9 +91,7 @@ export function ErrorActions({
         disabled={isRetrying}
         aria-label={retryLabel}
       >
-        <IconRotateCcw
-          className={`error-reload-icon ${isRetrying ? "is-spinning" : ""}`}
-        />
+        <IconRotateCcw className={`error-reload-icon ${isRetrying ? "is-spinning" : ""}`} />
         <span>{isRetrying ? "Reloading..." : retryLabel}</span>
       </button>
     </div>

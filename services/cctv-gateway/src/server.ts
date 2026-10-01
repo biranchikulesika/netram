@@ -85,7 +85,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   /** Service auth guard for control-plane routes (§14). */
-  function requireServiceSecret(reply: FastifyReply, request: { headers: Record<string, unknown> }): boolean {
+  function requireServiceSecret(
+    reply: FastifyReply,
+    request: { headers: Record<string, unknown> },
+  ): boolean {
     const header = request.headers["x-netram-service-secret"];
     const presented = Array.isArray(header) ? header[0] : header;
     if (!isAuthorizedService(presented as string | undefined, config.serviceSecret)) {
@@ -201,7 +204,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       // Provision first: the token must carry the exact media path (Phase 4)
       // and path derivation fails closed for unusable camera endpoints.
       const { mediaPath } = await media.ensureCameraPath(camera);
-      const token = createStreamToken({ streamId, cameraId: id, mediaPath, exp }, config.streamSecret);
+      const token = createStreamToken(
+        { streamId, cameraId: id, mediaPath, exp },
+        config.streamSecret,
+      );
       const expiresAt = new Date(exp * 1000).toISOString();
 
       const playback = await media.preparePlayback(camera, { streamId, token, expiresAt });
@@ -272,8 +278,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     const { mediaPath } = request.params as { mediaPath: string };
     const body = request.body as { whepSessionId?: string; netramSessionId?: string } | null;
     const hasWhep = typeof body?.whepSessionId === "string" && body.whepSessionId.length > 0;
-    const hasNetram =
-      typeof body?.netramSessionId === "string" && body.netramSessionId.length > 0;
+    const hasNetram = typeof body?.netramSessionId === "string" && body.netramSessionId.length > 0;
     if (!hasWhep && !hasNetram) {
       return reply.code(400).send({
         error: {
@@ -390,7 +395,9 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   buildServer()
     .then(async (app) => {
       await app.listen({ port: config.port, host: config.host });
-      app.log.info(`CCTV Gateway (media control bridge) listening on ${config.host}:${config.port}`);
+      app.log.info(
+        `CCTV Gateway (media control bridge) listening on ${config.host}:${config.port}`,
+      );
     })
     .catch((err) => {
       console.error("Failed to start CCTV Gateway:", err);

@@ -6,10 +6,7 @@ import type { RequestUserContext } from "../../../infrastructure/request-context
 import type { ProjectRepositoryPort } from "../../projects/application/ports/project-repository.js";
 import type { ObjectStoragePort } from "../../../infrastructure/object-storage.js";
 import type { FinancialDocumentRepository, ExpenseRepository } from "@netram/data";
-import type {
-  FinancialDocument,
-  DocumentVerificationStatus,
-} from "@netram/types";
+import type { FinancialDocument, DocumentVerificationStatus } from "@netram/types";
 
 const DOC_UPLOAD = "financial_document:upload" as const;
 const DOC_VERIFY = "financial_document:verify" as const;
@@ -192,18 +189,14 @@ export class FinancialDocumentService {
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
       auditAction:
-        status === "rejected"
-          ? "financial_document.rejected"
-          : "financial_document.verified",
+        status === "rejected" ? "financial_document.rejected" : "financial_document.verified",
       auditMetadata: {
         documentId: id,
         status,
         rejectionReason,
       },
       eventType:
-        status === "rejected"
-          ? "financial_document.rejected"
-          : "financial_document.verified",
+        status === "rejected" ? "financial_document.rejected" : "financial_document.verified",
       eventPayload: {
         documentId: id,
         status,

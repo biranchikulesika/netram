@@ -4,8 +4,18 @@ import { useSettings } from "../theme/settings-context";
 
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const fmtDate = (y: number, m: number, d: number) =>
@@ -30,11 +40,11 @@ export function CustomDatePicker({
 }: CustomDatePickerProps) {
   const { theme } = useSettings();
 
-  const [viewYear, setViewYear] = useState(
-    () => (initialValue ? new Date(`${initialValue}T00:00:00`) : new Date()).getFullYear(),
+  const [viewYear, setViewYear] = useState(() =>
+    (initialValue ? new Date(`${initialValue}T00:00:00`) : new Date()).getFullYear(),
   );
-  const [viewMonth, setViewMonth] = useState(
-    () => (initialValue ? new Date(`${initialValue}T00:00:00`) : new Date()).getMonth(),
+  const [viewMonth, setViewMonth] = useState(() =>
+    (initialValue ? new Date(`${initialValue}T00:00:00`) : new Date()).getMonth(),
   );
   const [selected, setSelected] = useState(initialValue);
   const [showYearPicker, setShowYearPicker] = useState(false);
@@ -87,8 +97,14 @@ export function CustomDatePicker({
     if (delta > 0 && !canShiftNext) return;
     let m = viewMonth + delta;
     let y = viewYear;
-    if (m < 0) { m = 11; y -= 1; }
-    if (m > 11) { m = 0; y += 1; }
+    if (m < 0) {
+      m = 11;
+      y -= 1;
+    }
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
     setViewMonth(m);
     setViewYear(y);
   };
@@ -122,7 +138,13 @@ export function CustomDatePicker({
         <View style={[styles.card, { backgroundColor: theme.bgSurface }]}>
           <Text style={[styles.title, { color: theme.textMuted }]}>
             {selected
-              ? new Date(`${selected}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }).toUpperCase()
+              ? new Date(`${selected}T00:00:00`)
+                  .toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                  .toUpperCase()
               : "SELECT DATE"}
           </Text>
 
@@ -135,14 +157,16 @@ export function CustomDatePicker({
               <Text style={[styles.monthLabel, { color: theme.textPrimary }]}>
                 {MONTHS[viewMonth]} {viewYear}
               </Text>
-              <Text style={[styles.dropHint, { color: theme.textMuted }]}>{showYearPicker ? "▲" : "▼"}</Text>
+              <Text style={[styles.dropHint, { color: theme.textMuted }]}>
+                {showYearPicker ? "▲" : "▼"}
+              </Text>
             </Pressable>
             <View style={styles.navArrows}>
               <Pressable
                 style={[
                   styles.navBtn,
                   { backgroundColor: theme.bgSubtle },
-                  (!showYearPicker && !canShiftPrev) && { opacity: 0.3 },
+                  !showYearPicker && !canShiftPrev && { opacity: 0.3 },
                 ]}
                 disabled={!showYearPicker && !canShiftPrev}
                 onPress={() => shiftOrPage(-1)}
@@ -154,7 +178,7 @@ export function CustomDatePicker({
                 style={[
                   styles.navBtn,
                   { backgroundColor: theme.bgSubtle },
-                  (!showYearPicker && !canShiftNext) && { opacity: 0.3 },
+                  !showYearPicker && !canShiftNext && { opacity: 0.3 },
                 ]}
                 disabled={!showYearPicker && !canShiftNext}
                 onPress={() => shiftOrPage(1)}
@@ -181,10 +205,16 @@ export function CustomDatePicker({
                       active && !disabled && { backgroundColor: theme.navyDark },
                       disabled && { opacity: 0.35 },
                     ]}
-                    onPress={() => { setViewYear(y); setShowYearPicker(false); }}
+                    onPress={() => {
+                      setViewYear(y);
+                      setShowYearPicker(false);
+                    }}
                   >
                     <Text
-                      style={[styles.yearCellText, { color: active && !disabled ? "#FFFFFF" : theme.textPrimary }]}
+                      style={[
+                        styles.yearCellText,
+                        { color: active && !disabled ? "#FFFFFF" : theme.textPrimary },
+                      ]}
                     >
                       {y}
                     </Text>
@@ -229,9 +259,15 @@ export function CustomDatePicker({
                         style={[
                           styles.dayText,
                           {
-                            color: isCellSelected ? "#FFFFFF" : isCellDisabled ? theme.textMuted : theme.textPrimary,
+                            color: isCellSelected
+                              ? "#FFFFFF"
+                              : isCellDisabled
+                                ? theme.textMuted
+                                : theme.textPrimary,
                           },
-                          isToday(d) && !isCellSelected && !isCellDisabled && { color: theme.navyDark },
+                          isToday(d) &&
+                            !isCellSelected &&
+                            !isCellDisabled && { color: theme.navyDark },
                         ]}
                       >
                         {d}
@@ -255,14 +291,20 @@ export function CustomDatePicker({
                 }
               }}
               hitSlop={8}
-              disabled={!selected || (minDate ? selected < minDate : false) || (maxDate ? selected > maxDate : false)}
+              disabled={
+                !selected ||
+                (minDate ? selected < minDate : false) ||
+                (maxDate ? selected > maxDate : false)
+              }
             >
               <Text
                 style={[
                   styles.footerBtnText,
                   {
                     color:
-                      !selected || (minDate && selected < minDate) || (maxDate && selected > maxDate)
+                      !selected ||
+                      (minDate && selected < minDate) ||
+                      (maxDate && selected > maxDate)
                         ? theme.textMuted
                         : theme.navyDark,
                   },

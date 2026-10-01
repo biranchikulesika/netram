@@ -19,20 +19,11 @@ export type CorrectiveActionStatus = (typeof CORRECTIVE_ACTION_STATUSES)[number]
  * leaves `pending`; authority review + decision drive `under_review` →
  * `accepted`/`rejected`; the SLA job drives `overdue`.
  */
-export const CORRECTIVE_ACTION_SUBMIT_FROM = [
-  "pending",
-  "rejected",
-  "overdue",
-] as const;
+export const CORRECTIVE_ACTION_SUBMIT_FROM = ["pending", "rejected", "overdue"] as const;
 
-export const CORRECTIVE_ACTION_REVIEW_OUTCOMES = [
-  "under_review",
-  "accepted",
-  "rejected",
-] as const;
+export const CORRECTIVE_ACTION_REVIEW_OUTCOMES = ["under_review", "accepted", "rejected"] as const;
 
-export type CorrectiveActionReviewOutcome =
-  (typeof CORRECTIVE_ACTION_REVIEW_OUTCOMES)[number];
+export type CorrectiveActionReviewOutcome = (typeof CORRECTIVE_ACTION_REVIEW_OUTCOMES)[number];
 
 /**
  * Facility context resolved for a corrective action (populated on list

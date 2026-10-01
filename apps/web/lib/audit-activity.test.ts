@@ -85,7 +85,10 @@ describe("formatAuditActivity", () => {
 
   it("renders a readable status transition", () => {
     const a = formatAuditActivity(
-      evt({ action: "project.transitioned", metadata: { from: "pending_verification", to: "approved" } }),
+      evt({
+        action: "project.transitioned",
+        metadata: { from: "pending_verification", to: "approved" },
+      }),
     );
     expect(a.summary).toBe("Project status updated to Approved");
     expect(a.transition).toBe("Pending Verification → Approved");
@@ -116,7 +119,12 @@ describe("formatAuditActivity", () => {
       evt({
         action: "cctv.media_auth_denied",
         actorUserId: null,
-        metadata: { reason: "token_expired", action: "read", path: "facility-vani/cam-gate", protocol: "webrtc" },
+        metadata: {
+          reason: "token_expired",
+          action: "read",
+          path: "facility-vani/cam-gate",
+          protocol: "webrtc",
+        },
       }),
     );
     expect(a.summary).toBe("Blocked an unauthorized stream request");
@@ -185,8 +193,12 @@ describe("matchesTimeRange", () => {
   const baseTime = new Date("2026-09-24T12:00:00.000Z").getTime();
 
   it("always matches when preset is 'all'", () => {
-    expect(matchesTimeRange("2026-01-01T00:00:00.000Z", "all", undefined, undefined, baseTime)).toBe(true);
-    expect(matchesTimeRange("2026-09-24T12:00:00.000Z", "all", undefined, undefined, baseTime)).toBe(true);
+    expect(
+      matchesTimeRange("2026-01-01T00:00:00.000Z", "all", undefined, undefined, baseTime),
+    ).toBe(true);
+    expect(
+      matchesTimeRange("2026-09-24T12:00:00.000Z", "all", undefined, undefined, baseTime),
+    ).toBe(true);
   });
 
   it("filters correctly for 30m, 1h, 12h, 24h presets", () => {
@@ -198,7 +210,9 @@ describe("matchesTimeRange", () => {
 
     // 30m
     expect(matchesTimeRange(tenMinutesAgo, "30m", undefined, undefined, baseTime)).toBe(true);
-    expect(matchesTimeRange(fortyFiveMinutesAgo, "30m", undefined, undefined, baseTime)).toBe(false);
+    expect(matchesTimeRange(fortyFiveMinutesAgo, "30m", undefined, undefined, baseTime)).toBe(
+      false,
+    );
 
     // 1h
     expect(matchesTimeRange(fortyFiveMinutesAgo, "1h", undefined, undefined, baseTime)).toBe(true);
@@ -233,17 +247,30 @@ describe("matchesTimeRange", () => {
   });
 
   it("filters correctly with custom date ranges", () => {
-    expect(matchesTimeRange("2026-09-15T10:00:00.000Z", "custom", "2026-09-10", "2026-09-20", baseTime)).toBe(true);
-    expect(matchesTimeRange("2026-09-05T10:00:00.000Z", "custom", "2026-09-10", "2026-09-20", baseTime)).toBe(false);
-    expect(matchesTimeRange("2026-09-25T10:00:00.000Z", "custom", "2026-09-10", "2026-09-20", baseTime)).toBe(false);
+    expect(
+      matchesTimeRange("2026-09-15T10:00:00.000Z", "custom", "2026-09-10", "2026-09-20", baseTime),
+    ).toBe(true);
+    expect(
+      matchesTimeRange("2026-09-05T10:00:00.000Z", "custom", "2026-09-10", "2026-09-20", baseTime),
+    ).toBe(false);
+    expect(
+      matchesTimeRange("2026-09-25T10:00:00.000Z", "custom", "2026-09-10", "2026-09-20", baseTime),
+    ).toBe(false);
 
     // Only start date
-    expect(matchesTimeRange("2026-09-15T10:00:00.000Z", "custom", "2026-09-10", "", baseTime)).toBe(true);
-    expect(matchesTimeRange("2026-09-05T10:00:00.000Z", "custom", "2026-09-10", "", baseTime)).toBe(false);
+    expect(matchesTimeRange("2026-09-15T10:00:00.000Z", "custom", "2026-09-10", "", baseTime)).toBe(
+      true,
+    );
+    expect(matchesTimeRange("2026-09-05T10:00:00.000Z", "custom", "2026-09-10", "", baseTime)).toBe(
+      false,
+    );
 
     // Only end date
-    expect(matchesTimeRange("2026-09-15T10:00:00.000Z", "custom", "", "2026-09-20", baseTime)).toBe(true);
-    expect(matchesTimeRange("2026-09-25T10:00:00.000Z", "custom", "", "2026-09-20", baseTime)).toBe(false);
+    expect(matchesTimeRange("2026-09-15T10:00:00.000Z", "custom", "", "2026-09-20", baseTime)).toBe(
+      true,
+    );
+    expect(matchesTimeRange("2026-09-25T10:00:00.000Z", "custom", "", "2026-09-20", baseTime)).toBe(
+      false,
+    );
   });
 });
-

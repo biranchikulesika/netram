@@ -87,9 +87,7 @@ describe("CctvStreamSweeper", () => {
   });
 
   it("is idempotent when a session was ended concurrently (already-ended rows return false)", async () => {
-    (repo.findSweepCandidates as ReturnType<typeof vi.fn>).mockResolvedValue([
-      candidate(),
-    ]);
+    (repo.findSweepCandidates as ReturnType<typeof vi.fn>).mockResolvedValue([candidate()]);
     (repo.endStreamSessionById as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
     const sweeper = new CctvStreamSweeper({ databaseUrl: "postgres://unused", cctvRepo: repo });

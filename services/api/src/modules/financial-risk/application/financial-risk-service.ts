@@ -19,10 +19,7 @@ import type {
   InspectionFlagStatus,
   Inspection,
 } from "@netram/types";
-import type {
-  CreateRiskRuleInput,
-  PatchRiskRuleInput,
-} from "@netram/validation";
+import type { CreateRiskRuleInput, PatchRiskRuleInput } from "@netram/validation";
 import { createDefaultRuleEvaluators } from "../domain/rules/index.js";
 import { scoreRiskResults, type ScoredRiskOutput } from "../domain/risk-scorer.js";
 import type { RiskEvaluationContext, RuleEvaluationResult } from "../domain/rule-evaluator.js";
@@ -202,9 +199,7 @@ export class FinancialRiskService {
   }
 
   /** Scheduled sweep: evaluate the financial risk engine across all active projects. */
-  async sweepAllActiveProjects(
-    ctx: RequestUserContext,
-  ): Promise<{ evaluatedCount: number }> {
+  async sweepAllActiveProjects(ctx: RequestUserContext): Promise<{ evaluatedCount: number }> {
     this.authz.requirePermission(ctx, RISK_READ);
 
     const activeProjects = await this.projectRepo.findAllActiveProjects();

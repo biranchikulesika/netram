@@ -24,10 +24,7 @@ export class ProjectRiskService {
     private readonly auditRepo: AuditRepository,
   ) {}
 
-  async evaluateProject(
-    ctx: RequestUserContext,
-    projectId: string,
-  ): Promise<ProjectRiskSnapshot> {
+  async evaluateProject(ctx: RequestUserContext, projectId: string): Promise<ProjectRiskSnapshot> {
     this.authz.requirePermission(ctx, RISK_EVALUATE);
 
     // 1. Build evaluation context
@@ -139,9 +136,7 @@ export class ProjectRiskService {
     return snapshot;
   }
 
-  async sweepAllActiveProjects(
-    ctx: RequestUserContext,
-  ): Promise<{
+  async sweepAllActiveProjects(ctx: RequestUserContext): Promise<{
     evaluatedCount: number;
     scheduledCount: number;
     failedCount: number;

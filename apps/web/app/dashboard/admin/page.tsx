@@ -53,11 +53,18 @@ export default async function AdminPage() {
             <IconAlertTriangle style={{ width: 22, height: 22 }} />
           </div>
 
-          <h3 style={{ margin: "0 0 0.35rem 0", fontSize: "1.1rem", color: "var(--color-navy-brand)" }}>
+          <h3
+            style={{
+              margin: "0 0 0.35rem 0",
+              fontSize: "1.1rem",
+              color: "var(--color-navy-brand)",
+            }}
+          >
             Access Restricted
           </h3>
           <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1.25rem" }}>
-            This section requires administrative permissions (<code>user:manage</code> or <code>role:manage</code>).
+            This section requires administrative permissions (<code>user:manage</code> or{" "}
+            <code>role:manage</code>).
           </p>
 
           <div
@@ -71,9 +78,13 @@ export default async function AdminPage() {
               fontSize: "0.8rem",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
+            <div
+              style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}
+            >
               <span style={{ color: "var(--text-muted)" }}>Account:</span>
-              <span style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>{session.user.email}</span>
+              <span style={{ fontWeight: 600, color: "var(--color-navy-brand)" }}>
+                {session.user.email}
+              </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--text-muted)" }}>Scopes:</span>

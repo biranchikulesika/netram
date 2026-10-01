@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultRuleEvaluators } from "./rules/index.js";
-import type { FinancialRiskRule, Expense, FinancialDocument, FundAllocation, FundRelease } from "@netram/types";
+import type {
+  FinancialRiskRule,
+  Expense,
+  FinancialDocument,
+  FundAllocation,
+  FundRelease,
+} from "@netram/types";
 import type { RiskEvaluationContext } from "./rule-evaluator.js";
 
-function makeRule(code: string, weight = 10, severity: "low" | "medium" | "high" | "critical" = "medium"): FinancialRiskRule {
+function makeRule(
+  code: string,
+  weight = 10,
+  severity: "low" | "medium" | "high" | "critical" = "medium",
+): FinancialRiskRule {
   return {
     id: `rule-${code}`,
     code,

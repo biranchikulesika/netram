@@ -6,7 +6,11 @@ import type { RequestUserContext } from "../../../infrastructure/request-context
 import type { ProjectRiskEvaluationContext } from "./project-risk-context.js";
 import type { AuthorizationService } from "../../authorization/application/authorization-service.js";
 import type { ProjectRiskContextBuilder } from "./project-risk-context-builder.js";
-import type { ProjectRiskRepository, InspectionFlagRepository, AuditRepository } from "@netram/data";
+import type {
+  ProjectRiskRepository,
+  InspectionFlagRepository,
+  AuditRepository,
+} from "@netram/data";
 import type { InspectionService } from "../../inspections/application/inspection-service.js";
 import type { CompositeRiskScore } from "@netram/types";
 
@@ -25,7 +29,10 @@ const mockCtx: RequestUserContext = {
 };
 
 describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
-  let mockAuthz: { requirePermission: ReturnType<typeof vi.fn>; accessibleDistrictIds: ReturnType<typeof vi.fn> };
+  let mockAuthz: {
+    requirePermission: ReturnType<typeof vi.fn>;
+    accessibleDistrictIds: ReturnType<typeof vi.fn>;
+  };
   let mockContextBuilder: { buildContext: ReturnType<typeof vi.fn> };
   let scorer: CompositeRiskScorer;
   let mockScheduler: { evaluateAndSchedule: ReturnType<typeof vi.fn> };
@@ -196,12 +203,31 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
       inspections: {
         inspections: [],
         findings: [{ id: "f1", inspectionId: "i1", severity: "critical", status: "confirmed" }], // 30 raw * 25% = 7.5 pts
-        correctiveActions: [{ id: "ca1", findingId: "f1", status: "pending", deadline: new Date(Date.now() - 100000).toISOString() }], // +25 overdue
+        correctiveActions: [
+          {
+            id: "ca1",
+            findingId: "f1",
+            status: "pending",
+            deadline: new Date(Date.now() - 100000).toISOString(),
+          },
+        ], // +25 overdue
       },
       attendance: {
         anomalies: [
-          { id: "a1", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
-          { id: "a2", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "HIGH", state: "NEW", operationalDate: "2026-09-01" },
+          {
+            id: "a1",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
+          {
+            id: "a2",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "HIGH",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
         ], // 40 raw * 20% = 8 pts
       },
       complaints: {
@@ -234,7 +260,9 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
   it("Case D: Skips scheduling when an open inspection is already in progress", async () => {
     const mockRiskRepo = {
       hasOpenInspection: vi.fn().mockResolvedValue(true),
-      getLastInspectionDates: vi.fn().mockResolvedValue({ lastCompletedAt: null, lastScheduledAt: null }),
+      getLastInspectionDates: vi
+        .fn()
+        .mockResolvedValue({ lastCompletedAt: null, lastScheduledAt: null }),
     };
     const scheduler = new InspectionScheduler(
       mockRiskRepo as unknown as ProjectRiskRepository,
@@ -242,11 +270,14 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
       {} as unknown as Pick<InspectionService, "createInspection">,
     );
 
-    const decision = await scheduler.evaluateAndSchedule(
-      mockCtx,
-      "p-dup",
-      { totalScore: 68, riskLevel: "high", dimensions: {} as unknown as CompositeRiskScore["dimensions"], topContributors: [], calculatedAt: "", scoringVersion: "" },
-    );
+    const decision = await scheduler.evaluateAndSchedule(mockCtx, "p-dup", {
+      totalScore: 68,
+      riskLevel: "high",
+      dimensions: {} as unknown as CompositeRiskScore["dimensions"],
+      topContributors: [],
+      calculatedAt: "",
+      scoringVersion: "",
+    });
 
     expect(decision.shouldSchedule).toBe(false);
     expect(decision.actionTaken).toBe("existing_open_inspection_skipped");
@@ -267,11 +298,14 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
       {} as unknown as Pick<InspectionService, "createInspection">,
     );
 
-    const decision = await scheduler.evaluateAndSchedule(
-      mockCtx,
-      "p-cool",
-      { totalScore: 65, riskLevel: "high", dimensions: {} as unknown as CompositeRiskScore["dimensions"], topContributors: [], calculatedAt: "", scoringVersion: "" },
-    );
+    const decision = await scheduler.evaluateAndSchedule(mockCtx, "p-cool", {
+      totalScore: 65,
+      riskLevel: "high",
+      dimensions: {} as unknown as CompositeRiskScore["dimensions"],
+      topContributors: [],
+      calculatedAt: "",
+      scoringVersion: "",
+    });
 
     expect(decision.shouldSchedule).toBe(false);
     expect(decision.actionTaken).toBe("cooldown_skipped");
@@ -300,11 +334,14 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
       mockInspectionService as unknown as Pick<InspectionService, "createInspection">,
     );
 
-    const decision = await scheduler.evaluateAndSchedule(
-      mockCtx,
-      "p-crit",
-      { totalScore: 82, riskLevel: "critical", dimensions: {} as unknown as CompositeRiskScore["dimensions"], topContributors: [], calculatedAt: "", scoringVersion: "" },
-    );
+    const decision = await scheduler.evaluateAndSchedule(mockCtx, "p-crit", {
+      totalScore: 82,
+      riskLevel: "critical",
+      dimensions: {} as unknown as CompositeRiskScore["dimensions"],
+      topContributors: [],
+      calculatedAt: "",
+      scoringVersion: "",
+    });
 
     expect(decision.shouldSchedule).toBe(true);
     expect(decision.actionTaken).toBe("scheduled");
@@ -325,7 +362,14 @@ describe("ProjectRiskService - End-to-End Scenarios (Cases A to H)", () => {
           districtName: "Central District",
           totalScore: 78,
           riskLevel: "critical" as const,
-          topContributors: [{ dimension: "financial", contribution: 35, percentage: 45, explanation: "High Cash Spend" }],
+          topContributors: [
+            {
+              dimension: "financial",
+              contribution: 35,
+              percentage: 45,
+              explanation: "High Cash Spend",
+            },
+          ],
           lastCalculatedAt: new Date().toISOString(),
           openInspectionCount: 0,
           hasOpenFlag: true,

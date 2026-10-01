@@ -205,11 +205,18 @@ export default function InspectionsMap({ inspections }: InspectionsMapProps) {
                 }}
                 title={f.districtLabel}
               >
-                <IconMapPin width={11} height={11} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
+                <IconMapPin
+                  width={11}
+                  height={11}
+                  style={{ color: "var(--text-subtle)", flexShrink: 0 }}
+                />
                 {f.districtLabel}
               </span>
               <span style={{ flex: 1 }} />
-              <span title="Open district inspections" style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}>
+              <span
+                title="Open district inspections"
+                style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}
+              >
                 <IconChevronRight width={13} height={13} />
               </span>
             </div>
@@ -222,10 +229,19 @@ export default function InspectionsMap({ inspections }: InspectionsMapProps) {
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  color: "var(--color-navy-brand)",
+                }}
+              >
                 {c.label}
               </h3>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
+              <div
+                style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}
+              >
                 {c.items.length} {c.items.length === 1 ? "inspection" : "inspections"}
               </div>
             </div>

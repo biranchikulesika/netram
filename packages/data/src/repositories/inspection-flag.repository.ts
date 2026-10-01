@@ -125,10 +125,12 @@ export class InspectionFlagRepository {
   ): Promise<{ items: InspectionFlag[]; total: number }> {
     const conditions: ReturnType<typeof eq>[] = [];
     if (filter.projectId) conditions.push(eq(flagsTable.projectId, filter.projectId));
-    if (filter.organisationId) conditions.push(eq(flagsTable.organisationId, filter.organisationId));
+    if (filter.organisationId)
+      conditions.push(eq(flagsTable.organisationId, filter.organisationId));
     if (filter.riskLevel) conditions.push(eq(flagsTable.riskLevel, filter.riskLevel));
     if (filter.status) conditions.push(eq(flagsTable.status, filter.status));
-    if (filter.assignedInspectorId) conditions.push(eq(flagsTable.assignedInspectorId, filter.assignedInspectorId));
+    if (filter.assignedInspectorId)
+      conditions.push(eq(flagsTable.assignedInspectorId, filter.assignedInspectorId));
 
     const where = and(...conditions);
     const joinScope = jurisdictionDistrictIds?.length
@@ -159,11 +161,7 @@ export class InspectionFlagRepository {
   }
 
   async findById(id: string): Promise<InspectionFlag | null> {
-    const rows = await this.db
-      .select()
-      .from(flagsTable)
-      .where(eq(flagsTable.id, id))
-      .limit(1);
+    const rows = await this.db.select().from(flagsTable).where(eq(flagsTable.id, id)).limit(1);
     if (!rows[0]) return null;
     return toInspectionFlag(rows[0] as unknown as InspectionFlagRow);
   }

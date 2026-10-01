@@ -37,7 +37,7 @@ flowchart LR
     M -->|"1. HTTPS Sync<br/>2. Pre-signed S3 PUT"| API
     M -.->|"Direct Binary Upload"| S3
     C -->|"RTSP Media Stream"| GW
-    
+
     API <-->|"Drizzle ORM (SQL)"| DB
     API <-->|"S3 API"| S3
     API <-->|"REST (Advisory Anomaly)"| AI
@@ -64,65 +64,69 @@ flowchart LR
 ## 2. Modular Architecture Tiers
 
 ### 📇 Tier 1: Field & Ingestion
-* **Components:**
-  * **Inspector Mobile Application** (`apps/inspector-mobile` - React Native / Expo)
-  * **Facility CCTV Cameras & NVRs** (Edge RTSP feeds)
-* **Responsibilities:**
-  * Captures on-site inspection observations, geotags, and photographic evidence.
-  * Operates offline in remote locations with zero network connectivity via local SQLite.
-  * Streams surveillance footage inside facility local networks without exposing credentials.
-* **Connectivity:**
-  * ➡️ **Core API:** Reconciles queued operations idempotently upon network reconnect (`POST /api/v1/inspections/sync`).
-  * ➡️ **MinIO Object Storage:** Uploads high-resolution evidence media using pre-signed S3 URLs with SHA-256 capture-time checksums.
-  * ➡️ **CCTV Gateway:** Serves RTSP video streams across the network perimeter on demand.
+
+- **Components:**
+  - **Inspector Mobile Application** (`apps/inspector-mobile` - React Native / Expo)
+  - **Facility CCTV Cameras & NVRs** (Edge RTSP feeds)
+- **Responsibilities:**
+  - Captures on-site inspection observations, geotags, and photographic evidence.
+  - Operates offline in remote locations with zero network connectivity via local SQLite.
+  - Streams surveillance footage inside facility local networks without exposing credentials.
+- **Connectivity:**
+  - ➡️ **Core API:** Reconciles queued operations idempotently upon network reconnect (`POST /api/v1/inspections/sync`).
+  - ➡️ **MinIO Object Storage:** Uploads high-resolution evidence media using pre-signed S3 URLs with SHA-256 capture-time checksums.
+  - ➡️ **CCTV Gateway:** Serves RTSP video streams across the network perimeter on demand.
 
 ---
 
 ### 📇 Tier 2: Secure Core Platform & Gateway
-* **Components:**
-  * **Core REST API** (`services/api` - Fastify modular monolith)
-  * **Real-Time Hub** (`services/realtime` - Fastify + WebSockets)
-  * **CCTV Gateway** (`services/cctv-gateway` - MediaMTX integration bridge)
-* **Responsibilities:**
-  * Acts as the single authoritative enforcement point for RBAC, Jurisdiction, and Workflow rules.
-  * Bridges internal RTSP cameras to browser-friendly WebRTC (WHEP) without exposing camera credentials.
-  * Guarantees event delivery consistency via the Transactional Outbox pattern.
-* **Connectivity:**
-  * ⬅️ **Field:** Authenticates field devices and validates offline sync batches.
-  * ➡️ **Storage & AI:** Persists domain state to PostgreSQL and requests advisory anomaly scores.
-  * ➡️ **Web Control Room:** Serves management APIs, issues signed stream tokens, and broadcasts live WebSocket alerts.
+
+- **Components:**
+  - **Core REST API** (`services/api` - Fastify modular monolith)
+  - **Real-Time Hub** (`services/realtime` - Fastify + WebSockets)
+  - **CCTV Gateway** (`services/cctv-gateway` - MediaMTX integration bridge)
+- **Responsibilities:**
+  - Acts as the single authoritative enforcement point for RBAC, Jurisdiction, and Workflow rules.
+  - Bridges internal RTSP cameras to browser-friendly WebRTC (WHEP) without exposing camera credentials.
+  - Guarantees event delivery consistency via the Transactional Outbox pattern.
+- **Connectivity:**
+  - ⬅️ **Field:** Authenticates field devices and validates offline sync batches.
+  - ➡️ **Storage & AI:** Persists domain state to PostgreSQL and requests advisory anomaly scores.
+  - ➡️ **Web Control Room:** Serves management APIs, issues signed stream tokens, and broadcasts live WebSocket alerts.
 
 ---
 
 ### 📇 Tier 3: Data & Intelligence Vault
-* **Components:**
-  * **Relational Database** (PostgreSQL 16 via Drizzle ORM in `packages/data`)
-  * **Object Storage Vault** (MinIO S3 Bucket)
-  * **Advisory AI Engine** (`services/ai` - Python / FastAPI)
-  * **Distributed Broker & Background Workers** (Redis 7 + BullMQ)
-* **Responsibilities:**
-  * Houses all authoritative project records, user identities, inspection findings, and append-only audit trails.
-  * Stores tamper-evident media, photo evidence, and Action Taken Reports (ATR).
-  * Evaluates anomaly scores advisory-only (never acts as the final judge; outputs reviewable metrics).
-* **Connectivity:**
-  * ⬅️ **Core API:** Executes transactional persistence queries, manages background job queues, and runs AI inference.
-  * ➡️ **Web Control Room:** Provides verified evidence files and structured audit trails.
+
+- **Components:**
+  - **Relational Database** (PostgreSQL 16 via Drizzle ORM in `packages/data`)
+  - **Object Storage Vault** (MinIO S3 Bucket)
+  - **Advisory AI Engine** (`services/ai` - Python / FastAPI)
+  - **Distributed Broker & Background Workers** (Redis 7 + BullMQ)
+- **Responsibilities:**
+  - Houses all authoritative project records, user identities, inspection findings, and append-only audit trails.
+  - Stores tamper-evident media, photo evidence, and Action Taken Reports (ATR).
+  - Evaluates anomaly scores advisory-only (never acts as the final judge; outputs reviewable metrics).
+- **Connectivity:**
+  - ⬅️ **Core API:** Executes transactional persistence queries, manages background job queues, and runs AI inference.
+  - ➡️ **Web Control Room:** Provides verified evidence files and structured audit trails.
 
 ---
 
 ### 📇 Tier 4: Command, Control & Oversight
-* **Components:**
-  * **Next.js Web Platform** (`apps/web` - App Router + React 19)
-  * **Control Room & Monitoring Dashboards**
-  * **Public Grievance & Tracking Portal**
-* **Responsibilities:**
-  * Provides real-time situational awareness to State, District, and Institutional authorities.
-  * Enables live CCTV multi-camera wall monitoring with sub-500ms latency.
-  * Manages complaint filing, project verification, and corrective action issuance.
-* **Connectivity:**
-  * ⬅️ **Core API:** Loads operational dashboards, projects, and inspection results.
-  * ⬅️ **CCTV Gateway (MediaMTX):** Receives sub-second live video feeds directly in the browser.
-  * ⬅️ **Real-Time Hub:** Subscribes to live outbox notifications, risk alerts, and state transitions.
+
+- **Components:**
+  - **Next.js Web Platform** (`apps/web` - App Router + React 19)
+  - **Control Room & Monitoring Dashboards**
+  - **Public Grievance & Tracking Portal**
+- **Responsibilities:**
+  - Provides real-time situational awareness to State, District, and Institutional authorities.
+  - Enables live CCTV multi-camera wall monitoring with sub-500ms latency.
+  - Manages complaint filing, project verification, and corrective action issuance.
+- **Connectivity:**
+  - ⬅️ **Core API:** Loads operational dashboards, projects, and inspection results.
+  - ⬅️ **CCTV Gateway (MediaMTX):** Receives sub-second live video feeds directly in the browser.
+  - ⬅️ **Real-Time Hub:** Subscribes to live outbox notifications, risk alerts, and state transitions.
 
 ---
 
@@ -146,7 +150,7 @@ sequenceDiagram
     C2->>C1: 3. Return Pre-signed Upload URL
     C1->>C3: 4. Upload Photo Evidence to MinIO (S3 PUT)
     C1->>C2: 5. Verify Photo Hash Integrity
-    
+
     rect rgb(240, 250, 255)
         Note over C2, C3: Atomic Outbox Transaction
         C2->>C3: 6. Record State Change + Append Audit Trail + Insert Outbox Event
@@ -163,16 +167,16 @@ sequenceDiagram
 
 ## 4. Major Data Flows & Protocols
 
-| Origin | Destination | Protocol / Interface | Data Exchanged |
-| :--- | :--- | :--- | :--- |
-| **Mobile Client** | **Core API** | `HTTPS / JSON` REST | Offline operation batches, findings, inspection metadata |
-| **Mobile Client** | **Object Storage** | `Pre-signed S3 PUT` | Encrypted photo evidence, capture checksums (SHA-256) |
-| **Facility Camera** | **CCTV Gateway** | `RTSP / H.264` | Raw video stream from facility cameras |
-| **Core API** | **Database** | `Drizzle ORM (SQL)` | Transactional domain state, outbox events, audit records |
-| **Core API** | **AI Engine** | `Internal HTTP REST` | Inference payloads & advisory anomaly scores |
-| **CCTV MediaMTX** | **Web Browser** | `WebRTC (WHEP)` / `HLS` | Sub-500ms low-latency video feed |
-| **Realtime Hub** | **Web Browser** | `WebSockets (WSS)` | Live alerts, metric changes, sync notifications |
-| **Web Browser** | **Core API** | `HTTPS / JSON` REST | Administrative reviews, complaint actions, notice issuances |
+| Origin              | Destination        | Protocol / Interface    | Data Exchanged                                              |
+| :------------------ | :----------------- | :---------------------- | :---------------------------------------------------------- |
+| **Mobile Client**   | **Core API**       | `HTTPS / JSON` REST     | Offline operation batches, findings, inspection metadata    |
+| **Mobile Client**   | **Object Storage** | `Pre-signed S3 PUT`     | Encrypted photo evidence, capture checksums (SHA-256)       |
+| **Facility Camera** | **CCTV Gateway**   | `RTSP / H.264`          | Raw video stream from facility cameras                      |
+| **Core API**        | **Database**       | `Drizzle ORM (SQL)`     | Transactional domain state, outbox events, audit records    |
+| **Core API**        | **AI Engine**      | `Internal HTTP REST`    | Inference payloads & advisory anomaly scores                |
+| **CCTV MediaMTX**   | **Web Browser**    | `WebRTC (WHEP)` / `HLS` | Sub-500ms low-latency video feed                            |
+| **Realtime Hub**    | **Web Browser**    | `WebSockets (WSS)`      | Live alerts, metric changes, sync notifications             |
+| **Web Browser**     | **Core API**       | `HTTPS / JSON` REST     | Administrative reviews, complaint actions, notice issuances |
 
 ---
 

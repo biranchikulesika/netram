@@ -97,7 +97,11 @@ export function FindingsSection({
                       />
                     ) : (
                       <Link
-                        href={existingCa ? `/dashboard/corrective-actions/${existingCa.id}` : "/dashboard/corrective-actions"}
+                        href={
+                          existingCa
+                            ? `/dashboard/corrective-actions/${existingCa.id}`
+                            : "/dashboard/corrective-actions"
+                        }
                         className="btn-secondary"
                         style={{
                           fontSize: "0.75rem",

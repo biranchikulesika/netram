@@ -119,7 +119,11 @@ export function VendorPaymentInfo({
         <DetailRow label="Invoice Date">{formatDate(invoiceDate)}</DetailRow>
         <DetailRow label="Payment mode">{paymentMethod ?? "Not recorded"}</DetailRow>
         <DetailRow label="Payment reference">
-          {paymentReference ? <span style={dataTextStyle}>{paymentReference}</span> : "Not recorded"}
+          {paymentReference ? (
+            <span style={dataTextStyle}>{paymentReference}</span>
+          ) : (
+            "Not recorded"
+          )}
         </DetailRow>
       </div>
     </section>
@@ -242,12 +246,19 @@ export function AllocationDetailModal({
         </DetailRow>
         <DetailRow label="Sanctioned Amount">
           <span style={{ fontWeight: 700 }}>{formatCurrency(allocation.allocatedAmount)}</span>
-          <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}> {allocation.currency}</span>
+          <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
+            {" "}
+            {allocation.currency}
+          </span>
         </DetailRow>
         <DetailRow label="Scheme">
-          <span style={{ fontWeight: 700 }}>{allocation.scheme ?? "Government Scheme Allocation"}</span>
+          <span style={{ fontWeight: 700 }}>
+            {allocation.scheme ?? "Government Scheme Allocation"}
+          </span>
         </DetailRow>
-        {allocation.description && <DetailRow label="Description">{allocation.description}</DetailRow>}
+        {allocation.description && (
+          <DetailRow label="Description">{allocation.description}</DetailRow>
+        )}
         <DetailRow label="Sanctioned At">
           {allocation.sanctionedAt ? formatDate(allocation.sanctionedAt) : "-"}
         </DetailRow>
@@ -333,291 +344,296 @@ export function ExpenseDetailModal({
         </span>
       }
     >
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: "1rem",
+            padding: "1.1rem",
+            borderRadius: "8px",
+            background: "var(--bg-subtle)",
+            border: "1px solid var(--color-border-subtle)",
+          }}
+        >
+          <div style={{ flex: "1 1 180px" }}>
+            <div
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                color: "var(--text-muted)",
+              }}
+            >
+              Expenditure amount
+            </div>
+            <div
+              style={{
+                marginTop: "0.2rem",
+                fontSize: "1.8rem",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+              }}
+            >
+              {formatCurrency(expense.amount)}
+            </div>
+          </div>
           <div
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "flex-start",
-              gap: "1rem",
-              padding: "1.1rem",
-              borderRadius: "8px",
+              flex: "2 1 320px",
+              paddingLeft: "1rem",
+              borderLeft: "1px solid var(--color-border-subtle)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.07em",
+              }}
+            >
+              Purpose of expenditure
+            </div>
+            <div
+              style={{
+                marginTop: "0.25rem",
+                fontSize: "0.85rem",
+                lineHeight: 1.5,
+                color: "var(--text-primary)",
+              }}
+            >
+              {expense.description || "-"}
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+                gap: "0.75rem",
+                marginTop: "0.8rem",
+                paddingTop: "0.7rem",
+                borderTop: "1px solid var(--color-border-subtle)",
+                textAlign: "left",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.66rem",
+                    fontWeight: 700,
+                    color: "var(--text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Expenditure type
+                </div>
+                <div
+                  style={{
+                    marginTop: "0.2rem",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {expense.category}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.66rem",
+                    fontWeight: 700,
+                    color: "var(--text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Expenditure date
+                </div>
+                <div
+                  style={{
+                    marginTop: "0.2rem",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {formatDate(expense.transactionDate)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)",
+            gap: "0.75rem",
+          }}
+        >
+          <div
+            style={{
+              padding: "0.8rem",
+              borderRadius: "7px",
               background: "var(--bg-subtle)",
               border: "1px solid var(--color-border-subtle)",
             }}
           >
-            <div style={{ flex: "1 1 180px" }}>
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
-                  color: "var(--text-muted)",
-                }}
-              >
-                Expenditure amount
-              </div>
-              <div
-                style={{
-                  marginTop: "0.2rem",
-                  fontSize: "1.8rem",
-                  fontWeight: 800,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {formatCurrency(expense.amount)}
-              </div>
-            </div>
             <div
               style={{
-                flex: "2 1 320px",
-                paddingLeft: "1rem",
-                borderLeft: "1px solid var(--color-border-subtle)",
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
               }}
             >
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.07em",
-                }}
-              >
-                Purpose of expenditure
-              </div>
-              <div
-                style={{
-                  marginTop: "0.25rem",
-                  fontSize: "0.85rem",
-                  lineHeight: 1.5,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {expense.description || "-"}
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
-                  gap: "0.75rem",
-                  marginTop: "0.8rem",
-                  paddingTop: "0.7rem",
-                  borderTop: "1px solid var(--color-border-subtle)",
-                  textAlign: "left",
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontSize: "0.66rem",
-                      fontWeight: 700,
-                      color: "var(--text-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Expenditure type
-                  </div>
-                  <div
-                    style={{
-                      marginTop: "0.2rem",
-                      fontSize: "0.82rem",
-                      fontWeight: 700,
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {expense.category}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: "0.66rem",
-                      fontWeight: 700,
-                      color: "var(--text-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Expenditure date
-                  </div>
-                  <div
-                    style={{
-                      marginTop: "0.2rem",
-                      fontSize: "0.82rem",
-                      fontWeight: 700,
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {formatDate(expense.transactionDate)}
-                  </div>
-                </div>
-              </div>
+              Beneficiary establishment
             </div>
+            <Link
+              href={`/projects/${expense.projectId}/funds`}
+              style={{
+                display: "block",
+                marginTop: "0.3rem",
+                fontWeight: 700,
+                color: "var(--color-navy-brand)",
+              }}
+            >
+              {project?.name ?? `Project ${expense.projectId.slice(0, 8)}`}
+            </Link>
+            <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+              {project?.code ?? "Code unavailable"}
+              {project?.organisationName ? ` · ${project.organisationName}` : ""}
+            </div>
+            {project && (
+              <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                {project.stateName} / {project.districtName}
+              </div>
+            )}
           </div>
-
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)",
-              gap: "0.75rem",
+              padding: "0.8rem",
+              borderRadius: "7px",
+              background: "var(--bg-subtle)",
+              border: "1px solid var(--color-border-subtle)",
             }}
           >
             <div
               style={{
-                padding: "0.8rem",
-                borderRadius: "7px",
-                background: "var(--bg-subtle)",
-                border: "1px solid var(--color-border-subtle)",
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
               }}
             >
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Beneficiary establishment
-              </div>
-              <Link
-                href={`/projects/${expense.projectId}/funds`}
-                style={{ display: "block", marginTop: "0.3rem", fontWeight: 700, color: "var(--color-navy-brand)" }}
-              >
-                {project?.name ?? `Project ${expense.projectId.slice(0, 8)}`}
-              </Link>
-              <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                {project?.code ?? "Code unavailable"}
-                {project?.organisationName ? ` · ${project.organisationName}` : ""}
-              </div>
-              {project && (
-                <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                  {project.stateName} / {project.districtName}
-                </div>
-              )}
+              Allocated funds
             </div>
-            <div
-              style={{
-                padding: "0.8rem",
-                borderRadius: "7px",
-                background: "var(--bg-subtle)",
-                border: "1px solid var(--color-border-subtle)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Allocated funds
-              </div>
-              <div style={{ marginTop: "0.3rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                {allocation?.scheme ??
-                  (expense.allocationId ? "Allocation unavailable" : "Unlinked expenditure")}
-              </div>
-              <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                {allocation
-                  ? `${allocation.fiscalYear} · ${formatCurrency(allocation.allocatedAmount)}`
-                  : "No fund allocation selected"}
-              </div>
+            <div style={{ marginTop: "0.3rem", fontWeight: 700, color: "var(--text-primary)" }}>
+              {allocation?.scheme ??
+                (expense.allocationId ? "Allocation unavailable" : "Unlinked expenditure")}
             </div>
-          </div>
-
-          <VendorPaymentInfo
-              vendorName={expense.vendorName}
-              vendorGstin={expense.vendorGstin}
-              invoiceNumber={expense.invoiceNumber}
-              invoiceDate={expense.invoiceDate}
-              paymentMethod={expense.paymentMethod}
-              paymentReference={expense.paymentReference}
-            />
-
-          {expense.voidReason && (
-            <div
-              role="note"
-              style={{
-                padding: "0.8rem",
-                borderRadius: "7px",
-                background: "var(--tint-red)",
-                border: "1px solid var(--tint-red)",
-                color: "#dc2626",
-                fontSize: "0.8rem",
-              }}
-            >
-              <strong>Reason for voiding:</strong> {expense.voidReason}
-            </div>
-          )}
-
-          <div
-            style={{
-              display: canVerify && pending ? "flex" : "none",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: "1rem",
-              paddingTop: "0.85rem",
-              borderTop: "1px solid var(--color-border-subtle)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                alignItems: "center",
-                gap: "0.55rem",
-                flexWrap: "wrap",
-              }}
-            >
-              {canVerify && pending && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onReject(expense.id)}
-                    style={{
-                      padding: "0.5rem 0.9rem",
-                      borderRadius: "6px",
-                      background: "#ffffff",
-                      border: "1px solid var(--tint-red)",
-                      color: "#dc2626",
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onVerify(expense.id)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.35rem",
-                      padding: "0.5rem 0.9rem",
-                      borderRadius: "6px",
-                      background: "var(--action-green)",
-                      border: "none",
-                      color: "#ffffff",
-                      fontSize: "0.8rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Verify expenditure
-                    <IconChevronRight width={13} height={13} />
-                  </button>
-                </>
-              )}
+            <div style={{ marginTop: "0.2rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+              {allocation
+                ? `${allocation.fiscalYear} · ${formatCurrency(allocation.allocatedAmount)}`
+                : "No fund allocation selected"}
             </div>
           </div>
         </div>
+
+        <VendorPaymentInfo
+          vendorName={expense.vendorName}
+          vendorGstin={expense.vendorGstin}
+          invoiceNumber={expense.invoiceNumber}
+          invoiceDate={expense.invoiceDate}
+          paymentMethod={expense.paymentMethod}
+          paymentReference={expense.paymentReference}
+        />
+
+        {expense.voidReason && (
+          <div
+            role="note"
+            style={{
+              padding: "0.8rem",
+              borderRadius: "7px",
+              background: "var(--tint-red)",
+              border: "1px solid var(--tint-red)",
+              color: "#dc2626",
+              fontSize: "0.8rem",
+            }}
+          >
+            <strong>Reason for voiding:</strong> {expense.voidReason}
+          </div>
+        )}
+
+        <div
+          style={{
+            display: canVerify && pending ? "flex" : "none",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: "1rem",
+            paddingTop: "0.85rem",
+            borderTop: "1px solid var(--color-border-subtle)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "0.55rem",
+              flexWrap: "wrap",
+            }}
+          >
+            {canVerify && pending && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onReject(expense.id)}
+                  style={{
+                    padding: "0.5rem 0.9rem",
+                    borderRadius: "6px",
+                    background: "#ffffff",
+                    border: "1px solid var(--tint-red)",
+                    color: "#dc2626",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onVerify(expense.id)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    padding: "0.5rem 0.9rem",
+                    borderRadius: "6px",
+                    background: "var(--action-green)",
+                    border: "none",
+                    color: "#ffffff",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Verify expenditure
+                  <IconChevronRight width={13} height={13} />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </FundsModal>
   );
 }
@@ -784,22 +800,28 @@ export function FlagDetailModal({
 
 export type FlagAction = "review" | "resolve" | "dismiss";
 
-const flagActionCopy: Record<FlagAction, { title: string; blurb: string; placeholder: string; cta: string }> = {
+const flagActionCopy: Record<
+  FlagAction,
+  { title: string; blurb: string; placeholder: string; cta: string }
+> = {
   review: {
     title: "Add Review Notes",
-    blurb: "Record what you checked and what you concluded. These notes are saved to the audit trail.",
+    blurb:
+      "Record what you checked and what you concluded. These notes are saved to the audit trail.",
     placeholder: "What did you review, and what did you find?",
     cta: "Save Notes",
   },
   resolve: {
     title: "Resolve This Alert",
-    blurb: "Explain how the discrepancy was settled. This becomes part of the permanent audit record.",
+    blurb:
+      "Explain how the discrepancy was settled. This becomes part of the permanent audit record.",
     placeholder: "How was the discrepancy resolved?",
     cta: "Mark Resolved",
   },
   dismiss: {
     title: "Dismiss This Alert",
-    blurb: "Dismissal removes this alert from the active list. A written reason is required and permanently audited.",
+    blurb:
+      "Dismissal removes this alert from the active list. A written reason is required and permanently audited.",
     placeholder: "Why is this alert not valid?",
     cta: "Dismiss Alert",
   },
@@ -943,7 +965,8 @@ export function ScheduleInspectionModal({
             <strong>Facility:</strong> {projectName}
           </div>
           <div style={{ marginTop: "0.25rem" }}>
-            <strong>Risk Level:</strong> {flag.riskLevel.toUpperCase()} (Score: {flag.riskScore}/100)
+            <strong>Risk Level:</strong> {flag.riskLevel.toUpperCase()} (Score: {flag.riskScore}
+            /100)
           </div>
           <div style={{ marginTop: "0.25rem", color: "var(--text-muted)" }}>{flag.explanation}</div>
         </div>

@@ -12,7 +12,9 @@ import type { CachedInspectionRecord } from "../offline/queue";
 describe("UI Components Render Tests (P14-04)", () => {
   describe("NetramBadge", () => {
     it("renders label text correctly", () => {
-      const html = renderToStaticMarkup(<NetramBadge label="ACTIVE" variant="status" status="in_progress" />);
+      const html = renderToStaticMarkup(
+        <NetramBadge label="ACTIVE" variant="status" status="in_progress" />,
+      );
       expect(html).toContain("ACTIVE");
     });
 
@@ -100,24 +102,19 @@ describe("UI Components Render Tests (P14-04)", () => {
       );
       expect(html).toContain("closed");
     });
-
   });
 
   describe("InteractiveVideoPlayer", () => {
     it("renders video element with src and controls", () => {
       const html = renderToStaticMarkup(
-        <InteractiveVideoPlayer
-          src="https://example.com/test-inspection.mp4"
-        />,
+        <InteractiveVideoPlayer src="https://example.com/test-inspection.mp4" />,
       );
       expect(html).toContain("test-inspection.mp4");
       expect(html).toContain("controls");
     });
 
     it("renders empty state placeholder when src is omitted or empty", () => {
-      const html = renderToStaticMarkup(
-        <InteractiveVideoPlayer src="" />,
-      );
+      const html = renderToStaticMarkup(<InteractiveVideoPlayer src="" />);
       expect(html).toContain("No Video Source");
     });
   });
@@ -129,14 +126,18 @@ describe("UI Components Render Tests (P14-04)", () => {
     });
 
     it("renders call-missed-outgoing icon for unanswered calls", () => {
-      const html = renderToStaticMarkup(<Icon name="call-missed-outgoing" size={16} color="#DC2626" />);
+      const html = renderToStaticMarkup(
+        <Icon name="call-missed-outgoing" size={16} color="#DC2626" />,
+      );
       expect(html).toBeDefined();
     });
 
     it("renders call-made and call-received for answered calls", () => {
       const madeHtml = renderToStaticMarkup(<Icon name="call-made" size={16} color="#16A34A" />);
       expect(madeHtml).toBeDefined();
-      const receivedHtml = renderToStaticMarkup(<Icon name="call-received" size={16} color="#16A34A" />);
+      const receivedHtml = renderToStaticMarkup(
+        <Icon name="call-received" size={16} color="#16A34A" />,
+      );
       expect(receivedHtml).toBeDefined();
     });
   });

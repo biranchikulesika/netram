@@ -229,7 +229,8 @@ export default function RealLeafletMap({
   const currentGeofence: GeofenceConfig = useMemo(() => {
     if (!selectedFacility) {
       return { type: "circle", radiusMeters: 250, polygonPoints: [] };
-    }      return (
+    }
+    return (
       geofences[selectedFacility.id] ?? {
         type: "circle",
         radiusMeters: 250,
@@ -868,7 +869,10 @@ export default function RealLeafletMap({
                         fontWeight: circleRadius === preset ? 700 : 500,
                         background: circleRadius === preset ? "#0c2a52" : "#ffffff",
                         color: circleRadius === preset ? "#ffffff" : "var(--text-muted)",
-                        border: circleRadius === preset ? "1px solid #0c2a52" : "1px solid var(--color-border-strong)",
+                        border:
+                          circleRadius === preset
+                            ? "1px solid #0c2a52"
+                            : "1px solid var(--color-border-strong)",
                         borderRadius: "4px",
                         cursor: "pointer",
                       }}

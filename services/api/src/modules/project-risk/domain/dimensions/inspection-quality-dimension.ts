@@ -79,8 +79,7 @@ export class InspectionQualityDimensionCalculator {
     let openActionsCount = 0;
 
     for (const ca of ctx.inspections.correctiveActions) {
-      const isPastDeadline =
-        ca.deadline !== null && new Date(ca.deadline) < now;
+      const isPastDeadline = ca.deadline !== null && new Date(ca.deadline) < now;
 
       if (ca.status === "accepted") {
         // Remediation accepted by authority: mostly retired risk.
@@ -134,19 +133,13 @@ export class InspectionQualityDimensionCalculator {
       }
     } else {
       const sorted = [...completedInspections].sort((a, b) => {
-        const timeA = new Date(
-          InspectionQualityDimensionCalculator.latestTimestamp(a),
-        ).getTime();
-        const timeB = new Date(
-          InspectionQualityDimensionCalculator.latestTimestamp(b),
-        ).getTime();
+        const timeA = new Date(InspectionQualityDimensionCalculator.latestTimestamp(a)).getTime();
+        const timeB = new Date(InspectionQualityDimensionCalculator.latestTimestamp(b)).getTime();
         return timeB - timeA;
       });
       const first = sorted[0];
       if (first) {
-        const lastDate = new Date(
-          InspectionQualityDimensionCalculator.latestTimestamp(first),
-        );
+        const lastDate = new Date(InspectionQualityDimensionCalculator.latestTimestamp(first));
         // Guard against malformed future timestamps producing negative ages.
         daysSinceLastInspection = Math.max(
           0,

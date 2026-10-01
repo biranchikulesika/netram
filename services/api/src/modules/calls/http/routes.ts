@@ -8,12 +8,12 @@ import {
   createCallRecordSchema,
   listCallHistoryQuerySchema,
 } from "@netram/validation";
-import type {
-  CreateCallRecordInput,
-  ListCallHistoryQuery,
-} from "@netram/validation";
+import type { CreateCallRecordInput, ListCallHistoryQuery } from "@netram/validation";
 
-export async function registerCallRoutes(app: FastifyInstance, container: Container): Promise<void> {
+export async function registerCallRoutes(
+  app: FastifyInstance,
+  container: Container,
+): Promise<void> {
   const callService = container.callService;
 
   // List call contacts

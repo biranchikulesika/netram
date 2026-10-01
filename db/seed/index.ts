@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { getDb } from "@netram/data";
 import * as s from "@netram/data/schema";
 import { fileURLToPath } from "node:url";
+import { seedAttendanceLedger } from "./attendance";
 import { did } from "./ids";
 import { seedProjectOperations } from "./project-operations";
 
@@ -1790,8 +1791,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         userId: did("user:officer-khordha"),
         type: "inspection.assigned",
         title: "New inspection assigned",
-        body:
-          "A surprise inspection at Vani Vihar SC/ST Hostel has been submitted for authority review.",
+        body: "A surprise inspection at Vani Vihar SC/ST Hostel has been submitted for authority review.",
         status: "read",
         sentAt: new Date("2026-02-11T09:40:00Z"),
       },
@@ -1842,7 +1842,8 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     .onConflictDoNothing();
 
   // ---------- Video Oversight Call Contacts & Records ----------
-  const DEMO_VIDEO_FALLBACK = "https://raw.githubusercontent.com/OpenTalker/video-retalking/main/examples/face/1.mp4";
+  const DEMO_VIDEO_FALLBACK =
+    "https://raw.githubusercontent.com/OpenTalker/video-retalking/main/examples/face/1.mp4";
 
   await db
     .insert(s.callContacts)
@@ -2877,8 +2878,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         userId: did("user:inspector-1"),
         type: "inspection.assigned",
         title: "New inspection assigned",
-        body:
-          "Surprise inspection at Rajdhani Boys' Hostel (ST), Khordha, scheduled for 20 Apr 2026.",
+        body: "Surprise inspection at Rajdhani Boys' Hostel (ST), Khordha, scheduled for 20 Apr 2026.",
         status: "pending",
         sentAt: new Date("2026-04-10T08:00:00Z"),
       },
@@ -2887,8 +2887,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         userId: did("user:inspector-1"),
         type: "corrective_action.overdue",
         title: "Corrective action verification due",
-        body:
-          "Remediation for the kitchen hygiene finding at Vani Vihar SC/ST Hostel has passed its deadline.",
+        body: "Remediation for the kitchen hygiene finding at Vani Vihar SC/ST Hostel has passed its deadline.",
         status: "pending",
         sentAt: new Date("2026-03-05T09:00:00Z"),
       },
@@ -2897,8 +2896,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         userId: did("user:inspector-1"),
         type: "ai.anomaly_detected",
         title: "AI attendance variance flagged",
-        body:
-          "Camera attendance estimation shows a variance against the physical muster roll at Vani Vihar SC/ST Hostel. For review only.",
+        body: "Camera attendance estimation shows a variance against the physical muster roll at Vani Vihar SC/ST Hostel. For review only.",
         status: "read",
         sentAt: new Date("2026-02-20T10:30:00Z"),
       },
@@ -2907,8 +2905,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         userId: did("user:inspector-2"),
         type: "inspection.assigned",
         title: "New inspection assigned",
-        body:
-          "Routine inspection at Cuttack Girls' Hostel, Cuttack, scheduled for 01 Mar 2026.",
+        body: "Routine inspection at Cuttack Girls' Hostel, Cuttack, scheduled for 01 Mar 2026.",
         status: "pending",
         sentAt: new Date("2026-02-25T08:00:00Z"),
       },
@@ -3906,8 +3903,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         userId: did("user:institution-ganjam"),
         type: "inspection.assigned",
         title: "New inspection assigned",
-        body:
-          "An inspection related to a complaint registered against your facility has been scheduled.",
+        body: "An inspection related to a complaint registered against your facility has been scheduled.",
         status: "pending",
         sentAt: new Date("2026-09-08T10:00:00Z"),
       },
@@ -5501,12 +5497,210 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     .onConflictDoNothing();
 
   // ==========================================================================
+  // Attendance: extend coverage to the remaining institutions.
+  //
+  // Vani, Cuttack, Ganjam and Rourkela were seeded with devices above; these
+  // three institutions had none, so their attendance screens were empty even
+  // though all three run residential facilities with a plainly trackable roll.
+  //
+  // Deliberately NOT extended to `jajapur-adarsh` (the audited unit is a gram
+  // panchayat with no implementing institute, so there is no roll and no gate)
+  // or `puri-model` (seeded as a dormant record with no inspections, funds,
+  // cameras or devices). Both exclusions are stated in their own project
+  // descriptions; inventing attendance for them would contradict them.
+  //
+  // Roster sizes come from each facility's description rather than being
+  // rounded: Rajdhani is on 74 residents, not its sanctioned 80, because the
+  // 2026-08-13 measurement found only 74 usable beds. A roster of 80 would
+  // quietly contradict the finding raised against that very project.
+  for (const site of [
+    {
+      project: "project:rajdhani",
+      population: "attpop:rajdhani-beneficiaries",
+      window: "attwindow:rajdhani-morning",
+      device: "attdev:rajdhani-main",
+      deviceName: "Rajdhani Main Gate Biometric",
+      deviceRef: "RJ-MAIN-01",
+      residents: 74,
+      prefix: "rajdhani-person-",
+      joinedAt: "2026-01-20T00:00:00Z",
+      base: 70,
+      swing: 3,
+      startTime: "06:00",
+      endTime: "09:00",
+    },
+    {
+      project: "project:purisch-1",
+      population: "attpop:purisch-beneficiaries",
+      window: "attwindow:purisch-morning",
+      device: "attdev:purisch-main",
+      deviceName: "Astaraag Main Gate Biometric",
+      deviceRef: "AS-MAIN-01",
+      residents: 40,
+      prefix: "astaraag-person-",
+      joinedAt: "2025-11-15T00:00:00Z",
+      base: 37,
+      swing: 2,
+      startTime: "07:00",
+      endTime: "10:00",
+    },
+    {
+      project: "project:puri-irca",
+      population: "attpop:irca-beneficiaries",
+      window: "attwindow:irca-morning",
+      device: "attdev:irca-main",
+      deviceName: "IRCA Main Gate Biometric",
+      deviceRef: "IR-MAIN-01",
+      residents: 30,
+      prefix: "irca-person-",
+      joinedAt: "2025-11-15T00:00:00Z",
+      // A residential detox programme keeps residents on site, so this one runs
+      // materially fuller than the other two.
+      base: 29,
+      swing: 1,
+      startTime: "07:00",
+      endTime: "10:00",
+    },
+  ]) {
+    const projectId = did(site.project);
+    const joinedAt = new Date(site.joinedAt);
+    const lastSeen = new Date("2026-09-30T08:00:00Z");
+
+    await db
+      .insert(s.attendanceConfigs)
+      .values({
+        projectId,
+        dayStartTime: "05:00",
+        thresholds: {
+          crossSourceDiscrepancy: 0.15,
+          historicalDeviation: 0.25,
+          persistenceWindowDays: 5,
+          materialityThreshold: 0.1,
+        },
+        baseline: { windowDays: 14, minObservations: 5 },
+        retention: { rawTransactionsDays: 365, exportsHours: 24 },
+      })
+      .onConflictDoNothing();
+
+    await db
+      .insert(s.attendancePopulations)
+      .values({
+        id: did(site.population),
+        projectId,
+        code: "BEN-003",
+        name: `${site.deviceName.replace(" Main Gate Biometric", "")} Beneficiaries`,
+        populationType: "BENEFICIARY",
+        expectedStrategy: "ROSTER",
+        expectedCount: null,
+        config: {},
+      })
+      .onConflictDoNothing();
+
+    await db
+      .insert(s.attendanceWindows)
+      .values({
+        id: did(site.window),
+        projectId,
+        code: "MORNING",
+        name: "Morning Roll Call",
+        startTime: site.startTime,
+        endTime: site.endTime,
+        populationId: did(site.population),
+        minCoverage: 0.5,
+        config: { source: "biometric" },
+      })
+      .onConflictDoNothing();
+
+    await db
+      .insert(s.attendanceDevices)
+      .values({
+        id: did(site.device),
+        projectId,
+        name: site.deviceName,
+        provider: "simulated",
+        deviceExternalId: site.deviceRef,
+        status: "ONLINE",
+        lastSeenAt: lastSeen,
+        lastEventAt: lastSeen,
+        syncCursor: "2026-09-30",
+        config: { scenario: "normal" },
+        createdAt: joinedAt,
+      })
+      .onConflictDoNothing();
+
+    for (let n = 1; n <= site.residents; n++) {
+      const personExternalId = `${site.prefix}${String(n).padStart(3, "0")}`;
+
+      await db
+        .insert(s.attendancePopulationMembers)
+        .values({
+          id: did(`attmember:${site.device}:${n}`),
+          populationId: did(site.population),
+          personExternalId,
+          netramUserId: null,
+          joinedAt,
+        })
+        .onConflictDoNothing();
+
+      await db
+        .insert(s.attendanceIdentityMappings)
+        .values({
+          id: did(`attmap:${site.device}:${n}`),
+          projectId,
+          deviceId: did(site.device),
+          externalUserId: personExternalId,
+          personExternalId,
+          netramUserId: null,
+          createdAt: joinedAt,
+        })
+        .onConflictDoNothing();
+    }
+
+    // 30 days of daily calculations, deterministic from the day index rather
+    // than random, so the ledger below has real biometric counts to expand.
+    const calcRows: (typeof s.attendanceCalculations.$inferInsert)[] = [];
+    for (let dayOffset = 29; dayOffset >= 0; dayOffset--) {
+      const d = new Date(Date.UTC(2026, 8, 30));
+      d.setUTCDate(d.getUTCDate() - dayOffset);
+      const iso = d.toISOString().slice(0, 10);
+      const present = Math.max(
+        1,
+        Math.min(site.residents, site.base + Math.round(Math.sin(dayOffset / 5) * site.swing)),
+      );
+      calcRows.push({
+        id: did(`attcalc:${site.device}:${iso}`),
+        projectId,
+        windowId: did(site.window),
+        operationalDate: iso,
+        expected: site.residents,
+        present,
+        absent: site.residents - present,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: present, INSTITUTION_REPORTED: present, CCTV: 0, MANUAL: 0 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date(`${iso}T${site.startTime.slice(0, 2)}:30:00Z`),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date(`${iso}T${site.endTime.slice(0, 2)}:00:00Z`),
+      });
+    }
+    await db.insert(s.attendanceCalculations).values(calcRows).onConflictDoNothing();
+  }
+
+  // ==========================================================================
   // Per-project operational history: inspection cycles, findings, evidence,
   // corrective actions, complaints, funds, expenses, risk and oversight calls.
   // Lives in its own module because it is large and conceptually separable
   // from the reference data above.
   // ==========================================================================
   await seedProjectOperations(db);
+
+  // ==========================================================================
+  // Attendance event ledger: the per-person biometric punches behind the
+  // calculations seeded above. Runs last so it can read those calculations
+  // back and emit exactly the events each one claims (see ./attendance.ts).
+  // ==========================================================================
+  await seedAttendanceLedger(db);
 
   console.log(
     `Seed complete: ${projects.length + enrichedProjects.length} projects, ${users.length + enrichedUsers.length} users across ${districtRows.length} districts.`,

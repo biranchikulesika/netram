@@ -37,7 +37,12 @@ function AiSpinner() {
       aria-hidden="true"
     >
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" opacity="0.25" />
-      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -55,8 +60,18 @@ export function quickActionsFor(item: ActionInboxItem): InboxAction[] {
   switch (item.kind) {
     case "attendance_correction_approval":
       return [
-        { label: "Verify", kind: "approve", endpoint: `/api/v1/attendance/corrections/${item.id}/decide`, body: { decision: "approve" } },
-        { label: "Reject", kind: "reject", endpoint: `/api/v1/attendance/corrections/${item.id}/decide`, body: { decision: "reject" } },
+        {
+          label: "Verify",
+          kind: "approve",
+          endpoint: `/api/v1/attendance/corrections/${item.id}/decide`,
+          body: { decision: "approve" },
+        },
+        {
+          label: "Reject",
+          kind: "reject",
+          endpoint: `/api/v1/attendance/corrections/${item.id}/decide`,
+          body: { decision: "reject" },
+        },
       ];
     default:
       // Record-required kinds and expense_verification (popup-decided): no
@@ -126,18 +141,16 @@ export function ActionInboxCard({
       style={state.done ? { opacity: 0.45, pointerEvents: "none" } : undefined}
       aria-label={item.title}
     >
-      <Link
-        href={item.link.href}
-        className="facility-card-link"
-        aria-label={item.link.label}
-      >
+      <Link href={item.link.href} className="facility-card-link" aria-label={item.link.label}>
         <h3 className="facility-card-title">{item.title}</h3>
 
         <p className="facility-card-desc">{item.summary}</p>
 
         {remediation && (
           <p className="facility-card-desc" style={{ marginTop: "-0.35rem" }}>
-            <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Required remediation:</span>{" "}
+            <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>
+              Required remediation:
+            </span>{" "}
             {remediation}
           </p>
         )}
@@ -149,7 +162,7 @@ export function ActionInboxCard({
             </dt>
             <dd>
               {item.project.name || item.project.code
-                ? `${item.project.name ?? ""}${item.project.name && item.project.code ? ` (${item.project.code})` : item.project.code ?? ""}`
+                ? `${item.project.name ?? ""}${item.project.name && item.project.code ? ` (${item.project.code})` : (item.project.code ?? "")}`
                 : "No facility linked"}
             </dd>
           </div>
@@ -217,11 +230,7 @@ export function ActionInboxCard({
             disabled={state.done}
             onClick={() => onVerifyPayment(item)}
           >
-            {state.busy ? (
-              <AiSpinner />
-            ) : (
-              <IconIndianRupee width={14} height={14} />
-            )}
+            {state.busy ? <AiSpinner /> : <IconIndianRupee width={14} height={14} />}
             Verify payment
           </button>
         )}

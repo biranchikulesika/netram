@@ -107,11 +107,7 @@ const RootContent = () => {
           headerShown: false,
           tabBarLabel: "Dashboard",
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={focused ? "grid" : "grid-outline"}
-              size={20}
-              color={color}
-            />
+            <Icon name={focused ? "grid" : "grid-outline"} size={20} color={color} />
           ),
         }}
       />
@@ -124,11 +120,7 @@ const RootContent = () => {
           tabBarLabel: "",
           tabBarAccessibilityLabel: "Map",
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={focused ? "navigate" : "navigate-outline"}
-              size={20}
-              color={color}
-            />
+            <Icon name={focused ? "navigate" : "navigate-outline"} size={20} color={color} />
           ),
         }}
       />
@@ -141,11 +133,7 @@ const RootContent = () => {
           headerShown: false,
           tabBarLabel: "History",
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={focused ? "time" : "time-outline"}
-              size={20}
-              color={color}
-            />
+            <Icon name={focused ? "time" : "time-outline"} size={20} color={color} />
           ),
         }}
       />
@@ -158,11 +146,7 @@ const RootContent = () => {
           headerShown: false,
           tabBarLabel: "Calls",
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={focused ? "videocam" : "videocam-outline"}
-              size={21}
-              color={color}
-            />
+            <Icon name={focused ? "videocam" : "videocam-outline"} size={21} color={color} />
           ),
         }}
       />
@@ -175,11 +159,7 @@ const RootContent = () => {
           headerShown: false,
           tabBarLabel: "Profile",
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={focused ? "person" : "person-outline"}
-              size={21}
-              color={color}
-            />
+            <Icon name={focused ? "person" : "person-outline"} size={21} color={color} />
           ),
         }}
       />

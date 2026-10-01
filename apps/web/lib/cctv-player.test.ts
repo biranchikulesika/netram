@@ -34,7 +34,15 @@ class FakeRTCPeerConnection {
   getReceivers = vi.fn(() => []);
   getStats = vi.fn(async () => ({
     forEach: (cb: (s: Record<string, unknown>) => void) => {
-      cb({ type: "inbound-rtp", kind: "video", framesDecoded: 42, framesDropped: 1, jitterBufferDelay: 0.05, jitterBufferEmittedCount: 10, bytesReceived: 1234 });
+      cb({
+        type: "inbound-rtp",
+        kind: "video",
+        framesDecoded: 42,
+        framesDropped: 1,
+        jitterBufferDelay: 0.05,
+        jitterBufferEmittedCount: 10,
+        bytesReceived: 1234,
+      });
     },
   }));
   close = vi.fn(() => {
@@ -159,7 +167,15 @@ describe("readPlaybackStats", () => {
     const fakePc = {
       getStats: async () => ({
         forEach: (cb: (s: Record<string, unknown>) => void) => {
-          cb({ type: "inbound-rtp", kind: "video", framesDecoded: 10, framesDropped: 2, jitterBufferDelay: 0.1, jitterBufferEmittedCount: 4, bytesReceived: 5000 });
+          cb({
+            type: "inbound-rtp",
+            kind: "video",
+            framesDecoded: 10,
+            framesDropped: 2,
+            jitterBufferDelay: 0.1,
+            jitterBufferEmittedCount: 4,
+            bytesReceived: 5000,
+          });
         },
       }),
     } as unknown as RTCPeerConnection;

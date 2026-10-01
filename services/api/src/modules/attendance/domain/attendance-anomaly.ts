@@ -137,10 +137,8 @@ export function confidenceFor(
   coverage: CoverageLevel,
   dataQuality: DataQualityLevel,
 ): number {
-  const coverageFactor =
-    coverage === "COMPLETE" ? 1 : coverage === "PARTIAL" ? 0.5 : 0.2;
-  const qualityFactor =
-    dataQuality === "GOOD" ? 1 : dataQuality === "DEGRADED" ? 0.5 : 0.2;
+  const coverageFactor = coverage === "COMPLETE" ? 1 : coverage === "PARTIAL" ? 0.5 : 0.2;
+  const qualityFactor = dataQuality === "GOOD" ? 1 : dataQuality === "DEGRADED" ? 0.5 : 0.2;
   return clamp01(score * 0.5 + 0.3 * coverageFactor + 0.2 * qualityFactor);
 }
 
@@ -233,7 +231,11 @@ export function detectAnomalies(input: DetectorInput): DetectorCandidate[] {
   }
 
   // 4. Source quality (informational - "bad data" is not "bad behaviour") (§25).
-  if (input.dataQuality === "POOR" || input.coverage === "INSUFFICIENT" || input.coverage === "UNAVAILABLE") {
+  if (
+    input.dataQuality === "POOR" ||
+    input.coverage === "INSUFFICIENT" ||
+    input.coverage === "UNAVAILABLE"
+  ) {
     candidates.push(
       candidate("SOURCE_QUALITY", 0.25, input, {
         dataQuality: input.dataQuality,

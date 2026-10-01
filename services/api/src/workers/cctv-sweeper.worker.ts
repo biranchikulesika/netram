@@ -111,10 +111,7 @@ export class CctvStreamSweeper {
   }
 
   /** Atomically end one session (audit + cctv.stream_ended outbox event). */
-  private async endSession(candidate: {
-    id: string;
-    reason: StreamEndReason;
-  }): Promise<boolean> {
+  private async endSession(candidate: { id: string; reason: StreamEndReason }): Promise<boolean> {
     const context: CctvWriteContext = {
       actorUserId: null, // System-driven; attribution lives in endedBy/endReason.
       requestId: `cctv-sweeper-${candidate.id}`,
@@ -133,11 +130,10 @@ export class CctvStreamSweeper {
     };
 
     try {
-      return await this.cctvRepo.endStreamSessionById(
-        candidate.id,
-        context,
-        { endedBy: endedByFor(candidate.reason), endReason: candidate.reason },
-      );
+      return await this.cctvRepo.endStreamSessionById(candidate.id, context, {
+        endedBy: endedByFor(candidate.reason),
+        endReason: candidate.reason,
+      });
     } catch (err) {
       console.error(`[cctv-sweeper] failed to end session ${candidate.id}:`, err);
       return false;

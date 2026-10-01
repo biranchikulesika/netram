@@ -58,8 +58,16 @@ export default function DisclaimerModal() {
           This is a project demonstration
         </h2>
 
-        <p style={{ margin: "0 0 1.25rem", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-muted)" }}>
-          Netram is a Smart India Hackathon (SIH26095) project and is not an official Government of India or DoSJE platform.
+        <p
+          style={{
+            margin: "0 0 1.25rem",
+            fontSize: "0.9rem",
+            lineHeight: 1.6,
+            color: "var(--text-muted)",
+          }}
+        >
+          Netram is a Smart India Hackathon (SIH26095) project and is not an official Government of
+          India or DoSJE platform.
         </p>
 
         <button

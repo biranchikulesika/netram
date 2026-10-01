@@ -295,7 +295,7 @@ body.has-portal-sidebar main {
   width: var(--sidebar-width);
   box-shadow:
     4px 0 24px rgba(0, 36, 73, 0.14),
-    0 0 1px rgba(0,36,73, 0.08);
+    0 0 1px rgba(0, 36, 73, 0.08);
   z-index: 880;
 }
 
@@ -456,7 +456,7 @@ body.has-portal-sidebar main {
 .sidebar-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,36,73, 0.35);
+  background: rgba(0, 36, 73, 0.35);
   z-index: 840;
 }
 
@@ -486,7 +486,7 @@ body.has-portal-sidebar main {
   cursor: pointer;
   text-decoration: none;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0,36,73, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 36, 73, 0.05);
 }
 
 .error-btn-back:hover {
@@ -593,7 +593,7 @@ body.has-portal-sidebar main {
 
   .portal-sidepanel.mobile-open {
     transform: translateX(0);
-    box-shadow: 3px 0 15px rgba(0,36,73, 0.15);
+    box-shadow: 3px 0 15px rgba(0, 36, 73, 0.15);
   }
 }
 
@@ -889,7 +889,7 @@ body.has-portal-sidebar main {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 6px rgba(12,42,82, 0.06);
+  box-shadow: 0 0 0 6px rgba(12, 42, 82, 0.06);
 }
 
 .empty-state-title {
@@ -1221,7 +1221,7 @@ td {
 .search-input-with-icon:focus {
   outline: none;
   border-color: var(--color-accent-blue);
-  box-shadow: 0 0 0 2px rgba(12,42,82, 0.18);
+  box-shadow: 0 0 0 2px rgba(12, 42, 82, 0.18);
 }
 
 .filter-tabs {
@@ -1304,7 +1304,7 @@ td {
 .toolbar-date-input:focus {
   outline: none;
   border-color: var(--color-accent-blue);
-  box-shadow: 0 0 0 2px rgba(12,42,82, 0.18);
+  box-shadow: 0 0 0 2px rgba(12, 42, 82, 0.18);
 }
 
 /* Dropdown menu option row */
@@ -1361,7 +1361,7 @@ td {
 .toolbar-select:focus {
   outline: none;
   border-color: var(--color-accent-blue);
-  box-shadow: 0 0 0 2px rgba(12,42,82, 0.18);
+  box-shadow: 0 0 0 2px rgba(12, 42, 82, 0.18);
 }
 
 /* Facility Contextual Navigation (distinct from the global sidebar) */
@@ -2234,7 +2234,7 @@ td {
 .reg-field input:focus,
 .reg-field select:focus,
 .reg-field textarea:focus {
-  outline: 2px solid rgba(12,42,82, 0.35);
+  outline: 2px solid rgba(12, 42, 82, 0.35);
   outline-offset: 0;
   border-color: #0c2a52;
 }
@@ -2708,7 +2708,7 @@ td {
 
 .reg-submit:hover:not(:disabled) {
   filter: brightness(1.07);
-  box-shadow: 0 4px 12px rgba(12,42,82, 0.3);
+  box-shadow: 0 4px 12px rgba(12, 42, 82, 0.3);
 }
 
 .reg-submit:disabled {
@@ -2795,7 +2795,7 @@ td {
 .registry-form-page input:focus,
 .registry-form-page select:focus,
 .registry-form-page textarea:focus {
-  outline: 2px solid rgba(12,42,82, 0.35);
+  outline: 2px solid rgba(12, 42, 82, 0.35);
   border-color: #0c2a52;
 }
 
@@ -3337,7 +3337,7 @@ a.registry-card-link:hover {
   background: #0c2a52;
   border-color: #0c2a52;
   color: #ffffff;
-  box-shadow: 0 0 0 5px rgba(12,42,82, 0.15);
+  box-shadow: 0 0 0 5px rgba(12, 42, 82, 0.15);
 }
 
 .workflow-step-label {
@@ -3379,7 +3379,7 @@ a.registry-card-link:hover {
   border-radius: 10px;
   border: 1px solid var(--color-border-subtle);
   margin-bottom: 2rem;
-  box-shadow: 0 1px 3px rgba(0,36,73, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 36, 73, 0.05);
 }
 
 .evidence-grid {
@@ -3395,7 +3395,7 @@ a.registry-card-link:hover {
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0,36,73, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 36, 73, 0.04);
 }
 
 .card-media {
@@ -3569,7 +3569,7 @@ a.registry-card-link:hover {
   border-radius: 10px;
   border: 1px solid var(--color-border-subtle);
   margin-bottom: 2rem;
-  box-shadow: 0 1px 3px rgba(0,36,73, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 36, 73, 0.05);
 }
 
 .section-pair-grid {
@@ -3718,7 +3718,7 @@ a.registry-card-link:hover {
 .lightbox-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,36,73, 0.7);
+  background: rgba(0, 36, 73, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3853,7 +3853,7 @@ input {
 input:focus {
   outline: none;
   border-color: var(--color-accent-blue);
-  box-shadow: 0 0 0 2px rgba(12,42,82, 0.18);
+  box-shadow: 0 0 0 2px rgba(12, 42, 82, 0.18);
 }
 
 button {
@@ -3862,7 +3862,7 @@ button {
   color: #ffffff;
   border: none;
   font-weight: 600;
-  box-shadow: 0 1px 2px 0 rgba(19,126,58, 0.2);
+  box-shadow: 0 1px 2px 0 rgba(19, 126, 58, 0.2);
   transition:
     filter 0.15s ease,
     box-shadow 0.15s ease;
@@ -3908,7 +3908,7 @@ a:hover {
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   padding: 1rem 1.25rem;
-  box-shadow: 0 1px 2px rgba(0,36,73, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 36, 73, 0.04);
 }
 
 .stat-widget .stat-value {
@@ -4035,7 +4035,7 @@ a:hover {
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 700;
-  background: rgba(0,36,73, 0.72);
+  background: rgba(0, 36, 73, 0.72);
   color: #ffffff;
   padding: 0.18rem 0.45rem;
   border-radius: 4px;
@@ -4076,9 +4076,9 @@ a:hover {
   background: transparent;
   color: #ffffff;
   cursor: pointer;
-  filter: drop-shadow(1px 0 0 rgba(0,36,73, 0.95)) drop-shadow(-1px 0 0 rgba(0,36,73, 0.95))
-    drop-shadow(0 1px 0 rgba(0,36,73, 0.95)) drop-shadow(0 -1px 0 rgba(0,36,73, 0.95))
-    drop-shadow(0 0 4px rgba(0,36,73, 0.5));
+  filter: drop-shadow(1px 0 0 rgba(0, 36, 73, 0.95)) drop-shadow(-1px 0 0 rgba(0, 36, 73, 0.95))
+    drop-shadow(0 1px 0 rgba(0, 36, 73, 0.95)) drop-shadow(0 -1px 0 rgba(0, 36, 73, 0.95))
+    drop-shadow(0 0 4px rgba(0, 36, 73, 0.5));
   z-index: 5;
   transition:
     color 0.15s ease,
@@ -4128,7 +4128,7 @@ a:hover {
 .cc-osd-place {
   font-family: var(--font-sans);
   font-size: 0.66rem;
-  background: rgba(0,36,73, 0.6);
+  background: rgba(0, 36, 73, 0.6);
   color: var(--color-border-strong);
   padding: 0.12rem 0.45rem;
   border-radius: 4px;
@@ -4177,7 +4177,7 @@ a:hover {
   border: none;
   cursor: pointer;
   white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0,36,73, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 36, 73, 0.9);
   opacity: 0;
   visibility: hidden;
   transform: translateY(2px);
@@ -4299,12 +4299,12 @@ a:hover {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-border-subtle);
-  background: rgba(0,36,73, 0.65);
+  background: rgba(0, 36, 73, 0.65);
   padding: 0.3rem 0.7rem;
   border-radius: 5px;
   max-width: 90%;
   text-align: center;
-  text-shadow: 0 1px 3px rgba(0,36,73, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 36, 73, 0.9);
 }
 
 .cc-search {
@@ -4587,7 +4587,7 @@ a:hover {
   color: #edf0f5;
   padding: 1rem;
   border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,36,73, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 36, 73, 0.3);
   border: 1px solid var(--text-muted);
   animation: slideIn 0.3s ease-out;
 }
@@ -4646,7 +4646,7 @@ a:hover {
   padding: 1.5rem;
   margin-top: 0;
   margin-bottom: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0,36,73, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 36, 73, 0.05);
 }
 
 .vc-header {
@@ -4766,7 +4766,7 @@ a:hover {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(transparent, rgba(0,36,73, 0.8));
+  background: linear-gradient(transparent, rgba(0, 36, 73, 0.8));
   color: #edf0f5;
   padding: 0.5rem 0.75rem;
   display: flex;
@@ -5273,7 +5273,7 @@ a:hover {
   background: var(--bg-surface);
   border: 1px solid var(--color-border-strong);
   border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0,36,73, 0.16);
+  box-shadow: 0 12px 32px rgba(0, 36, 73, 0.16);
 }
 
 .transition-pop-title {
@@ -5820,7 +5820,6 @@ a:hover {
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-
 .ff-section-title {
   font-family: var(--font-sans);
   font-size: 0.68rem;
@@ -5830,7 +5829,6 @@ a:hover {
   color: var(--text-muted);
   margin-bottom: 0.55rem;
 }
-
 
 .facility-facts {
   display: grid;
@@ -5894,7 +5892,6 @@ a:hover {
 .facility-facts .ff-list li::marker {
   color: var(--text-subtle);
 }
-
 
 /* Facts + photos share the right-hand column. */
 .facility-facts-column {
@@ -6050,7 +6047,7 @@ a:hover {
 
 .leaflet-popup-content-wrapper {
   border-radius: 8px !important;
-  box-shadow: 0 4px 20px rgba(0,36,73, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(0, 36, 73, 0.15) !important;
   border: 1px solid var(--color-border-strong) !important;
   padding: 0 !important;
   overflow: hidden !important;
@@ -6095,7 +6092,7 @@ a:hover {
   background: rgba(255, 255, 255, 0.95) !important;
   border: 1px solid var(--color-border-strong) !important;
   border-radius: 5px !important;
-  box-shadow: 0 2px 8px rgba(0,36,73, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(0, 36, 73, 0.12) !important;
   padding: 2px 6px !important;
   color: #0c2a52 !important;
   font-family: var(--font-sans) !important;
@@ -6119,7 +6116,7 @@ a:hover {
 .leaflet-tooltip.netram-leaflet-tooltip.selected {
   background: #ffffff !important;
   border-color: #0c2a52 !important;
-  box-shadow: 0 3px 12px rgba(12,42,82, 0.28) !important;
+  box-shadow: 0 3px 12px rgba(12, 42, 82, 0.28) !important;
   z-index: 1000 !important;
 }
 

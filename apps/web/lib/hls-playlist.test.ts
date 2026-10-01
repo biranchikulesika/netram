@@ -83,9 +83,7 @@ describe("rewritePlaylist (Phase 5 HLS wall mode)", () => {
     ].join("\n");
 
     const out = rewritePlaylist(variant, TOKEN);
-    expect(out).toContain(
-      '/api/cctv/media/hls/abc_video1_init.mp4?session=s2&token=tok-abc123',
-    );
+    expect(out).toContain("/api/cctv/media/hls/abc_video1_init.mp4?session=s2&token=tok-abc123");
     expect(out).toContain("/api/cctv/media/hls/abc_video1_seg45.mp4?session=s2&token=tok-abc123");
     expect(out).toContain("/api/cctv/media/hls/gap.mp4?token=tok-abc123");
     expect(out).not.toContain("oldtok");

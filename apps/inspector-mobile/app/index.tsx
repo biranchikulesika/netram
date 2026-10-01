@@ -99,12 +99,13 @@ export default function InspectorDashboardScreen() {
   };
 
   const officerName = user?.displayName || user?.email?.split("@")[0] || "Inspector";
-  const _initials = officerName
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "IN";
+  const _initials =
+    officerName
+      .split(" ")
+      .map((p) => p[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "IN";
 
   const assignedCount = useMemo(
     () => inspections.filter((i) => i.status === "assigned").length,
@@ -198,14 +199,20 @@ export default function InspectorDashboardScreen() {
         {/* ── Stats Strip ── */}
         <View style={[styles.statsRow, { borderColor }]}>
           <View
-            style={[styles.statItem, { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor }]}
+            style={[
+              styles.statItem,
+              { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor },
+            ]}
           >
             <Text style={[styles.statCount, { color: navyDark }]}>{assignedCount}</Text>
             <Text style={[styles.statLabel, { color: textMuted }]}>ASSIGNED</Text>
           </View>
 
           <View
-            style={[styles.statItem, { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor }]}
+            style={[
+              styles.statItem,
+              { backgroundColor: bgSurface, borderRightWidth: 1, borderRightColor: borderColor },
+            ]}
           >
             <Text style={[styles.statCount, { color: theme.gold }]}>{inProgressCount}</Text>
             <Text style={[styles.statLabel, { color: textMuted }]}>IN PROGRESS</Text>
@@ -251,7 +258,12 @@ export default function InspectorDashboardScreen() {
               </View>
               {currentTask.project_code && (
                 <View style={styles.metaItem}>
-                  <Icon name="document-text-outline" size={13} color={textMuted} style={styles.metaIcon} />
+                  <Icon
+                    name="document-text-outline"
+                    size={13}
+                    color={textMuted}
+                    style={styles.metaIcon}
+                  />
                   <Text style={[styles.metaText, { color: textMuted }]}>
                     {currentTask.project_code}
                   </Text>
@@ -270,9 +282,7 @@ export default function InspectorDashboardScreen() {
                 style={[styles.primaryBtn, { backgroundColor: navyDark }]}
                 onPress={() => router.push(`/inspections/${currentTask.id}`)}
                 accessibilityLabel={
-                  currentTask.status === "in_progress"
-                    ? "Continue inspection"
-                    : "Start inspection"
+                  currentTask.status === "in_progress" ? "Continue inspection" : "Start inspection"
                 }
               >
                 <Text style={styles.primaryBtnText}>
@@ -299,12 +309,9 @@ export default function InspectorDashboardScreen() {
         ) : (
           <View style={[styles.emptyCard, { backgroundColor: bgSurface, borderColor }]}>
             <Icon name="clipboard-outline" size={28} color={textMuted} />
-            <Text style={[styles.emptyCardText, { color: textMuted }]}>
-              No active assignments
-            </Text>
+            <Text style={[styles.emptyCardText, { color: textMuted }]}>No active assignments</Text>
           </View>
         )}
-
       </ScrollView>
 
       {/* ── MODAL: files queued for upload ── */}
@@ -338,15 +345,14 @@ export default function InspectorDashboardScreen() {
             </View>
 
             {pendingMedia.length > 0 ? (
-              <ScrollView
-                style={styles.sheetList}
-                showsVerticalScrollIndicator={false}
-              >
+              <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
                 {pendingMedia.map((file) => (
                   <View key={file.id} style={styles.fileRow}>
                     <View style={[styles.fileIconTile, { backgroundColor: theme.bgSubtle }]}>
                       <Icon
-                        name={file.mime_type.startsWith("video") ? "videocam-outline" : "image-outline"}
+                        name={
+                          file.mime_type.startsWith("video") ? "videocam-outline" : "image-outline"
+                        }
                         size={16}
                         color={accentBlue}
                       />

@@ -18,10 +18,7 @@ export default async function AccountPage() {
         activeSection="account"
       />
 
-      <AccountView
-        user={session.user}
-        permissions={session.permissions}
-      />
+      <AccountView user={session.user} permissions={session.permissions} />
     </main>
   );
 }

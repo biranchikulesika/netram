@@ -14,7 +14,11 @@ const SEVERITY_META: Record<AnomalySeverity, { rank: number; color: string; labe
 
 const OPEN_STATUSES: AnomalyStatus[] = ["new", "reviewed", "investigated"];
 
-export function getStatusStyle(status: AnomalyStatus): { bg: string; color: string; label: string } {
+export function getStatusStyle(status: AnomalyStatus): {
+  bg: string;
+  color: string;
+  label: string;
+} {
   switch (status) {
     case "new":
       return { bg: "var(--tint-red)", color: "#dc2626", label: "NEW" };
@@ -80,9 +84,7 @@ export function AlertsScreen({
 
     const offlineAlerts: UnifiedAlert[] = cameras
       .filter((c) => c.status !== "active")
-      .sort(
-        (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-      )
+      .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
       .map((cam) => ({
         kind: "camera-offline" as const,
         id: `camera-offline:${cam.id}`,
@@ -95,7 +97,9 @@ export function AlertsScreen({
 
     if (view === "resolved") {
       // Only AI anomalies have a resolution lifecycle; resolved view shows those.
-      return both.filter((item) => item.kind === "anomaly" && !OPEN_STATUSES.includes(item.anomaly.status));
+      return both.filter(
+        (item) => item.kind === "anomaly" && !OPEN_STATUSES.includes(item.anomaly.status),
+      );
     }
     return both;
   }, [anomalies, cameras, districtNames, view]);
@@ -113,10 +117,7 @@ export function AlertsScreen({
         );
       }
       const c = item.camera;
-      return (
-        c.name.toLowerCase().includes(q) ||
-        (item.district ?? "").toLowerCase().includes(q)
-      );
+      return c.name.toLowerCase().includes(q) || (item.district ?? "").toLowerCase().includes(q);
     });
   }, [items, searchQuery]);
 
@@ -133,7 +134,14 @@ export function AlertsScreen({
             border: "1px solid var(--color-border-subtle)",
           }}
         >
-          <IconVideo style={{ width: 30, height: 30, color: "var(--text-subtle)", margin: "0 auto 0.75rem auto" }} />
+          <IconVideo
+            style={{
+              width: 30,
+              height: 30,
+              color: "var(--text-subtle)",
+              margin: "0 auto 0.75rem auto",
+            }}
+          />
           <h3>
             {searchQuery
               ? "No matching alerts"
@@ -421,7 +429,8 @@ export function AlertsScreen({
                 <span className="muted" style={{ display: "block", fontSize: "0.72rem" }}>
                   Down since
                 </span>
-                {formatDateTime(offlineCamera.updatedAt)} ({formatDownDuration(offlineCamera.updatedAt)})
+                {formatDateTime(offlineCamera.updatedAt)} (
+                {formatDownDuration(offlineCamera.updatedAt)})
               </div>
             </div>
 

@@ -195,7 +195,7 @@ export default async function FacilityOverviewPage({
         {
           label: "Approved",
           value: project.approvedAt
-            ? `${formatDate(project.approvedAt)} · ${((project.approvedById && userNames[project.approvedById]) || "Approving authority")}`
+            ? `${formatDate(project.approvedAt)} · ${(project.approvedById && userNames[project.approvedById]) || "Approving authority"}`
             : "Awaiting verification",
           muted: !project.approvedAt,
         },
@@ -275,7 +275,9 @@ export default async function FacilityOverviewPage({
                           <span className="ff-value ff-empty">None linked</span>
                         )
                       ) : (
-                        <span className={`ff-value ${item.muted ? "ff-empty" : ""}`}>{item.value}</span>
+                        <span className={`ff-value ${item.muted ? "ff-empty" : ""}`}>
+                          {item.value}
+                        </span>
                       )}
                     </div>
                   ))}

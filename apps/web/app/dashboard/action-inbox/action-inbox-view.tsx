@@ -2,11 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type {
-  ActionInboxItem,
-  ActionInboxSection,
-  OrganisationView,
-} from "@netram/types";
+import type { ActionInboxItem, ActionInboxSection, OrganisationView } from "@netram/types";
 import { formatDateTime } from "../../../lib/presentation";
 import { useMediaQuery, distributeIntoColumns } from "../../../lib/card-layout";
 import { ActionInboxCard, expenseVerifyAction, type InboxAction } from "./action-inbox-card";
@@ -18,7 +14,17 @@ import { IconSearch } from "../../components/icons";
 
 function IconInbox({ width = 16, height = 16 }: { width?: number; height?: number }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={width} height={height} aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      width={width}
+      height={height}
+      aria-hidden="true"
+    >
       <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
       <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
     </svg>
@@ -115,7 +121,12 @@ export function ActionInboxView({
 
   const metrics = useMemo(() => {
     const count = (f: ActionFilter) => allItems.filter((item) => matchesFilter(item, f)).length;
-    return { all: allItems.length, approvals: count("APPROVALS"), reviews: count("REVIEWS"), financial: count("FINANCIAL") };
+    return {
+      all: allItems.length,
+      approvals: count("APPROVALS"),
+      reviews: count("REVIEWS"),
+      financial: count("FINANCIAL"),
+    };
   }, [allItems]);
 
   const filtered = useMemo(
@@ -245,7 +256,9 @@ export function ActionInboxView({
   /* ---------- Empty inbox (server-confirmed empty) ---------- */
   if (allItems.length === 0 && !searchQuery && filter === "ALL") {
     return (
-      <div style={{ padding: "2rem 1.5rem", maxWidth: 720, margin: "3rem auto", textAlign: "center" }}>
+      <div
+        style={{ padding: "2rem 1.5rem", maxWidth: 720, margin: "3rem auto", textAlign: "center" }}
+      >
         <div
           style={{
             width: 48,
@@ -261,7 +274,9 @@ export function ActionInboxView({
         >
           <IconInbox width={24} height={24} />
         </div>
-        <h1 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Action Inbox</h1>
+        <h1 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>
+          Action Inbox
+        </h1>
         <p className="muted" style={{ fontSize: "0.9rem" }}>
           All caught up - nothing is awaiting your decision.
         </p>
@@ -325,7 +340,14 @@ export function ActionInboxView({
       {/* Cards grid */}
       {filtered.length === 0 ? (
         <div className="empty-box" style={{ padding: "3rem 1rem", marginBottom: "2rem" }}>
-          <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: "0.95rem",
+              marginBottom: "0.25rem",
+              color: "var(--text-primary)",
+            }}
+          >
             No items found
           </div>
           <div style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>{emptyState}</div>

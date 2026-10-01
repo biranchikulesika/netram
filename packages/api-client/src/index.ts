@@ -185,7 +185,10 @@ export class NetramApiClient extends HttpClient {
   }
 
   // auth
-  async login(credentials: { email: string; password?: string }): Promise<{ token: string; user: AuthenticatedUser }> {
+  async login(credentials: {
+    email: string;
+    password?: string;
+  }): Promise<{ token: string; user: AuthenticatedUser }> {
     return this.post("/api/v1/auth/dev-login", { email: credentials.email });
   }
 
@@ -214,7 +217,11 @@ export class NetramApiClient extends HttpClient {
   /** Updates a facility's contact details (person in charge + contacts). */
   async updateProjectContact(
     id: string,
-    body: { contactName?: string | null; contactPhone?: string | null; contactEmail?: string | null },
+    body: {
+      contactName?: string | null;
+      contactPhone?: string | null;
+      contactEmail?: string | null;
+    },
   ): Promise<Project> {
     return this.patch(`/api/v1/projects/${id}/contact`, body);
   }
@@ -420,14 +427,16 @@ export class NetramApiClient extends HttpClient {
   }
 
   // attendance monitoring (aggregate-first, §36)
-  async listAttendanceOverview(query: {
-    projectId?: string;
-    districtId?: string;
-    from?: string;
-    to?: string;
-    page?: number;
-    pageSize?: number;
-  } = {}): Promise<{ items: AttendanceOverviewItem[]; total: number; page: number; pageSize: number }> {
+  async listAttendanceOverview(
+    query: {
+      projectId?: string;
+      districtId?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ): Promise<{ items: AttendanceOverviewItem[]; total: number; page: number; pageSize: number }> {
     return this.get(`/api/v1/attendance/overview${queryString(query)}`);
   }
 
@@ -439,39 +448,46 @@ export class NetramApiClient extends HttpClient {
     from?: string;
     to?: string;
   }): Promise<AttendanceDrillDownRow[]> {
-    return this.get<AttendanceDrillDownRow[]>(
-      `/api/v1/attendance/individual${queryString(query)}`,
-    );
+    return this.get<AttendanceDrillDownRow[]>(`/api/v1/attendance/individual${queryString(query)}`);
   }
 
-  async listAttendanceAnomalies(query: {
-    projectId?: string;
-    type?: AttendanceAnomalyType;
-    severity?: AttendanceAnomalySeverity;
-    state?: AttendanceAnomalyState;
-    from?: string;
-    to?: string;
-    page?: number;
-    pageSize?: number;
-  } = {}): Promise<{ items: AttendanceAnomaly[]; total: number; page: number; pageSize: number }> {
+  async listAttendanceAnomalies(
+    query: {
+      projectId?: string;
+      type?: AttendanceAnomalyType;
+      severity?: AttendanceAnomalySeverity;
+      state?: AttendanceAnomalyState;
+      from?: string;
+      to?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ): Promise<{ items: AttendanceAnomaly[]; total: number; page: number; pageSize: number }> {
     return this.get(`/api/v1/attendance/anomalies${queryString(query)}`);
   }
 
   async reviewAttendanceAnomaly(
     id: string,
-    input: { action: AttendanceReviewAction; note?: string | null; linkedInspectionId?: string | null; linkedComplaintId?: string | null },
+    input: {
+      action: AttendanceReviewAction;
+      note?: string | null;
+      linkedInspectionId?: string | null;
+      linkedComplaintId?: string | null;
+    },
   ): Promise<{ items: AttendanceAnomaly[]; total: number; page: number; pageSize: number }> {
     return this.post(`/api/v1/attendance/anomalies/${id}/review`, input);
   }
 
-  async listAttendanceCalculations(query: {
-    projectId?: string;
-    windowId?: string;
-    from?: string;
-    to?: string;
-    page?: number;
-    pageSize?: number;
-  } = {}): Promise<{ items: AttendanceCalculation[]; total: number; page: number; pageSize: number }> {
+  async listAttendanceCalculations(
+    query: {
+      projectId?: string;
+      windowId?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ): Promise<{ items: AttendanceCalculation[]; total: number; page: number; pageSize: number }> {
     return this.get(`/api/v1/attendance/calculations${queryString(query)}`);
   }
 
@@ -558,7 +574,10 @@ export class NetramApiClient extends HttpClient {
     return this.post("/api/v1/notifications/read-all", {});
   }
 
-  async registerDevicePushToken(input: { token: string; platform: string }): Promise<{ success: boolean }> {
+  async registerDevicePushToken(input: {
+    token: string;
+    platform: string;
+  }): Promise<{ success: boolean }> {
     try {
       return await this.post("/api/v1/notifications/device-token", input);
     } catch {
@@ -805,9 +824,11 @@ export class NetramApiClient extends HttpClient {
   }
 
   // Financial Risk & Evaluation
-  async evaluateProjectRisk(
-    projectId: string,
-  ): Promise<{ flag: InspectionFlag | null; events: FinancialRiskEvent[]; scoreOutput: Record<string, unknown> }> {
+  async evaluateProjectRisk(projectId: string): Promise<{
+    flag: InspectionFlag | null;
+    events: FinancialRiskEvent[];
+    scoreOutput: Record<string, unknown>;
+  }> {
     return this.post(`/api/v1/financial-risk/evaluate/${projectId}`, {});
   }
 
@@ -853,7 +874,11 @@ export class NetramApiClient extends HttpClient {
     return this.post(`/api/v1/inspection-flags/${id}/create-inspection`, opts);
   }
 
-  async reviewInspectionFlag(id: string, reviewNotes: string, status?: string): Promise<InspectionFlag> {
+  async reviewInspectionFlag(
+    id: string,
+    reviewNotes: string,
+    status?: string,
+  ): Promise<InspectionFlag> {
     return this.post(`/api/v1/inspection-flags/${id}/review`, { reviewNotes, status });
   }
 
@@ -873,7 +898,9 @@ export class NetramApiClient extends HttpClient {
   }
 
   async getProjectRiskSnapshots(query: ProjectRiskSnapshotQuery): Promise<ProjectRiskSnapshot[]> {
-    return this.get(`/api/v1/project-risk/projects/${query.projectId}/snapshots${queryString(query)}`);
+    return this.get(
+      `/api/v1/project-risk/projects/${query.projectId}/snapshots${queryString(query)}`,
+    );
   }
 
   async getLatestProjectRiskSnapshot(projectId: string): Promise<ProjectRiskSnapshot | null> {

@@ -50,13 +50,22 @@ export default async function AuditPage() {
             <IconAlertTriangle style={{ width: 22, height: 22 }} />
           </div>
 
-          <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
+          <h3
+            style={{
+              margin: "0 0 0.5rem 0",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              color: "var(--color-navy-brand)",
+            }}
+          >
             Access Restricted
           </h3>
-          <p className="muted" style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}>
-            Your official account does not have authorization to view the
-            activity log. Please contact your administrative supervisor if you
-            require elevated access.
+          <p
+            className="muted"
+            style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem 0" }}
+          >
+            Your official account does not have authorization to view the activity log. Please
+            contact your administrative supervisor if you require elevated access.
           </p>
 
           <ErrorActions fallbackHref="/dashboard" />

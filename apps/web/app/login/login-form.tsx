@@ -22,31 +22,31 @@ const SEED_ACCOUNTS = [
     role: "Department Admin",
     email: "admin@netram.dev",
     password: "Admin@netram2026",
-    description: "Full state-level oversight & admin permissions"
+    description: "Full state-level oversight & admin permissions",
   },
   {
     role: "District Officer",
     email: "officer@netram.dev",
     password: "Officer@netram2026",
-    description: "District jurisdiction inspection approvals & projects"
+    description: "District jurisdiction inspection approvals & projects",
   },
   {
     role: "Control Room Ops",
     email: "controlroom@netram.dev",
     password: "Controlroom@netram2026",
-    description: "CCTV feeds, live monitoring & AI anomaly triage"
+    description: "CCTV feeds, live monitoring & AI anomaly triage",
   },
   {
     role: "Institution Admin",
     email: "institute@netram.dev",
     password: "Institute@netram2026",
-    description: "Institution reports & corrective actions"
+    description: "Institution reports & corrective actions",
   },
   {
     role: "Field Inspector",
     email: "inspector@netram.dev",
     password: "Inspector@netram2026",
-    description: "Inspection observation capture & assignment"
+    description: "Inspection observation capture & assignment",
   },
 ];
 
@@ -54,8 +54,8 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
   const router = useRouter();
 
   // Form states
-  const [email, setEmail] = useState(isDev ? SEED_ACCOUNTS[0]?.email ?? "" : "");
-  const [password, setPassword] = useState(isDev ? SEED_ACCOUNTS[0]?.password ?? "" : "");
+  const [email, setEmail] = useState(isDev ? (SEED_ACCOUNTS[0]?.email ?? "") : "");
+  const [password, setPassword] = useState(isDev ? (SEED_ACCOUNTS[0]?.password ?? "") : "");
   const [showPassword, setShowPassword] = useState(isDev);
   const [busy, setBusy] = useState(false);
 
@@ -171,9 +171,8 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
           <div className={styles.alertContent}>
             <div className={styles.alertTitle}>Reconnecting</div>
             <div>
-              We could not confirm your existing session just now. You are still
-              signed in - retrying will take you straight back to your
-              dashboard.
+              We could not confirm your existing session just now. You are still signed in -
+              retrying will take you straight back to your dashboard.
             </div>
             <button
               type="button"
@@ -223,7 +222,6 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
           </button>
         </div>
       )}
-
       <form className={styles.form} onSubmit={handleSubmit} method="POST" noValidate>
         {/* Email or Username Field */}
         <div className={styles.fieldGroup}>
@@ -386,12 +384,7 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
         </div>
 
         {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={busy}
-          className={styles.submitButton}
-          aria-busy={busy}
-        >
+        <button type="submit" disabled={busy} className={styles.submitButton} aria-busy={busy}>
           {busy ? (
             <>
               <span className={styles.spinner} aria-hidden="true" />
@@ -401,7 +394,8 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
             <span>Sign In</span>
           )}
         </button>
-      </form>      {/* Development Quick-Fill Helper (only shown in development environments) */}
+      </form>{" "}
+      {/* Development Quick-Fill Helper (only shown in development environments) */}
       {isDev && (
         <div className={styles.devSection}>
           <button
@@ -450,7 +444,6 @@ export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFor
           )}
         </div>
       )}
-
       {/* The dev account list takes the bottom slot; links would compete with it. */}
       {!showDevAccounts && (
         <div className={styles.crossLinks}>

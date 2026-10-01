@@ -1,4 +1,11 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle, type TextStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+  type TextStyle,
+} from "react-native";
 import { typography } from "../../theme/colors";
 import { useSettings } from "../../theme/settings-context";
 
@@ -26,9 +33,7 @@ export function NetramBadge({
   textStyle,
 }: NetramBadgeProps) {
   const { theme } = useSettings();
-  const normalizedKey = (status || severity || sync || label)
-    .toLowerCase()
-    .replace(/[-\s]/g, "_");
+  const normalizedKey = (status || severity || sync || label).toLowerCase().replace(/[-\s]/g, "_");
 
   let badgeColors: { bg: string; border: string; text: string } = {
     bg: theme.bgSubtle,

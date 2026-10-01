@@ -1,5 +1,9 @@
 import type { FinancialRiskRule } from "@netram/types";
-import type { RiskEvaluationContext, RuleEvaluationResult, RuleEvaluator } from "../rule-evaluator.js";
+import type {
+  RiskEvaluationContext,
+  RuleEvaluationResult,
+  RuleEvaluator,
+} from "../rule-evaluator.js";
 
 export class Exp010DuplicateHashRule implements RuleEvaluator {
   readonly code = "EXP-010";
@@ -26,9 +30,7 @@ export class Exp010DuplicateHashRule implements RuleEvaluator {
     for (const [hash, docs] of hashMap.entries()) {
       if (docs.length > 1) {
         // Collect distinct expense IDs if applicable
-        const expenseIds = Array.from(
-          new Set(docs.map((d) => d.expenseId).filter(Boolean)),
-        );
+        const expenseIds = Array.from(new Set(docs.map((d) => d.expenseId).filter(Boolean)));
 
         results.push({
           triggered: true,

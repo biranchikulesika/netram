@@ -145,14 +145,19 @@ export class ScheduledJobsRunner {
     }
 
     // 2. Risk Engine Sweep: Automatically evaluate active projects and trigger inspections
-    let projectRiskSweep: {
-      evaluatedCount: number;
-      scheduledCount: number;
-      failedCount: number;
-      failedProjectIds: string[];
-    } | undefined;
+    let projectRiskSweep:
+      | {
+          evaluatedCount: number;
+          scheduledCount: number;
+          failedCount: number;
+          failedProjectIds: string[];
+        }
+      | undefined;
     const now = Date.now();
-    if (this.projectRiskService && now - this.lastProjectRiskSweepAt >= this.projectRiskSweepIntervalMs) {
+    if (
+      this.projectRiskService &&
+      now - this.lastProjectRiskSweepAt >= this.projectRiskSweepIntervalMs
+    ) {
       try {
         const sysCtx = createWorkerSystemContext();
         projectRiskSweep = await this.projectRiskService.sweepAllActiveProjects(sysCtx);
@@ -169,7 +174,10 @@ export class ScheduledJobsRunner {
 
     // 3. Financial Risk Engine Sweep: evaluate the 13-rule discrepancy engine across all active projects
     let financialRiskSweep: { evaluatedCount: number } | undefined;
-    if (this.financialRiskService && now - this.lastFinancialRiskSweepAt >= this.financialRiskSweepIntervalMs) {
+    if (
+      this.financialRiskService &&
+      now - this.lastFinancialRiskSweepAt >= this.financialRiskSweepIntervalMs
+    ) {
       try {
         const sysCtx = createWorkerSystemContext();
         financialRiskSweep = await this.financialRiskService.sweepAllActiveProjects(sysCtx);

@@ -12,13 +12,7 @@
  * are GPS-free so GPS ticks never reload the map or reset the user's zoom.
  * Location is not an access control and no boundary is drawn.
  */
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -32,10 +26,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
 import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
-import {
-  OfflineInspectionQueue,
-  type CachedInspectionRecord,
-} from "../src/offline/queue";
+import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
 import { Icon } from "../src/components/ui/Icon";
 import { useAuth } from "../src/auth/auth-context";
 import type { ProjectGeofence } from "@netram/types";
@@ -47,20 +38,13 @@ import { WebView } from "react-native-webview";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function haversineMeters(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3;
   const f1 = (lat1 * Math.PI) / 180;
   const f2 = (lat2 * Math.PI) / 180;
   const df = ((lat2 - lat1) * Math.PI) / 180;
   const dl = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(df / 2) ** 2 +
-    Math.cos(f1) * Math.cos(f2) * Math.sin(dl / 2) ** 2;
+  const a = Math.sin(df / 2) ** 2 + Math.cos(f1) * Math.cos(f2) * Math.sin(dl / 2) ** 2;
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
@@ -342,9 +326,7 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [cachedInspections, setCachedInspections] = useState<CachedInspectionRecord[]>([]);
   const [remoteGeofences, setRemoteGeofences] = useState<ProjectGeofence[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(
-    params.inspectionId ?? null,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(params.inspectionId ?? null);
   const [mapType, setMapType] = useState<"street" | "satellite">("street");
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -357,9 +339,9 @@ export default function MapScreen() {
     accuracy: number | null;
     acquiredAt: number;
   } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<
-    "loading" | "denied" | "ready" | "error"
-  >("loading");
+  const [locationStatus, setLocationStatus] = useState<"loading" | "denied" | "ready" | "error">(
+    "loading",
+  );
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ---------------------------------------------------------------------------
@@ -399,38 +381,38 @@ export default function MapScreen() {
 
   // Acquires a fresh GPS fix, updates state, and returns the fix so callers
   // (e.g. focus-my-location) can act on the new coordinates immediately.
-  const acquireLocation = useCallback(
-    async (): Promise<{ latitude: number; longitude: number } | null> => {
-      try {
-        setLocationStatus("loading");
-        const perm = await Location.getForegroundPermissionsAsync();
-        const granted = perm.granted
-          ? true
-          : (await Location.requestForegroundPermissionsAsync()).granted;
+  const acquireLocation = useCallback(async (): Promise<{
+    latitude: number;
+    longitude: number;
+  } | null> => {
+    try {
+      setLocationStatus("loading");
+      const perm = await Location.getForegroundPermissionsAsync();
+      const granted = perm.granted
+        ? true
+        : (await Location.requestForegroundPermissionsAsync()).granted;
 
-        if (!granted) {
-          setLocationStatus("denied");
-          return null;
-        }
-
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        setLocation({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          acquiredAt: Date.now(),
-        });
-        setLocationStatus("ready");
-        return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-      } catch {
-        setLocationStatus("error");
+      if (!granted) {
+        setLocationStatus("denied");
         return null;
       }
-    },
-    [],
-  );
+
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        acquiredAt: Date.now(),
+      });
+      setLocationStatus("ready");
+      return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+    } catch {
+      setLocationStatus("error");
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     void acquireLocation();
@@ -507,10 +489,7 @@ export default function MapScreen() {
     if (!selectedId && mapSites.length > 0) {
       const active =
         mapSites.find(
-          (s) =>
-            s.status === "in_progress" ||
-            s.status === "assigned" ||
-            s.status === "scheduled",
+          (s) => s.status === "in_progress" || s.status === "assigned" || s.status === "scheduled",
         ) ?? mapSites[0];
       if (active) setSelectedId(active.id);
     }
@@ -579,10 +558,7 @@ export default function MapScreen() {
       if (d?.type === "SELECT_SITE" && d.siteId) {
         setSelectedId(d.siteId as string);
       }
-      if (
-        d?.type === "MAP_TYPE_CHANGED" &&
-        (d.mapType === "street" || d.mapType === "satellite")
-      ) {
+      if (d?.type === "MAP_TYPE_CHANGED" && (d.mapType === "street" || d.mapType === "satellite")) {
         setMapType(d.mapType);
       }
     } catch {
@@ -626,9 +602,7 @@ export default function MapScreen() {
   const handleFocusMyLocation = useCallback(async () => {
     const fix = await acquireLocation();
     if (!fix) return;
-    postToMap(
-      JSON.stringify({ type: "FOCUS_USER", lat: fix.latitude, lng: fix.longitude }),
-    );
+    postToMap(JSON.stringify({ type: "FOCUS_USER", lat: fix.latitude, lng: fix.longitude }));
   }, [acquireLocation, postToMap]);
 
   const stepSite = (delta: number) => {
@@ -698,24 +672,14 @@ export default function MapScreen() {
           ]}
         >
           <View style={styles.rationaleHeader}>
-            <Text
-              style={[
-                styles.rationaleTitle,
-                { color: isPureDark ? "#FFFFFF" : "#002449" },
-              ]}
-            >
+            <Text style={[styles.rationaleTitle, { color: isPureDark ? "#FFFFFF" : "#002449" }]}>
               Location Access
             </Text>
           </View>
 
-          <Text
-            style={[
-              styles.rationaleBody,
-              { color: isPureDark ? "#A1A1AA" : "#475569" },
-            ]}
-          >
-            Netram uses your location to show where you are in relation to your assigned
-            sites. Access is optional - the map works without it.
+          <Text style={[styles.rationaleBody, { color: isPureDark ? "#A1A1AA" : "#475569" }]}>
+            Netram uses your location to show where you are in relation to your assigned sites.
+            Access is optional - the map works without it.
           </Text>
 
           <View
@@ -727,15 +691,9 @@ export default function MapScreen() {
               },
             ]}
           >
-            <Text
-              style={[
-                styles.rationaleNoteText,
-                { color: isPureDark ? "#CBD5E1" : "#334155" },
-              ]}
-            >
-              • Shows your distance to each assigned site.{"\n"}
-              • Lets you recentre the map on your position.{"\n"}
-              • Evidence photos capture their own coordinates separately.
+            <Text style={[styles.rationaleNoteText, { color: isPureDark ? "#CBD5E1" : "#334155" }]}>
+              • Shows your distance to each assigned site.{"\n"}• Lets you recentre the map on your
+              position.{"\n"}• Evidence photos capture their own coordinates separately.
             </Text>
           </View>
 
@@ -804,8 +762,7 @@ export default function MapScreen() {
           <View style={styles.mapPlaceholder}>
             <Icon name="map-outline" size={28} color={colors.textMuted ?? "#64748b"} />
             <Text style={styles.mapPlaceholderText}>
-              No mapped sites yet - sites appear here once their projects have
-              server geofences.
+              No mapped sites yet - sites appear here once their projects have server geofences.
             </Text>
           </View>
         )}
@@ -853,20 +810,18 @@ export default function MapScreen() {
           </View>
         )}
 
-        {!loading &&
-          cachedInspections.length > 0 &&
-          mapSites.length === 0 && (
-            <View
-              style={[styles.emptyCard, { backgroundColor: theme.bgSurface }]}
-              pointerEvents="auto"
-            >
-              <Icon name="map-outline" size={22} color={theme.textMuted} />
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-                Assigned sites have no map coordinates yet - a geofence must be
-                sealed for each project first.
-              </Text>
-            </View>
-          )}
+        {!loading && cachedInspections.length > 0 && mapSites.length === 0 && (
+          <View
+            style={[styles.emptyCard, { backgroundColor: theme.bgSurface }]}
+            pointerEvents="auto"
+          >
+            <Icon name="map-outline" size={22} color={theme.textMuted} />
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+              Assigned sites have no map coordinates yet - a geofence must be sealed for each
+              project first.
+            </Text>
+          </View>
+        )}
 
         {selectedSite && (
           <View
@@ -932,10 +887,7 @@ export default function MapScreen() {
               {selectedSite.projectName}
             </Text>
 
-            <Text
-              style={[styles.cardSubtitle, { color: theme.textMuted }]}
-              numberOfLines={1}
-            >
+            <Text style={[styles.cardSubtitle, { color: theme.textMuted }]} numberOfLines={1}>
               {[
                 selectedSite.projectCode,
                 formatInspectionType(selectedSite.type),

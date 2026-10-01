@@ -303,11 +303,7 @@ export function buildContainer(config: AppConfig): Container {
     financialRiskService,
   );
   const compositeRiskScorer = new CompositeRiskScorer();
-  const inspectionScheduler = new InspectionScheduler(
-    projectRiskRepo,
-    flagRepo,
-    inspectionService,
-  );
+  const inspectionScheduler = new InspectionScheduler(projectRiskRepo, flagRepo, inspectionService);
   const projectRiskService = new ProjectRiskService(
     authorizationService,
     projectRiskContextBuilder,

@@ -1,5 +1,9 @@
 import type { FinancialRiskRule } from "@netram/types";
-import type { RiskEvaluationContext, RuleEvaluationResult, RuleEvaluator } from "../rule-evaluator.js";
+import type {
+  RiskEvaluationContext,
+  RuleEvaluationResult,
+  RuleEvaluator,
+} from "../rule-evaluator.js";
 
 export class Exp011RejectedDocumentsRule implements RuleEvaluator {
   readonly code = "EXP-011";
@@ -17,7 +21,7 @@ export class Exp011RejectedDocumentsRule implements RuleEvaluator {
       rejectionThresholdRatio?: number;
     };
     const minDocs = config.minDocuments ?? 5;
-    const thresholdRatio = config.rejectionThresholdRatio ?? 0.30;
+    const thresholdRatio = config.rejectionThresholdRatio ?? 0.3;
 
     if (ctx.documents.length < minDocs) {
       return [];

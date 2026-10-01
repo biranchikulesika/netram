@@ -117,10 +117,7 @@ export class MediaControlService {
     // The provider layer validates that this camera exists and its source is
     // resolvable before anything is provisioned in the media server.
     const source = await this.providers.acquireRawStream(camera.id);
-    const ingestSource = resolveIngestSource(
-      { ...camera, id: camera.id },
-      this.devIngestSource,
-    );
+    const ingestSource = resolveIngestSource({ ...camera, id: camera.id }, this.devIngestSource);
     if (source.length === 0 && ingestSource.length === 0) {
       throw new Error(`No resolvable ingest source for camera: ${camera.id}`);
     }
@@ -247,7 +244,10 @@ export class MediaControlService {
    */
   async verifyPlaybackToken(
     token: string,
-  ): Promise<{ valid: true; streamId: string; cameraId: string; mediaPath: string; expiresAt: string } | { valid: false; reason: string }> {
+  ): Promise<
+    | { valid: true; streamId: string; cameraId: string; mediaPath: string; expiresAt: string }
+    | { valid: false; reason: string }
+  > {
     const payload = verifyStreamToken(token, this.streamSecret);
     if (!payload) {
       return { valid: false, reason: "invalid_or_expired_token" };

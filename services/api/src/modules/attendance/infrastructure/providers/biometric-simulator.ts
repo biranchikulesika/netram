@@ -98,10 +98,7 @@ export class BiometricSimulatorProvider implements AttendanceProviderPort {
 
   constructor(private readonly now: () => Date = () => new Date()) {}
 
-  async sync(
-    device: AttendanceDevice,
-    cursor: string | null,
-  ): Promise<ProviderDeviceEvent[]> {
+  async sync(device: AttendanceDevice, cursor: string | null): Promise<ProviderDeviceEvent[]> {
     const scenario = (this.deviceDeviceConfig(device)?.scenario ?? "normal") as SimulatorScenario;
     return this.generate(device, { scenario, operationalDate: cursor ?? this.today() });
   }
@@ -109,14 +106,23 @@ export class BiometricSimulatorProvider implements AttendanceProviderPort {
   health(device: AttendanceDevice): AttendanceProviderHealth {
     const scenario = (this.deviceDeviceConfig(device)?.scenario ?? "normal") as SimulatorScenario;
     if (scenario === "offline_buffered") {
-      return { status: "OFFLINE", lastEventAt: null, detail: "simulated offline, buffering events" };
+      return {
+        status: "OFFLINE",
+        lastEventAt: null,
+        detail: "simulated offline, buffering events",
+      };
     }
-    return { status: "ONLINE", lastEventAt: device.lastEventAt ? new Date(device.lastEventAt) : null };
+    return {
+      status: "ONLINE",
+      lastEventAt: device.lastEventAt ? new Date(device.lastEventAt) : null,
+    };
   }
 
   /** Deterministic event generation per scenario - used directly by tests too. */
   generate(device: AttendanceDevice, opts: SimulatorSyncOptions): ProviderDeviceEvent[] {
-    const scenario = opts.scenario ?? ((this.deviceDeviceConfig(device)?.scenario ?? "normal") as SimulatorScenario);
+    const scenario =
+      opts.scenario ??
+      ((this.deviceDeviceConfig(device)?.scenario ?? "normal") as SimulatorScenario);
     const events: ProviderDeviceEvent[] = [];
 
     switch (scenario) {
@@ -192,10 +198,11 @@ export class BiometricSimulatorProvider implements AttendanceProviderPort {
 
   private deviceDeviceConfig(device: AttendanceDevice): SimulatorDeviceConfig | undefined {
     try {
-      const raw = (typeof (device as unknown as { config?: unknown }).config === "object"
-        && (device as unknown as { config?: unknown }).config !== null
-        ? (device as unknown as { config: unknown }).config
-        : null);
+      const raw =
+        typeof (device as unknown as { config?: unknown }).config === "object" &&
+        (device as unknown as { config?: unknown }).config !== null
+          ? (device as unknown as { config: unknown }).config
+          : null;
       return raw ? (JSON.parse(JSON.stringify(raw)) as SimulatorDeviceConfig) : undefined;
     } catch {
       return undefined;

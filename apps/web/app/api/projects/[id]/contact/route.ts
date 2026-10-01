@@ -8,10 +8,7 @@ import { SESSION_COOKIE } from "../../../../../lib/api";
  * Proxies contact-detail updates to the API so the httpOnly session token
  * authorises the call (same pattern as the project transition proxy).
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;

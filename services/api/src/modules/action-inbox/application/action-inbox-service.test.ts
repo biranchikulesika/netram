@@ -3,7 +3,13 @@ import { ActionInboxService } from "./action-inbox-service.js";
 import type { ActionInboxServiceDeps } from "./action-inbox-service.js";
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { AuthorizationService } from "../../authorization/application/authorization-service.js";
-import type { Project, FindingAwaitingOrder, CorrectiveAction, Complaint, AIAnomaly } from "@netram/types";
+import type {
+  Project,
+  FindingAwaitingOrder,
+  CorrectiveAction,
+  Complaint,
+  AIAnomaly,
+} from "@netram/types";
 
 function mockCtx(overrides: Partial<RequestUserContext> = {}): RequestUserContext {
   return {
@@ -148,20 +154,30 @@ function makeDeps(overrides: Partial<ActionInboxServiceDeps> = {}): ActionInboxS
       accessibleDistrictIds: vi.fn(() => null),
       canAccessDistrict: vi.fn(() => true),
     } as unknown as AuthorizationService,
-    projectService: { listVerificationQueue: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })) },
+    projectService: {
+      listVerificationQueue: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })),
+    },
     findingService: { listFindingsAwaitingOrder: vi.fn(async () => []) },
     correctiveActionService: {
       listCorrectiveActions: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })),
     },
-    complaintService: { listComplaints: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })) },
-    aiAnomalyService: { listAiAnomalies: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })) },
+    complaintService: {
+      listComplaints: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })),
+    },
+    aiAnomalyService: {
+      listAiAnomalies: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })),
+    },
     attendanceService: {
       listAnomalies: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })),
       listPendingCorrections: vi.fn(async () => []),
     },
-    expenseService: { listExpenses: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })) },
+    expenseService: {
+      listExpenses: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })),
+    },
     financialDocumentService: { listPendingDocuments: vi.fn(async () => []) },
-    financialRiskService: { listFlags: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })) },
+    financialRiskService: {
+      listFlags: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 100 })),
+    },
     ...overrides,
   };
 }

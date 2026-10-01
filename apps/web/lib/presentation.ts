@@ -28,7 +28,10 @@ export function formatDistrict(districtName?: string | null, stateName?: string 
  * A facility with no authority assigned is a legitimate state, not missing
  * data, so it is labelled as such instead of defaulting to a department.
  */
-export function getAuthorityName(authorityId?: string | null, resolvedName?: string | null): string {
+export function getAuthorityName(
+  authorityId?: string | null,
+  resolvedName?: string | null,
+): string {
   if (resolvedName) return resolvedName;
   return authorityId ? "Assigned authority" : "No authority assigned";
 }
@@ -46,16 +49,22 @@ export function getOrganisationName(resolvedName?: string | null): string {
 }
 
 const SHORT_MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ] as const;
 
 /** Formats parts of a Date in Asia/Kolkata using numeric month for composition. */
-function getCalendarParts(
-  d: Date,
-  withTime: boolean,
-  withSeconds = false,
-): Record<string, string> {
+function getCalendarParts(d: Date, withTime: boolean, withSeconds = false): Record<string, string> {
   const parts = new Intl.DateTimeFormat(
     "en-IN",
     withTime

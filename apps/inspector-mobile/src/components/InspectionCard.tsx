@@ -12,12 +12,7 @@ export interface InspectionCardProps {
   testID?: string;
 }
 
-export function InspectionCard({
-  inspection,
-  onPress,
-  style,
-  testID,
-}: InspectionCardProps) {
+export function InspectionCard({ inspection, onPress, style, testID }: InspectionCardProps) {
   const { theme } = useSettings();
 
   const formattedDate = inspection.scheduled_start
@@ -33,11 +28,7 @@ export function InspectionCard({
   return (
     <NetramCard testID={testID} onPress={onPress} style={[styles.card, style]}>
       <View style={styles.topRow}>
-        <NetramBadge
-          label={inspection.project_code || "PRJ"}
-          variant="id"
-          size="sm"
-        />
+        <NetramBadge label={inspection.project_code || "PRJ"} variant="id" size="sm" />
         <NetramBadge
           label={inspection.status.replace(/_/g, " ")}
           variant="status"
@@ -47,10 +38,7 @@ export function InspectionCard({
       </View>
 
       <View style={styles.body}>
-        <Text
-          style={[styles.projectName, { color: theme.textPrimary }]}
-          numberOfLines={2}
-        >
+        <Text style={[styles.projectName, { color: theme.textPrimary }]} numberOfLines={2}>
           {inspection.project_name || "Untitled Project"}
         </Text>
         <Text style={[styles.typeText, { color: theme.accentBlue }]}>

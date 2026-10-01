@@ -125,7 +125,7 @@ export function AttendanceYearCalendar({
                 color: "var(--color-navy-brand)",
               }}
             >
-              {title ?? (projectName ?? "Attendance Record")}
+              {title ?? projectName ?? "Attendance Record"}
               {projectCode && (
                 <span
                   style={{
@@ -143,7 +143,9 @@ export function AttendanceYearCalendar({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", whiteSpace: "nowrap" }}>
+          <div
+            style={{ display: "flex", alignItems: "center", gap: "0.6rem", whiteSpace: "nowrap" }}
+          >
             <button
               type="button"
               style={yearArrowStyle}
@@ -169,7 +171,10 @@ export function AttendanceYearCalendar({
                   <button
                     key={y}
                     type="button"
-                    style={{ ...yearStripStyle, ...(y === selectedYear ? yearStripActiveStyle : {}) }}
+                    style={{
+                      ...yearStripStyle,
+                      ...(y === selectedYear ? yearStripActiveStyle : {}),
+                    }}
                     aria-pressed={y === selectedYear}
                     aria-label={`Show ${y} record`}
                     onClick={() => goYear(y)}
@@ -361,18 +366,16 @@ function MonthGrid({
           const expected = present + absent;
           const rate = expected > 0 ? present / expected : null;
           const severity =
-            rate === null
-              ? "none"
-              : rate >= 0.9
-                ? "high"
-                : rate >= 0.7
-                  ? "reduced"
-                  : "low";
+            rate === null ? "none" : rate >= 0.9 ? "high" : rate >= 0.7 ? "reduced" : "low";
           const meta = {
             high: { bg: "var(--tint-green)", border: "var(--tint-green)", text: "#137e3a" },
             reduced: { bg: "var(--tint-orange)", border: "var(--tint-orange)", text: "#dd501e" },
             low: { bg: "var(--tint-red)", border: "var(--tint-red)", text: "#dc2626" },
-            none: { bg: "#edf0f5", border: "var(--color-border-subtle)", text: "var(--text-subtle)" },
+            none: {
+              bg: "#edf0f5",
+              border: "var(--color-border-subtle)",
+              text: "var(--text-subtle)",
+            },
           }[severity];
           const cellStyle: React.CSSProperties = {
             aspectRatio: "1",
@@ -417,7 +420,11 @@ function MonthGrid({
                   {present}
                 </span>
               ) : (
-                <span style={{ fontSize: "0.55rem", color: "var(--text-subtle)", marginTop: "0.2rem" }}>-</span>
+                <span
+                  style={{ fontSize: "0.55rem", color: "var(--text-subtle)", marginTop: "0.2rem" }}
+                >
+                  -
+                </span>
               )}
             </>
           );
@@ -436,15 +443,29 @@ function MonthGrid({
   );
 }
 
-function Stat({ num, label, color, decimal = false }: { num: number | string; label: string; color: string; decimal?: boolean }) {
+function Stat({
+  num,
+  label,
+  color,
+  decimal = false,
+}: {
+  num: number | string;
+  label: string;
+  color: string;
+  decimal?: boolean;
+}) {
   const display =
-    typeof num === "number"
-      ? decimal ? num.toFixed(1) : num.toLocaleString("en-IN")
-      : num;
+    typeof num === "number" ? (decimal ? num.toFixed(1) : num.toLocaleString("en-IN")) : num;
   return (
     <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.35rem" }}>
-      <strong style={{ fontSize: "0.95rem", fontWeight: 700, color, fontVariantNumeric: "tabular-nums" }}>{display}</strong>
-      <span className="muted" style={{ fontSize: "0.72rem" }}>{label}</span>
+      <strong
+        style={{ fontSize: "0.95rem", fontWeight: 700, color, fontVariantNumeric: "tabular-nums" }}
+      >
+        {display}
+      </strong>
+      <span className="muted" style={{ fontSize: "0.72rem" }}>
+        {label}
+      </span>
     </span>
   );
 }

@@ -148,40 +148,44 @@ export class CorrectiveActionService {
 
     const files = input.files ?? [];
     if (files.length > MAX_ATR_ATTACHMENTS) {
-      throw AppError.badRequest(
-        `An ATR can carry at most ${MAX_ATR_ATTACHMENTS} attachments.`,
-      );
+      throw AppError.badRequest(`An ATR can carry at most ${MAX_ATR_ATTACHMENTS} attachments.`);
     }
-const storedFiles = await Promise.all(
-      files.map(async (file): Promise<{
-        id: string;
-        fileName: string;
-        mimeType: string;
-        sizeBytes: number;
-        storageKey: string;
-        contentHash: string;
-      }> => {
-        if (!isAllowedAtrAttachmentType(file.mimeType)) {
-          throw AppError.badRequest(
-            `Attachment '${file.fileName}' uses an unsupported type '${file.mimeType}'. Only PDF, photo, and video files are accepted.`,
-          );
-        }
-        if (file.data.byteLength > MAX_ATR_ATTACHMENT_BYTES) {
-          throw AppError.badRequest(`Attachment '${file.fileName}' exceeds the 100 MB size limit.`);
-        }
-        const id = randomUUID();
-        const storageKey = `corrective-actions/${correctiveActionId}/${id}`;
-        const contentHash = `sha256:${createHash("sha256").update(file.data).digest("hex")}`;
-        await this.storage.put(storageKey, file.data, file.mimeType);
-        return {
-          id,
-          fileName: file.fileName,
-          mimeType: file.mimeType,
-          sizeBytes: file.data.byteLength,
-          storageKey,
-          contentHash,
-        };
-      }),
+    const storedFiles = await Promise.all(
+      files.map(
+        async (
+          file,
+        ): Promise<{
+          id: string;
+          fileName: string;
+          mimeType: string;
+          sizeBytes: number;
+          storageKey: string;
+          contentHash: string;
+        }> => {
+          if (!isAllowedAtrAttachmentType(file.mimeType)) {
+            throw AppError.badRequest(
+              `Attachment '${file.fileName}' uses an unsupported type '${file.mimeType}'. Only PDF, photo, and video files are accepted.`,
+            );
+          }
+          if (file.data.byteLength > MAX_ATR_ATTACHMENT_BYTES) {
+            throw AppError.badRequest(
+              `Attachment '${file.fileName}' exceeds the 100 MB size limit.`,
+            );
+          }
+          const id = randomUUID();
+          const storageKey = `corrective-actions/${correctiveActionId}/${id}`;
+          const contentHash = `sha256:${createHash("sha256").update(file.data).digest("hex")}`;
+          await this.storage.put(storageKey, file.data, file.mimeType);
+          return {
+            id,
+            fileName: file.fileName,
+            mimeType: file.mimeType,
+            sizeBytes: file.data.byteLength,
+            storageKey,
+            contentHash,
+          };
+        },
+      ),
     );
 
     return this.repository.applyWorkWithAuditAndEvent({

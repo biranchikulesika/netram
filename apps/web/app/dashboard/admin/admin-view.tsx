@@ -1,18 +1,9 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import type {
-  UserAdminView,
-  RoleView,
-  JurisdictionView,
-  RoleAssignmentView,
-} from "@netram/types";
+import type { UserAdminView, RoleView, JurisdictionView, RoleAssignmentView } from "@netram/types";
 import { formatDate, formatRoleTitle } from "../../../lib/presentation";
-import {
-  IconSearch,
-  IconRotateCcw,
-  IconMapPin,
-} from "../../components/icons";
+import { IconSearch, IconRotateCcw, IconMapPin } from "../../components/icons";
 import { AssignRoleModal } from "./assign-role-modal";
 import { PaginationBar, useClientPagination } from "../../components/pagination-bar";
 
@@ -271,7 +262,13 @@ export function AdminView({
           <button
             type="button"
             onClick={() => setFeedback(null)}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "inherit" }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "1.1rem",
+              color: "inherit",
+            }}
           >
             &times;
           </button>
@@ -279,7 +276,10 @@ export function AdminView({
       )}
 
       {/* Navigation Toolbar */}
-      <div className="registry-toolbar" style={{ marginBottom: "1.25rem", justifyContent: "space-between" }}>
+      <div
+        className="registry-toolbar"
+        style={{ marginBottom: "1.25rem", justifyContent: "space-between" }}
+      >
         <div className="search-filter-group">
           {/* Search Bar on the Left */}
           <div className="search-input-wrap">
@@ -350,7 +350,11 @@ export function AdminView({
                         type="button"
                         onClick={() => setSearchQuery("")}
                         className="btn-secondary"
-                        style={{ marginTop: "0.75rem", fontSize: "0.78rem", padding: "0.35rem 0.75rem" }}
+                        style={{
+                          marginTop: "0.75rem",
+                          fontSize: "0.78rem",
+                          padding: "0.35rem 0.75rem",
+                        }}
                       >
                         Reset Search
                       </button>
@@ -398,9 +402,7 @@ export function AdminView({
                     </td>
 
                     {/* Email */}
-                    <td style={{ color: "var(--text-secondary)" }}>
-                      {u.email}
-                    </td>
+                    <td style={{ color: "var(--text-secondary)" }}>{u.email}</td>
 
                     {/* Role (clean text, deduplicated abstracted title, no wrap) */}
                     <td>
@@ -416,7 +418,10 @@ export function AdminView({
 
                         if (dedupedTitles.length === 0) {
                           return (
-                            <span className="muted" style={{ fontStyle: "italic", fontSize: "0.8rem" }}>
+                            <span
+                              className="muted"
+                              style={{ fontStyle: "italic", fontSize: "0.8rem" }}
+                            >
                               No role
                             </span>
                           );
@@ -445,10 +450,14 @@ export function AdminView({
                                 return "National";
                               }
                               if (a.jurisdictionId) {
-                                const j = safeJurisdictions.find((item) => item.id === a.jurisdictionId);
+                                const j = safeJurisdictions.find(
+                                  (item) => item.id === a.jurisdictionId,
+                                );
                                 if (j) return j.name;
                               }
-                              return a.scope ? a.scope.charAt(0).toUpperCase() + a.scope.slice(1) : "-";
+                              return a.scope
+                                ? a.scope.charAt(0).toUpperCase() + a.scope.slice(1)
+                                : "-";
                             }),
                           ),
                         );
@@ -466,9 +475,7 @@ export function AdminView({
                     </td>
 
                     {/* Created Date */}
-                    <td className="table-date">
-                      {formatDate(u.createdAt)}
-                    </td>
+                    <td className="table-date">{formatDate(u.createdAt)}</td>
                   </tr>
                 );
               })
@@ -548,10 +555,22 @@ export function AdminView({
                 </div>
 
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     <h3
                       id="operator-details-title"
-                      style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--color-navy-brand)" }}
+                      style={{
+                        margin: 0,
+                        fontSize: "1.2rem",
+                        fontWeight: 700,
+                        color: "var(--color-navy-brand)",
+                      }}
                     >
                       {selectedUserForDetails.displayName || "Operator Account"}
                     </h3>
@@ -571,7 +590,13 @@ export function AdminView({
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.84rem", color: "var(--text-secondary)", marginTop: "0.15rem" }}>
+                  <div
+                    style={{
+                      fontSize: "0.84rem",
+                      color: "var(--text-secondary)",
+                      marginTop: "0.15rem",
+                    }}
+                  >
                     {selectedUserForDetails.email}
                   </div>
                 </div>
@@ -650,7 +675,15 @@ export function AdminView({
                 >
                   Registered
                 </span>
-                <span style={{ display: "block", fontSize: "0.82rem", color: "var(--text-primary)", fontWeight: 500, marginTop: "0.15rem" }}>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "0.82rem",
+                    color: "var(--text-primary)",
+                    fontWeight: 500,
+                    marginTop: "0.15rem",
+                  }}
+                >
                   {formatDate(selectedUserForDetails.createdAt)}
                 </span>
               </div>
@@ -753,7 +786,8 @@ export function AdminView({
                         key={roleGroup.roleCode}
                         style={{
                           background: "var(--bg-surface)",
-                          border: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                          border:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
                           borderRadius: "8px",
                           padding: "0.75rem 0.9rem",
                           boxShadow: "0 1px 2px rgba(0,36,73, 0.03)",
@@ -794,7 +828,9 @@ export function AdminView({
                                   border: "1px solid var(--color-border-subtle, #edf0f5)",
                                 }}
                               >
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                                <div
+                                  style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}
+                                >
                                   {isNational ? (
                                     <span
                                       style={{
@@ -819,7 +855,13 @@ export function AdminView({
                                         color: "var(--text-muted)",
                                       }}
                                     >
-                                      <IconMapPin style={{ width: 12, height: 12, color: "var(--text-subtle)" }} />
+                                      <IconMapPin
+                                        style={{
+                                          width: 12,
+                                          height: 12,
+                                          color: "var(--text-subtle)",
+                                        }}
+                                      />
                                       {assignment.jurisdictionName
                                         ? `${assignment.jurisdictionName}${assignment.jurisdictionCode ? ` (${assignment.jurisdictionCode})` : ""}`
                                         : "Jurisdiction"}
@@ -886,7 +928,10 @@ export function AdminView({
                 </div>
 
                 {effectivePermissions.length === 0 ? (
-                  <p className="muted" style={{ fontStyle: "italic", fontSize: "0.82rem", margin: "0.25rem 0" }}>
+                  <p
+                    className="muted"
+                    style={{ fontStyle: "italic", fontSize: "0.82rem", margin: "0.25rem 0" }}
+                  >
                     No permissions active.
                   </p>
                 ) : (
@@ -907,7 +952,8 @@ export function AdminView({
                           display: "inline-flex",
                           alignItems: "center",
                           background: "var(--bg-subtle, #edf0f5)",
-                          border: "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                          border:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
                           borderRadius: "5px",
                           padding: "0.3rem 0.6rem",
                           fontSize: "0.75rem",
@@ -939,8 +985,6 @@ export function AdminView({
         onSuccess={handleRoleAssigned}
       />
 
-
-
       {/* MODAL 3: Revoke Role Assignment Dialog */}
       {assignmentToRevoke && (
         <div
@@ -963,13 +1007,29 @@ export function AdminView({
           >
             <h3
               id="confirm-revoke-title"
-              style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", fontWeight: 700, color: "var(--color-navy-brand)" }}
+              style={{
+                margin: "0 0 0.5rem",
+                fontSize: "1.1rem",
+                fontWeight: 700,
+                color: "var(--color-navy-brand)",
+              }}
             >
               Revoke Role
             </h3>
 
-            <p style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: "0 0 1.25rem", color: "var(--text-secondary)" }}>
-              Revoke <strong>{assignmentToRevoke.roleTitle || formatRoleTitle(assignmentToRevoke.roleCode)}</strong> from <strong>{assignmentToRevoke.userEmail}</strong>?
+            <p
+              style={{
+                fontSize: "0.85rem",
+                lineHeight: 1.5,
+                margin: "0 0 1.25rem",
+                color: "var(--text-secondary)",
+              }}
+            >
+              Revoke{" "}
+              <strong>
+                {assignmentToRevoke.roleTitle || formatRoleTitle(assignmentToRevoke.roleCode)}
+              </strong>{" "}
+              from <strong>{assignmentToRevoke.userEmail}</strong>?
             </p>
 
             <div

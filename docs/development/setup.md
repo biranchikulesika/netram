@@ -71,15 +71,15 @@ Centralised + validated in `packages/config/src/env/` (Zod). `NEXT_PUBLIC_*`
 keys are client-safe; everything else is server-only. `.env.example` is the
 full documented list - notable entries:
 
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | Postgres connection string |
-| `REDIS_URL` | Redis for jobs/outbox |
-| `NETRAM_DEV_AUTH_SECRET` | Signing secret for dev-auth only |
-| `NETRAM_API_PORT` (3001) / `NETRAM_API_URL` | API port / internal base URL |
-| `NETRAM_REALTIME_PORT` (3002) / `NETRAM_REALTIME_URL` | Realtime port / base URL |
-| `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_REALTIME_WS_URL` | Public base URLs for web/mobile |
-| `NETRAM_CCTV_*`, `NETRAM_MEDIAMTX_*` | CCTV gateway + MediaMTX endpoints, secrets, public WHEP URL |
+| Variable                                              | Purpose                                                     |
+| ----------------------------------------------------- | ----------------------------------------------------------- |
+| `DATABASE_URL`                                        | Postgres connection string                                  |
+| `REDIS_URL`                                           | Redis for jobs/outbox                                       |
+| `NETRAM_DEV_AUTH_SECRET`                              | Signing secret for dev-auth only                            |
+| `NETRAM_API_PORT` (3001) / `NETRAM_API_URL`           | API port / internal base URL                                |
+| `NETRAM_REALTIME_PORT` (3002) / `NETRAM_REALTIME_URL` | Realtime port / base URL                                    |
+| `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_REALTIME_WS_URL` | Public base URLs for web/mobile                             |
+| `NETRAM_CCTV_*`, `NETRAM_MEDIAMTX_*`                  | CCTV gateway + MediaMTX endpoints, secrets, public WHEP URL |
 
 Every new variable must be added to the config schema and `.env.example`, and
 marked server-only when it is a secret.

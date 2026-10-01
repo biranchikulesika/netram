@@ -1,11 +1,5 @@
 import { type ReactNode } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { colors } from "../../theme/colors";
 import { useSettings } from "../../theme/settings-context";
 
@@ -16,12 +10,7 @@ export interface ScreenHeaderProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function ScreenHeader({
-  title,
-  subtitle,
-  rightAction,
-  style,
-}: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, rightAction, style }: ScreenHeaderProps) {
   const { theme } = useSettings();
 
   return (

@@ -234,15 +234,27 @@ const calculationPageSchema = z.object({
 export const attendanceOverviewQuerySchema = paginationSchema.extend({
   projectId: uuidSchema.optional(),
   districtId: uuidSchema.optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
 });
 
 export const attendanceCalculationQuerySchema = paginationSchema.extend({
   projectId: uuidSchema.optional(),
   windowId: uuidSchema.optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
 });
 
 export const attendanceAnomalyQuerySchema = paginationSchema.extend({
@@ -250,24 +262,45 @@ export const attendanceAnomalyQuerySchema = paginationSchema.extend({
   type: z.enum(ATTENDANCE_ANOMALY_TYPES).optional(),
   severity: z.enum(ATTENDANCE_ANOMALY_SEVERITIES).optional(),
   state: z.enum(ATTENDANCE_ANOMALY_STATES).optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
 });
 
 export const attendanceDrillDownQuerySchema = z.object({
   projectId: uuidSchema,
   windowId: uuidSchema.optional(),
-  operationalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
+  operationalDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
   personExternalId: z.string().max(200).optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
 });
 
 export const attendanceExportQuerySchema = z.object({
   projectId: uuidSchema.optional(),
   districtId: uuidSchema.optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD").optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+    .optional(),
 });
 
 /* ---------- Action schemas ---------- */

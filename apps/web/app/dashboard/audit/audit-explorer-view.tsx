@@ -68,7 +68,6 @@ function categoryMatches(action: string, category: CategoryId): boolean {
   return (map[category] ?? []).some((p) => action.startsWith(p));
 }
 
-
 const TONE_COLORS: Record<AuditActivity["tone"], { dot: string; text: string }> = {
   routine: { dot: "#0c2a52", text: "#0c2a52" },
   attention: { dot: "#dd501e", text: "#dd501e" },
@@ -76,7 +75,12 @@ const TONE_COLORS: Record<AuditActivity["tone"], { dot: string; text: string }> 
   positive: { dot: "#137e3a", text: "#137e3a" },
 };
 
-function matchesSearch(e: AuditEvent, activity: AuditActivity, actor: AuditActor | null, q: string): boolean {
+function matchesSearch(
+  e: AuditEvent,
+  activity: AuditActivity,
+  actor: AuditActor | null,
+  q: string,
+): boolean {
   const needle = q.trim().toLowerCase();
   if (!needle) return true;
   const haystack = [
@@ -95,8 +99,6 @@ function matchesSearch(e: AuditEvent, activity: AuditActivity, actor: AuditActor
     .toLowerCase();
   return haystack.includes(needle);
 }
-
-
 
 export function AuditExplorerView({
   initialEvents,
@@ -118,10 +120,7 @@ export function AuditExplorerView({
   const isCustomRangeActive = Boolean(appliedStartDate || appliedEndDate);
   const hasActiveTimeFilter = timePreset !== "all" || isCustomRangeActive;
 
-  const formatContext: AuditFormatContext = useMemo(
-    () => ({ userNames }),
-    [userNames],
-  );
+  const formatContext: AuditFormatContext = useMemo(() => ({ userNames }), [userNames]);
 
   const presented = useMemo(
     () =>
@@ -178,7 +177,8 @@ export function AuditExplorerView({
     () =>
       presented.filter(({ event, activity, actor }) => {
         if (!categoryMatches(event.action, categoryFilter)) return false;
-        if (!matchesTimeRange(event.occurredAt, timePreset, appliedStartDate, appliedEndDate)) return false;
+        if (!matchesTimeRange(event.occurredAt, timePreset, appliedStartDate, appliedEndDate))
+          return false;
         return matchesSearch(event, activity, actor, searchQuery);
       }),
     [presented, categoryFilter, timePreset, appliedStartDate, appliedEndDate, searchQuery],
@@ -244,7 +244,7 @@ export function AuditExplorerView({
   }, [selectedEvent, dateRangeModalOpen, closeDialog, closeDateRangeModal]);
 
   const selected = selectedEvent
-    ? presented.find((p) => p.event.id === selectedEvent.id) ?? null
+    ? (presented.find((p) => p.event.id === selectedEvent.id) ?? null)
     : null;
 
   return (
@@ -303,7 +303,9 @@ export function AuditExplorerView({
             onClick={openDateRangeModal}
             aria-haspopup="dialog"
             aria-expanded={dateRangeModalOpen}
-            title={isCustomRangeActive ? "Date range filter active - click to edit" : "Select date range"}
+            title={
+              isCustomRangeActive ? "Date range filter active - click to edit" : "Select date range"
+            }
             style={{
               padding: "0.42rem 0.75rem",
               border: isCustomRangeActive
@@ -319,9 +321,7 @@ export function AuditExplorerView({
           >
             <IconCalendar style={{ width: 14, height: 14 }} />
             <span>Date Range</span>
-            {isCustomRangeActive && (
-              <span className="filter-count-badge">Active</span>
-            )}
+            {isCustomRangeActive && <span className="filter-count-badge">Active</span>}
           </button>
 
           {/* Standard Presets Dropdown (hidden when custom date range is active to save space) */}
@@ -384,7 +384,9 @@ export function AuditExplorerView({
               <th style={{ width: "140px" }}>Status</th>
               <th>Activity</th>
               <th style={{ width: "260px" }}>Performed by</th>
-              <th style={{ width: "190px" }} className="table-align-right">Time Stamp</th>
+              <th style={{ width: "190px" }} className="table-align-right">
+                Time Stamp
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -406,7 +408,11 @@ export function AuditExplorerView({
                     <button
                       type="button"
                       className="btn-secondary"
-                      style={{ marginTop: "0.75rem", fontSize: "0.8rem", padding: "0.3rem 0.75rem" }}
+                      style={{
+                        marginTop: "0.75rem",
+                        fontSize: "0.8rem",
+                        padding: "0.3rem 0.75rem",
+                      }}
                       onClick={() => {
                         setCategoryFilter("all");
                         setSearchQuery("");
@@ -566,7 +572,14 @@ export function AuditExplorerView({
             }}
           >
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "1rem",
+              }}
+            >
               <h3
                 id="audit-detail-title"
                 style={{
@@ -614,47 +627,125 @@ export function AuditExplorerView({
                 background: "var(--bg-surface, #ffffff)",
               }}
             >
-              <table style={{ width: "100%", margin: 0, fontSize: "0.825rem", borderCollapse: "collapse" }}>
+              <table
+                style={{
+                  width: "100%",
+                  margin: 0,
+                  fontSize: "0.825rem",
+                  borderCollapse: "collapse",
+                }}
+              >
                 <tbody>
                   <tr>
-                    <td className="muted" style={{ width: "32%", padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      className="muted"
+                      style={{
+                        width: "32%",
+                        padding: "0.6rem 0.9rem",
+                        fontWeight: 500,
+                        background: "var(--bg-subtle, #edf0f5)",
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       Category
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-data, #0c2a52)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        color: "var(--text-data, #0c2a52)",
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       {categoryLabel(selected.activity.category)}
                     </td>
                   </tr>
 
                   <tr>
-                    <td className="muted" style={{ width: "32%", padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      className="muted"
+                      style={{
+                        width: "32%",
+                        padding: "0.6rem 0.9rem",
+                        fontWeight: 500,
+                        background: "var(--bg-subtle, #edf0f5)",
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       Status
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", fontWeight: 600, color: TONE_COLORS[selected.activity.tone].text, borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontWeight: 600,
+                        color: TONE_COLORS[selected.activity.tone].text,
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       {selected.activity.status}
                     </td>
                   </tr>
 
                   {selected.activity.transition && (
                     <tr>
-                      <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                      <td
+                        className="muted"
+                        style={{
+                          padding: "0.6rem 0.9rem",
+                          fontWeight: 500,
+                          background: "var(--bg-subtle, #edf0f5)",
+                          borderBottom:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                        }}
+                      >
                         Transition
                       </td>
-                      <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-primary, #0c2a52)", fontSize: "0.85rem", fontWeight: 600, borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                      <td
+                        style={{
+                          padding: "0.6rem 0.9rem",
+                          color: "var(--text-primary, #0c2a52)",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          borderBottom:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                        }}
+                      >
                         {selected.activity.transition}
                       </td>
                     </tr>
                   )}
 
-
                   <tr>
-                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      className="muted"
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontWeight: 500,
+                        background: "var(--bg-subtle, #edf0f5)",
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       Performed by
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-primary, #0c2a52)", fontWeight: 500, borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        color: "var(--text-primary, #0c2a52)",
+                        fontWeight: 500,
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       {selected.actor ? (
                         <span>
                           {selected.actor.account}{" "}
-                          <span className="muted" style={{ fontWeight: 400 }}>· {selected.actor.role}</span>
+                          <span className="muted" style={{ fontWeight: 400 }}>
+                            · {selected.actor.role}
+                          </span>
                         </span>
                       ) : (
                         <span className="muted">System (Automated)</span>
@@ -664,20 +755,53 @@ export function AuditExplorerView({
 
                   {selected.activity.subject && (
                     <tr>
-                      <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                      <td
+                        className="muted"
+                        style={{
+                          padding: "0.6rem 0.9rem",
+                          fontWeight: 500,
+                          background: "var(--bg-subtle, #edf0f5)",
+                          borderBottom:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                        }}
+                      >
                         Facility / Target
                       </td>
-                      <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-data, #0c2a52)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                      <td
+                        style={{
+                          padding: "0.6rem 0.9rem",
+                          color: "var(--text-data, #0c2a52)",
+                          borderBottom:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                        }}
+                      >
                         {selected.activity.subject}
                       </td>
                     </tr>
                   )}
 
                   <tr>
-                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      className="muted"
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontWeight: 500,
+                        background: "var(--bg-subtle, #edf0f5)",
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       Action Code
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", fontWeight: 600, borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       {selected.event.action}
                     </td>
                   </tr>
@@ -693,10 +817,21 @@ export function AuditExplorerView({
                     )
                     .map((item) => (
                       <tr key={item.label}>
-                        <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                        <td
+                          className="muted"
+                          style={{
+                            padding: "0.6rem 0.9rem",
+                            fontWeight: 500,
+                            background: "var(--bg-subtle, #edf0f5)",
+                            borderBottom:
+                              "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                          }}
+                        >
                           {item.label}
                         </td>
-                        <td style={{ padding: "0.6rem 0.9rem", color: "var(--text-data, #0c2a52)" }}>
+                        <td
+                          style={{ padding: "0.6rem 0.9rem", color: "var(--text-data, #0c2a52)" }}
+                        >
                           {item.value}
                         </td>
                       </tr>
@@ -704,29 +839,74 @@ export function AuditExplorerView({
 
                   {selected.event.ipAddress && (
                     <tr>
-                      <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                      <td
+                        className="muted"
+                        style={{
+                          padding: "0.6rem 0.9rem",
+                          fontWeight: 500,
+                          background: "var(--bg-subtle, #edf0f5)",
+                          borderBottom:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                        }}
+                      >
                         IP Address
                       </td>
-                      <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                      <td
+                        style={{
+                          padding: "0.6rem 0.9rem",
+                          fontSize: "0.85rem",
+                          borderBottom:
+                            "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                        }}
+                      >
                         {selected.event.ipAddress}
                       </td>
                     </tr>
                   )}
 
                   <tr>
-                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      className="muted"
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontWeight: 500,
+                        background: "var(--bg-subtle, #edf0f5)",
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       Time Stamp
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", borderBottom: "1px solid var(--color-border-subtle, var(--color-border-subtle))" }}>
+                    <td
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontSize: "0.85rem",
+                        borderBottom:
+                          "1px solid var(--color-border-subtle, var(--color-border-subtle))",
+                      }}
+                    >
                       {formatTimestamp(selected.event.occurredAt)}
                     </td>
                   </tr>
 
                   <tr>
-                    <td className="muted" style={{ padding: "0.6rem 0.9rem", fontWeight: 500, background: "var(--bg-subtle, #edf0f5)" }}>
+                    <td
+                      className="muted"
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontWeight: 500,
+                        background: "var(--bg-subtle, #edf0f5)",
+                      }}
+                    >
                       Event ID
                     </td>
-                    <td style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", wordBreak: "break-all" }}>
+                    <td
+                      style={{
+                        padding: "0.6rem 0.9rem",
+                        fontSize: "0.85rem",
+                        wordBreak: "break-all",
+                      }}
+                    >
                       {selected.event.id}
                     </td>
                   </tr>
@@ -816,7 +996,14 @@ export function AuditExplorerView({
             </div>
 
             {/* Inputs */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+                marginBottom: "1.5rem",
+              }}
+            >
               <div>
                 <label
                   htmlFor="audit-filter-start-date"
@@ -879,7 +1066,11 @@ export function AuditExplorerView({
                 <button
                   type="button"
                   className="btn-ghost"
-                  style={{ fontSize: "0.82rem", padding: "0.4rem 0.6rem", color: "var(--text-muted)" }}
+                  style={{
+                    fontSize: "0.82rem",
+                    padding: "0.4rem 0.6rem",
+                    color: "var(--text-muted)",
+                  }}
                   onClick={clearDateRange}
                 >
                   Clear Range

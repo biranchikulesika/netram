@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { OfflineInspectionQueue } from "./queue";
 import type { NetramApiClient } from "@netram/api-client";

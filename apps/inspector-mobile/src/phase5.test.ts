@@ -215,10 +215,9 @@ describe("Phase 5: Camera-Only Evidence Capture & Upload Queue Specifications", 
         `UPDATE media_upload_queue SET upload_status = 'failed', error_message = 'Timeout' WHERE evidence_id = ?`,
         [result.evidenceId],
       );
-      await dbInstance.runAsync(
-        `UPDATE cached_evidence SET upload_state = 'failed' WHERE id = ?`,
-        [result.evidenceId],
-      );
+      await dbInstance.runAsync(`UPDATE cached_evidence SET upload_state = 'failed' WHERE id = ?`, [
+        result.evidenceId,
+      ]);
 
       const failedBefore = await queue.getFailedMediaUploads();
       expect(failedBefore).toHaveLength(1);
@@ -229,10 +228,12 @@ describe("Phase 5: Camera-Only Evidence Capture & Upload Queue Specifications", 
       const failedAfter = await queue.getFailedMediaUploads();
       expect(failedAfter).toHaveLength(0);
 
-      const mediaRow = await dbInstance.getFirstAsync<{ upload_status: string; error_message: string | null }>(
-        `SELECT upload_status, error_message FROM media_upload_queue WHERE evidence_id = ?`,
-        [result.evidenceId],
-      );
+      const mediaRow = await dbInstance.getFirstAsync<{
+        upload_status: string;
+        error_message: string | null;
+      }>(`SELECT upload_status, error_message FROM media_upload_queue WHERE evidence_id = ?`, [
+        result.evidenceId,
+      ]);
       expect(mediaRow?.upload_status).toBe("pending");
       expect(mediaRow?.error_message).toBeNull();
     });

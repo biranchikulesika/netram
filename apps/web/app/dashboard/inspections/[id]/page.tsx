@@ -4,13 +4,7 @@ import { getClient, getSessionUser } from "../../../../lib/api";
 import { getUserNames } from "../../../../lib/facility";
 import { formatDate, formatDateTime, formatDistrict } from "../../../../lib/presentation";
 import { NavHeader } from "../../../components/nav-header";
-import {
-  IconBuilding,
-  IconClock,
-  IconPlay,
-  IconCheck,
-  IconLock,
-} from "../../../components/icons";
+import { IconBuilding, IconClock, IconPlay, IconCheck, IconLock } from "../../../components/icons";
 import { ObservationsSection } from "./observations-section";
 import { FindingsSection } from "./findings-section";
 import { EvidenceGallery } from "./evidence-gallery";
@@ -55,23 +49,16 @@ export default async function InspectionDetailPage({
       getUserNames(),
     ]);
 
-  const caByFindingId = Object.fromEntries(
-    correctiveActions.items.map((ca) => [ca.findingId, ca]),
-  );
+  const caByFindingId = Object.fromEntries(correctiveActions.items.map((ca) => [ca.findingId, ca]));
 
   const canCapture =
-    session.permissions.includes("evidence:capture") ||
-    session.permissions.includes("*");
-const canAddObs =
-    session.permissions.includes("observation:record") ||
-    session.permissions.includes("*");
-const canTransitionAuthority =
-    session.permissions.includes("inspection:review") ||
-    session.permissions.includes("*");
+    session.permissions.includes("evidence:capture") || session.permissions.includes("*");
+  const canAddObs =
+    session.permissions.includes("observation:record") || session.permissions.includes("*");
+  const canTransitionAuthority =
+    session.permissions.includes("inspection:review") || session.permissions.includes("*");
 
-  const statusLabel = inspection.status
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const statusLabel = inspection.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const districtLabel = project?.districtId
     ? formatDistrict(project.districtName, project.stateName)
     : "Odisha State Jurisdiction";
@@ -138,9 +125,7 @@ const canTransitionAuthority =
             <IconCheck width={13} height={13} /> Submission Date
           </span>
           <span className="card-val">
-            {inspection.submittedAt
-              ? formatDateTime(inspection.submittedAt)
-              : "Not submitted"}
+            {inspection.submittedAt ? formatDateTime(inspection.submittedAt) : "Not submitted"}
           </span>
         </div>
         <div className="overview-card">
@@ -168,7 +153,11 @@ const canTransitionAuthority =
         <FindingsSection
           items={findings}
           inspectionId={inspection.id}
-          project={project ? { name: project.name, code: project.code, organisationId: project.organisationId } : null}
+          project={
+            project
+              ? { name: project.name, code: project.code, organisationId: project.organisationId }
+              : null
+          }
           organisations={organisations}
           canOrder={canTransitionAuthority}
           caByFindingId={caByFindingId}

@@ -25,9 +25,7 @@ export default async function FacilityLayout({
   // never sent to anyone else. Institutions see no gauge at all - not even a
   // placeholder, since its absence would itself hint that a score exists.
   const canViewRisk = can(session.permissions, "project_risk:read");
-  const snapshot = canViewRisk
-    ? await getFacilityRiskSnapshot(project.id)
-    : null;
+  const snapshot = canViewRisk ? await getFacilityRiskSnapshot(project.id) : null;
 
   return (
     <main>

@@ -144,7 +144,8 @@ export class FundRepository {
   ): Promise<{ items: FundAllocation[]; total: number }> {
     const conditions: ReturnType<typeof eq>[] = [];
     if (filter.projectId) conditions.push(eq(allocationsTable.projectId, filter.projectId));
-    if (filter.organisationId) conditions.push(eq(allocationsTable.organisationId, filter.organisationId));
+    if (filter.organisationId)
+      conditions.push(eq(allocationsTable.organisationId, filter.organisationId));
     if (filter.fiscalYear) conditions.push(eq(allocationsTable.fiscalYear, filter.fiscalYear));
     if (filter.status) conditions.push(eq(allocationsTable.status, filter.status));
 
@@ -421,12 +422,7 @@ export class FundRepository {
         count: sql<number>`count(*)::int`,
       })
       .from(allocationsTable)
-      .where(
-        and(
-          eq(allocationsTable.projectId, projectId),
-          eq(allocationsTable.status, "active"),
-        ),
-      );
+      .where(and(eq(allocationsTable.projectId, projectId), eq(allocationsTable.status, "active")));
 
     // 2. Releases sum
     const releaseResult = await this.db
@@ -435,12 +431,7 @@ export class FundRepository {
       })
       .from(releasesTable)
       .innerJoin(allocationsTable, eq(releasesTable.allocationId, allocationsTable.id))
-      .where(
-        and(
-          eq(allocationsTable.projectId, projectId),
-          eq(releasesTable.status, "released"),
-        ),
-      );
+      .where(and(eq(allocationsTable.projectId, projectId), eq(releasesTable.status, "released")));
 
     // 3. Expenses sum and counts
     const expenseResult = await this.db
@@ -450,12 +441,7 @@ export class FundRepository {
         flaggedExpensesCount: sql<number>`COALESCE(SUM(CASE WHEN ${expensesTable.status} = 'rejected' THEN 1 ELSE 0 END), 0)::int`,
       })
       .from(expensesTable)
-      .where(
-        and(
-          eq(expensesTable.projectId, projectId),
-          sql`${expensesTable.status} != 'voided'`,
-        ),
-      );
+      .where(and(eq(expensesTable.projectId, projectId), sql`${expensesTable.status} != 'voided'`));
 
     const totalAllocated = allocResult[0]?.totalAllocated ?? "0.00";
     const totalReleased = releaseResult[0]?.totalReleased ?? "0.00";
@@ -469,7 +455,8 @@ export class FundRepository {
     const numExpenditure = parseFloat(totalExpenditure) || 0;
 
     const pendingReleases = Math.max(0, numAllocated - numReleased).toFixed(2);
-    const utilizationRate = numReleased > 0 ? Math.min(100, Math.round((numExpenditure / numReleased) * 10000) / 100) : 0;
+    const utilizationRate =
+      numReleased > 0 ? Math.min(100, Math.round((numExpenditure / numReleased) * 10000) / 100) : 0;
 
     return {
       totalAllocated,

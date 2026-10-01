@@ -2,10 +2,7 @@ import type { CompositeRiskScore, SchedulingDecision } from "@netram/types";
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { ProjectRiskRepository, InspectionFlagRepository } from "@netram/data";
 import type { InspectionService } from "../../inspections/application/inspection-service.js";
-import {
-  DEFAULT_SCHEDULING_POLICY,
-  type SchedulingPolicy,
-} from "../config/risk-config.js";
+import { DEFAULT_SCHEDULING_POLICY, type SchedulingPolicy } from "../config/risk-config.js";
 
 export class InspectionScheduler {
   constructor(
@@ -69,7 +66,8 @@ export class InspectionScheduler {
           return {
             projectId,
             shouldSchedule: false,
-            reason: "Critical override active, but an inspection was already scheduled within the past 12 hours",
+            reason:
+              "Critical override active, but an inspection was already scheduled within the past 12 hours",
             actionTaken: "cooldown_skipped",
           };
         }
@@ -79,7 +77,9 @@ export class InspectionScheduler {
     // 4. Ensure inspection flag exists or create one
     let inspectionFlag = await this.flagRepo.findOpenFlagByProject(projectId);
     if (!inspectionFlag) {
-      const topExpl = score.topContributors.map((c) => `${c.dimension}: ${c.contribution}pts`).join(", ");
+      const topExpl = score.topContributors
+        .map((c) => `${c.dimension}: ${c.contribution}pts`)
+        .join(", ");
       inspectionFlag = await this.flagRepo.createWithAudit({
         projectId,
         riskScore: score.totalScore,
@@ -115,7 +115,9 @@ export class InspectionScheduler {
 
     // Link flag to the newly created inspection
     if (inspectionFlag) {
-      await this.flagRepo.linkInspectionWithAudit(inspectionFlag.id, createdInspection.id, ctx.userId).catch(() => null);
+      await this.flagRepo
+        .linkInspectionWithAudit(inspectionFlag.id, createdInspection.id, ctx.userId)
+        .catch(() => null);
     }
 
     return {

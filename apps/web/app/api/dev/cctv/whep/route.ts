@@ -86,7 +86,10 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(10_000),
     });
   } catch {
-    return mediaUnavailable("WHEP endpoint unreachable. Is the media rig running? " + "Start it with: docker compose --profile facility up -d");
+    return mediaUnavailable(
+      "WHEP endpoint unreachable. Is the media rig running? " +
+        "Start it with: docker compose --profile facility up -d",
+    );
   }
 
   if (!upstream.ok || upstream.body === null) {
@@ -102,7 +105,10 @@ export async function POST(request: NextRequest) {
   const location = upstream.headers.get("Location");
   if (location) {
     const suffix = location.split("/whep/")[1] ?? "";
-    headers.set("X-Whep-Session-Path", `/api/dev/cctv/whep/${encodeURIComponent(suffix)}?path=${encodeURIComponent(pathName)}${token ? `&token=${encodeURIComponent(token)}` : ""}`);
+    headers.set(
+      "X-Whep-Session-Path",
+      `/api/dev/cctv/whep/${encodeURIComponent(suffix)}?path=${encodeURIComponent(pathName)}${token ? `&token=${encodeURIComponent(token)}` : ""}`,
+    );
   }
 
   return new NextResponse(upstream.body, { status: upstream.status, headers });

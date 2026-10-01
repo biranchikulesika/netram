@@ -122,9 +122,7 @@ export class FinancialDocumentRepository {
       .where(
         and(
           eq(documentsTable.verificationStatus, "pending"),
-          jurisdictionIds?.length
-            ? inArray(projectsTable.districtId, jurisdictionIds)
-            : undefined,
+          jurisdictionIds?.length ? inArray(projectsTable.districtId, jurisdictionIds) : undefined,
         ),
       )
       .orderBy(desc(documentsTable.createdAt))

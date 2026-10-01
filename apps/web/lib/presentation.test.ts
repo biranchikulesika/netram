@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatDistrict,
-  getAuthorityName,
-  getOrganisationName,
-} from "./presentation";
+import { formatDistrict, getAuthorityName, getOrganisationName } from "./presentation";
 
 describe("getOrganisationName", () => {
   it("uses the name joined by the API", () => {

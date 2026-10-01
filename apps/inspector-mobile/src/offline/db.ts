@@ -298,7 +298,7 @@ interface ExpoSQLiteLike {
 }
 
 class ExpoSqliteAdapter implements ISqliteDatabase {
-  constructor(private readonly db: ExpoSQLiteLike) { }
+  constructor(private readonly db: ExpoSQLiteLike) {}
 
   async execAsync(sql: string): Promise<void> {
     await this.db.execAsync(sql);

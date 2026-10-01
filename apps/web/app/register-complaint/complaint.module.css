@@ -274,7 +274,9 @@
   font-size: 0.85rem;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
 }
 
 .drop:hover {
@@ -406,8 +408,6 @@
   color: var(--text-subtle);
   margin-top: 0.4rem;
 }
-
-
 
 /* Declaration */
 .declaration {

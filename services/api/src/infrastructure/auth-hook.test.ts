@@ -36,8 +36,12 @@ function makeContainer(authenticate: () => Promise<never>): Container {
 }
 
 function makeLog(): FastifyBaseLogger {
-  return { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() } as unknown as
-    FastifyBaseLogger;
+  return {
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  } as unknown as FastifyBaseLogger;
 }
 
 describe("createAuthHook", () => {
@@ -47,7 +51,9 @@ describe("createAuthHook", () => {
     });
     const hook = createAuthHook(container, makeLog());
 
-    await expect(hook(makeRequest({ authorization: undefined }), {} as never)).rejects.toMatchObject({
+    await expect(
+      hook(makeRequest({ authorization: undefined }), {} as never),
+    ).rejects.toMatchObject({
       code: "UNAUTHORIZED",
       statusCode: 401,
     });
@@ -102,7 +108,7 @@ describe("createAuthHook", () => {
 
   it("does not leak the internal error message to the caller", async () => {
     const container = makeContainer(async () => {
-      throw new Error("password authentication failed for user \"postgres\"");
+      throw new Error('password authentication failed for user "postgres"');
     });
     const hook = createAuthHook(container, makeLog());
 

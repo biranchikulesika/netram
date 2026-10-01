@@ -47,9 +47,7 @@ export async function startAttendanceExportWorker(
         from?: string | null;
         to?: string | null;
       };
-      const jurisdictionIds = scope.districtId
-        ? [scope.districtId]
-        : undefined;
+      const jurisdictionIds = scope.districtId ? [scope.districtId] : undefined;
       const rows = await repo.listAllCalculations({
         projectId: scope.projectId ?? undefined,
         jurisdictionIds,
@@ -65,9 +63,7 @@ export async function startAttendanceExportWorker(
         requestId: null,
         ipAddress: null,
       });
-      job.log(
-        `attendance export ${exportId} generated (${rows.length} rows)`,
-      );
+      job.log(`attendance export ${exportId} generated (${rows.length} rows)`);
       return { generated: true, rows: rows.length };
     },
     { connection, concurrency: opts.concurrency ?? 2 },

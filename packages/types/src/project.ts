@@ -31,12 +31,7 @@ export const PROJECT_TRANSITIONS: Record<ProjectStatus, readonly ProjectStatus[]
  * (senior citizen homes, IRCAs, hostels, schools) and village-type targets
  * (PM-AJAY Adarsh Gram, where no implementing institute exists).
  */
-export const PROJECT_TYPES = [
-  "institution",
-  "village",
-  "authority_project",
-  "other",
-] as const;
+export const PROJECT_TYPES = ["institution", "village", "authority_project", "other"] as const;
 
 export type ProjectType = (typeof PROJECT_TYPES)[number];
 
@@ -136,4 +131,3 @@ export interface ProjectTransitionResult {
   project: Project;
   event: string;
 }
-

@@ -24,14 +24,8 @@ function establishment(partial: Partial<ProjectOption>): ProjectOption {
 
 describe("currentAndNextFiscalYears", () => {
   it("switches the current fiscal year on 1 April", () => {
-    expect(currentAndNextFiscalYears(new Date(2026, 2, 31))).toEqual([
-      "2025-2026",
-      "2026-2027",
-    ]);
-    expect(currentAndNextFiscalYears(new Date(2026, 3, 1))).toEqual([
-      "2026-2027",
-      "2027-2028",
-    ]);
+    expect(currentAndNextFiscalYears(new Date(2026, 2, 31))).toEqual(["2025-2026", "2026-2027"]);
+    expect(currentAndNextFiscalYears(new Date(2026, 3, 1))).toEqual(["2026-2027", "2027-2028"]);
   });
 });
 

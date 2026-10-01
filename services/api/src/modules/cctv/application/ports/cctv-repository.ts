@@ -55,11 +55,19 @@ export interface CctvRepositoryPort {
     },
     context: CctvWriteContext,
   ): Promise<CctvStreamSession>;
-  endStreamSession(sessionId: string, context: CctvWriteContext, input?: EndStreamAttributes): Promise<void>;
+  endStreamSession(
+    sessionId: string,
+    context: CctvWriteContext,
+    input?: EndStreamAttributes,
+  ): Promise<void>;
   touchHeartbeatBySessionId(sessionId: string): Promise<boolean>;
   findActiveSessionByTokenHash(tokenHash: string): Promise<CctvStreamSession | null>;
   findActiveSessionBySessionId(sessionId: string): Promise<CctvStreamSession | null>;
   countActiveByCamera(cameraId: string): Promise<number>;
   findSweepCandidates(now: Date, graceMs: number): Promise<SweepCandidate[]>;
-  endStreamSessionById(id: string, context: CctvWriteContext, input: EndStreamAttributes): Promise<boolean>;
+  endStreamSessionById(
+    id: string,
+    context: CctvWriteContext,
+    input: EndStreamAttributes,
+  ): Promise<boolean>;
 }

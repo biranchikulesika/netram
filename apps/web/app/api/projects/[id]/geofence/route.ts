@@ -4,10 +4,7 @@ import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
 import { SESSION_COOKIE } from "@/lib/api";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) {
@@ -31,10 +28,7 @@ export async function GET(
   return NextResponse.json(payload, { status: res.status });
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) {

@@ -13,7 +13,10 @@ import { SESSION_COOKIE } from "../../../../../../lib/api";
  * Cookie→Bearer bridged server-side (browser never handles the JWT).
  */
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string; streamId: string }> }) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string; streamId: string }> },
+) {
   const { id, streamId } = await params;
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
@@ -41,7 +44,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   return NextResponse.json(data, { status: res.status });
 }
 
-export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string; streamId: string }> }) {
+export async function POST(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string; streamId: string }> },
+) {
   const { id, streamId } = await params;
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;

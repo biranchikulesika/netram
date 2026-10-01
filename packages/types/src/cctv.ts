@@ -9,10 +9,7 @@ export type StreamEndedBy = "viewer" | "sweeper" | "admin";
 
 /** Why a session ended (Phase 4 vocabulary - docs/history/cctv-phase-4.md). */
 export type StreamEndReason =
-  | "viewer_stop"
-  | "token_expired"
-  | "heartbeat_timeout"
-  | "admin_revoke";
+  "viewer_stop" | "token_expired" | "heartbeat_timeout" | "admin_revoke";
 
 /**
  * Authoritative CCTV Camera entity stored in PostgreSQL (§42).

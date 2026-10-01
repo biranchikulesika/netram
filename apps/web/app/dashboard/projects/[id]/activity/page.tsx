@@ -26,18 +26,11 @@ export default async function FacilityActivityPage({
   const project = await getFacility(id);
   if (!project) notFound();
 
-  const [audit, userNames] = await Promise.all([
-    getFacilityAudit(project.id),
-    getUserNames(),
-  ]);
+  const [audit, userNames] = await Promise.all([getFacilityAudit(project.id), getUserNames()]);
 
   return (
     <section>
-      <AuditExplorerView
-        initialEvents={audit}
-        initialTotal={audit.length}
-        userNames={userNames}
-      />
+      <AuditExplorerView initialEvents={audit} initialTotal={audit.length} userNames={userNames} />
     </section>
   );
 }

@@ -43,7 +43,11 @@ function check(name: string, pass: boolean, detail?: string): void {
   console.log(`  ${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` - ${detail}` : ""}`);
 }
 
-async function jsonFetch(url: string, init: RequestInit = {}, timeoutMs = 10_000): Promise<Response> {
+async function jsonFetch(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 10_000,
+): Promise<Response> {
   return fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
 }
 
@@ -53,7 +57,9 @@ async function main(): Promise<void> {
   // ---- 1. MediaMTX control API reachable ----
   {
     const res = await jsonFetch(`${MEDIAMTX_API}/v3/paths/list`, {
-      headers: { Authorization: `Basic ${Buffer.from(`admin:${MEDIAMTX_API_PASSWORD}`).toString("base64")}` },
+      headers: {
+        Authorization: `Basic ${Buffer.from(`admin:${MEDIAMTX_API_PASSWORD}`).toString("base64")}`,
+      },
     });
     check("MediaMTX control API reachable", res.ok, `status ${res.status}`);
   }
@@ -71,7 +77,9 @@ async function main(): Promise<void> {
   const { token: jwt } = (await loginRes.json()) as { token: string };
   const authHeaders = { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" };
 
-  const camerasRes = await jsonFetch(`${API}/api/v1/cctv/cameras?pageSize=100`, { headers: authHeaders });
+  const camerasRes = await jsonFetch(`${API}/api/v1/cctv/cameras?pageSize=100`, {
+    headers: authHeaders,
+  });
   const cameras = (await camerasRes.json()) as { items: { id: string; name: string }[] };
   const rig = cameras.items.find((c) => c.name === CAMERA_NAME);
   if (!rig) {
@@ -93,7 +101,11 @@ async function main(): Promise<void> {
       headers: { "Content-Type": "application/sdp", Authorization: "Bearer garbage-token" },
       body: "v=0",
     });
-    check("WHEP with garbage token is rejected", garbage.status === 401, `status ${garbage.status}`);
+    check(
+      "WHEP with garbage token is rejected",
+      garbage.status === 401,
+      `status ${garbage.status}`,
+    );
   }
 
   // ---- 4. Full control-plane chain ----
@@ -114,7 +126,10 @@ async function main(): Promise<void> {
     playbackToken = body.playback?.token ?? body.token ?? "";
     const mediaPath = body.playback?.mediaPath ?? "";
     const jwtShape = playbackToken.includes(".") && playbackToken.length > 40;
-    check("stream creation returns WHEP playback contract", res.status === 201 && mediaPath === MEDIA_PATH && jwtShape);
+    check(
+      "stream creation returns WHEP playback contract",
+      res.status === 201 && mediaPath === MEDIA_PATH && jwtShape,
+    );
   }
 
   // ---- 5. Fresh token passes the hook ----
@@ -126,7 +141,11 @@ async function main(): Promise<void> {
     });
     // 401 would mean the hook rejected the token; any non-401 (400 on the
     // stub SDP) proves authorization passed and MediaMTX moved on to SDP.
-    check("WHEP with fresh NETRAM token passes the hook", res.status !== 401, `status ${res.status}`);
+    check(
+      "WHEP with fresh NETRAM token passes the hook",
+      res.status !== 401,
+      `status ${res.status}`,
+    );
   }
 
   // ---- 6. Heartbeat refreshes the session ----
@@ -147,13 +166,21 @@ async function main(): Promise<void> {
       body: JSON.stringify({ token: playbackToken }),
     });
     const body = (await res.json().catch(() => ({}))) as { valid?: boolean };
-    check("gateway token-verify accepts the live session token", res.status === 200 && body.valid === true);
+    check(
+      "gateway token-verify accepts the live session token",
+      res.status === 200 && body.valid === true,
+    );
   }
 
   // Gateway rejects a forged token (attacker without the stream secret).
   {
     const payload = Buffer.from(
-      JSON.stringify({ streamId, cameraId: rig.id, mediaPath: MEDIA_PATH, exp: Math.floor(Date.now() / 1000) + 300 }),
+      JSON.stringify({
+        streamId,
+        cameraId: rig.id,
+        mediaPath: MEDIA_PATH,
+        exp: Math.floor(Date.now() / 1000) + 300,
+      }),
     ).toString("base64url");
     const forged = `${payload}.${createHmac("sha256", "wrong-secret-wrong-secret-wrong-secret-x").update(payload).digest("base64url")}`;
     const res = await jsonFetch(`${GATEWAY}/media/tokens/verify`, {
@@ -172,7 +199,11 @@ async function main(): Promise<void> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: playbackToken }),
     });
-    check("gateway control routes require the service secret", res.status === 401, `status ${res.status}`);
+    check(
+      "gateway control routes require the service secret",
+      res.status === 401,
+      `status ${res.status}`,
+    );
   }
 
   // ---- 7/8. DELETE ends the session; token dies ----
@@ -217,7 +248,11 @@ async function main(): Promise<void> {
       headers: { "Content-Type": "application/sdp", Authorization: `Bearer ${playbackToken}` },
       body: "v=0",
     });
-    check("MediaMTX rejects WHEP with the ended session's token", res.status === 401, `status ${res.status}`);
+    check(
+      "MediaMTX rejects WHEP with the ended session's token",
+      res.status === 401,
+      `status ${res.status}`,
+    );
   }
 
   // Hook decision unit-shape: unknown token via direct hook call.
@@ -247,11 +282,23 @@ async function main(): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user: "", password: "", token: "x", ip: "", action: "read",
-        path: MEDIA_PATH, protocol: "webrtc", id: "", query: "", userAgent: "",
+        user: "",
+        password: "",
+        token: "x",
+        ip: "",
+        action: "read",
+        path: MEDIA_PATH,
+        protocol: "webrtc",
+        id: "",
+        query: "",
+        userAgent: "",
       }),
     });
-    check("hook rejects callers without the shared secret", res.status === 401, `status ${res.status}`);
+    check(
+      "hook rejects callers without the shared secret",
+      res.status === 401,
+      `status ${res.status}`,
+    );
   }
 
   // ---- 11. Sweeper tick is safe (bounded no-op when nothing to sweep) ----
@@ -260,14 +307,19 @@ async function main(): Promise<void> {
       headers: { "x-netram-service-secret": SERVICE_SECRET },
     });
     const body = (await res.json().catch(() => ({}))) as { readerCount?: number };
-    check("gateway session view reachable", res.status === 200 && typeof body.readerCount === "number");
+    check(
+      "gateway session view reachable",
+      res.status === 200 && typeof body.readerCount === "number",
+    );
   }
 
   // ---- 12. Audit trail ----
   {
     // Audit rows were written for denials and the stream_ended transition; we
     // verify indirectly through the audit API (append-only, jurisdictioned).
-    const res = await jsonFetch(`${API}/api/v1/audit-events?page=1&pageSize=5`, { headers: authHeaders });
+    const res = await jsonFetch(`${API}/api/v1/audit-events?page=1&pageSize=5`, {
+      headers: authHeaders,
+    });
     check("audit API reachable", res.ok || res.status === 403, `status ${res.status}`);
   }
 

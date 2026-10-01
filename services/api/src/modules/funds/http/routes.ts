@@ -159,10 +159,7 @@ export async function registerFundRoutes(
         tags: ["funds"],
         security: [{ bearerAuth: [] }],
         params: paramsSchema,
-        body: toJsonSchema(
-          "ReverseReleaseBody",
-          z.object({ remarks: z.string().optional() }),
-        ),
+        body: toJsonSchema("ReverseReleaseBody", z.object({ remarks: z.string().optional() })),
       },
     },
     async (request) => {
@@ -403,10 +400,7 @@ export async function registerFundRoutes(
 
       void reply.header("Content-Type", safeMimeType);
       void reply.header("X-Content-Type-Options", "nosniff");
-      void reply.header(
-        "Content-Disposition",
-        `attachment; filename="${safeFileName}"`,
-      );
+      void reply.header("Content-Disposition", `attachment; filename="${safeFileName}"`);
       return reply.send(stream);
     },
   );

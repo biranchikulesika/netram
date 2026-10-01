@@ -93,7 +93,11 @@ export function CameraLiveViewer({
           </div>
 
           {/* cc-live-badge sits at right:2.6rem, clearing the 26px close button. */}
-          {liveNow && <span className="cc-live-badge" role="status">LIVE</span>}
+          {liveNow && (
+            <span className="cc-live-badge" role="status">
+              LIVE
+            </span>
+          )}
 
           <button
             type="button"

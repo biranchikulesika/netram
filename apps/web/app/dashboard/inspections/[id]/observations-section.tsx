@@ -77,9 +77,7 @@ export function ObservationsSection({
           {items.map((obs) => (
             <article key={obs.id} className="observation-item">
               <div className="observation-header">
-                <span className="obs-author">
-                  {userNames[obs.userId] ?? "Field inspector"}
-                </span>
+                <span className="obs-author">{userNames[obs.userId] ?? "Field inspector"}</span>
                 <span className="obs-time">{formatDateTime(obs.createdAt)}</span>
               </div>
               <p className="obs-text">{obs.text}</p>

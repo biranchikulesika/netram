@@ -261,14 +261,13 @@ export class FundService {
     if (!project) throw AppError.notFound("Project not found");
     this.authz.requirePermission(ctx, FUND_READ, { districtId: project.districtId });
 
-    const [summary, allocationsResult, expenses, riskEvents, flagsResult] =
-      await Promise.all([
-        this.fundRepo.getProjectFundSummary(projectId),
-        this.fundRepo.listAllocations({ projectId, pageSize: 100 }),
-        this.expenseRepo.findByProject(projectId),
-        this.riskRepo.listEventsByProject(projectId),
-        this.flagRepo.list({ projectId, pageSize: 100 }),
-      ]);
+    const [summary, allocationsResult, expenses, riskEvents, flagsResult] = await Promise.all([
+      this.fundRepo.getProjectFundSummary(projectId),
+      this.fundRepo.listAllocations({ projectId, pageSize: 100 }),
+      this.expenseRepo.findByProject(projectId),
+      this.riskRepo.listEventsByProject(projectId),
+      this.flagRepo.list({ projectId, pageSize: 100 }),
+    ]);
 
     return {
       summary,

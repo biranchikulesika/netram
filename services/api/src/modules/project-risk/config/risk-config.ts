@@ -7,22 +7,22 @@ export interface RiskDimensionWeights {
 }
 
 export interface RiskThresholds {
-  lowMax: number;       // e.g. 24
-  mediumMax: number;    // e.g. 49
-  highMax: number;      // e.g. 74
-  criticalMin: number;  // e.g. 75
+  lowMax: number; // e.g. 24
+  mediumMax: number; // e.g. 49
+  highMax: number; // e.g. 74
+  criticalMin: number; // e.g. 75
 }
 
 export interface SchedulingPolicy {
   autoScheduleThreshold: number; // e.g. 50
-  cooldownDays: number;          // e.g. 7
+  cooldownDays: number; // e.g. 7
   criticalOverrideThreshold: number; // e.g. 75
 }
 
 export interface ObservationWindows {
-  attendanceDays: number;  // e.g. 30
-  complaintDays: number;   // e.g. 90
-  aiAnomalyDays: number;   // e.g. 60
+  attendanceDays: number; // e.g. 30
+  complaintDays: number; // e.g. 90
+  aiAnomalyDays: number; // e.g. 60
   inspectionDays: number; // e.g. 180
 }
 

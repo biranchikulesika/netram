@@ -63,7 +63,11 @@ function check(name: string, pass: boolean, detail?: string): void {
   results.push({ name, pass, detail });
   console.log(`  ${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` - ${detail}` : ""}`);
 }
-async function jsonFetch(url: string, init: RequestInit = {}, timeoutMs = 10_000): Promise<Response> {
+async function jsonFetch(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 10_000,
+): Promise<Response> {
   return fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
 }
 function basicAuth(): string {
@@ -80,11 +84,14 @@ function connectCdp(wsUrl: string): Promise<CdpConn> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(wsUrl);
     let id = 0;
-    const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+    const pending = new Map<
+      number,
+      { resolve: (v: unknown) => void; reject: (e: Error) => void }
+    >();
     ws.addEventListener("open", () => {
       resolve({
         ws,
-        send: <T,>(method: string, params?: Record<string, unknown>) =>
+        send: <T>(method: string, params?: Record<string, unknown>) =>
           new Promise<T>((res, rej) => {
             const msgId = ++id;
             pending.set(msgId, { resolve: res as (v: unknown) => void, reject: rej });
@@ -94,7 +101,11 @@ function connectCdp(wsUrl: string): Promise<CdpConn> {
     });
     ws.addEventListener("error", () => reject(new Error("CDP websocket error")), { once: true });
     ws.addEventListener("message", (ev) => {
-      const data = JSON.parse(String(ev.data)) as { id?: number; error?: { message: string }; result?: unknown };
+      const data = JSON.parse(String(ev.data)) as {
+        id?: number;
+        error?: { message: string };
+        result?: unknown;
+      };
       if (data.id && pending.has(data.id)) {
         const p = pending.get(data.id)!;
         pending.delete(data.id);
@@ -112,8 +123,13 @@ async function evaluate<T>(conn: CdpConn, expression: string): Promise<T> {
   })) as { result: { value: T } };
   return res.result.value;
 }
-async function newPage(cdp: CdpConn, pageUrl: string): Promise<{ conn: CdpConn; targetId: string }> {
-  const { targetId } = await cdp.send<{ targetId: string }>("Target.createTarget", { url: "about:blank" });
+async function newPage(
+  cdp: CdpConn,
+  pageUrl: string,
+): Promise<{ conn: CdpConn; targetId: string }> {
+  const { targetId } = await cdp.send<{ targetId: string }>("Target.createTarget", {
+    url: "about:blank",
+  });
   const page = await connectCdp(cdpPageUrl(targetId));
   await page.send("Page.enable");
   await page.send("Page.navigate", { url: pageUrl });
@@ -210,7 +226,9 @@ async function main(): Promise<void> {
   });
   check("Control Room page renders", page.ok, `status ${page.status}`);
 
-  const camerasRes = await jsonFetch(`${API}/api/v1/cctv/cameras?pageSize=100`, { headers: authHeaders });
+  const camerasRes = await jsonFetch(`${API}/api/v1/cctv/cameras?pageSize=100`, {
+    headers: authHeaders,
+  });
   const cameras = (await camerasRes.json()) as { items: { id: string; name: string }[] };
   const rig = cameras.items.find((c) => c.name === CAMERA_NAME);
   check("Rig camera discoverable", !!rig, rig?.id ?? "not found");
@@ -230,17 +248,22 @@ async function main(): Promise<void> {
   const tokenA = created.playback?.token ?? "";
   check(
     "Stream session created through NETRAM API (WHEP contract)",
-    createRes.status === 201 && created.playback?.protocol === "webrtc" && created.playback.mediaPath === MEDIA_PATH,
+    createRes.status === 201 &&
+      created.playback?.protocol === "webrtc" &&
+      created.playback.mediaPath === MEDIA_PATH,
     `streamId ${streamIdA ? "ok" : "missing"}`,
   );
 
   // ---- 4. Heartbeat accepted ----
   {
-    const hb = await jsonFetch(`${API}/api/v1/cctv/cameras/${rig.id}/streams/${streamIdA}/heartbeat`, {
-      method: "POST",
-      headers: authHeaders,
-      body: "{}",
-    });
+    const hb = await jsonFetch(
+      `${API}/api/v1/cctv/cameras/${rig.id}/streams/${streamIdA}/heartbeat`,
+      {
+        method: "POST",
+        headers: authHeaders,
+        body: "{}",
+      },
+    );
     const body = (await hb.json().catch(() => ({}))) as { lastHeartbeatAt?: string };
     check("Heartbeat accepted", hb.status === 200 && typeof body.lastHeartbeatAt === "string");
   }
@@ -357,20 +380,32 @@ async function main(): Promise<void> {
       connected = !!r?.ok;
       if (!connected) await new Promise((res) => setTimeout(res, 1500));
     }
-    check("API-created session establishes a WHEP reader", connected, connected ? "same-origin handshake ok" : "handshake never succeeded");
+    check(
+      "API-created session establishes a WHEP reader",
+      connected,
+      connected ? "same-origin handshake ok" : "handshake never succeeded",
+    );
   }
 
   // ---- 7. Correlation: the reader's query echoes our streamId ----
   {
     let match: { id: string } | null = null;
     for (let i = 0; i < 10 && !match; i++) {
-      const list = await jsonFetch(`${MEDIAMTX_API}/v3/webrtcsessions/list`, { headers: { Authorization: basicAuth() } });
+      const list = await jsonFetch(`${MEDIAMTX_API}/v3/webrtcsessions/list`, {
+        headers: { Authorization: basicAuth() },
+      });
       const body = (await list.json()) as { items: { id: string; query: string }[] };
-      match = (body.items ?? []).find((s) => (s.query ?? "").includes(`netramSession=${streamIdA}`)) ?? null;
+      match =
+        (body.items ?? []).find((s) => (s.query ?? "").includes(`netramSession=${streamIdA}`)) ??
+        null;
       if (!match) await new Promise((r) => setTimeout(r, 1000));
     }
     streamIdAReaderId = match?.id ?? null;
-    check("MediaMTX reader correlated to NETRAM session", !!match, match ? `reader ${match.id}` : `query echo not found (streamId ${streamIdA})`);
+    check(
+      "MediaMTX reader correlated to NETRAM session",
+      !!match,
+      match ? `reader ${match.id}` : `query echo not found (streamId ${streamIdA})`,
+    );
   }
 
   // ---- 7. Correlation: the UI viewer's OWN session echoes into the reader
@@ -382,14 +417,18 @@ async function main(): Promise<void> {
         headers: { Authorization: basicAuth() },
       });
       const body = (await list.json()) as { items: { id: string; query: string }[] };
-      const match = (body.items ?? []).find((s) => (s.query ?? "").includes("netramSession=") && s.id !== streamIdAReaderId);
+      const match = (body.items ?? []).find(
+        (s) => (s.query ?? "").includes("netramSession=") && s.id !== streamIdAReaderId,
+      );
       if (match) correlationReaderId = match.id;
       else await new Promise((r) => setTimeout(r, 1000));
     }
     check(
       "MediaMTX reader correlated to a NETRAM session",
       !!correlationReaderId,
-      correlationReaderId ? `reader ${correlationReaderId}` : "no reader carries a netramSession echo",
+      correlationReaderId
+        ? `reader ${correlationReaderId}`
+        : "no reader carries a netramSession echo",
     );
   }
 
@@ -420,7 +459,11 @@ async function main(): Promise<void> {
       if (stillThere === 0) break;
       await new Promise((r) => setTimeout(r, 1000));
     }
-    check("Correlated MediaMTX reader kicked on session end", stillThere === 0, `reader ${correlationReaderId} still present: ${stillThere}`);
+    check(
+      "Correlated MediaMTX reader kicked on session end",
+      stillThere === 0,
+      `reader ${correlationReaderId} still present: ${stillThere}`,
+    );
   }
 
   // ---- 10. The API-created session's token dies after explicit DELETE ----
@@ -451,7 +494,9 @@ async function main(): Promise<void> {
   // ---- 11. Two viewers fan out on one source ----
   {
     const mkViewer = async (): Promise<{ ok: boolean } | null> => {
-      return evaluate(crPage.conn, `(async () => {
+      return evaluate(
+        crPage.conn,
+        `(async () => {
         const res = await fetch('/api/cctv/${rig.id}/streams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         if (!res.ok) return null;
         const data = await res.json();
@@ -469,16 +514,22 @@ async function main(): Promise<void> {
         if (whep.status !== 201) return null;
         await pc.setRemoteDescription({ type: 'answer', sdp: await whep.text() });
         return { ok: true };
-      })()`);
+      })()`,
+      );
     };
     await mkViewer();
     await mkViewer();
     await new Promise((r) => setTimeout(r, 4000));
-    const list = await jsonFetch(`${MEDIAMTX_API}/v3/webrtcsessions/list`, { headers: { Authorization: basicAuth() } });
-    const readers = ((await list.json()) as { itemCount: number }).itemCount ?? 0;
-    const pathRes = await jsonFetch(`${MEDIAMTX_API}/v3/paths/get/${encodeURIComponent(MEDIA_PATH)}`, {
+    const list = await jsonFetch(`${MEDIAMTX_API}/v3/webrtcsessions/list`, {
       headers: { Authorization: basicAuth() },
     });
+    const readers = ((await list.json()) as { itemCount: number }).itemCount ?? 0;
+    const pathRes = await jsonFetch(
+      `${MEDIAMTX_API}/v3/paths/get/${encodeURIComponent(MEDIA_PATH)}`,
+      {
+        headers: { Authorization: basicAuth() },
+      },
+    );
     const path = (await pathRes.json()) as { source?: { type: string }; readers?: unknown[] };
     check(
       "Two viewers share one upstream source (fan-out)",
@@ -486,11 +537,14 @@ async function main(): Promise<void> {
       `readers=${readers}, source=${path.source?.type ?? "none"}`,
     );
     // Cleanup the fan-out viewers via the same correlation channel.
-    const kickRes = await jsonFetch(`${GATEWAY}/media/sessions/${encodeURIComponent(MEDIA_PATH)}/kick`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-netram-service-secret": SERVICE_SECRET },
-      body: JSON.stringify({}),
-    });
+    const kickRes = await jsonFetch(
+      `${GATEWAY}/media/sessions/${encodeURIComponent(MEDIA_PATH)}/kick`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-netram-service-secret": SERVICE_SECRET },
+        body: JSON.stringify({}),
+      },
+    );
     void kickRes;
   }
 
@@ -501,14 +555,26 @@ async function main(): Promise<void> {
       headers: authHeaders,
       body: JSON.stringify({ ttlSeconds: 300 }),
     });
-    const hlsSession = (await createHls.json()) as { streamId: string; playback: { token: string } };
+    const hlsSession = (await createHls.json()) as {
+      streamId: string;
+      playback: { token: string };
+    };
 
-    const noTok = await jsonFetch(`${MEDIAMTX_HLS}/${MEDIA_PATH}/index.m3u8`, { redirect: "manual" });
-    check("Unauthorized HLS rejected", noTok.status === 401 || noTok.status === 302, `status ${noTok.status}`);
-
-    const withTok = await jsonFetch(`${MEDIAMTX_HLS}/${MEDIA_PATH}/index.m3u8?token=${encodeURIComponent(hlsSession.playback.token)}`, {
-      redirect: "follow",
+    const noTok = await jsonFetch(`${MEDIAMTX_HLS}/${MEDIA_PATH}/index.m3u8`, {
+      redirect: "manual",
     });
+    check(
+      "Unauthorized HLS rejected",
+      noTok.status === 401 || noTok.status === 302,
+      `status ${noTok.status}`,
+    );
+
+    const withTok = await jsonFetch(
+      `${MEDIAMTX_HLS}/${MEDIA_PATH}/index.m3u8?token=${encodeURIComponent(hlsSession.playback.token)}`,
+      {
+        redirect: "follow",
+      },
+    );
     const playlist = await withTok.text();
     check(
       "HLS playlist authorized with NETRAM token",
@@ -523,7 +589,9 @@ async function main(): Promise<void> {
     const proxiedPlaylist = await viaProxy.text();
     check(
       "Same-origin HLS proxy rewrites playlist",
-      viaProxy.ok && proxiedPlaylist.includes("/api/cctv/media/hls/") && !proxiedPlaylist.includes("localhost:8888"),
+      viaProxy.ok &&
+        proxiedPlaylist.includes("/api/cctv/media/hls/") &&
+        !proxiedPlaylist.includes("localhost:8888"),
       `status ${viaProxy.status}`,
     );
 
@@ -542,25 +610,37 @@ async function main(): Promise<void> {
     await new Promise((r) => setTimeout(r, 4000));
     const health = await jsonFetch(`${GATEWAY}/media/health`, {});
     const healthBody = (await health.json().catch(() => ({}))) as { mediamtx?: string };
-    const camHealth = await jsonFetch(`${API}/api/v1/cctv/cameras/${rig.id}/health`, { headers: authHeaders });
+    const camHealth = await jsonFetch(`${API}/api/v1/cctv/cameras/${rig.id}/health`, {
+      headers: authHeaders,
+    });
     const camBody = (await camHealth.json().catch(() => ({}))) as { status?: string };
     check(
       "MediaMTX restart → honest failure/health re-convergence",
-      health.ok && (camBody.status === "offline" || camBody.status === "degraded" || camBody.status === "online"),
+      health.ok &&
+        (camBody.status === "offline" ||
+          camBody.status === "degraded" ||
+          camBody.status === "online"),
       `mediamtx=${healthBody.mediamtx ?? "unknown"}, camera=${camBody.status ?? "unknown"}`,
     );
   }
 
   // ---- 14. Source failure → honest failure state ----
   {
-    const simDown = await jsonFetch(`${API}/api/v1/cctv/cameras/${rig.id}/health`, { headers: authHeaders });
-    const simBody = (await simDown.json().catch(() => ({}))) as { status?: string; details?: { reason?: string } };
+    const simDown = await jsonFetch(`${API}/api/v1/cctv/cameras/${rig.id}/health`, {
+      headers: authHeaders,
+    });
+    const simBody = (await simDown.json().catch(() => ({}))) as {
+      status?: string;
+      details?: { reason?: string };
+    };
     check(
       "Camera health derived from real media state",
       simBody.status === "offline" || simBody.status === "degraded" || simBody.status === "online",
       `status=${simBody.status ?? "unknown"}, reason=${simBody.details?.reason ?? "n/a"}`,
     );
-    const idle = await jsonFetch(`${API}/api/v1/cctv/cameras/${rig.id}/health`, { headers: authHeaders });
+    const idle = await jsonFetch(`${API}/api/v1/cctv/cameras/${rig.id}/health`, {
+      headers: authHeaders,
+    });
     void idle;
   }
 

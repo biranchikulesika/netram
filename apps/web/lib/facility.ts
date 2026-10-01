@@ -194,9 +194,7 @@ export async function getFacilityAudit(projectId: string, pageSize = 100): Promi
 export async function getDistrictCameras(districtId: string | null): Promise<PublicCctvCamera[]> {
   if (!districtId) return [];
   const client = await getClient();
-  const page = await client
-    .listCameras({ districtId, pageSize: 100 })
-    .catch(() => EMPTY_CAMERAS);
+  const page = await client.listCameras({ districtId, pageSize: 100 }).catch(() => EMPTY_CAMERAS);
   return page.items;
 }
 

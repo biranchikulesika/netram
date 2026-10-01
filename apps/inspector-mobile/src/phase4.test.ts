@@ -192,9 +192,9 @@ describe("Phase 4: Inspections List & Inspection Detail Specifications", () => {
       expect(finalInspection?.status).toBe("submitted");
       expect(finalInspection?.submitted_at).toBeDefined();
 
-      const submitOps = ops.concat(await queue.getAllOperations(inspectionId)).filter(
-        (o) => o.operation_type === "submit_inspection",
-      );
+      const submitOps = ops
+        .concat(await queue.getAllOperations(inspectionId))
+        .filter((o) => o.operation_type === "submit_inspection");
       expect(submitOps.length).toBeGreaterThanOrEqual(1);
     });
   });

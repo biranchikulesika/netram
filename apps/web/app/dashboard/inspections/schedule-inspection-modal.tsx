@@ -34,7 +34,9 @@ export function ScheduleInspectionModal({
   availableProjects,
   preselectedProjectId,
 }: ScheduleInspectionModalProps) {
-  const [projectId, setProjectId] = useState(preselectedProjectId ?? availableProjects[0]?.id ?? "");
+  const [projectId, setProjectId] = useState(
+    preselectedProjectId ?? availableProjects[0]?.id ?? "",
+  );
   const [type, setType] = useState<InspectionType>("routine");
   const [trigger, setTrigger] = useState<InspectionTrigger>("officer");
   const [scheduledStart, setScheduledStart] = useState("");
@@ -240,7 +242,14 @@ export function ScheduleInspectionModal({
           </div>
 
           {/* Grid: Type & Trigger */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
             <div>
               <label
                 htmlFor="schedule-inspection-type"
@@ -335,7 +344,14 @@ export function ScheduleInspectionModal({
           </div>
 
           {/* Grid: Scheduled Start & End Window */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1rem",
+              marginBottom: "1.25rem",
+            }}
+          >
             <div>
               <label
                 htmlFor="schedule-inspection-start"

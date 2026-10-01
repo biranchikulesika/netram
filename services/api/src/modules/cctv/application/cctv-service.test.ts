@@ -95,7 +95,12 @@ describe("CctvService", () => {
       endStreamSessionById: vi.fn().mockResolvedValue(false),
     };
 
-    service = new CctvService(mockAuthz, mockRepo, "http://localhost:3003", "test-service-secret-at-least-32-chars");
+    service = new CctvService(
+      mockAuthz,
+      mockRepo,
+      "http://localhost:3003",
+      "test-service-secret-at-least-32-chars",
+    );
   });
 
   it("lists cameras and strictly sanitizes raw endpoints (§7, §42)", async () => {
@@ -249,16 +254,23 @@ describe("CctvService media auth hook decision (Phase 4)", () => {
       createStreamSession: vi.fn(),
       endStreamSession: vi.fn(),
       touchHeartbeatBySessionId: vi.fn().mockResolvedValue(true),
-      findActiveSessionByTokenHash: vi.fn().mockImplementation(async (hash: string) =>
-        hash === tokenHashOf(TOKEN) ? activeSession : null,
-      ),
+      findActiveSessionByTokenHash: vi
+        .fn()
+        .mockImplementation(async (hash: string) =>
+          hash === tokenHashOf(TOKEN) ? activeSession : null,
+        ),
       findActiveSessionBySessionId: vi.fn().mockResolvedValue(activeSession),
       countActiveByCamera: vi.fn().mockResolvedValue(1),
       findSweepCandidates: vi.fn().mockResolvedValue([]),
       endStreamSessionById: vi.fn().mockResolvedValue(true),
     };
 
-    service = new CctvService(mockAuthz, mockRepo, "http://localhost:3003", "test-service-secret-at-least-32-chars");
+    service = new CctvService(
+      mockAuthz,
+      mockRepo,
+      "http://localhost:3003",
+      "test-service-secret-at-least-32-chars",
+    );
   });
 
   it("allows read (WHEP/HLS live session) with a valid active session token on the session's own path", async () => {
@@ -417,7 +429,12 @@ describe("CctvService stream heartbeat and end (Phase 4)", () => {
       endStreamSessionById: vi.fn().mockResolvedValue(true),
     };
 
-    service = new CctvService(mockAuthz, mockRepo, "http://localhost:3003", "test-service-secret-at-least-32-chars");
+    service = new CctvService(
+      mockAuthz,
+      mockRepo,
+      "http://localhost:3003",
+      "test-service-secret-at-least-32-chars",
+    );
   });
 
   it("heartbeat refreshes the session and returns the timestamp", async () => {

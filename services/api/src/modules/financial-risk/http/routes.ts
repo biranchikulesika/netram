@@ -115,10 +115,7 @@ export async function registerFinancialRiskRoutes(
       schema: {
         tags: ["financial-risk"],
         security: [{ bearerAuth: [] }],
-        querystring: toJsonSchema(
-          "ProjectEventsQuery",
-          z.object({ projectId: z.string().uuid() }),
-        ),
+        querystring: toJsonSchema("ProjectEventsQuery", z.object({ projectId: z.string().uuid() })),
       },
     },
     async (request) => {

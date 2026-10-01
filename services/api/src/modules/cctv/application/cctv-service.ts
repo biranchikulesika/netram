@@ -285,25 +285,30 @@ export class CctvService {
       throw AppError.notFound("Stream session not found or already ended.");
     }
 
-    await this.cctvRepo.endStreamSession(streamId, {
-      actorUserId: ctx.user.id,
-      requestId: ctx.requestId,
-      ipAddress: ctx.ipAddress,
-      auditAction: input.endReason === "admin_revoke" ? "cctv.stream_revoked" : "cctv.stream_ended",
-      auditMetadata: {
-        cameraId,
-        streamSessionId: session.id,
-        endReason: input.endReason,
+    await this.cctvRepo.endStreamSession(
+      streamId,
+      {
+        actorUserId: ctx.user.id,
+        requestId: ctx.requestId,
+        ipAddress: ctx.ipAddress,
+        auditAction:
+          input.endReason === "admin_revoke" ? "cctv.stream_revoked" : "cctv.stream_ended",
+        auditMetadata: {
+          cameraId,
+          streamSessionId: session.id,
+          endReason: input.endReason,
+        },
+        eventType: "cctv.stream_ended",
+        eventPayload: {
+          cameraId,
+          streamId,
+          endReason: input.endReason,
+          endedBy: ctx.user.id,
+          endedAt: new Date().toISOString(),
+        },
       },
-      eventType: "cctv.stream_ended",
-      eventPayload: {
-        cameraId,
-        streamId,
-        endReason: input.endReason,
-        endedBy: ctx.user.id,
-        endedAt: new Date().toISOString(),
-      },
-    }, { endedBy: "viewer", endReason: input.endReason });
+      { endedBy: "viewer", endReason: input.endReason },
+    );
 
     // Best-effort media termination through the gateway control plane:
     // kick the MediaMTX WebRTC reader(s) correlated to this session via the
@@ -335,16 +340,14 @@ export class CctvService {
    * token not expired, and the requested action is playback on the session's
    * own media path. Everything else is denied and audited.
    */
-  async mediaAuthDecision(
-    input: {
-      token: string;
-      action: string;
-      path: string;
-      protocol: string;
-      ip: string;
-      query?: string;
-    },
-  ): Promise<MediaAuthDecision> {
+  async mediaAuthDecision(input: {
+    token: string;
+    action: string;
+    path: string;
+    protocol: string;
+    ip: string;
+    query?: string;
+  }): Promise<MediaAuthDecision> {
     const deny = (reason: string): MediaAuthDecision => ({ allowed: false, reason });
 
     // Live consumer actions only: WHEP/HLS session creation maps to "read"
@@ -382,7 +385,11 @@ export class CctvService {
       return deny("token_expired");
     }
 
-    return { allowed: true, mediaPath: session.mediaPath ?? input.path, streamSessionId: session.id };
+    return {
+      allowed: true,
+      mediaPath: session.mediaPath ?? input.path,
+      streamSessionId: session.id,
+    };
   }
 
   /** Server-to-server headers for gateway control-plane calls (§14). */

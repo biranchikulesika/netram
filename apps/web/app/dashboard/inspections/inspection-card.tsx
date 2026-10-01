@@ -59,13 +59,11 @@ export function InspectionCard({ inspection }: { inspection: Inspection }) {
         className="facility-card-link"
         aria-label={`Open inspection ${inspection.id}`}
       >
-        <h3 className="facility-card-title">
-          {inspection.projectName || "Sanctioned facility"}
-        </h3>
+        <h3 className="facility-card-title">{inspection.projectName || "Sanctioned facility"}</h3>
 
         <p className="facility-card-desc">
-          {isSurprise ? "Surprise inspection" : `${inspection.type.replace(/_/g, " ")} inspection`} -{" "}
-          {inspection.trigger.replace(/_/g, " ")} trigger
+          {isSurprise ? "Surprise inspection" : `${inspection.type.replace(/_/g, " ")} inspection`}{" "}
+          - {inspection.trigger.replace(/_/g, " ")} trigger
         </p>
 
         <dl className="facility-card-meta">

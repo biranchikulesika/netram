@@ -10,22 +10,11 @@ function formatStatus(status: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function StatusBadge({
-  status,
-  className,
-}: {
-  status: ProjectStatus;
-  className?: string;
-}) {
+export function StatusBadge({ status, className }: { status: ProjectStatus; className?: string }) {
   const normalized = status.toLowerCase().replace(/\s+/g, "_");
   return (
-    <span
-      className={`status status-${normalized} ${className || ""}`}
-      title={`Status: ${status}`}
-    >
+    <span className={`status status-${normalized} ${className || ""}`} title={`Status: ${status}`}>
       <span>{formatStatus(status)}</span>
     </span>
   );
 }
-
-

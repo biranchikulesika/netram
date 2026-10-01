@@ -124,9 +124,9 @@ describe("FindingService.listFindingsAwaitingOrder", () => {
   }) {
     const authz = {
       requirePermission: vi.fn(),
-      accessibleDistrictIds: vi.fn().mockReturnValue(
-        overrides ? overrides.scope : new Set(["dist-1"]),
-      ),
+      accessibleDistrictIds: vi
+        .fn()
+        .mockReturnValue(overrides ? overrides.scope : new Set(["dist-1"])),
     } as unknown as AuthorizationService;
     const repo = {
       listAwaitingOrder: vi.fn().mockResolvedValue(overrides?.repoResult ?? []),

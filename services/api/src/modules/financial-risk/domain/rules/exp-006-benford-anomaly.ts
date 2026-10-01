@@ -1,5 +1,9 @@
 import type { FinancialRiskRule } from "@netram/types";
-import type { RiskEvaluationContext, RuleEvaluationResult, RuleEvaluator } from "../rule-evaluator.js";
+import type {
+  RiskEvaluationContext,
+  RuleEvaluationResult,
+  RuleEvaluator,
+} from "../rule-evaluator.js";
 
 // Benford's Law theoretical probabilities for leading digits 1..9
 const BENFORD_PROBABILITIES: Record<number, number> = {
@@ -47,7 +51,15 @@ export class Exp006BenfordAnomalyRule implements RuleEvaluator {
 
     // Tally observed first digits
     const observedCounts: Record<number, number> = {
-      1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0,
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+      6: 0,
+      7: 0,
+      8: 0,
+      9: 0,
     };
 
     let totalDigits = 0;

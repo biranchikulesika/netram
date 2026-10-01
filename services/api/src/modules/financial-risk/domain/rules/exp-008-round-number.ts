@@ -1,5 +1,9 @@
 import type { FinancialRiskRule } from "@netram/types";
-import type { RiskEvaluationContext, RuleEvaluationResult, RuleEvaluator } from "../rule-evaluator.js";
+import type {
+  RiskEvaluationContext,
+  RuleEvaluationResult,
+  RuleEvaluator,
+} from "../rule-evaluator.js";
 
 export class Exp008RoundNumberRule implements RuleEvaluator {
   readonly code = "EXP-008";
@@ -19,7 +23,7 @@ export class Exp008RoundNumberRule implements RuleEvaluator {
     };
     const minAmount = config.minAmount ?? 50000;
     const minExpensesCount = config.minExpensesCount ?? 10;
-    const maxRoundRatio = config.maxRoundRatio ?? 0.40;
+    const maxRoundRatio = config.maxRoundRatio ?? 0.4;
 
     const qualifyingExpenses = ctx.expenses.filter((e) => {
       if (e.status === "voided" || e.status === "rejected") return false;

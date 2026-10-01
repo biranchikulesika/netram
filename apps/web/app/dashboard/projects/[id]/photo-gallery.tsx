@@ -51,9 +51,7 @@ export function PhotoGallery({ photos }: PhotoGalleryProps) {
     <div className="facility-panel">
       <div className="facility-panel-head">
         <span className="facility-panel-title">Photos</span>
-        <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-          {photos.length}
-        </span>
+        <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{photos.length}</span>
       </div>
 
       <div className="photo-grid">
@@ -63,9 +61,7 @@ export function PhotoGallery({ photos }: PhotoGalleryProps) {
             type="button"
             className="photo-tile"
             onClick={() => setIndex(i)}
-            aria-label={
-              photo.caption ? `Open photo: ${photo.caption}` : `Open photo ${i + 1}`
-            }
+            aria-label={photo.caption ? `Open photo: ${photo.caption}` : `Open photo ${i + 1}`}
           >
             {/* Proxied binary content route, not a static asset - plain img. */}
             <img
@@ -114,9 +110,7 @@ export function PhotoGallery({ photos }: PhotoGalleryProps) {
                 <button
                   type="button"
                   className="lightbox-nav lightbox-nav-prev"
-                  onClick={() =>
-                    setIndex((i) => ((i ?? 0) - 1 + photos.length) % photos.length)
-                  }
+                  onClick={() => setIndex((i) => ((i ?? 0) - 1 + photos.length) % photos.length)}
                   aria-label="Previous photo"
                 >
                   ‹

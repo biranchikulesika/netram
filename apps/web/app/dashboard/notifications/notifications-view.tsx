@@ -98,9 +98,7 @@ function getNotificationVisual(type: string): {
   };
 }
 
-export function NotificationsView({
-  initialNotifications,
-}: NotificationsViewProps) {
+export function NotificationsView({ initialNotifications }: NotificationsViewProps) {
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
@@ -117,9 +115,7 @@ export function NotificationsView({
 
   async function handleMarkRead(id: string) {
     // Optimistic update
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, status: "read" } : n)),
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, status: "read" } : n)));
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("netram:notifications-read"));
     }
@@ -130,9 +126,7 @@ export function NotificationsView({
       });
     } catch {
       // Revert if API fails
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, status: "pending" } : n)),
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, status: "pending" } : n)));
     } finally {
       setMarkingId(null);
     }
@@ -159,7 +153,15 @@ export function NotificationsView({
   }
 
   return (
-    <div style={{ maxWidth: "760px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+    <div
+      style={{
+        maxWidth: "760px",
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1.25rem",
+      }}
+    >
       {/* Header bar */}
       <div
         style={{

@@ -135,10 +135,7 @@ describe("InAppCameraModal capture roll", () => {
     expect(saved[0]!.uri).toBe("data:image/jpeg;base64,AAAA");
     // The gallery button opens the most recent capture, so that is the item the
     // caption lands on; the earlier one stays blank.
-    expect(saved.map((i: CapturedMediaItem) => i.note)).toEqual([
-      "",
-      "Seepage along the plinth",
-    ]);
+    expect(saved.map((i: CapturedMediaItem) => i.note)).toEqual(["", "Seepage along the plinth"]);
     expect(onClose).toHaveBeenCalled();
   });
 

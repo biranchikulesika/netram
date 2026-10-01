@@ -153,12 +153,33 @@ describe("OfflineInspectionQueue", () => {
   });
 
   it("requeues a conflicted finding draft with the same draft ID", async () => {
-    const draft = await queue.saveFindingDraft(inspectionId, { severity: "high", description: "Blocked exit" });
+    const draft = await queue.saveFindingDraft(inspectionId, {
+      severity: "high",
+      description: "Blocked exit",
+    });
     const mockApiClient = {
-      syncOfflineOperations: vi.fn().mockResolvedValue({ results: [{ operationId: draft.operationId, inspectionId, type: "draft_finding", status: "conflict", code: "INSPECTION_NOT_IN_FIELD_STAGE", message: "Inspection closed", syncedAt: new Date().toISOString() }], processedAt: new Date().toISOString() }),
+      syncOfflineOperations: vi.fn().mockResolvedValue({
+        results: [
+          {
+            operationId: draft.operationId,
+            inspectionId,
+            type: "draft_finding",
+            status: "conflict",
+            code: "INSPECTION_NOT_IN_FIELD_STAGE",
+            message: "Inspection closed",
+            syncedAt: new Date().toISOString(),
+          },
+        ],
+        processedAt: new Date().toISOString(),
+      }),
     } as unknown as NetramApiClient;
     await queue.sync(mockApiClient);
-    await queue.saveFindingDraft(inspectionId, { findingId: String(draft.payload.findingId), operationId: draft.operationId, severity: "high", description: "Corrected description" });
+    await queue.saveFindingDraft(inspectionId, {
+      findingId: String(draft.payload.findingId),
+      operationId: draft.operationId,
+      severity: "high",
+      description: "Corrected description",
+    });
 
     const pending = await queue.getPendingOperations();
     const drafts = await queue.getCachedFindingDrafts(inspectionId);
@@ -489,7 +510,9 @@ describe("OfflineInspectionQueue", () => {
     const rejectedOp = allOps.find((o) => o.operation_id === op.operationId);
     expect(rejectedOp?.status).toBe("rejected");
     expect(rejectedOp?.code).toBe("HEADCOUNT_EXCEEDS_LIMIT");
-    expect(rejectedOp?.error_message).toBe("Headcount exceeds maximum plausible site workers (5000)");
+    expect(rejectedOp?.error_message).toBe(
+      "Headcount exceeds maximum plausible site workers (5000)",
+    );
   });
 
   describe("Call contacts and call history", () => {

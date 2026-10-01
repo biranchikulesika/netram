@@ -139,7 +139,9 @@ async function newPage(pageUrl: string): Promise<{ conn: CdpConn; targetId: stri
   // Create about:blank, connect, then navigate via CDP and wait until the
   // app shell is present - evaluating too early can land in the stale
   // about:blank context and observe nothing forever.
-  const createRes = await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, { method: "PUT" });
+  const createRes = await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?about:blank`, {
+    method: "PUT",
+  });
   const target = (await createRes.json()) as CdpTarget;
   if (!target.webSocketDebuggerUrl) throw new Error("CDP target has no webSocketDebuggerUrl");
   const conn = await connectCdp(target.webSocketDebuggerUrl);
@@ -213,7 +215,11 @@ async function main(): Promise<void> {
   // in one probe.
   try {
     const res = await fetch(`http://localhost:8189/${WHEP_PATH}/whep`, { method: "OPTIONS" });
-    assert(res.status === 401, "MediaMTX WHEP reachable but closed", `OPTIONS -> ${res.status} (hook-gated)`);
+    assert(
+      res.status === 401,
+      "MediaMTX WHEP reachable but closed",
+      `OPTIONS -> ${res.status} (hook-gated)`,
+    );
   } catch (e) {
     fail("MediaMTX WHEP reachable but closed", String(e));
   }
@@ -243,7 +249,11 @@ async function main(): Promise<void> {
     });
     const body = (await stream.json()) as { token?: string; playback?: { token?: string } };
     playbackToken = body.playback?.token ?? body.token ?? null;
-    assert(typeof playbackToken === "string" && playbackToken.length > 40, "NETRAM playback token minted", playbackToken ? "ok" : "missing");
+    assert(
+      typeof playbackToken === "string" && playbackToken.length > 40,
+      "NETRAM playback token minted",
+      playbackToken ? "ok" : "missing",
+    );
   } catch (e) {
     fail("NETRAM playback token minted", String(e));
   }
@@ -293,18 +303,33 @@ async function main(): Promise<void> {
       }
       await new Promise((r) => setTimeout(r, 250));
     }
-    assert(targets.some((t) => t.webSocketDebuggerUrl), "Chromium DevTools endpoint", "ready");
+    assert(
+      targets.some((t) => t.webSocketDebuggerUrl),
+      "Chromium DevTools endpoint",
+      "ready",
+    );
 
     // Viewer 1: happy path (token-gated, Phase 4).
-    const page1 = await newPage(`${WEB_BASE}/dev/cctv-test?autostart=1&path=${encodeURIComponent(WHEP_PATH)}${tokenParam}`);
-    const status1 = await withTimeout(evaluate<{ state: string; text: string }>(page1.conn, WAIT_STATUS), 60_000, "viewer 1 playback");
+    const page1 = await newPage(
+      `${WEB_BASE}/dev/cctv-test?autostart=1&path=${encodeURIComponent(WHEP_PATH)}${tokenParam}`,
+    );
+    const status1 = await withTimeout(
+      evaluate<{ state: string; text: string }>(page1.conn, WAIT_STATUS),
+      60_000,
+      "viewer 1 playback",
+    );
     assert(status1.state === "playing", "Viewer 1 WHEP playback", status1.text.trim());
 
     const stats1 = await evaluate<string>(page1.conn, READ_STATS);
     const frames1 = parseFrames(stats1);
     const latency1 = parseLatency(stats1);
     assert(frames1 > 0, "Viewer 1 decodes video frames", stats1.trim());
-    pass("Receiver jitter-buffer latency", latency1 !== null ? `${latency1}ms (glass-to-glass: run CAMERA_SOURCE=clock, see phase doc)` : "not yet reported");
+    pass(
+      "Receiver jitter-buffer latency",
+      latency1 !== null
+        ? `${latency1}ms (glass-to-glass: run CAMERA_SOURCE=clock, see phase doc)`
+        : "not yet reported",
+    );
 
     // Liveness: frames keep increasing (not a frozen frame).
     await new Promise((r) => setTimeout(r, 4_000));
@@ -313,15 +338,31 @@ async function main(): Promise<void> {
     assert(frames1b > frames1, "Stream is live (frames advance)", `${frames1} -> ${frames1b}`);
 
     // 4. Fan-out: second concurrent viewer shares the same upstream pull.
-    const page2 = await newPage(`${WEB_BASE}/dev/cctv-test?autostart=1&path=${encodeURIComponent(WHEP_PATH)}${tokenParam}`);
-    const status2 = await withTimeout(evaluate<{ state: string; text: string }>(page2.conn, WAIT_STATUS), 60_000, "viewer 2 playback");
-    assert(status2.state === "playing", "Viewer 2 concurrent playback (fan-out)", status2.text.trim());
+    const page2 = await newPage(
+      `${WEB_BASE}/dev/cctv-test?autostart=1&path=${encodeURIComponent(WHEP_PATH)}${tokenParam}`,
+    );
+    const status2 = await withTimeout(
+      evaluate<{ state: string; text: string }>(page2.conn, WAIT_STATUS),
+      60_000,
+      "viewer 2 playback",
+    );
+    assert(
+      status2.state === "playing",
+      "Viewer 2 concurrent playback (fan-out)",
+      status2.text.trim(),
+    );
     const stats2 = await evaluate<string>(page2.conn, READ_STATS);
     assert(parseFrames(stats2) > 0, "Viewer 2 decodes video frames", stats2.trim());
 
     // 5. Failure path: unknown path must surface a surfaced error, not hang.
-    const page3 = await newPage(`${WEB_BASE}/dev/cctv-test?autostart=1&path=${encodeURIComponent("facility-vani/does-not-exist")}`);
-    const status3 = await withTimeout(evaluate<{ state: string; text: string }>(page3.conn, WAIT_STATUS), 60_000, "failure path");
+    const page3 = await newPage(
+      `${WEB_BASE}/dev/cctv-test?autostart=1&path=${encodeURIComponent("facility-vani/does-not-exist")}`,
+    );
+    const status3 = await withTimeout(
+      evaluate<{ state: string; text: string }>(page3.conn, WAIT_STATUS),
+      60_000,
+      "failure path",
+    );
     assert(status3.state === "error", "Unknown path fails explicitly", status3.text.trim());
 
     for (const p of [page1, page2, page3]) {

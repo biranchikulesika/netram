@@ -1,10 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { useSettings } from "../src/theme/settings-context";
 
 export default function SplashScreen() {

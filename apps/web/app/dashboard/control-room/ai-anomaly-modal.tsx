@@ -31,7 +31,8 @@ const ACTION_OPTIONS: Record<
   },
   investigated: {
     label: "Escalate for Field Investigation",
-    description: "Creates a follow-up inspection on the project and assigns you as lead for on-site verification.",
+    description:
+      "Creates a follow-up inspection on the project and assigns you as lead for on-site verification.",
     btnColor: "#dd501e",
   },
   acted_upon: {
@@ -41,7 +42,8 @@ const ACTION_OPTIONS: Record<
   },
   dismissed: {
     label: "Dismiss Alert",
-    description: "Signal reviewed and confirmed as benign lighting, angle variation, or false positive.",
+    description:
+      "Signal reviewed and confirmed as benign lighting, angle variation, or false positive.",
     btnColor: "var(--text-subtle)",
   },
 };
@@ -270,7 +272,9 @@ export function AIAnomalyModal({
           >
             Model Explanation:
           </label>
-          <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.5, color: "var(--text-muted)" }}>
+          <p
+            style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.5, color: "var(--text-muted)" }}
+          >
             {anomaly.explanation || "No extended explanation provided."}
           </p>
         </div>
@@ -303,8 +307,8 @@ export function AIAnomalyModal({
               marginBottom: "1.25rem",
             }}
           >
-            Your account does not hold the <code>ai:anomaly:transition</code> permission required
-            to record an administrative decision on this alert.
+            Your account does not hold the <code>ai:anomaly:transition</code> permission required to
+            record an administrative decision on this alert.
           </div>
         ) : (
           <form onSubmit={handleTransition}>

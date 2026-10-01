@@ -83,9 +83,7 @@ export function CorrectiveActionDetailClient({
 
   const [atrSummary, setAtrSummary] = useState("");
   const [atrFiles, setAtrFiles] = useState<File[]>([]);
-  const [reviewOutcome, setReviewOutcome] = useState<CorrectiveActionReviewOutcome>(
-    "under_review",
-  );
+  const [reviewOutcome, setReviewOutcome] = useState<CorrectiveActionReviewOutcome>("under_review");
   const [reviewNote, setReviewNote] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,26 +109,21 @@ export function CorrectiveActionDetailClient({
   const canWorkReview = canReview && reviewChoices.length > 0;
 
   const isOverdue =
-    action.deadline &&
-    action.status !== "accepted" &&
-    new Date(action.deadline) < new Date();
+    action.deadline && action.status !== "accepted" && new Date(action.deadline) < new Date();
 
   const districtLabel = project?.districtId
     ? formatDistrict(project.districtName, project.stateName)
     : "Odisha State Jurisdiction";
 
   const lifecycleRendered = (() => {
-    const skippedForTerminal =
-      action.status === "overdue" || action.status === "escalated";
+    const skippedForTerminal = action.status === "overdue" || action.status === "escalated";
     const currentIndex = LIFECYCLE_STAGES.findIndex((stage) =>
       stage.statuses.includes(action.status),
     );
     return { skippedForTerminal, currentIndex };
   })();
 
-  const statusLabel = action.status
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const statusLabel = action.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const handleSubmitAtr = async () => {
     if (!atrSummary.trim()) {
@@ -204,7 +197,10 @@ export function CorrectiveActionDetailClient({
             )}
             <span className="inspection-meta-chip">
               <IconClipboard width={13} height={13} style={{ color: "#0c2a52" }} />
-              <Link href={`/dashboard/inspections/${action.inspectionId}`} style={{ fontWeight: 600 }}>
+              <Link
+                href={`/dashboard/inspections/${action.inspectionId}`}
+                style={{ fontWeight: 600 }}
+              >
                 Inspection #{action.inspectionId.slice(0, 8)}
               </Link>
             </span>
@@ -235,7 +231,16 @@ export function CorrectiveActionDetailClient({
               <div key={stage.id} className={`workflow-step ${nodeClass}`}>
                 <div className="workflow-node" title={stage.label}>
                   {isPassed ? (
-                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : (
@@ -245,9 +250,7 @@ export function CorrectiveActionDetailClient({
                 <div className="workflow-step-label" title={stage.label}>
                   {stage.label}
                 </div>
-                <div className="workflow-step-hint">
-                  {stage.hint}
-                </div>
+                <div className="workflow-step-hint">{stage.hint}</div>
               </div>
             );
           })}
@@ -344,11 +347,34 @@ export function CorrectiveActionDetailClient({
                 {action.actionSummary}
               </p>
               {action.atrFiles.length > 0 && (
-                <div style={{ marginTop: "0.85rem", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "0.75rem" }}>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                <div
+                  style={{
+                    marginTop: "0.85rem",
+                    borderTop: "1px solid var(--color-border-subtle)",
+                    paddingTop: "0.75rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      color: "var(--text-muted)",
+                      marginBottom: "0.5rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
                     Supporting Attachments ({action.atrFiles.length})
                   </div>
-                  <ul style={{ display: "grid", gap: "0.4rem", margin: 0, padding: 0, listStyle: "none" }}>
+                  <ul
+                    style={{
+                      display: "grid",
+                      gap: "0.4rem",
+                      margin: 0,
+                      padding: 0,
+                      listStyle: "none",
+                    }}
+                  >
                     {action.atrFiles.map((f: CorrectiveActionFile) => (
                       <li key={f.id}>
                         <a
@@ -368,14 +394,32 @@ export function CorrectiveActionDetailClient({
                             textDecoration: "none",
                           }}
                         >
-                          <IconClipboard width={14} height={14} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
-                          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <IconClipboard
+                            width={14}
+                            height={14}
+                            style={{ color: "var(--text-subtle)", flexShrink: 0 }}
+                          />
+                          <span
+                            style={{
+                              flex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             {f.fileName}
                           </span>
                           <span className="muted" style={{ fontSize: "0.72rem", flexShrink: 0 }}>
                             {formatBytes(f.sizeBytes)}
                           </span>
-                          <span style={{ color: "#0c2a52", fontSize: "0.72rem", fontWeight: 600, flexShrink: 0 }}>
+                          <span
+                            style={{
+                              color: "#0c2a52",
+                              fontSize: "0.72rem",
+                              fontWeight: 600,
+                              flexShrink: 0,
+                            }}
+                          >
                             Open &rsaquo;
                           </span>
                         </a>
@@ -400,8 +444,21 @@ export function CorrectiveActionDetailClient({
           )}
 
           {canWorkSubmit && (
-            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "1rem" }}>
-              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: "0.5rem" }}>
+            <div
+              style={{
+                marginTop: "1rem",
+                borderTop: "1px solid var(--color-border-subtle)",
+                paddingTop: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "var(--text-muted)",
+                  marginBottom: "0.5rem",
+                }}
+              >
                 SUBMIT REMEDIATION EVIDENCE
               </div>
               <p className="muted" style={{ margin: "0 0 0.6rem", fontSize: "0.78rem" }}>
@@ -448,7 +505,8 @@ export function CorrectiveActionDetailClient({
                   }}
                 >
                   <IconCamera width={15} height={15} style={{ color: "#0c2a52" }} />
-                  Attach supporting files (PDF, photos, videos &mdash; up to 5, max 100&nbsp;MB each)
+                  Attach supporting files (PDF, photos, videos &mdash; up to 5, max 100&nbsp;MB
+                  each)
                 </label>
                 <input
                   id={`atr-files-${action.id}`}
@@ -471,7 +529,15 @@ export function CorrectiveActionDetailClient({
                   style={{ display: "none" }}
                 />
                 {atrFiles.length > 0 && (
-                  <ul style={{ display: "grid", gap: "0.35rem", margin: "0.5rem 0 0 0", padding: 0, listStyle: "none" }}>
+                  <ul
+                    style={{
+                      display: "grid",
+                      gap: "0.35rem",
+                      margin: "0.5rem 0 0 0",
+                      padding: 0,
+                      listStyle: "none",
+                    }}
+                  >
                     {atrFiles.map((f, idx) => (
                       <li
                         key={`${f.name}-${idx}`}
@@ -487,8 +553,19 @@ export function CorrectiveActionDetailClient({
                           color: "#002449",
                         }}
                       >
-                        <IconClipboard width={13} height={13} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
-                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <IconClipboard
+                          width={13}
+                          height={13}
+                          style={{ color: "var(--text-subtle)", flexShrink: 0 }}
+                        />
+                        <span
+                          style={{
+                            flex: 1,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {f.name}
                         </span>
                         <span className="muted" style={{ fontSize: "0.72rem", flexShrink: 0 }}>
@@ -521,7 +598,13 @@ export function CorrectiveActionDetailClient({
                   onClick={handleSubmitAtr}
                   disabled={isSubmitting}
                   className="btn-primary"
-                  style={{ padding: "0.5rem 1.1rem", fontSize: "0.82rem", background: "#0c2a52", borderColor: "#0c2a52", whiteSpace: "nowrap" }}
+                  style={{
+                    padding: "0.5rem 1.1rem",
+                    fontSize: "0.82rem",
+                    background: "#0c2a52",
+                    borderColor: "#0c2a52",
+                    whiteSpace: "nowrap",
+                  }}
                 >
                   {isSubmitting ? "Submitting..." : "Submit ATR"}
                 </button>
@@ -543,8 +626,7 @@ export function CorrectiveActionDetailClient({
               {(action.verifiedAt || action.verifiedByUserId) && (
                 <div className="muted" style={{ marginTop: "0.75rem", fontSize: "0.78rem" }}>
                   {action.verifiedAt && `Verified on ${formatDate(action.verifiedAt)}`}
-                  {action.verifiedByUserId &&
-                    ` · By ${action.verifiedByUserId.slice(0, 8)}`}
+                  {action.verifiedByUserId && ` · By ${action.verifiedByUserId.slice(0, 8)}`}
                 </div>
               )}
             </div>
@@ -567,8 +649,21 @@ export function CorrectiveActionDetailClient({
           )}
 
           {canWorkReview && (
-            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "1rem" }}>
-              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: "0.5rem" }}>
+            <div
+              style={{
+                marginTop: "1rem",
+                borderTop: "1px solid var(--color-border-subtle)",
+                paddingTop: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "var(--text-muted)",
+                  marginBottom: "0.5rem",
+                }}
+              >
                 RECORD AUTHORITY REVIEW
               </div>
               <p className="muted" style={{ margin: "0 0 0.6rem", fontSize: "0.78rem" }}>
@@ -589,7 +684,9 @@ export function CorrectiveActionDetailClient({
                   {actionError}
                 </div>
               )}
-              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+              <div
+                style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}
+              >
                 {reviewChoices.map((choice) => {
                   const selected = reviewOutcome === choice.value;
                   return (
@@ -633,8 +730,18 @@ export function CorrectiveActionDetailClient({
                   style={{
                     padding: "0.5rem 1.1rem",
                     fontSize: "0.82rem",
-                    background: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#137e3a" : "#dd501e",
-                    borderColor: reviewOutcome === "rejected" ? "#dc2626" : reviewOutcome === "accepted" ? "#137e3a" : "#dd501e",
+                    background:
+                      reviewOutcome === "rejected"
+                        ? "#dc2626"
+                        : reviewOutcome === "accepted"
+                          ? "#137e3a"
+                          : "#dd501e",
+                    borderColor:
+                      reviewOutcome === "rejected"
+                        ? "#dc2626"
+                        : reviewOutcome === "accepted"
+                          ? "#137e3a"
+                          : "#dd501e",
                   }}
                 >
                   {isSubmitting

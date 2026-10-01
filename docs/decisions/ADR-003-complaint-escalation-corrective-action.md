@@ -23,7 +23,7 @@ establishment's administrators (`complaint.escalated` → institution fan-out in
 the outbox dispatcher, added in the institution-visibility change).
 
 This leaves a manual gap: an escalated complaint that the authority judges
-legitimate requires the officer to *also* walk over to the inspections/finding
+legitimate requires the officer to _also_ walk over to the inspections/finding
 machinery and manufacture a finding record before any corrective action can be
 ordered - even when the complaint's own documentation (attachments are hashed
 and stored server-side) is the evidence the authority is acting on. The result
@@ -59,7 +59,7 @@ labelled pathway - not a synthetic finding:
      must hold `complaint:resolve` (they already must, to escalate).
 
 3. **One order, one enforcement surface.** The ordered corrective action joins
-   the *same* lifecycle the institution already knows: notification pulse →
+   the _same_ lifecycle the institution already knows: notification pulse →
    Corrections section queue → ATR submission (`corrective_action:submit`) →
    authority verification → closure. No new institution-facing UI: the
    Corrections tab and action-inbox render complaint-sourced orders next to
@@ -77,8 +77,8 @@ labelled pathway - not a synthetic finding:
    a conflict. This keeps "the grievance was addressed" from being claimed
    while the fix is still outstanding.
 
-6. **Still not automatic.** The automation is *event plumbing and state
-   coupling*, not an AI or rule-engine decision. The transition
+6. **Still not automatic.** The automation is _event plumbing and state
+   coupling_, not an AI or rule-engine decision. The transition
    `under_review → escalated(+order)` remains a human decision by a
    permissioned authority officer; the system only enforces that the decision,
    the order, the pulse, and the closure coupling happen atomically and are
@@ -94,7 +94,7 @@ labelled pathway - not a synthetic finding:
   explicitly forbids; escalation can also mean "needs higher-level review",
   not "substantiated".
 - **AI triage decides which complaints warrant orders.** Rejected for this
-  decision: AI is advisory (§36). A rule-assisted *queue prioritisation* may
+  decision: AI is advisory (§36). A rule-assisted _queue prioritisation_ may
   come later as a separate, advisory ADR.
 - **Status quo (manual two-step).** Rejected: it incentivises rubber-stamp
   findings or lets escalated complaints stall; both are worse for the audit

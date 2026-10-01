@@ -25,7 +25,18 @@ import {
 /** Local inbox icon (not in the shared icon set). */
 function IconInbox({ width = 16, height = 16, ...props }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={width} height={height} aria-hidden="true" {...props}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      width={width}
+      height={height}
+      aria-hidden="true"
+      {...props}
+    >
       <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
       <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
     </svg>
@@ -107,28 +118,63 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Field Operations",
     items: [
       { href: "/dashboard/projects", label: "Projects", section: "projects", icon: IconBuilding },
-      { href: "/dashboard/inspections", label: "Inspections", section: "inspections", icon: IconClipboard },
-      { href: "/dashboard/corrective-actions", label: "Corrective Actions", section: "corrective-actions", icon: IconShieldCheck },
-      { href: "/dashboard/complaints", label: "Complaints", section: "complaints", icon: IconAlertTriangle },
+      {
+        href: "/dashboard/inspections",
+        label: "Inspections",
+        section: "inspections",
+        icon: IconClipboard,
+      },
+      {
+        href: "/dashboard/corrective-actions",
+        label: "Corrective Actions",
+        section: "corrective-actions",
+        icon: IconShieldCheck,
+      },
+      {
+        href: "/dashboard/complaints",
+        label: "Complaints",
+        section: "complaints",
+        icon: IconAlertTriangle,
+      },
     ],
   },
   {
     id: "monitoring",
     title: "Monitoring",
     items: [
-      { href: "/dashboard/control-room", label: "Control Room", section: "control-room", icon: IconVideo },
+      {
+        href: "/dashboard/control-room",
+        label: "Control Room",
+        section: "control-room",
+        icon: IconVideo,
+      },
       { href: "/dashboard/attendance", label: "Attendance", section: "attendance", icon: IconUser },
-      { href: "/dashboard/funds", label: "Funds & Expenses", section: "funds", icon: IconIndianRupee },
+      {
+        href: "/dashboard/funds",
+        label: "Funds & Expenses",
+        section: "funds",
+        icon: IconIndianRupee,
+      },
     ],
   },
   {
     id: "governance",
     title: "Administration",
     items: [
-      { href: "/dashboard/registry", label: "Registrations", section: "registry", icon: IconFileText },
+      {
+        href: "/dashboard/registry",
+        label: "Registrations",
+        section: "registry",
+        icon: IconFileText,
+      },
       { href: "/dashboard/audit", label: "Audit Log", section: "audit", icon: IconLock },
       { href: "/dashboard/admin", label: "Admin", section: "admin", icon: IconSettings },
-      { href: "/dashboard/notifications", label: "Notifications", section: "notifications", icon: IconBell },
+      {
+        href: "/dashboard/notifications",
+        label: "Notifications",
+        section: "notifications",
+        icon: IconBell,
+      },
     ],
   },
 ];
@@ -308,11 +354,7 @@ export function NavHeader({
     <>
       {/* Mobile Drawer Backdrop */}
       {mobileOpen && (
-        <div
-          className="sidebar-backdrop"
-          onClick={() => setMobileOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       )}
 
       {/* TOP HEADER BAR */}
@@ -335,7 +377,9 @@ export function NavHeader({
             <div className="topbar-brand-group">
               <span className="topbar-brand-badge">DoSJE</span>
               <span className="topbar-brand-title">NETRAM</span>
-              <span className="topbar-brand-divider" aria-hidden="true">/</span>
+              <span className="topbar-brand-divider" aria-hidden="true">
+                /
+              </span>
               <h1 className="topbar-page-title">{activeLabel}</h1>
             </div>
           </div>
@@ -470,7 +514,15 @@ export function NavHeader({
                       )}
                     </span>
                     {isExpanded && (
-                      <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, gap: "0.5rem" }}>
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flex: 1,
+                          gap: "0.5rem",
+                        }}
+                      >
                         <span className="sidepanel-link-text">{item.label}</span>
                         {isNotifications && unreadCount > 0 && (
                           <span
@@ -523,7 +575,10 @@ export function NavHeader({
               )}
             </span>
             {isExpanded && (
-              <span className="sidepanel-link-text" style={{ fontSize: "0.82rem", fontWeight: 500 }}>
+              <span
+                className="sidepanel-link-text"
+                style={{ fontSize: "0.82rem", fontWeight: 500 }}
+              >
                 {isPinned ? "Collapse sidebar" : "Pin sidebar open"}
               </span>
             )}

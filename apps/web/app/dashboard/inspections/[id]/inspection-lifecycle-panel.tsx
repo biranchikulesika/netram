@@ -40,9 +40,7 @@ export function InspectionLifecyclePanel({ inspection }: InspectionLifecyclePane
     stage.statuses.includes(inspection.status),
   );
 
-  const stageLabel = inspection.status
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const stageLabel = inspection.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className="workflow-card">
@@ -56,7 +54,16 @@ export function InspectionLifecyclePanel({ inspection }: InspectionLifecyclePane
             <div key={stage.id} className={`workflow-step ${nodeClass}`}>
               <div className="workflow-node" title={stage.label}>
                 {isPassed ? (
-                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 ) : (

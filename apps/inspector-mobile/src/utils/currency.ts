@@ -14,4 +14,3 @@ export function formatCurrencyString(val: string | number | null | undefined): s
   if (Number.isNaN(num)) return "₹0.00";
   return inrFormat.format(num);
 }
-

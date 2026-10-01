@@ -302,10 +302,7 @@ export default function LoginScreen() {
                         accessibilityState={{ selected: active }}
                       >
                         <Text
-                          style={[
-                            styles.devAccountRole,
-                            active && styles.devAccountRoleActive,
-                          ]}
+                          style={[styles.devAccountRole, active && styles.devAccountRoleActive]}
                         >
                           {account.email}
                         </Text>

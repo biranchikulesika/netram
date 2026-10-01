@@ -1,11 +1,4 @@
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { typography } from "../../theme/colors";
 import { useSettings } from "../../theme/settings-context";
 
@@ -19,22 +12,12 @@ export interface SectionHeaderProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function SectionHeader({
-  title,
-  action,
-  primary = false,
-  style,
-}: SectionHeaderProps) {
+export function SectionHeader({ title, action, primary = false, style }: SectionHeaderProps) {
   const { theme } = useSettings();
 
   return (
     <View style={[styles.container, style]}>
-      <Text
-        style={[
-          styles.title,
-          { color: primary ? theme.navyDark : theme.textMuted },
-        ]}
-      >
+      <Text style={[styles.title, { color: primary ? theme.navyDark : theme.textMuted }]}>
         {title}
       </Text>
 

@@ -117,9 +117,7 @@ function RegisterComplaintContent() {
       return true;
     });
     if (picked.length > 0) {
-      setAttachments((prev) =>
-        [...prev, ...picked].slice(0, MAX_ATTACHMENTS),
-      );
+      setAttachments((prev) => [...prev, ...picked].slice(0, MAX_ATTACHMENTS));
     }
   };
 
@@ -167,301 +165,324 @@ function RegisterComplaintContent() {
 
       <div className={styles.wrapper}>
         <div className={styles.heading}>
-        <h1>
-          <span className={styles.saffron}>Netram</span>{" "}
-          <span className={styles.navy}>Citizen Grievance Portal</span>
-        </h1>
-        <p>File a public grievance against a monitored facility for statutory review</p>
-      </div>
-
-      <div className={styles.card}>
-        {facilitiesError ? (
-          <div className={styles.error}>
-            Unable to load the facility registry. Please retry shortly or contact the district authority.
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className={styles.form}>
-            {step === 1 ? (
-            <fieldset className={styles.section} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
-              <legend className={styles.sectionHead}>
-                <span className={styles.sectionTitle}>Your details</span>
-              </legend>
-
-              <div className={styles.field}>
-                <input
-                  id="complainantName"
-                  type="text"
-                  className={styles.input}
-                  value={complainantName}
-                  onChange={(e) => setComplainantName(e.target.value)}
-                  maxLength={200}
-                  required
-                  aria-label="Your name"
-                  placeholder="Your name"
-                />
-              </div>
-              <div className={styles.field} style={{ marginTop: "0.9rem" }}>
-                <input
-                  id="contactInfo"
-                  type="text"
-                  className={styles.input}
-                  value={contactInfo}
-                  onChange={(e) => setContactInfo(e.target.value)}
-                  maxLength={300}
-                  required
-                  aria-label="Phone or email"
-                  placeholder="Phone or email"
-                />
-              </div>
-              <button
-                type="button"
-                className={styles.continue}
-                disabled={!section1Done}
-                style={{ marginTop: "1rem" }}
-                onClick={() => setStep(2)}
-              >
-                Continue
-              </button>
-            </fieldset>
-            ) : (
-            <>
-              <div className={styles.summary}>
-                <div className={styles.summaryText}>
-                  <span className={styles.summaryLabel}>Filing as</span>
-                  <span className={styles.summaryName}>{complainantName.trim()}</span>
-                  <span className={styles.summaryContact}>{contactInfo.trim()}</span>
-                </div>
-                <button type="button" className={styles.linkBtn} onClick={() => setStep(1)}>
-                  Edit details
-                </button>
-              </div>
-
-            <fieldset className={styles.section} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
-              <legend className={styles.sectionHead}>
-                <span className={styles.sectionTitle}>Your grievance</span>
-              </legend>
-
-              <div className={styles.field} ref={facilityBox}>
-                <label className={styles.label} htmlFor="projectId">
-                  Monitored facility *
-                </label>
-                <input
-                  id="projectId"
-                  type="text"
-                  role="combobox"
-                  aria-expanded={facilityOpen}
-                  aria-controls="facility-list"
-                  aria-autocomplete="list"
-                  autoComplete="off"
-                  className={styles.input}
-                  value={facilityOpen ? facilityQuery : (selectedFacility?.name ?? "")}
-                  onChange={(e) => {
-                    setFacilityQuery(e.target.value);
-                    setFacilityOpen(true);
-                  }}
-                  onFocus={() => {
-                    setFacilityOpen(true);
-                    setFacilityQuery("");
-                  }}
-                  onBlur={() => !projectId && setProjectId("")}
-                  required
-                  placeholder={
-                    facilities.length === 0 ? "Loading facilities…" : "Search facility by name or code"
-                  }
-                />
-                {selectedFacility && !facilityOpen && (
-                  <div className={styles.hint}>{selectedFacility.code}</div>
-                )}
-
-                {facilityOpen && (
-                  <ul className={styles.suggest} id="facility-list" role="listbox">
-                    {facilityMatches.length === 0 && <li className={styles.suggestEmpty}>No matching facility</li>}
-                    {facilityMatches.map((f) => (
-                      <li key={f.id} role="none">
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={f.id === projectId}
-                          className={`${styles.suggestItem}${f.id === projectId ? ` ${styles.suggestItemOn}` : ""}`}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => pickFacility(f)}
-                        >
-                          <span className={styles.suggestName}>{f.name}</span>
-                          <span className={styles.suggestCode}>{f.code}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="description">
-                  Grievance description *
-                </label>
-                <textarea
-                  id="description"
-                  className={`${styles.input} ${styles.textarea}`}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                  minLength={10}
-                  maxLength={8000}
-                  rows={6}
-                  placeholder="Describe the concern observed at the facility."
-                />
-              </div>
-
-              <div className={styles.field}>
-                <div className={styles.labelRow}>
-                  <label className={styles.label} htmlFor="files" style={{ marginBottom: 0 }}>
-                    Supporting evidence <em>optional</em>
-                  </label>
-                  <span className={styles.counter}>
-                    {attachments.length} of {MAX_ATTACHMENTS} added
-                  </span>
-                </div>
-
-                <label
-                  className={`${styles.drop}${attachments.length >= MAX_ATTACHMENTS ? ` ${styles.dropFull}` : ""}`}
-                  htmlFor="files"
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 16V4" />
-                    <path d="m7 9 5-5 5 5" />
-                    <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
-                  </svg>
-                  <span>
-                    {attachments.length >= MAX_ATTACHMENTS ? (
-                      <>Attachment limit reached &mdash; remove one to add another</>
-                    ) : (
-                      <>
-                        <strong>Choose files</strong> or drag them here
-                      </>
-                    )}
-                  </span>
-                  <span className={styles.dropHint}>
-                    Images, video, PDF, documents &middot; 100 MB max each
-                  </span>
-                  <input
-                    id="files"
-                    type="file"
-                    multiple
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,.mp4,.mov,.webm,.txt,.doc,.docx,.xls,.xlsx"
-                    onChange={(e) => handleFiles(e.target.files)}
-                    className={styles.fileInput}
-                    disabled={attachments.length >= MAX_ATTACHMENTS}
-                  />
-                </label>
-
-                {attachments.length > 0 && (
-                  <ul className={styles.files}>
-                    {attachments.map((f, idx) => (
-                      <li key={idx} className={styles.fileRow}>
-                        <span className={styles.fileBadge}>{fileKind(f)}</span>
-                        <span className={styles.fileMeta}>
-                          <span className={styles.fileName}>{f.name}</span>
-                          <span className={styles.fileSize}>
-                            {(f.size / (1024 * 1024)).toFixed(1)} MB
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          aria-label={`Remove ${f.name}`}
-                          title={`Remove ${f.name}`}
-                          onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                          className={styles.fileRemove}
-                        >
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
-                            aria-hidden="true"
-                          >
-                            <path d="M18 6 6 18M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <label
-                htmlFor="declaration"
-                className={`${styles.declaration}${declared ? ` ${styles.declarationDone}` : ""}`}
-                style={{ marginTop: "0.4rem" }}
-              >
-                <input
-                  id="declaration"
-                  type="checkbox"
-                  checked={declared}
-                  onChange={(e) => setDeclared(e.target.checked)}
-                  style={{ accentColor: "#137e3a" }}
-                />
-                <span>
-                  I declare that the information above is true and correct to the best of my knowledge,
-                  and that I am the complainant or authorised to file on their behalf.
-                </span>
-              </label>
-
-              {error && <div className={styles.error}>{error}</div>}
-
-              <button type="submit" className={styles.submit} disabled={isLoading || !declared}>
-                {isLoading ? "Filing Grievance…" : "Submit Grievance"}
-              </button>
-            </fieldset>
-            </>
-          )}
-          </form>
-        )}
-      </div>
-
-      {result && (
-        <div className={styles.receipt}>
-          <div className={styles.receiptTop}>
-            <div>
-              <div className={styles.receiptKicker}>Grievance filed successfully</div>
-              <div className={styles.trackingRow}>
-                <span className={styles.trackingCode}>{result.trackingCode}</span>
-                <button type="button" onClick={handleCopyCode} className={styles.copy}>
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-            </div>
-            <div className={styles.ledger}>Registered in public ledger</div>
-          </div>
-
-          <p className={styles.receiptBody}>
-            Your grievance regarding <strong>{result.projectName}</strong> ({result.projectCode}) has
-            been logged for district authority examination. Keep this tracking code to check status.
-          </p>
-
-          <div className={styles.privacy}>
-            Complainant identity and contact details stay confidential and are omitted from public
-            verification views.
-          </div>
+          <h1>
+            <span className={styles.saffron}>Netram</span>{" "}
+            <span className={styles.navy}>Citizen Grievance Portal</span>
+          </h1>
+          <p>File a public grievance against a monitored facility for statutory review</p>
         </div>
-      )}
 
-      <div className={styles.crossLinks}>
-        <Link href="/" className={styles.crossBtn}>Home</Link>
-        <Link href="/login" className={styles.crossBtn}>Authority Login</Link>
-      </div>
+        <div className={styles.card}>
+          {facilitiesError ? (
+            <div className={styles.error}>
+              Unable to load the facility registry. Please retry shortly or contact the district
+              authority.
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className={styles.form}>
+              {step === 1 ? (
+                <fieldset
+                  className={styles.section}
+                  style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}
+                >
+                  <legend className={styles.sectionHead}>
+                    <span className={styles.sectionTitle}>Your details</span>
+                  </legend>
+
+                  <div className={styles.field}>
+                    <input
+                      id="complainantName"
+                      type="text"
+                      className={styles.input}
+                      value={complainantName}
+                      onChange={(e) => setComplainantName(e.target.value)}
+                      maxLength={200}
+                      required
+                      aria-label="Your name"
+                      placeholder="Your name"
+                    />
+                  </div>
+                  <div className={styles.field} style={{ marginTop: "0.9rem" }}>
+                    <input
+                      id="contactInfo"
+                      type="text"
+                      className={styles.input}
+                      value={contactInfo}
+                      onChange={(e) => setContactInfo(e.target.value)}
+                      maxLength={300}
+                      required
+                      aria-label="Phone or email"
+                      placeholder="Phone or email"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.continue}
+                    disabled={!section1Done}
+                    style={{ marginTop: "1rem" }}
+                    onClick={() => setStep(2)}
+                  >
+                    Continue
+                  </button>
+                </fieldset>
+              ) : (
+                <>
+                  <div className={styles.summary}>
+                    <div className={styles.summaryText}>
+                      <span className={styles.summaryLabel}>Filing as</span>
+                      <span className={styles.summaryName}>{complainantName.trim()}</span>
+                      <span className={styles.summaryContact}>{contactInfo.trim()}</span>
+                    </div>
+                    <button type="button" className={styles.linkBtn} onClick={() => setStep(1)}>
+                      Edit details
+                    </button>
+                  </div>
+
+                  <fieldset
+                    className={styles.section}
+                    style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}
+                  >
+                    <legend className={styles.sectionHead}>
+                      <span className={styles.sectionTitle}>Your grievance</span>
+                    </legend>
+
+                    <div className={styles.field} ref={facilityBox}>
+                      <label className={styles.label} htmlFor="projectId">
+                        Monitored facility *
+                      </label>
+                      <input
+                        id="projectId"
+                        type="text"
+                        role="combobox"
+                        aria-expanded={facilityOpen}
+                        aria-controls="facility-list"
+                        aria-autocomplete="list"
+                        autoComplete="off"
+                        className={styles.input}
+                        value={facilityOpen ? facilityQuery : (selectedFacility?.name ?? "")}
+                        onChange={(e) => {
+                          setFacilityQuery(e.target.value);
+                          setFacilityOpen(true);
+                        }}
+                        onFocus={() => {
+                          setFacilityOpen(true);
+                          setFacilityQuery("");
+                        }}
+                        onBlur={() => !projectId && setProjectId("")}
+                        required
+                        placeholder={
+                          facilities.length === 0
+                            ? "Loading facilities…"
+                            : "Search facility by name or code"
+                        }
+                      />
+                      {selectedFacility && !facilityOpen && (
+                        <div className={styles.hint}>{selectedFacility.code}</div>
+                      )}
+
+                      {facilityOpen && (
+                        <ul className={styles.suggest} id="facility-list" role="listbox">
+                          {facilityMatches.length === 0 && (
+                            <li className={styles.suggestEmpty}>No matching facility</li>
+                          )}
+                          {facilityMatches.map((f) => (
+                            <li key={f.id} role="none">
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={f.id === projectId}
+                                className={`${styles.suggestItem}${f.id === projectId ? ` ${styles.suggestItemOn}` : ""}`}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => pickFacility(f)}
+                              >
+                                <span className={styles.suggestName}>{f.name}</span>
+                                <span className={styles.suggestCode}>{f.code}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className={styles.field}>
+                      <label className={styles.label} htmlFor="description">
+                        Grievance description *
+                      </label>
+                      <textarea
+                        id="description"
+                        className={`${styles.input} ${styles.textarea}`}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        required
+                        minLength={10}
+                        maxLength={8000}
+                        rows={6}
+                        placeholder="Describe the concern observed at the facility."
+                      />
+                    </div>
+
+                    <div className={styles.field}>
+                      <div className={styles.labelRow}>
+                        <label className={styles.label} htmlFor="files" style={{ marginBottom: 0 }}>
+                          Supporting evidence <em>optional</em>
+                        </label>
+                        <span className={styles.counter}>
+                          {attachments.length} of {MAX_ATTACHMENTS} added
+                        </span>
+                      </div>
+
+                      <label
+                        className={`${styles.drop}${attachments.length >= MAX_ATTACHMENTS ? ` ${styles.dropFull}` : ""}`}
+                        htmlFor="files"
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M12 16V4" />
+                          <path d="m7 9 5-5 5 5" />
+                          <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
+                        </svg>
+                        <span>
+                          {attachments.length >= MAX_ATTACHMENTS ? (
+                            <>Attachment limit reached &mdash; remove one to add another</>
+                          ) : (
+                            <>
+                              <strong>Choose files</strong> or drag them here
+                            </>
+                          )}
+                        </span>
+                        <span className={styles.dropHint}>
+                          Images, video, PDF, documents &middot; 100 MB max each
+                        </span>
+                        <input
+                          id="files"
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.mp4,.mov,.webm,.txt,.doc,.docx,.xls,.xlsx"
+                          onChange={(e) => handleFiles(e.target.files)}
+                          className={styles.fileInput}
+                          disabled={attachments.length >= MAX_ATTACHMENTS}
+                        />
+                      </label>
+
+                      {attachments.length > 0 && (
+                        <ul className={styles.files}>
+                          {attachments.map((f, idx) => (
+                            <li key={idx} className={styles.fileRow}>
+                              <span className={styles.fileBadge}>{fileKind(f)}</span>
+                              <span className={styles.fileMeta}>
+                                <span className={styles.fileName}>{f.name}</span>
+                                <span className={styles.fileSize}>
+                                  {(f.size / (1024 * 1024)).toFixed(1)} MB
+                                </span>
+                              </span>
+                              <button
+                                type="button"
+                                aria-label={`Remove ${f.name}`}
+                                title={`Remove ${f.name}`}
+                                onClick={() =>
+                                  setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                                }
+                                className={styles.fileRemove}
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.2"
+                                  strokeLinecap="round"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M18 6 6 18M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <label
+                      htmlFor="declaration"
+                      className={`${styles.declaration}${declared ? ` ${styles.declarationDone}` : ""}`}
+                      style={{ marginTop: "0.4rem" }}
+                    >
+                      <input
+                        id="declaration"
+                        type="checkbox"
+                        checked={declared}
+                        onChange={(e) => setDeclared(e.target.checked)}
+                        style={{ accentColor: "#137e3a" }}
+                      />
+                      <span>
+                        I declare that the information above is true and correct to the best of my
+                        knowledge, and that I am the complainant or authorised to file on their
+                        behalf.
+                      </span>
+                    </label>
+
+                    {error && <div className={styles.error}>{error}</div>}
+
+                    <button
+                      type="submit"
+                      className={styles.submit}
+                      disabled={isLoading || !declared}
+                    >
+                      {isLoading ? "Filing Grievance…" : "Submit Grievance"}
+                    </button>
+                  </fieldset>
+                </>
+              )}
+            </form>
+          )}
+        </div>
+
+        {result && (
+          <div className={styles.receipt}>
+            <div className={styles.receiptTop}>
+              <div>
+                <div className={styles.receiptKicker}>Grievance filed successfully</div>
+                <div className={styles.trackingRow}>
+                  <span className={styles.trackingCode}>{result.trackingCode}</span>
+                  <button type="button" onClick={handleCopyCode} className={styles.copy}>
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+              <div className={styles.ledger}>Registered in public ledger</div>
+            </div>
+
+            <p className={styles.receiptBody}>
+              Your grievance regarding <strong>{result.projectName}</strong> ({result.projectCode})
+              has been logged for district authority examination. Keep this tracking code to check
+              status.
+            </p>
+
+            <div className={styles.privacy}>
+              Complainant identity and contact details stay confidential and are omitted from public
+              verification views.
+            </div>
+          </div>
+        )}
+
+        <div className={styles.crossLinks}>
+          <Link href="/" className={styles.crossBtn}>
+            Home
+          </Link>
+          <Link href="/login" className={styles.crossBtn}>
+            Authority Login
+          </Link>
+        </div>
       </div>
     </>
   );

@@ -41,7 +41,9 @@ describe("InspectionScheduler", () => {
   it("skips scheduling when score is below threshold", async () => {
     const mockRiskRepo = {
       hasOpenInspection: vi.fn().mockResolvedValue(false),
-      getLastInspectionDates: vi.fn().mockResolvedValue({ lastCompletedAt: null, lastScheduledAt: null }),
+      getLastInspectionDates: vi
+        .fn()
+        .mockResolvedValue({ lastCompletedAt: null, lastScheduledAt: null }),
     };
     const mockFlagRepo = {
       findOpenFlagByProject: vi.fn(),
@@ -67,7 +69,9 @@ describe("InspectionScheduler", () => {
   it("skips scheduling when project already has an active open inspection", async () => {
     const mockRiskRepo = {
       hasOpenInspection: vi.fn().mockResolvedValue(true),
-      getLastInspectionDates: vi.fn().mockResolvedValue({ lastCompletedAt: null, lastScheduledAt: null }),
+      getLastInspectionDates: vi
+        .fn()
+        .mockResolvedValue({ lastCompletedAt: null, lastScheduledAt: null }),
     };
     const mockFlagRepo = {
       findOpenFlagByProject: vi.fn(),
@@ -131,7 +135,9 @@ describe("InspectionScheduler", () => {
     const mockFlagRepo = {
       findOpenFlagByProject: vi.fn().mockResolvedValue(null),
       createWithAudit: vi.fn().mockResolvedValue({ id: "flag-new", status: "open" }),
-      linkInspectionWithAudit: vi.fn().mockResolvedValue({ id: "flag-new", status: "inspection_in_progress" }),
+      linkInspectionWithAudit: vi
+        .fn()
+        .mockResolvedValue({ id: "flag-new", status: "inspection_in_progress" }),
     };
     const mockInspectionService = {
       createInspection: vi.fn().mockResolvedValue({ id: "insp-new", status: "assigned" }),
@@ -156,7 +162,11 @@ describe("InspectionScheduler", () => {
         type: "special",
       }),
     );
-    expect(mockFlagRepo.linkInspectionWithAudit).toHaveBeenCalledWith("flag-new", "insp-new", mockCtx.userId);
+    expect(mockFlagRepo.linkInspectionWithAudit).toHaveBeenCalledWith(
+      "flag-new",
+      "insp-new",
+      mockCtx.userId,
+    );
   });
 
   it("enforces same-day guard even for critical scores if scheduled < 12h ago", async () => {

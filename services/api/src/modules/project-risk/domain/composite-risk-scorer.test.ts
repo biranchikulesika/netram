@@ -3,7 +3,9 @@ import { CompositeRiskScorer } from "./composite-risk-scorer.js";
 import type { ProjectRiskEvaluationContext } from "../application/project-risk-context.js";
 import { validateRiskWeights, SCORING_VERSION } from "../config/risk-config.js";
 
-function createDummyContext(overrides?: Partial<ProjectRiskEvaluationContext>): ProjectRiskEvaluationContext {
+function createDummyContext(
+  overrides?: Partial<ProjectRiskEvaluationContext>,
+): ProjectRiskEvaluationContext {
   return {
     project: {
       id: "project-1",
@@ -195,15 +197,44 @@ describe("CompositeRiskScorer", () => {
           { id: "f3", inspectionId: "i1", severity: "critical", status: "confirmed" },
         ], // 90 raw -> 90 * 25% = 22.5 pts
         correctiveActions: [
-          { id: "ca1", findingId: "f1", status: "pending", deadline: new Date(Date.now() - 100000).toISOString() },
+          {
+            id: "ca1",
+            findingId: "f1",
+            status: "pending",
+            deadline: new Date(Date.now() - 100000).toISOString(),
+          },
         ], // +25 raw -> capped 100 -> 25 pts
       },
       attendance: {
         anomalies: [
-          { id: "a1", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
-          { id: "a2", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
-          { id: "a3", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
-          { id: "a4", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
+          {
+            id: "a1",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
+          {
+            id: "a2",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
+          {
+            id: "a3",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
+          {
+            id: "a4",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
         ], // 100 raw -> 100 * 20% = 20 pts
       },
     });
@@ -220,7 +251,9 @@ describe("CompositeRiskScorer", () => {
       financial: {
         totalScore: 160, // 160/220 = 72.7% -> >= 60% severe
         riskLevel: "high",
-        triggeredRules: [{ ruleCode: "EXP-001", ruleName: "Over Allocation", scoreContribution: 160 }],
+        triggeredRules: [
+          { ruleCode: "EXP-001", ruleName: "Over Allocation", scoreContribution: 160 },
+        ],
         maxPossibleRawScore: 220,
         allocationsCount: 1,
         expensesCount: 5,
@@ -228,9 +261,27 @@ describe("CompositeRiskScorer", () => {
       },
       attendance: {
         anomalies: [
-          { id: "a1", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
-          { id: "a2", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
-          { id: "a3", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "NEW", operationalDate: "2026-09-01" },
+          {
+            id: "a1",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
+          {
+            id: "a2",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
+          {
+            id: "a3",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "NEW",
+            operationalDate: "2026-09-01",
+          },
         ], // 75 raw -> >= 60% severe
       },
     });
@@ -248,8 +299,20 @@ describe("CompositeRiskScorer", () => {
     const ctx = createDummyContext({
       attendance: {
         anomalies: [
-          { id: "a1", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "DISMISSED", operationalDate: "2026-09-01" },
-          { id: "a2", anomalyType: "HISTORICAL_DEVIATION", severity: "HIGH", state: "FALSE_POSITIVE", operationalDate: "2026-09-02" },
+          {
+            id: "a1",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "DISMISSED",
+            operationalDate: "2026-09-01",
+          },
+          {
+            id: "a2",
+            anomalyType: "HISTORICAL_DEVIATION",
+            severity: "HIGH",
+            state: "FALSE_POSITIVE",
+            operationalDate: "2026-09-02",
+          },
         ],
       },
     });
@@ -267,7 +330,13 @@ describe("CompositeRiskScorer", () => {
     const ctx = createDummyContext({
       attendance: {
         anomalies: [
-          { id: "a1", anomalyType: "CROSS_SOURCE_DISCREPANCY", severity: "CRITICAL", state: "ACTIONED", operationalDate: "2026-09-01" },
+          {
+            id: "a1",
+            anomalyType: "CROSS_SOURCE_DISCREPANCY",
+            severity: "CRITICAL",
+            state: "ACTIONED",
+            operationalDate: "2026-09-01",
+          },
         ],
       },
     });
@@ -375,8 +444,18 @@ describe("CompositeRiskScorer", () => {
         inspections: [],
         findings: [],
         correctiveActions: [
-          { id: "ca1", findingId: "f1", status: "accepted", deadline: new Date(Date.now() - 100000).toISOString() },
-          { id: "ca2", findingId: "f2", status: "rejected", deadline: new Date(Date.now() - 100000).toISOString() },
+          {
+            id: "ca1",
+            findingId: "f1",
+            status: "accepted",
+            deadline: new Date(Date.now() - 100000).toISOString(),
+          },
+          {
+            id: "ca2",
+            findingId: "f2",
+            status: "rejected",
+            deadline: new Date(Date.now() - 100000).toISOString(),
+          },
         ],
       },
     });

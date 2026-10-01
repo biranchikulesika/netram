@@ -10,11 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, typography } from "../src/theme/colors";
-import {
-  Icon,
-  NetramCard,
-  SectionHeader,
-} from "../src/components/ui";
+import { Icon, NetramCard, SectionHeader } from "../src/components/ui";
 import { useAuth } from "../src/auth/auth-context";
 import { useSettings } from "../src/theme/settings-context";
 
@@ -42,8 +38,7 @@ export default function ProfileScreen() {
 
   const emailPrefix = user?.email?.split("@")[0];
   const displayName =
-    user?.displayName ||
-    (emailPrefix ? emailPrefix.replace(/[._-]/g, " ") : "Inspector");
+    user?.displayName || (emailPrefix ? emailPrefix.replace(/[._-]/g, " ") : "Inspector");
   const officerId = user?.id ? `INSP-${user.id.slice(0, 8).toUpperCase()}` : "-";
   const initials =
     displayName
@@ -62,7 +57,12 @@ export default function ProfileScreen() {
       >
         {/* ── Officer Identity Hero Card ── */}
         <View style={[styles.heroCard, { backgroundColor: bgCard, borderColor }]}>
-          <View style={[styles.avatar, { borderColor: theme.borderSubtle, backgroundColor: theme.navyDark }]}>
+          <View
+            style={[
+              styles.avatar,
+              { borderColor: theme.borderSubtle, backgroundColor: theme.navyDark },
+            ]}
+          >
             <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
           <Text style={[styles.nameText, { color: theme.navyDark }]}>{displayName}</Text>
@@ -78,9 +78,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.infoCol}>
               <Text style={[styles.infoLabel, { color: textMuted }]}>Official Email</Text>
-              <Text style={[styles.infoValue, { color: textPrimary }]}>
-                {user?.email ?? "-"}
-              </Text>
+              <Text style={[styles.infoValue, { color: textPrimary }]}>{user?.email ?? "-"}</Text>
             </View>
           </View>
 
@@ -106,9 +104,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.infoCol}>
               <Text style={[styles.infoLabel, { color: textMuted }]}>Account Type</Text>
-              <Text style={[styles.infoValue, { color: textPrimary }]}>
-                {user?.type ?? "-"}
-              </Text>
+              <Text style={[styles.infoValue, { color: textPrimary }]}>{user?.type ?? "-"}</Text>
             </View>
           </View>
         </NetramCard>

@@ -1,20 +1,9 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { NetramApiClient } from "@netram/api-client";
 import { loadMobileEnv } from "@netram/config/env/mobile";
 import * as Notifications from "expo-notifications";
-import {
-  clearSession,
-  getStoredSession,
-  loginAsInspector,
-  type InspectorUser,
-} from "./session";
+import { clearSession, getStoredSession, loginAsInspector, type InspectorUser } from "./session";
 
 async function registerForPushNotifications(apiClient: NetramApiClient) {
   try {
@@ -50,11 +39,7 @@ export interface AuthContextValue {
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const SessionProvider = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<InspectorUser | null>(null);
   const [_initializing, setInitializing] = useState(true);

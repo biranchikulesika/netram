@@ -8,7 +8,9 @@ interface ScheduleFacilityInspectionButtonProps {
   project: { id: string; name: string; code: string; districtId: string | null };
 }
 
-export function ScheduleFacilityInspectionButton({ project }: ScheduleFacilityInspectionButtonProps) {
+export function ScheduleFacilityInspectionButton({
+  project,
+}: ScheduleFacilityInspectionButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 

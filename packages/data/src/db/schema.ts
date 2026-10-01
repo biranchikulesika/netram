@@ -219,33 +219,37 @@ export const programmes = pgTable("programmes", {
 
 /* ---------- Projects ---------- */
 
-export const projects = pgTable("projects", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  code: varchar("code", { length: 50 }).unique().notNull(),
-  name: varchar("name", { length: 300 }).notNull(),
-  type: varchar("type", { length: 50 }).notNull().default("institution"),
-  description: text("description"),
-  organisationId: uuid("organisation_id").references(() => organisations.id),
-  authorityId: uuid("authority_id").references(() => authorities.id),
-  districtId: uuid("district_id").references(() => districts.id),
-  /** Village-level location for village-type targets (PM-AJAY Adarsh Gram). */
-  villageId: uuid("village_id").references(() => villages.id),
-  /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
-  schemeComponentId: uuid("scheme_component_id").references(() => schemeComponents.id),
-  status: varchar("status", { length: 30 }).notNull().default("Draft"),
-  approvedById: uuid("approved_by_id").references(() => users.id),
-  approvedAt: timestamp("approved_at", { withTimezone: true }),
-  /** Structured facility contact details (person in charge + contacts). */
-  contactName: varchar("contact_name", { length: 200 }),
-  contactPhone: varchar("contact_phone", { length: 40 }),
-  contactEmail: varchar("contact_email", { length: 200 }),
-  programmeIds: json("programme_ids").$type<string[]>().default([]).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [
-  // Jurisdiction-scoped verification queue and lifecycle filters (§16).
-  index("projects_status_district_idx").on(t.status, t.districtId),
-]);
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: varchar("code", { length: 50 }).unique().notNull(),
+    name: varchar("name", { length: 300 }).notNull(),
+    type: varchar("type", { length: 50 }).notNull().default("institution"),
+    description: text("description"),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    authorityId: uuid("authority_id").references(() => authorities.id),
+    districtId: uuid("district_id").references(() => districts.id),
+    /** Village-level location for village-type targets (PM-AJAY Adarsh Gram). */
+    villageId: uuid("village_id").references(() => villages.id),
+    /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
+    schemeComponentId: uuid("scheme_component_id").references(() => schemeComponents.id),
+    status: varchar("status", { length: 30 }).notNull().default("Draft"),
+    approvedById: uuid("approved_by_id").references(() => users.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    /** Structured facility contact details (person in charge + contacts). */
+    contactName: varchar("contact_name", { length: 200 }),
+    contactPhone: varchar("contact_phone", { length: 40 }),
+    contactEmail: varchar("contact_email", { length: 200 }),
+    programmeIds: json("programme_ids").$type<string[]>().default([]).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Jurisdiction-scoped verification queue and lifecycle filters (§16).
+    index("projects_status_district_idx").on(t.status, t.districtId),
+  ],
+);
 
 export const projectGeofences = pgTable("project_geofences", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -325,27 +329,31 @@ export const inspectionTemplates = pgTable("inspection_templates", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const inspections = pgTable("inspections", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id")
-    .notNull()
-    .references(() => projects.id),
-  templateId: uuid("template_id").references(() => inspectionTemplates.id),
-  type: varchar("type", { length: 50 }).notNull(),
-  trigger: varchar("trigger", { length: 50 }).notNull(),
-  status: varchar("status", { length: 30 }).notNull().default("assigned"),
-  disclosurePolicyId: uuid("disclosure_policy_id").references(() => disclosurePolicies.id),
-  scheduledStart: timestamp("scheduled_start", { withTimezone: true }),
-  scheduledEnd: timestamp("scheduled_end", { withTimezone: true }),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  submittedAt: timestamp("submitted_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [
-  // Review queues filter by workflow status; findings join on it (§32).
-  index("inspections_status_idx").on(t.status),
-  index("inspections_project_idx").on(t.projectId),
-]);
+export const inspections = pgTable(
+  "inspections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    templateId: uuid("template_id").references(() => inspectionTemplates.id),
+    type: varchar("type", { length: 50 }).notNull(),
+    trigger: varchar("trigger", { length: 50 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("assigned"),
+    disclosurePolicyId: uuid("disclosure_policy_id").references(() => disclosurePolicies.id),
+    scheduledStart: timestamp("scheduled_start", { withTimezone: true }),
+    scheduledEnd: timestamp("scheduled_end", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Review queues filter by workflow status; findings join on it (§32).
+    index("inspections_status_idx").on(t.status),
+    index("inspections_project_idx").on(t.projectId),
+  ],
+);
 
 export const inspectionAssignments = pgTable("inspection_assignments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -467,26 +475,30 @@ export const correctiveActionFiles = pgTable("corrective_action_files", {
 
 /* ---------- Complaints ---------- */
 
-export const complaints = pgTable("complaints", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id")
-    .notNull()
-    .references(() => projects.id),
-  complainantName: varchar("complainant_name", { length: 200 }),
-  contactInfo: varchar("contact_info", { length: 300 }),
-  trackingCode: varchar("tracking_code", { length: 50 }).unique().notNull(),
-  description: text("description").notNull(),
-  status: varchar("status", { length: 30 }).notNull().default("received"),
-  receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
-  resolutionText: text("resolution_text"),
-  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [
-  // Oversight queue: status + receipt recency; jurisdiction resolved via the
-  // project join (§35).
-  index("complaints_status_received_idx").on(t.status, t.receivedAt),
-]);
+export const complaints = pgTable(
+  "complaints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    complainantName: varchar("complainant_name", { length: 200 }),
+    contactInfo: varchar("contact_info", { length: 300 }),
+    trackingCode: varchar("tracking_code", { length: 50 }).unique().notNull(),
+    description: text("description").notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("received"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+    resolutionText: text("resolution_text"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Oversight queue: status + receipt recency; jurisdiction resolved via the
+    // project join (§35).
+    index("complaints_status_received_idx").on(t.status, t.receivedAt),
+  ],
+);
 
 /**
  * Supporting attachments (PDFs, photos, videos, docs) lodged with a public
@@ -507,24 +519,28 @@ export const complaintFiles = pgTable("complaint_files", {
 
 /* ---------- AI ---------- */
 
-export const aiAnomalies = pgTable("ai_anomalies", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  inspectionId: uuid("inspection_id").references(() => inspections.id),
-  evidenceId: uuid("evidence_id").references(() => evidence.id),
-  type: varchar("type", { length: 80 }).notNull(),
-  severity: varchar("severity", { length: 20 }).notNull(),
-  confidence: real("confidence").notNull(),
-  modelVersion: varchar("model_version", { length: 50 }),
-  explanation: text("explanation"),
-  status: varchar("status", { length: 30 }).notNull().default("new"),
-  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  reviewedBy: uuid("reviewed_by").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [
-  // Review queue filters (§36): advisory alerts await authority review.
-  index("ai_anomalies_status_created_idx").on(t.status, t.createdAt),
-  index("ai_anomalies_inspection_idx").on(t.inspectionId),
-]);
+export const aiAnomalies = pgTable(
+  "ai_anomalies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    inspectionId: uuid("inspection_id").references(() => inspections.id),
+    evidenceId: uuid("evidence_id").references(() => evidence.id),
+    type: varchar("type", { length: 80 }).notNull(),
+    severity: varchar("severity", { length: 20 }).notNull(),
+    confidence: real("confidence").notNull(),
+    modelVersion: varchar("model_version", { length: 50 }),
+    explanation: text("explanation"),
+    status: varchar("status", { length: 30 }).notNull().default("new"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: uuid("reviewed_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Review queue filters (§36): advisory alerts await authority review.
+    index("ai_anomalies_status_created_idx").on(t.status, t.createdAt),
+    index("ai_anomalies_inspection_idx").on(t.inspectionId),
+  ],
+);
 
 /* ---------- CCTV ---------- */
 
@@ -669,26 +685,30 @@ export const auditEvents = pgTable("audit_events", {
 
 /* ---------- Outbox ---------- */
 
-export const outboxEvents = pgTable("outbox_events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  type: varchar("type", { length: 80 }).notNull(),
-  correlationId: varchar("correlation_id", { length: 100 }).notNull(),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
-  actorUserId: uuid("actor_user_id").references(() => users.id),
-  resourceType: varchar("resource_type", { length: 50 }).notNull(),
-  resourceId: varchar("resource_id", { length: 100 }).notNull(),
-  payload: json("payload").$type<Record<string, unknown>>().default({}).notNull(),
-  status: varchar("status", { length: 20 }).notNull().default("pending"),
-  attemptCount: integer("attempt_count").notNull().default(0),
-  availableAfter: timestamp("available_after", { withTimezone: true }),
-  lastError: text("last_error"),
-  processedAt: timestamp("processed_at", { withTimezone: true }),
-}, (t) => [
-  // Dispatcher poll + resource-history reads (§27).
-  index("outbox_events_status_idx").on(t.status, t.availableAfter),
-  index("outbox_events_type_idx").on(t.type),
-  index("outbox_events_resource_idx").on(t.resourceType, t.resourceId),
-]);
+export const outboxEvents = pgTable(
+  "outbox_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: varchar("type", { length: 80 }).notNull(),
+    correlationId: varchar("correlation_id", { length: 100 }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+    actorUserId: uuid("actor_user_id").references(() => users.id),
+    resourceType: varchar("resource_type", { length: 50 }).notNull(),
+    resourceId: varchar("resource_id", { length: 100 }).notNull(),
+    payload: json("payload").$type<Record<string, unknown>>().default({}).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    availableAfter: timestamp("available_after", { withTimezone: true }),
+    lastError: text("last_error"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [
+    // Dispatcher poll + resource-history reads (§27).
+    index("outbox_events_status_idx").on(t.status, t.availableAfter),
+    index("outbox_events_type_idx").on(t.type),
+    index("outbox_events_resource_idx").on(t.resourceType, t.resourceId),
+  ],
+);
 
 /* ---------- Feature Flags ---------- */
 
@@ -1214,24 +1234,21 @@ export const financialDocuments = pgTable(
   ],
 );
 
-export const financialRiskRules = pgTable(
-  "financial_risk_rules",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    code: varchar("code", { length: 50 }).unique().notNull(),
-    name: varchar("name", { length: 200 }).notNull(),
-    category: varchar("category", { length: 80 }).notNull(),
-    description: text("description").notNull(),
-    conditionConfig: json("condition_config").$type<Record<string, unknown>>().default({}).notNull(),
-    weight: integer("weight").notNull(),
-    severity: varchar("severity", { length: 20 }).notNull(),
-    enabled: boolean("enabled").default(true).notNull(),
-    createdById: uuid("created_by_id").references(() => users.id),
-    updatedById: uuid("updated_by_id").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-);
+export const financialRiskRules = pgTable("financial_risk_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull(),
+  description: text("description").notNull(),
+  conditionConfig: json("condition_config").$type<Record<string, unknown>>().default({}).notNull(),
+  weight: integer("weight").notNull(),
+  severity: varchar("severity", { length: 20 }).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 export const financialRiskEvents = pgTable(
   "financial_risk_events",
@@ -1274,7 +1291,10 @@ export const inspectionFlags = pgTable(
     riskLevel: varchar("risk_level", { length: 20 }).notNull(),
     triggerSource: varchar("trigger_source", { length: 30 }).notNull(),
     explanation: text("explanation").notNull(),
-    evidenceRefs: json("evidence_refs").$type<Array<Record<string, unknown>>>().default([]).notNull(),
+    evidenceRefs: json("evidence_refs")
+      .$type<Array<Record<string, unknown>>>()
+      .default([])
+      .notNull(),
     status: varchar("status", { length: 40 }).notNull().default("open"),
     assignedInspectorId: uuid("assigned_inspector_id").references(() => users.id),
     linkedInspectionId: uuid("linked_inspection_id").references(() => inspections.id),
@@ -1312,12 +1332,30 @@ export const projectRiskSnapshots = pgTable(
     attendanceAnomalyScore: integer("attendance_anomaly_score").notNull(),
     complaintDensityScore: integer("complaint_density_score").notNull(),
     aiAnomalyScore: integer("ai_anomaly_score").notNull(),
-    financialSignals: json("financial_signals").$type<Record<string, unknown>>().default({}).notNull(),
-    inspectionQualitySignals: json("inspection_quality_signals").$type<Record<string, unknown>>().default({}).notNull(),
-    attendanceAnomalySignals: json("attendance_anomaly_signals").$type<Record<string, unknown>>().default({}).notNull(),
-    complaintDensitySignals: json("complaint_density_signals").$type<Record<string, unknown>>().default({}).notNull(),
-    aiAnomalySignals: json("ai_anomaly_signals").$type<Record<string, unknown>>().default({}).notNull(),
-    topContributors: json("top_contributors").$type<Array<Record<string, unknown>>>().default([]).notNull(),
+    financialSignals: json("financial_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    inspectionQualitySignals: json("inspection_quality_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    attendanceAnomalySignals: json("attendance_anomaly_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    complaintDensitySignals: json("complaint_density_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    aiAnomalySignals: json("ai_anomaly_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    topContributors: json("top_contributors")
+      .$type<Array<Record<string, unknown>>>()
+      .default([])
+      .notNull(),
     explanation: text("explanation").notNull(),
     inspectionFlagId: uuid("inspection_flag_id").references(() => inspectionFlags.id),
     scheduledInspectionId: uuid("scheduled_inspection_id").references(() => inspections.id),
@@ -1330,4 +1368,3 @@ export const projectRiskSnapshots = pgTable(
     index("project_risk_snapshots_risk_level_idx").on(t.riskLevel),
   ],
 );
-

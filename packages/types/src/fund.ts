@@ -37,12 +37,7 @@ export interface FundRelease {
 }
 
 export type ExpenseStatus =
-  | "draft"
-  | "submitted"
-  | "under_review"
-  | "verified"
-  | "rejected"
-  | "voided";
+  "draft" | "submitted" | "under_review" | "verified" | "rejected" | "voided";
 
 export interface Expense {
   id: UUID;

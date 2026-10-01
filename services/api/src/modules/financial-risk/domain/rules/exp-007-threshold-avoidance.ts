@@ -1,5 +1,9 @@
 import type { FinancialRiskRule } from "@netram/types";
-import type { RiskEvaluationContext, RuleEvaluationResult, RuleEvaluator } from "../rule-evaluator.js";
+import type {
+  RiskEvaluationContext,
+  RuleEvaluationResult,
+  RuleEvaluator,
+} from "../rule-evaluator.js";
 
 export class Exp007ThresholdAvoidanceRule implements RuleEvaluator {
   readonly code = "EXP-007";
@@ -19,7 +23,7 @@ export class Exp007ThresholdAvoidanceRule implements RuleEvaluator {
       minCount?: number;
     };
     const splitThreshold = config.splitThreshold ?? 250000;
-    const lowerBoundRatio = config.lowerBoundRatio ?? 0.90;
+    const lowerBoundRatio = config.lowerBoundRatio ?? 0.9;
     const windowDays = config.windowDays ?? 7;
     const minCount = config.minCount ?? 3;
 

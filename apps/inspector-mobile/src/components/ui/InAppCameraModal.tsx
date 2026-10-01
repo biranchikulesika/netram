@@ -12,11 +12,7 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
-import {
-  CameraView,
-  useCameraPermissions,
-  useMicrophonePermissions,
-} from "expo-camera";
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "./Icon";
 import { InteractiveVideoPlayer } from "./InteractiveVideoPlayer";
@@ -158,15 +154,12 @@ export function InAppCameraModal({
   }, []);
 
   // Collect a fresh capture onto the roll. The user reviews and saves later.
-  const addCapture = useCallback(
-    (item: Omit<CapturedMediaItem, "id" | "note">) => {
-      setCaptures((prev) => [
-        ...prev,
-        { ...item, id: `capture-${Date.now()}-${prev.length}`, note: "" },
-      ]);
-    },
-    [],
-  );
+  const addCapture = useCallback((item: Omit<CapturedMediaItem, "id" | "note">) => {
+    setCaptures((prev) => [
+      ...prev,
+      { ...item, id: `capture-${Date.now()}-${prev.length}`, note: "" },
+    ]);
+  }, []);
 
   // Handle Photo Capture (Instantaneous)
   const handleTakePhoto = async () => {
@@ -394,9 +387,7 @@ export function InAppCameraModal({
 
   const handleNoteChange = (text: string) => {
     if (reviewIndex === null) return;
-    setCaptures((prev) =>
-      prev.map((c, i) => (i === reviewIndex ? { ...c, note: text } : c)),
-    );
+    setCaptures((prev) => prev.map((c, i) => (i === reviewIndex ? { ...c, note: text } : c)));
   };
 
   const handleDiscardCurrent = () => {

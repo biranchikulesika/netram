@@ -48,7 +48,10 @@ describe("Phase 2 - Inspection Workflow (Core) Specifications", () => {
       // 1. start_inspection
       await queue.startInspection(inspectionId);
       // 2. add_observation / record_observation
-      await queue.recordObservation(inspectionId, "Site perimeter barricading is properly installed.");
+      await queue.recordObservation(
+        inspectionId,
+        "Site perimeter barricading is properly installed.",
+      );
       // 3. capture_evidence
       await captureEvidenceOffline(queue, {
         inspectionId,
@@ -134,7 +137,6 @@ describe("Phase 2 - Inspection Workflow (Core) Specifications", () => {
       expect(isFresh(freshLocation)).toBe(true);
       expect(isFresh(staleLocation)).toBe(false);
     });
-
   });
 
   // ---------------------------------------------------------------------------

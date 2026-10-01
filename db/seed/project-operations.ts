@@ -367,7 +367,8 @@ const PROFILES: ProjectSpec[] = [
       scheme: "Social audit / compliance review",
       allocated: 1_180_000,
       fiscalYear: "2025-26",
-      description: "Compliance review remediation budget held pending resolution of the procurement finding.",
+      description:
+        "Compliance review remediation budget held pending resolution of the procurement finding.",
       releases: [[400_000, "2026-03-02", "TR/SAR/25-26/0011"]],
     },
     expenses: [
@@ -498,7 +499,8 @@ const PROFILES: ProjectSpec[] = [
             severity: "low",
             description:
               "The overhead tank was not cleaned within the twelve-month interval recorded in the maintenance register; the last entry was fourteen months old.",
-            remediation: "Clean the overhead tank and set an eleven-month reminder in the register.",
+            remediation:
+              "Clean the overhead tank and set an eleven-month reminder in the register.",
             outcome: "done",
             dueInDays: 21,
           },
@@ -620,7 +622,8 @@ const PROFILES: ProjectSpec[] = [
       {
         key: "purisch-medical-jan",
         category: "Medical supplies",
-        description: "Pharmacy stock for the January 2026 cycle including the prescribed low-salt diet items.",
+        description:
+          "Pharmacy stock for the January 2026 cycle including the prescribed low-salt diet items.",
         amount: 27_400,
         date: "2026-01-20",
         vendor: "Puri Medical Agencies",
@@ -782,6 +785,73 @@ const PROFILES: ProjectSpec[] = [
       description: "Residential block and kitchen; sanction pending verification outcome.",
       releases: [[688_000, "2026-01-27", "TR/PMJ/25-26/0109"]],
     },
+    // Spend against the single 2026-01-27 instalment. 603,700 of the 688,000
+    // released is accounted for below, which is what leaves the sanction
+    // "pending verification": the money is committed but the block is not yet
+    // at the sanctioned 80 beds (see the 2026-08-13 INFRA finding).
+    expenses: [
+      {
+        key: "rajdhani-civil-works",
+        category: "Civil works",
+        description:
+          "Second running bill for the residential block: slab, columns and plastering for the first two floors.",
+        amount: 312_000,
+        date: "2026-03-11",
+        vendor: "Sundarpada Buildtech",
+        gstin: "21AAECS4471K1Z8",
+        invoice: "SBT/26-27/0311",
+        status: "verified",
+      },
+      {
+        key: "rajdhani-kitchen-equipment",
+        category: "Kitchen equipment",
+        description:
+          "Cooking ranges, vessels and steel counters for the common kitchen, against the works schedule.",
+        amount: 96_500,
+        date: "2026-04-22",
+        vendor: "Utkal Kitchen Supply",
+        gstin: "21AABCU7733R1ZQ",
+        invoice: "UKS/26-27/0422",
+        status: "verified",
+      },
+      {
+        key: "rajdhani-electrical",
+        category: "Electrical works",
+        description:
+          "Internal wiring, fittings and street lighting for the residential block corridor.",
+        amount: 74_200,
+        date: "2026-06-03",
+        vendor: "Balganga Electricals",
+        gstin: "21AACFB2298M1ZL",
+        invoice: "BFE/26-27/0603",
+        status: "submitted",
+      },
+      {
+        key: "rajdhani-fencing",
+        category: "Boundary works",
+        description: "Fencing and gate for the play area and the front compound of the hostel.",
+        amount: 121_000,
+        date: "2026-07-14",
+        vendor: "Sundarpada Buildtech",
+        gstin: "21AAECS4471K1Z8",
+        invoice: "SBT/26-27/0714",
+        status: "verified",
+      },
+      {
+        key: "rajdhani-labour-unsigned",
+        category: "Minor repairs",
+        description:
+          "Watchman and cleaning labour for the partially occupied block, claimed without an invoice.",
+        amount: 38_000,
+        date: "2026-05-06",
+        vendor: "Not registered",
+        gstin: "N/A",
+        invoice: "-",
+        status: "void",
+        voidReason:
+          "Labour attendance not recorded and no tax invoice supplied; rejected pending documentation.",
+      },
+    ],
   },
 
   // ------------------------------------------------------------ Jajapur ----
@@ -822,7 +892,8 @@ const PROFILES: ProjectSpec[] = [
             severity: "low",
             description:
               "Two of the eleven completed works had no completion photograph on file, and the panchayat could not produce the inspection certificate for the third.",
-            remediation: "Obtain the completion photographs and the outstanding inspection certificate.",
+            remediation:
+              "Obtain the completion photographs and the outstanding inspection certificate.",
             outcome: "done",
             dueInDays: 30,
           },
@@ -991,7 +1062,9 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
       const end = at(cycle.date, "14:00:00");
       const started = at(cycle.date, "06:12:00");
       const submitted =
-        cycle.status === "assigned" || cycle.status === "in_progress" ? null : at(cycle.date, "13:40:00");
+        cycle.status === "assigned" || cycle.status === "in_progress"
+          ? null
+          : at(cycle.date, "13:40:00");
 
       inspectionRows.push({
         id: inspectionId,
@@ -1130,8 +1203,11 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
         if (f.outcome === "none") continue;
 
         const due = addDays(cycle.date, f.dueInDays ?? 21);
-        const submittedAt = f.outcome === "done" ? addDays(cycle.date, Math.max(1, Math.floor((f.dueInDays ?? 21) / 2))) : null;
-        const verifiedAt = f.outcome === "done" ? addDays(cycle.date, (f.dueInDays ?? 21)) : null;
+        const submittedAt =
+          f.outcome === "done"
+            ? addDays(cycle.date, Math.max(1, Math.floor((f.dueInDays ?? 21) / 2)))
+            : null;
+        const verifiedAt = f.outcome === "done" ? addDays(cycle.date, f.dueInDays ?? 21) : null;
         const caId = did(`ca:${f.key}`);
 
         caRows.push({
@@ -1204,7 +1280,8 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
           releaseDate: at(date),
           referenceNumber: ref,
           releasedById: did(USERS.sanction),
-          remarks: i === 0 ? "First instalment against the sanctioned allocation." : "Second instalment.",
+          remarks:
+            i === 0 ? "First instalment against the sanctioned allocation." : "Second instalment.",
           status: "released",
           createdAt: at(date, "12:00:00"),
           updatedAt: at(date, "12:00:00"),
@@ -1306,9 +1383,14 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
         status: complaintSpec.status,
         receivedAt: at(complaintSpec.date, "11:00:00"),
         resolutionText: complaintSpec.resolution ?? null,
-        resolvedAt: complaintSpec.resolution ? at(addDaysISO(complaintSpec.date, complaintSpec.resolvedInDays ?? 20), "16:00:00") : null,
+        resolvedAt: complaintSpec.resolution
+          ? at(addDaysISO(complaintSpec.date, complaintSpec.resolvedInDays ?? 20), "16:00:00")
+          : null,
         createdAt: at(complaintSpec.date, "11:00:00"),
-        updatedAt: at(addDaysISO(complaintSpec.date, complaintSpec.resolvedInDays ?? 20), "16:00:00"),
+        updatedAt: at(
+          addDaysISO(complaintSpec.date, complaintSpec.resolvedInDays ?? 20),
+          "16:00:00",
+        ),
       });
 
       complaintSpec.attachments.forEach((a, i) => {
@@ -1351,14 +1433,14 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
           aiAnomalySignals: { conflicts: 0 },
           // Object rows, not bare strings: the risk UI reads a dimension key
           // and its weight off each entry.
-          topContributors: (
-            riskEventRows.length > 0
-              ? [
-                  { dimension: "financial", weight: 15, source: "EXP-001" },
-                  { dimension: "inspection_quality", weight: 40, source: "finding" },
-                ]
-              : [{ dimension: "inspection_quality", weight: 30, source: "finding" }]
-          ) as Array<Record<string, unknown>>,
+          topContributors: (riskEventRows.length > 0
+            ? [
+                { dimension: "financial", weight: 15, source: "EXP-001" },
+                { dimension: "inspection_quality", weight: 40, source: "finding" },
+              ]
+            : [{ dimension: "inspection_quality", weight: 30, source: "finding" }]) as Array<
+            Record<string, unknown>
+          >,
           explanation,
           inspectionFlagId: null,
           scheduledInspectionId: p.cycles[0] ? did(`inspection:${p.cycles[0].key}`) : null,
@@ -1531,36 +1613,123 @@ const COMPLAINTS: Record<string, ComplaintSpec> = {
 /**
  * Risk snapshots per project: [date, total, level, [fin, insp, att, complaint, ai], explanation].
  */
-const RISK: Record<string, [string, number, string, [number, number, number, number, number], string][]> = {
+const RISK: Record<
+  string,
+  [string, number, string, [number, number, number, number, number], string][]
+> = {
   "project:vani": [
-    ["2026-02-01", 34, "medium", [8, 40, 0, 0, 0], "Occupancy and staffing findings from the January cycle; no financial or attendance signal yet."],
-    ["2026-04-01", 68, "high", [12, 70, 0, 20, 30], "Food procurement and roll integrity findings, a resolved complaint, and camera conflict detections on the dining hall. Highest contributing dimension is inspection quality."],
-    ["2026-07-01", 71, "high", [14, 70, 0, 20, 30], "Unchanged from April: the March corrective actions remain open, so the risk score has not recovered."],
+    [
+      "2026-02-01",
+      34,
+      "medium",
+      [8, 40, 0, 0, 0],
+      "Occupancy and staffing findings from the January cycle; no financial or attendance signal yet.",
+    ],
+    [
+      "2026-04-01",
+      68,
+      "high",
+      [12, 70, 0, 20, 30],
+      "Food procurement and roll integrity findings, a resolved complaint, and camera conflict detections on the dining hall. Highest contributing dimension is inspection quality.",
+    ],
+    [
+      "2026-07-01",
+      71,
+      "high",
+      [14, 70, 0, 20, 30],
+      "Unchanged from April: the March corrective actions remain open, so the risk score has not recovered.",
+    ],
   ],
   "project:cuttack-girls": [
-    ["2026-03-01", 82, "critical", [30, 85, 0, 25, 0], "Split-invoice procurement finding and a 19-record roll mismatch. The project is suspended pending review; score is dominated by inspection quality and financial signals."],
-    ["2026-06-01", 74, "high", [26, 80, 0, 25, 0], "Partially recovered after the railing and fire-system remediation, but the procurement and roll findings are still open."],
+    [
+      "2026-03-01",
+      82,
+      "critical",
+      [30, 85, 0, 25, 0],
+      "Split-invoice procurement finding and a 19-record roll mismatch. The project is suspended pending review; score is dominated by inspection quality and financial signals.",
+    ],
+    [
+      "2026-06-01",
+      74,
+      "high",
+      [26, 80, 0, 25, 0],
+      "Partially recovered after the railing and fire-system remediation, but the procurement and roll findings are still open.",
+    ],
   ],
   "project:ganjam-school": [
-    ["2026-05-01", 61, "high", [8, 55, 70, 20, 0], "Attendance discrepancy is the dominant signal: 168 claimed against 142 biometric, corroborated by the second device, so it is not device error."],
-    ["2026-08-01", 58, "high", [8, 50, 70, 20, 0], "Marginally lower after the wall and gate remediation; the attendance variance is unresolved."],
+    [
+      "2026-05-01",
+      61,
+      "high",
+      [8, 55, 70, 20, 0],
+      "Attendance discrepancy is the dominant signal: 168 claimed against 142 biometric, corroborated by the second device, so it is not device error.",
+    ],
+    [
+      "2026-08-01",
+      58,
+      "high",
+      [8, 50, 70, 20, 0],
+      "Marginally lower after the wall and gate remediation; the attendance variance is unresolved.",
+    ],
   ],
   "project:rourkela": [
-    ["2026-07-01", 28, "medium", [6, 30, 20, 0, 0], "All findings from the June cycle are closed. Attendance correction for the March device outage is pending an authority decision."],
+    [
+      "2026-07-01",
+      28,
+      "medium",
+      [6, 30, 20, 0, 0],
+      "All findings from the June cycle are closed. Attendance correction for the March device outage is pending an authority decision.",
+    ],
   ],
   "project:purisch-1": [
-    ["2026-02-01", 41, "medium", [5, 55, 0, 20, 0], "Staffing and diet findings from the January cycle; records are published under the officer disclosure policy."],
-    ["2026-06-01", 63, "high", [5, 75, 0, 25, 0], "The assisted-access finding and an unresolved complaint raise both the inspection-quality and complaint-density dimensions."],
+    [
+      "2026-02-01",
+      41,
+      "medium",
+      [5, 55, 0, 20, 0],
+      "Staffing and diet findings from the January cycle; records are published under the officer disclosure policy.",
+    ],
+    [
+      "2026-06-01",
+      63,
+      "high",
+      [5, 75, 0, 25, 0],
+      "The assisted-access finding and an unresolved complaint raise both the inspection-quality and complaint-density dimensions.",
+    ],
   ],
   "project:puri-irca": [
-    ["2026-04-01", 66, "high", [10, 70, 0, 25, 0], "Roll integrity finding against an active project with no prior inspection history; the second cycle is still assigned."],
-    ["2026-08-01", 49, "medium", [10, 55, 0, 25, 0], "Recovered after the counselling-roster and pharmacy-store remediations, but the roll finding remains open."],
+    [
+      "2026-04-01",
+      66,
+      "high",
+      [10, 70, 0, 25, 0],
+      "Roll integrity finding against an active project with no prior inspection history; the second cycle is still assigned.",
+    ],
+    [
+      "2026-08-01",
+      49,
+      "medium",
+      [10, 55, 0, 25, 0],
+      "Recovered after the counselling-roster and pharmacy-store remediations, but the roll finding remains open.",
+    ],
   ],
   "project:rajdhani": [
-    ["2026-09-01", 45, "medium", [10, 60, 0, 0, 0], "Capacity and staffing-verification finding; the project is still Pending Verification, so findings are hidden until the inspection starts."],
+    [
+      "2026-09-01",
+      45,
+      "medium",
+      [10, 60, 0, 0, 0],
+      "Capacity and staffing-verification finding; the project is still Pending Verification, so findings are hidden until the inspection starts.",
+    ],
   ],
   "project:jajapur-adarsh": [
-    ["2026-03-01", 33, "medium", [4, 45, 0, 0, 0], "Roll-versus-works register reconciliation and missing completion evidence, both now closed."],
+    [
+      "2026-03-01",
+      33,
+      "medium",
+      [4, 45, 0, 0, 0],
+      "Roll-versus-works register reconciliation and missing completion evidence, both now closed.",
+    ],
   ],
 };
 
@@ -1586,5 +1755,8 @@ function addDaysISO(day: string, days: number): string {
 }
 
 function slug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }

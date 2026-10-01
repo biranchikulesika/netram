@@ -1,11 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
-import {
-  getDb,
-  OutboxRepository,
-  AuthorizationRepository,
-} from "@netram/data";
+import { getDb, OutboxRepository, AuthorizationRepository } from "@netram/data";
 import { loadWorkerEnv } from "@netram/config";
 import type { OutboxRecord, NotificationType } from "@netram/types";
 import type { NotificationJobData } from "./notification.worker.js";
@@ -85,8 +81,16 @@ export class OutboxDispatcher {
    * Processes a single tick of the outbox loop.
    * Can be called directly in integration tests or workers.
    */
-  async tick(): Promise<{ claimed: number; processed: number; retried: number; deadLettered: number }> {
-    const records = await this.outboxRepo.claimPending(this.batchSize, DISPATCHER_HANDLED_EVENT_TYPES);
+  async tick(): Promise<{
+    claimed: number;
+    processed: number;
+    retried: number;
+    deadLettered: number;
+  }> {
+    const records = await this.outboxRepo.claimPending(
+      this.batchSize,
+      DISPATCHER_HANDLED_EVENT_TYPES,
+    );
     let processed = 0;
     let retried = 0;
     let deadLettered = 0;

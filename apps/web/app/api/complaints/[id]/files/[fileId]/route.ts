@@ -16,14 +16,11 @@ export async function GET(
   }
 
   const env = loadClientEnv();
-  const res = await fetch(
-    `${env.NETRAM_API_BASE_URL}/api/v1/complaints/${id}/files/${fileId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/complaints/${id}/files/${fileId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
 
   if (!res.ok) {
     return new NextResponse(res.statusText, { status: res.status });

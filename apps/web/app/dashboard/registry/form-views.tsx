@@ -259,7 +259,11 @@ export function OrganisationForm({ onSuccess }: FormChrome) {
   }
 
   const sections: RailSection[] = [
-    { key: "identity", label: "Identity & code", done: code.trim().length >= 3 && name.trim().length >= 3 },
+    {
+      key: "identity",
+      label: "Identity & code",
+      done: code.trim().length >= 3 && name.trim().length >= 3,
+    },
     { key: "classification", label: "Classification", done: category !== "" },
   ];
 
@@ -430,7 +434,11 @@ export function ProgrammeForm({
     (scopeLevel === "district" && districtId !== "");
 
   const sections: RailSection[] = [
-    { key: "identity", label: "Identity & code", done: code.trim().length >= 3 && name.trim().length >= 3 },
+    {
+      key: "identity",
+      label: "Identity & code",
+      done: code.trim().length >= 3 && name.trim().length >= 3,
+    },
     { key: "scope", label: "Geographic scope", done: territoryReady },
     { key: "details", label: "Details", done: description.trim() !== "", optional: true },
   ];
@@ -808,9 +816,17 @@ export function InspectorForm({
 /* ---------------- Authority Official / Admin ---------------- */
 
 const OFFICIAL_ROLE_OPTIONS = [
-  { code: "authority_official", label: "Authority Official", hint: "Reviews and approves registrations" },
+  {
+    code: "authority_official",
+    label: "Authority Official",
+    hint: "Reviews and approves registrations",
+  },
   { code: "district_officer", label: "District Officer", hint: "District-scoped oversight" },
-  { code: "institution_admin", label: "Institution Admin", hint: "Registers facilities for their organisation" },
+  {
+    code: "institution_admin",
+    label: "Institution Admin",
+    hint: "Registers facilities for their organisation",
+  },
   { code: "inspector", label: "Inspector", hint: "Field inspection staff" },
   { code: "viewer", label: "Viewer", hint: "Read-only monitoring access" },
 ];

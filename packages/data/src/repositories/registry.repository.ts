@@ -1,6 +1,13 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleDB } from "../db/client.js";
-import { organisations, programmes, roleAssignments, users, districts, states } from "../db/schema.js";
+import {
+  organisations,
+  programmes,
+  roleAssignments,
+  users,
+  districts,
+  states,
+} from "../db/schema.js";
 
 export interface OrganisationRow {
   id: string;

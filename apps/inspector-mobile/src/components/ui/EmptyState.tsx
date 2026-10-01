@@ -1,12 +1,5 @@
 import React, { type ReactNode } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { colors } from "../../theme/colors";
 import { useSettings } from "../../theme/settings-context";
 import { Icon } from "./Icon";

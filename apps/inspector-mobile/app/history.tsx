@@ -33,7 +33,10 @@ const DATE_PILLS: { key: DateFilter; label: string }[] = [
   { key: "custom", label: "Custom" },
 ];
 
-interface InspectionType { key: string; label: string }
+interface InspectionType {
+  key: string;
+  label: string;
+}
 
 const TYPE_OPTIONS: InspectionType[] = [
   { key: "ALL", label: "All" },
@@ -63,13 +66,16 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     if (!hasActiveFilter) return;
-    const t = setTimeout(() => {
-      setDateFilter("all");
-      setSelectedFilter("ALL");
-      setTypeFilter("ALL");
-      setCustomFrom("");
-      setCustomTo("");
-    }, 5 * 60 * 1000);
+    const t = setTimeout(
+      () => {
+        setDateFilter("all");
+        setSelectedFilter("ALL");
+        setTypeFilter("ALL");
+        setCustomFrom("");
+        setCustomTo("");
+      },
+      5 * 60 * 1000,
+    );
     return () => clearTimeout(t);
   }, [hasActiveFilter]);
 
@@ -77,7 +83,13 @@ export default function HistoryScreen() {
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
   const fmtDisplay = (s: string) =>
-    s ? new Date(`${s}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "Select date";
+    s
+      ? new Date(`${s}T00:00:00`).toLocaleDateString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "Select date";
 
   const isInvalidRange = Boolean(customFrom && customTo && customTo < customFrom);
 
@@ -101,10 +113,7 @@ export default function HistoryScreen() {
       const records = await queue.getCachedInspections();
       // Inspected areas: submitted, closed, or in_progress (actively inspected)
       const inspected = records.filter(
-        (r) =>
-          r.status === "submitted" ||
-          r.status === "closed" ||
-          r.status === "in_progress",
+        (r) => r.status === "submitted" || r.status === "closed" || r.status === "in_progress",
       );
       setInspections(inspected);
     } catch {
@@ -146,10 +155,7 @@ export default function HistoryScreen() {
           return dt >= new Date(startOfToday.getTime() - 6 * 86400000);
         }
         if (dateFilter === "month") {
-          return (
-            dt.getFullYear() === now.getFullYear() &&
-            dt.getMonth() === now.getMonth()
-          );
+          return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth();
         }
         if (dateFilter === "year") {
           return dt.getFullYear() === now.getFullYear();
@@ -192,7 +198,12 @@ export default function HistoryScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bgCanvas }]}>
       {/* ── Search Row (search bar + filter chip) ── */}
       <View style={styles.searchRow}>
-        <View style={[styles.searchBar, { backgroundColor: theme.bgSurface, borderColor: theme.borderSubtle }]}>
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: theme.bgSurface, borderColor: theme.borderSubtle },
+          ]}
+        >
           <Icon name="search-outline" size={17} color={theme.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: theme.textPrimary }]}
@@ -217,7 +228,11 @@ export default function HistoryScreen() {
           onPress={() => setShowFilterSheet(true)}
           accessibilityLabel="Open history filters"
         >
-          <Icon name="funnel-outline" size={16} color={hasActiveFilter ? theme.navyDark : theme.textMuted} />
+          <Icon
+            name="funnel-outline"
+            size={16}
+            color={hasActiveFilter ? theme.navyDark : theme.textMuted}
+          />
         </Pressable>
       </View>
 
@@ -229,10 +244,7 @@ export default function HistoryScreen() {
         onRequestClose={() => setShowFilterSheet(false)}
       >
         <View style={styles.sheetModalRoot}>
-          <Pressable
-            style={styles.sheetBackdrop}
-            onPress={() => setShowFilterSheet(false)}
-          />
+          <Pressable style={styles.sheetBackdrop} onPress={() => setShowFilterSheet(false)} />
           <View style={[styles.sheet, { backgroundColor: theme.bgSurface }]}>
             <View style={[styles.sheetHandle, { backgroundColor: theme.borderSubtle }]} />
             <Text style={[styles.sheetHeader, { color: theme.textMuted }]}>Filters</Text>
@@ -246,7 +258,12 @@ export default function HistoryScreen() {
                   ]}
                   onPress={() => setSheetTab("date")}
                 >
-                  <Text style={[styles.sheetTabText, { color: sheetTab === "date" ? "#FFFFFF" : theme.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.sheetTabText,
+                      { color: sheetTab === "date" ? "#FFFFFF" : theme.textMuted },
+                    ]}
+                  >
                     DATE
                   </Text>
                 </Pressable>
@@ -257,7 +274,12 @@ export default function HistoryScreen() {
                   ]}
                   onPress={() => setSheetTab("status")}
                 >
-                  <Text style={[styles.sheetTabText, { color: sheetTab === "status" ? "#FFFFFF" : theme.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.sheetTabText,
+                      { color: sheetTab === "status" ? "#FFFFFF" : theme.textMuted },
+                    ]}
+                  >
                     STATUS
                   </Text>
                 </Pressable>
@@ -268,13 +290,22 @@ export default function HistoryScreen() {
                   ]}
                   onPress={() => setSheetTab("type")}
                 >
-                  <Text style={[styles.sheetTabText, { color: sheetTab === "type" ? "#FFFFFF" : theme.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.sheetTabText,
+                      { color: sheetTab === "type" ? "#FFFFFF" : theme.textMuted },
+                    ]}
+                  >
                     TYPE
                   </Text>
                 </Pressable>
               </View>
 
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.sheetContent}
+                showsVerticalScrollIndicator={false}
+              >
                 {sheetTab === "date" ? (
                   <>
                     <View style={styles.sheetPillWrap}>
@@ -302,7 +333,10 @@ export default function HistoryScreen() {
                             }}
                           >
                             <Text
-                              style={[styles.sheetPillText, { color: active ? "#FFFFFF" : theme.textMuted }]}
+                              style={[
+                                styles.sheetPillText,
+                                { color: active ? "#FFFFFF" : theme.textMuted },
+                              ]}
                             >
                               {p.label}
                             </Text>
@@ -311,38 +345,63 @@ export default function HistoryScreen() {
                       })}
                     </View>
 
-{dateFilter === "custom" ? (
-    <View style={styles.customRangeContainer}>
-      <View style={styles.customRange}>
-        <Pressable
-          style={[styles.outerBox, { borderColor: theme.borderSubtle }]}
-          onPress={() => setPickerTarget("from")}
-        >
-          <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>FROM</Text>
-          <Text style={[styles.customValue, { color: customFrom ? theme.textPrimary : theme.textSubtle }]}>
-            {fmtDisplay(customFrom)}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            styles.outerBox,
-            { borderColor: isInvalidRange ? theme.error : theme.borderSubtle },
-          ]}
-          onPress={() => setPickerTarget("to")}
-        >
-          <Text style={[styles.fieldLabel, { color: isInvalidRange ? theme.error : theme.textMuted }]}>TO</Text>
-          <Text style={[styles.customValue, { color: customTo ? (isInvalidRange ? theme.error : theme.textPrimary) : theme.textSubtle }]}>
-            {fmtDisplay(customTo)}
-          </Text>
-        </Pressable>
-      </View>
-      {isInvalidRange && (
-        <Text style={[styles.rangeErrorText, { color: theme.error }]}>
-          "To" date cannot be earlier than "From" date.
-        </Text>
-      )}
-    </View>
-  ) : null}
+                    {dateFilter === "custom" ? (
+                      <View style={styles.customRangeContainer}>
+                        <View style={styles.customRange}>
+                          <Pressable
+                            style={[styles.outerBox, { borderColor: theme.borderSubtle }]}
+                            onPress={() => setPickerTarget("from")}
+                          >
+                            <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                              FROM
+                            </Text>
+                            <Text
+                              style={[
+                                styles.customValue,
+                                { color: customFrom ? theme.textPrimary : theme.textSubtle },
+                              ]}
+                            >
+                              {fmtDisplay(customFrom)}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            style={[
+                              styles.outerBox,
+                              { borderColor: isInvalidRange ? theme.error : theme.borderSubtle },
+                            ]}
+                            onPress={() => setPickerTarget("to")}
+                          >
+                            <Text
+                              style={[
+                                styles.fieldLabel,
+                                { color: isInvalidRange ? theme.error : theme.textMuted },
+                              ]}
+                            >
+                              TO
+                            </Text>
+                            <Text
+                              style={[
+                                styles.customValue,
+                                {
+                                  color: customTo
+                                    ? isInvalidRange
+                                      ? theme.error
+                                      : theme.textPrimary
+                                    : theme.textSubtle,
+                                },
+                              ]}
+                            >
+                              {fmtDisplay(customTo)}
+                            </Text>
+                          </Pressable>
+                        </View>
+                        {isInvalidRange && (
+                          <Text style={[styles.rangeErrorText, { color: theme.error }]}>
+                            "To" date cannot be earlier than "From" date.
+                          </Text>
+                        )}
+                      </View>
+                    ) : null}
                   </>
                 ) : sheetTab === "status" ? (
                   <View style={styles.sheetPillWrap}>
@@ -361,7 +420,10 @@ export default function HistoryScreen() {
                           onPress={() => setSelectedFilter(f.key)}
                         >
                           <Text
-                            style={[styles.sheetPillText, { color: active ? "#FFFFFF" : theme.textMuted }]}
+                            style={[
+                              styles.sheetPillText,
+                              { color: active ? "#FFFFFF" : theme.textMuted },
+                            ]}
                           >
                             {f.label}
                           </Text>
@@ -386,7 +448,10 @@ export default function HistoryScreen() {
                           onPress={() => setTypeFilter(t.key)}
                         >
                           <Text
-                            style={[styles.sheetPillText, { color: active ? "#FFFFFF" : theme.textMuted }]}
+                            style={[
+                              styles.sheetPillText,
+                              { color: active ? "#FFFFFF" : theme.textMuted },
+                            ]}
                           >
                             {t.label}
                           </Text>
@@ -417,7 +482,12 @@ export default function HistoryScreen() {
                   setShowFilterSheet(false);
                 }}
               >
-                <Text style={[styles.footerBtnText, { color: hasActiveFilter ? theme.navyDark : theme.textMuted }]}>
+                <Text
+                  style={[
+                    styles.footerBtnText,
+                    { color: hasActiveFilter ? theme.navyDark : theme.textMuted },
+                  ]}
+                >
                   Clear All
                 </Text>
               </Pressable>
@@ -504,21 +574,36 @@ export default function HistoryScreen() {
 
               <View style={styles.metaRow}>
                 <View style={styles.metaItem}>
-                  <Icon name="location-outline" size={13} color={theme.textMuted} style={styles.metaIcon} />
+                  <Icon
+                    name="location-outline"
+                    size={13}
+                    color={theme.textMuted}
+                    style={styles.metaIcon}
+                  />
                   <Text style={[styles.metaText, { color: theme.textMuted }]}>
                     {item.district_id || "District unavailable"}
                   </Text>
                 </View>
 
                 <View style={styles.metaItem}>
-                  <Icon name="document-text-outline" size={13} color={theme.textMuted} style={styles.metaIcon} />
+                  <Icon
+                    name="document-text-outline"
+                    size={13}
+                    color={theme.textMuted}
+                    style={styles.metaIcon}
+                  />
                   <Text style={[styles.metaText, { color: theme.textMuted }]}>
                     {item.project_code}
                   </Text>
                 </View>
 
                 <View style={styles.metaItem}>
-                  <Icon name="calendar-outline" size={13} color={theme.textMuted} style={styles.metaIcon} />
+                  <Icon
+                    name="calendar-outline"
+                    size={13}
+                    color={theme.textMuted}
+                    style={styles.metaIcon}
+                  />
                   <Text style={[styles.metaText, { color: theme.textMuted }]}>{dateStr}</Text>
                 </View>
               </View>

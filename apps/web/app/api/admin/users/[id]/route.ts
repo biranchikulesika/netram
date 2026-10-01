@@ -4,10 +4,7 @@ import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
 import { SESSION_COOKIE } from "../../../../../lib/api";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;

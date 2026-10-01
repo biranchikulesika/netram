@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  readPlaybackStats,
-  startCctvPlayback,
-  type PlaybackStats,
-} from "./cctv-player";
+import { readPlaybackStats, startCctvPlayback, type PlaybackStats } from "./cctv-player";
 
 /**
  * Production CCTV live-view hook (Phase 5): binds the real NETRAM stream
@@ -30,12 +26,7 @@ const HEARTBEAT_INTERVAL_MS = 30_000;
 const STATS_INTERVAL_MS = 2_000;
 
 export type CctvStreamPhase =
-  | "idle"
-  | "creating-session"
-  | "connecting"
-  | "live"
-  | "error"
-  | "ended";
+  "idle" | "creating-session" | "connecting" | "live" | "error" | "ended";
 
 export interface CctvLiveStreamState {
   phase: CctvStreamPhase;
@@ -93,17 +84,20 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
   }, []);
 
   /** Best-effort session end - fire-and-forget DELETE (also on page hide). */
-  const endSession = useCallback((streamId: string): void => {
-    void fetch(`/api/cctv/${cameraId}/streams/${streamId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endReason: "viewer_stop" }),
-      // keepalive so in-flight survives page unload in supporting browsers
-      keepalive: true,
-    }).catch(() => {
-      // Best-effort: the server-side sweeper is the safety net (Phase 4).
-    });
-  }, [cameraId]);
+  const endSession = useCallback(
+    (streamId: string): void => {
+      void fetch(`/api/cctv/${cameraId}/streams/${streamId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endReason: "viewer_stop" }),
+        // keepalive so in-flight survives page unload in supporting browsers
+        keepalive: true,
+      }).catch(() => {
+        // Best-effort: the server-side sweeper is the safety net (Phase 4).
+      });
+    },
+    [cameraId],
+  );
 
   const stop = useCallback(async (): Promise<void> => {
     generationRef.current += 1;
@@ -135,7 +129,12 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
       return;
     }
 
-    setState({ phase: "creating-session", message: "Requesting authorized stream…", streamId: null, stats: null });
+    setState({
+      phase: "creating-session",
+      message: "Requesting authorized stream…",
+      streamId: null,
+      stats: null,
+    });
 
     let created: StartStreamResponse;
     try {
@@ -164,12 +163,7 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
 
     const playback = created.playback;
     const streamId = created.streamId ?? null;
-    if (
-      playback?.protocol !== "webrtc" ||
-      !playback.mediaPath ||
-      !playback.token ||
-      !streamId
-    ) {
+    if (playback?.protocol !== "webrtc" || !playback.mediaPath || !playback.token || !streamId) {
       if (gen !== generationRef.current) return;
       setState({ ...IDLE, phase: "error", message: "Playback contract missing or unsupported." });
       return;
@@ -203,10 +197,7 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
           setState((s) => ({
             ...s,
             phase: "error",
-            message:
-              reason === "failed"
-                ? "Unable to connect to camera"
-                : "Stream ended.",
+            message: reason === "failed" ? "Unable to connect to camera" : "Stream ended.",
           }));
         },
       });
@@ -252,10 +243,7 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
       setState({
         ...IDLE,
         phase: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Unable to connect to camera",
+        message: err instanceof Error ? err.message : "Unable to connect to camera",
       });
     }
   }, [cameraId, clearTimers, endSession]);
@@ -286,7 +274,8 @@ export function useCctvLiveStream(cameraId: string): CctvLiveStreamApi {
 
   return {
     ...state,
-    active: state.phase === "live" || state.phase === "connecting" || state.phase === "creating-session",
+    active:
+      state.phase === "live" || state.phase === "connecting" || state.phase === "creating-session",
     videoRef,
     start,
     stop,

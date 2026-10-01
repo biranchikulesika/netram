@@ -214,7 +214,11 @@ export class CctvRepository {
     });
   }
 
-  async endStreamSession(sessionId: string, context: CctvWriteContext, input?: EndStreamInput): Promise<void> {
+  async endStreamSession(
+    sessionId: string,
+    context: CctvWriteContext,
+    input?: EndStreamInput,
+  ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const rows = await tx
         .update(cctvStreamsTable)
@@ -224,7 +228,9 @@ export class CctvRepository {
           endedBy: input?.endedBy ?? null,
           endReason: input?.endReason ?? null,
         })
-        .where(and(eq(cctvStreamsTable.sessionId, sessionId), eq(cctvStreamsTable.status, "active")))
+        .where(
+          and(eq(cctvStreamsTable.sessionId, sessionId), eq(cctvStreamsTable.status, "active")),
+        )
         .returning();
 
       const ended = rows[0];
@@ -348,7 +354,11 @@ export class CctvRepository {
    * End a session by primary key (sweeper/admin path) with audit + outbox,
    * atomically (§25). Idempotent: already-ended sessions are left untouched.
    */
-  async endStreamSessionById(id: string, context: CctvWriteContext, input: EndStreamInput): Promise<boolean> {
+  async endStreamSessionById(
+    id: string,
+    context: CctvWriteContext,
+    input: EndStreamInput,
+  ): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .update(cctvStreamsTable)

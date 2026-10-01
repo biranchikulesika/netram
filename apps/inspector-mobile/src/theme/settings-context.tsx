@@ -190,7 +190,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     settings.themeMode === "dark" ||
     (settings.themeMode === "system" && systemColorScheme === "dark");
 
-  const theme: ThemeColors = isPureDark ? (pureDarkColors as unknown as ThemeColors) : defaultLightColors;
+  const theme: ThemeColors = isPureDark
+    ? (pureDarkColors as unknown as ThemeColors)
+    : defaultLightColors;
 
   return (
     <SettingsContext.Provider

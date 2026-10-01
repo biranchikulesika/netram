@@ -76,7 +76,10 @@ describe("Phase 3 - Offline Sync Specifications", () => {
       // Enqueue multiple operations at explicit timestamps
       const op1 = await queue.recordAttendance(inspectionIdA, 12, "Muster verified");
       const op2 = await queue.startInspection(inspectionIdA);
-      const op3 = await queue.recordObservation(inspectionIdA, "Found foundation works on schedule");
+      const op3 = await queue.recordObservation(
+        inspectionIdA,
+        "Found foundation works on schedule",
+      );
 
       // Verify pending queue returns in chronological order
       const pending = await queue.getPendingOperations();
@@ -395,7 +398,7 @@ describe("Phase 3 - Offline Sync Specifications", () => {
         [op2.operationId],
       );
 
-      expect((await queue.getPendingOperations())).toHaveLength(0);
+      expect(await queue.getPendingOperations()).toHaveLength(0);
 
       // Tap "Retry All"
       const retriedCount = await queue.retryAllOperations();

@@ -428,9 +428,7 @@ export function AttendanceOverviewSection({
                   <tr>
                     <td colSpan={8} className="table-empty-state">
                       <IconSearch width={22} height={22} className="table-empty-icon" />
-                      <div className="table-empty-title">
-                        No attendance records found
-                      </div>
+                      <div className="table-empty-title">No attendance records found</div>
                       <div className="table-empty-desc">
                         Adjust the search query or pick another date to see more.
                       </div>
@@ -468,7 +466,9 @@ export function AttendanceOverviewSection({
                           )}
                         </td>
                         <td className="table-date">{calc.operationalDate}</td>
-                        <td className="table-align-right">{calc.expected !== null ? calc.expected : "-"}</td>
+                        <td className="table-align-right">
+                          {calc.expected !== null ? calc.expected : "-"}
+                        </td>
                         <td
                           className="table-align-right"
                           style={{
@@ -483,7 +483,9 @@ export function AttendanceOverviewSection({
                         >
                           {calc.present}
                         </td>
-                        <td className="table-align-right">{calc.absent !== null ? calc.absent : "-"}</td>
+                        <td className="table-align-right">
+                          {calc.absent !== null ? calc.absent : "-"}
+                        </td>
                         <td
                           className="table-align-right"
                           style={{
@@ -508,7 +510,11 @@ export function AttendanceOverviewSection({
                           <Link
                             href={`/dashboard/attendance/records/${calc.projectId}?year=${calc.operationalDate.slice(0, 4)}`}
                             className="btn-secondary"
-                            style={{ fontSize: "0.74rem", padding: "0.22rem 0.55rem", whiteSpace: "nowrap" }}
+                            style={{
+                              fontSize: "0.74rem",
+                              padding: "0.22rem 0.55rem",
+                              whiteSpace: "nowrap",
+                            }}
                             onClick={(e) => e.stopPropagation()}
                             title={`View yearly attendance record for ${calc.projectName ?? "Sanctioned facility"}`}
                           >

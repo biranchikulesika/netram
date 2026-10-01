@@ -169,7 +169,9 @@ export function FacilityInspectionsTable({
                   : i.scheduledStart
                     ? `Sched: ${formatDate(i.scheduledStart)}`
                     : "-";
-                const assignedCount = Array.isArray(i.assignedUserIds) ? i.assignedUserIds.length : 0;
+                const assignedCount = Array.isArray(i.assignedUserIds)
+                  ? i.assignedUserIds.length
+                  : 0;
 
                 return (
                   <tr

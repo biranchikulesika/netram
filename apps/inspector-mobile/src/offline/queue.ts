@@ -189,7 +189,17 @@ export class OfflineInspectionQueue {
       await db.runAsync(
         `INSERT OR REPLACE INTO cached_finding_drafts (id, inspection_id, observation_id, severity, description, remediation, sync_state, operation_id, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
-        [findingId, inspectionId, (payload.observationId as string) ?? null, String(payload.severity ?? "medium"), String(payload.description ?? ""), (payload.remediation as string) ?? null, operationId, timestamp, timestamp],
+        [
+          findingId,
+          inspectionId,
+          (payload.observationId as string) ?? null,
+          String(payload.severity ?? "medium"),
+          String(payload.description ?? ""),
+          (payload.remediation as string) ?? null,
+          operationId,
+          timestamp,
+          timestamp,
+        ],
       );
     } else if (type === "capture_evidence") {
       const evidenceId = (payload.evidenceId as string) ?? uuidv4();
@@ -364,7 +374,9 @@ export class OfflineInspectionQueue {
       [findingId],
     );
     if (draft?.operation_id) {
-      await db.runAsync(`DELETE FROM offline_operations WHERE operation_id = ?`, [draft.operation_id]);
+      await db.runAsync(`DELETE FROM offline_operations WHERE operation_id = ?`, [
+        draft.operation_id,
+      ]);
     }
     await db.runAsync(`DELETE FROM cached_finding_drafts WHERE id = ?`, [findingId]);
   }
@@ -372,22 +384,60 @@ export class OfflineInspectionQueue {
   /** Creates one operation; edits change that pending operation rather than duplicating it. */
   async saveFindingDraft(
     inspectionId: string,
-    input: { findingId?: string; operationId?: string; observationId?: string | null; severity: string; description: string; remediation?: string | null },
+    input: {
+      findingId?: string;
+      operationId?: string;
+      observationId?: string | null;
+      severity: string;
+      description: string;
+      remediation?: string | null;
+    },
   ): Promise<OfflineOperation> {
     if (!input.findingId || !input.operationId) {
       const findingId = input.findingId ?? uuidv4();
       return this.enqueueOperation(inspectionId, "draft_finding", { ...input, findingId });
     }
     const db = await this.getDb();
-    const operation = await db.getFirstAsync<OfflineOperationRecord>(`SELECT * FROM offline_operations WHERE operation_id = ?`, [input.operationId]);
+    const operation = await db.getFirstAsync<OfflineOperationRecord>(
+      `SELECT * FROM offline_operations WHERE operation_id = ?`,
+      [input.operationId],
+    );
     if (operation?.status !== "pending") {
-      return this.enqueueOperation(inspectionId, "draft_finding", { ...input, findingId: input.findingId });
+      return this.enqueueOperation(inspectionId, "draft_finding", {
+        ...input,
+        findingId: input.findingId,
+      });
     }
     const timestamp = new Date().toISOString();
-    const payload = { findingId: input.findingId, observationId: input.observationId ?? null, severity: input.severity, description: input.description, remediation: input.remediation ?? null };
-    await db.runAsync(`UPDATE offline_operations SET payload = ?, client_timestamp = ? WHERE operation_id = ?`, [JSON.stringify(payload), timestamp, input.operationId]);
-    await db.runAsync(`UPDATE cached_finding_drafts SET observation_id = ?, severity = ?, description = ?, remediation = ?, updated_at = ? WHERE id = ?`, [payload.observationId, payload.severity, payload.description, payload.remediation, timestamp, input.findingId]);
-    return { operationId: input.operationId, inspectionId, type: "draft_finding", timestamp, payload };
+    const payload = {
+      findingId: input.findingId,
+      observationId: input.observationId ?? null,
+      severity: input.severity,
+      description: input.description,
+      remediation: input.remediation ?? null,
+    };
+    await db.runAsync(
+      `UPDATE offline_operations SET payload = ?, client_timestamp = ? WHERE operation_id = ?`,
+      [JSON.stringify(payload), timestamp, input.operationId],
+    );
+    await db.runAsync(
+      `UPDATE cached_finding_drafts SET observation_id = ?, severity = ?, description = ?, remediation = ?, updated_at = ? WHERE id = ?`,
+      [
+        payload.observationId,
+        payload.severity,
+        payload.description,
+        payload.remediation,
+        timestamp,
+        input.findingId,
+      ],
+    );
+    return {
+      operationId: input.operationId,
+      inspectionId,
+      type: "draft_finding",
+      timestamp,
+      payload,
+    };
   }
 
   async startInspection(inspectionId: string): Promise<OfflineOperation> {
@@ -476,7 +526,9 @@ export class OfflineInspectionQueue {
 
   async getFailedMediaUploads(): Promise<FailedMediaUploadRecord[]> {
     const db = await this.getDb();
-    return db.getAllAsync<FailedMediaUploadRecord>(`SELECT id, evidence_id, file_name, error_message, created_at FROM media_upload_queue WHERE upload_status = 'failed' ORDER BY created_at DESC`);
+    return db.getAllAsync<FailedMediaUploadRecord>(
+      `SELECT id, evidence_id, file_name, error_message, created_at FROM media_upload_queue WHERE upload_status = 'failed' ORDER BY created_at DESC`,
+    );
   }
 
   /**
@@ -533,8 +585,13 @@ export class OfflineInspectionQueue {
             [now, res.inspectionId],
           );
         } else if (res.type === "draft_finding") {
-          const findingId = typeof res.resultData?.findingId === "string" ? res.resultData.findingId : null;
-          if (findingId) await db.runAsync(`UPDATE cached_finding_drafts SET sync_state = 'submitted_for_review', updated_at = ? WHERE id = ?`, [now, findingId]);
+          const findingId =
+            typeof res.resultData?.findingId === "string" ? res.resultData.findingId : null;
+          if (findingId)
+            await db.runAsync(
+              `UPDATE cached_finding_drafts SET sync_state = 'submitted_for_review', updated_at = ? WHERE id = ?`,
+              [now, findingId],
+            );
         } else if (res.type === "capture_evidence" && isDuplicateEvidence) {
           // Rule 3.2: Duplicate evidence is accepted without re-uploading file
           const opRow = await db.getFirstAsync<OfflineOperationRecord>(
@@ -564,10 +621,19 @@ export class OfflineInspectionQueue {
           `UPDATE offline_operations
            SET status = 'conflict', code = ?, error_message = ?, result_data = ?, synced_at = ?
            WHERE operation_id = ?`,
-          [res.code ?? null, res.message ?? null, JSON.stringify(res.resultData ?? {}), now, res.operationId],
+          [
+            res.code ?? null,
+            res.message ?? null,
+            JSON.stringify(res.resultData ?? {}),
+            now,
+            res.operationId,
+          ],
         );
         if (res.type === "draft_finding") {
-          await db.runAsync(`UPDATE cached_finding_drafts SET sync_state = 'conflict', updated_at = ? WHERE operation_id = ?`, [now, res.operationId]);
+          await db.runAsync(
+            `UPDATE cached_finding_drafts SET sync_state = 'conflict', updated_at = ? WHERE operation_id = ?`,
+            [now, res.operationId],
+          );
         } else if (res.type === "update_checklist_item") {
           // Rule 3.2: Checklist item state conflict -> Server wins; mobile discards local
           const opRow = await db.getFirstAsync<OfflineOperationRecord>(
@@ -600,20 +666,28 @@ export class OfflineInspectionQueue {
           res.resultData?.inspectionStatus === "submitted" ||
           (res.message && res.message.toLowerCase().includes("submitted"))
         ) {
-          await db.runAsync(
-            `UPDATE cached_inspections SET status = 'submitted' WHERE id = ?`,
-            [res.inspectionId],
-          );
+          await db.runAsync(`UPDATE cached_inspections SET status = 'submitted' WHERE id = ?`, [
+            res.inspectionId,
+          ]);
         }
       } else {
         await db.runAsync(
           `UPDATE offline_operations
            SET status = 'rejected', code = ?, error_message = ?, result_data = ?, synced_at = ?
            WHERE operation_id = ?`,
-          [res.code ?? null, res.message ?? null, JSON.stringify(res.resultData ?? {}), now, res.operationId],
+          [
+            res.code ?? null,
+            res.message ?? null,
+            JSON.stringify(res.resultData ?? {}),
+            now,
+            res.operationId,
+          ],
         );
         if (res.type === "draft_finding") {
-          await db.runAsync(`UPDATE cached_finding_drafts SET sync_state = 'rejected', updated_at = ? WHERE operation_id = ?`, [now, res.operationId]);
+          await db.runAsync(
+            `UPDATE cached_finding_drafts SET sync_state = 'rejected', updated_at = ? WHERE operation_id = ?`,
+            [now, res.operationId],
+          );
         }
 
         // Rule 3.2: Inspection already submitted by server -> Reject; inspector sees "Submitted"
@@ -624,10 +698,9 @@ export class OfflineInspectionQueue {
           res.resultData?.inspectionStatus === "submitted" ||
           (res.message && res.message.toLowerCase().includes("submitted"))
         ) {
-          await db.runAsync(
-            `UPDATE cached_inspections SET status = 'submitted' WHERE id = ?`,
-            [res.inspectionId],
-          );
+          await db.runAsync(`UPDATE cached_inspections SET status = 'submitted' WHERE id = ?`, [
+            res.inspectionId,
+          ]);
         }
       }
     }
@@ -679,7 +752,11 @@ export class OfflineInspectionQueue {
    * Retrieves pending operations grouped by inspection (§3.3).
    */
   async getPendingOperationsGrouped(): Promise<
-    { inspectionId: string; inspection: CachedInspectionRecord | null; operations: OfflineOperationRecord[] }[]
+    {
+      inspectionId: string;
+      inspection: CachedInspectionRecord | null;
+      operations: OfflineOperationRecord[];
+    }[]
   > {
     const db = await this.getDb();
     const pending = await db.getAllAsync<OfflineOperationRecord>(
@@ -693,7 +770,11 @@ export class OfflineInspectionQueue {
       groupsMap.get(op.inspection_id)!.push(op);
     }
 
-    const result: { inspectionId: string; inspection: CachedInspectionRecord | null; operations: OfflineOperationRecord[] }[] = [];
+    const result: {
+      inspectionId: string;
+      inspection: CachedInspectionRecord | null;
+      operations: OfflineOperationRecord[];
+    }[] = [];
     for (const [inspectionId, ops] of groupsMap.entries()) {
       const insp = await this.getCachedInspection(inspectionId);
       result.push({
@@ -716,10 +797,9 @@ export class OfflineInspectionQueue {
       [mediaQueueId],
     );
     if (item?.evidence_id) {
-      await db.runAsync(
-        `UPDATE cached_evidence SET upload_state = 'pending' WHERE id = ?`,
-        [item.evidence_id],
-      );
+      await db.runAsync(`UPDATE cached_evidence SET upload_state = 'pending' WHERE id = ?`, [
+        item.evidence_id,
+      ]);
     }
   }
 
@@ -754,10 +834,10 @@ export class OfflineInspectionQueue {
     resultObj.acknowledged = true;
     resultObj.acknowledgedAt = new Date().toISOString();
 
-    await db.runAsync(
-      `UPDATE offline_operations SET result_data = ? WHERE operation_id = ?`,
-      [JSON.stringify(resultObj), operationId],
-    );
+    await db.runAsync(`UPDATE offline_operations SET result_data = ? WHERE operation_id = ?`, [
+      JSON.stringify(resultObj),
+      operationId,
+    ]);
   }
 
   /**
@@ -844,10 +924,9 @@ export class OfflineInspectionQueue {
             `UPDATE media_upload_queue SET upload_status = 'failed', error_message = ? WHERE id = ?`,
             [errMsg, item.id],
           );
-          await db.runAsync(
-            `UPDATE cached_evidence SET upload_state = 'failed' WHERE id = ?`,
-            [item.evidence_id],
-          );
+          await db.runAsync(`UPDATE cached_evidence SET upload_state = 'failed' WHERE id = ?`, [
+            item.evidence_id,
+          ]);
         }
       }
     }
@@ -951,13 +1030,15 @@ export class OfflineInspectionQueue {
       callType: "video",
       durationSeconds: r.duration_seconds,
       timestamp: r.timestamp,
-      condition: (r.condition as "satisfactory" | "minor_issue" | "critical_problem") || "satisfactory",
+      condition:
+        (r.condition as "satisfactory" | "minor_issue" | "critical_problem") || "satisfactory",
       reviewText: r.review_text,
       flagInspection: r.flag_inspection === 1,
       videoUri: r.video_uri,
       inspectorVideoUri: r.inspector_video_uri,
       direction: (r.direction as "incoming" | "outgoing") || "outgoing",
-      status: (r.status as "answered" | "missed") || (r.duration_seconds > 0 ? "answered" : "missed"),
+      status:
+        (r.status as "answered" | "missed") || (r.duration_seconds > 0 ? "answered" : "missed"),
       createdAt: r.created_at,
     }));
   }

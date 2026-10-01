@@ -196,7 +196,10 @@ function parseProjectDescription(description: string | null): ParsedDescription 
 
   const loc = part("Location");
   const pin = loc.match(/,\s*PIN:\s*([0-9]+)\s*$/i);
-  const rest = loc.replace(/,\s*PIN:\s*[0-9]+\s*$/i, "").split(",").map((s) => s.trim());
+  const rest = loc
+    .replace(/,\s*PIN:\s*[0-9]+\s*$/i, "")
+    .split(",")
+    .map((s) => s.trim());
   out.address = rest[0] ?? "";
   out.block = rest[1] ?? "";
   out.pinCode = pin?.[1] ?? "";
@@ -238,23 +241,21 @@ export function ProjectRegistrationView({
   const [sanctionDate, setSanctionDate] = useState(parsed.sanctionDate);
 
   const [districtId, setDistrictId] = useState(
-    isEdit ? initialProject.districtId ?? DISTRICTS[0]!.id : DISTRICTS[0]!.id,
+    isEdit ? (initialProject.districtId ?? DISTRICTS[0]!.id) : DISTRICTS[0]!.id,
   );
   const [block, setBlock] = useState(parsed.block);
   const [address, setAddress] = useState(parsed.address);
   const [pinCode, setPinCode] = useState(parsed.pinCode);
 
   const [organisationId, setOrganisationId] = useState(
-    isEdit ? initialProject.organisationId ?? "" : "",
+    isEdit ? (initialProject.organisationId ?? "") : "",
   );
   const [inChargeName, setInChargeName] = useState(parsed.inChargeName);
   const [inChargePhone, setInChargePhone] = useState(parsed.inChargePhone);
   const [inChargeEmail, setInChargeEmail] = useState(parsed.inChargeEmail);
 
   const [selectedProgrammes, setSelectedProgrammes] = useState<string[]>(
-    isEdit && initialProject.programmeIds.length > 0
-      ? initialProject.programmeIds
-      : [],
+    isEdit && initialProject.programmeIds.length > 0 ? initialProject.programmeIds : [],
   );
   const [capacity, setCapacity] = useState(parsed.capacity);
   // Operational Notes field was removed from the form; existing scope text is
@@ -425,7 +426,9 @@ export function ProjectRegistrationView({
       const photoCount = await uploadPhotos(project.id);
       const photoNote =
         photoCount > 0 ? ` with ${photoCount} photo${photoCount > 1 ? "s" : ""}` : "";
-      setSuccess(`Draft saved as ${project.code}${photoNote}. You can continue editing and submit later.`);
+      setSuccess(
+        `Draft saved as ${project.code}${photoNote}. You can continue editing and submit later.`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -436,7 +439,9 @@ export function ProjectRegistrationView({
   function validateIdentity(): boolean {
     if (name.trim().length < 3) {
       setNameError("Enter the official facility name (at least 3 characters).");
-      document.getElementById("facility-name")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById("facility-name")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return false;
     }
     setNameError(null);
@@ -487,7 +492,9 @@ export function ProjectRegistrationView({
 
       const photoNote =
         photoCount > 0 ? ` with ${photoCount} photo${photoCount > 1 ? "s" : ""}` : "";
-      const outcome = submitted ? ` registered and submitted for verification${photoNote}` : ` saved${photoNote}`;
+      const outcome = submitted
+        ? ` registered and submitted for verification${photoNote}`
+        : ` saved${photoNote}`;
       setSuccess(`Project "${project.name}" ${outcome}${submitWarn ? ` (${submitWarn})` : ""}.`);
       setTimeout(() => {
         router.push(`/dashboard/projects/${project.id}`);
@@ -509,11 +516,20 @@ export function ProjectRegistrationView({
   const sectionDone = {
     identity: name.trim().length >= 3 && sanctionRef.trim() !== "" && sanctionDate !== "",
     location: address.trim() !== "" && pinCode.trim() !== "",
-    agency: organisationId !== "" && inChargeName.trim() !== "" && (inChargePhone.trim() !== "" || inChargeEmail.trim() !== ""),
+    agency:
+      organisationId !== "" &&
+      inChargeName.trim() !== "" &&
+      (inChargePhone.trim() !== "" || inChargeEmail.trim() !== ""),
     programme: selectedProgrammes.length > 0 && capacity.trim() !== "",
     evidence: photos.length > 0 || initialPhotos.length > 0,
   };
-  const optional = { identity: false, location: false, agency: false, programme: false, evidence: true } as const;
+  const optional = {
+    identity: false,
+    location: false,
+    agency: false,
+    programme: false,
+    evidence: true,
+  } as const;
   const completedCount = Object.values(sectionDone).filter(Boolean).length;
   const completenessPct = Math.round((completedCount / 5) * 100);
 
@@ -534,15 +550,23 @@ export function ProjectRegistrationView({
       </div>
 
       {!canCreate && (
-        <div className="error-banner" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+        <div
+          className="error-banner"
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}
+        >
           <IconShieldCheck width={16} height={16} />
-          <span>Your role does not include project registration rights - the form is read-only.</span>
+          <span>
+            Your role does not include project registration rights - the form is read-only.
+          </span>
         </div>
       )}
 
       {/* Error & Success Banners */}
       {error && (
-        <div className="error-banner" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+        <div
+          className="error-banner"
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}
+        >
           <IconAlertTriangle width={16} height={16} />
           <span>{error}</span>
         </div>
@@ -599,7 +623,9 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="classification-type">Type</label>
+                <label className="form-label" htmlFor="classification-type">
+                  Type
+                </label>
                 <select
                   id="classification-type"
                   value={type}
@@ -612,12 +638,16 @@ export function ProjectRegistrationView({
                   <option value="other">Other</option>
                 </select>
                 {isInstitutionAdmin && (
-                  <div className="form-helper">Fixed to your organisation&apos;s registration type.</div>
+                  <div className="form-helper">
+                    Fixed to your organisation&apos;s registration type.
+                  </div>
                 )}
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="facility-category">Category</label>
+                <label className="form-label" htmlFor="facility-category">
+                  Category
+                </label>
                 <select
                   id="facility-category"
                   value={category}
@@ -625,14 +655,18 @@ export function ProjectRegistrationView({
                   disabled={busy}
                 >
                   {FACILITY_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="sanction-ref">Sanction Reference</label>
-                                <input
+                <label className="form-label" htmlFor="sanction-ref">
+                  Sanction Reference
+                </label>
+                <input
                   id="sanction-ref"
                   type="text"
                   placeholder={sanctionRefPh.text}
@@ -645,7 +679,9 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="sanction-date">Sanction Date</label>
+                <label className="form-label" htmlFor="sanction-date">
+                  Sanction Date
+                </label>
                 <input
                   id="sanction-date"
                   type="date"
@@ -675,12 +711,16 @@ export function ProjectRegistrationView({
 
             <div className="reg-fields">
               <div className="reg-field">
-                <label className="form-label" htmlFor="state-fixed">State</label>
+                <label className="form-label" htmlFor="state-fixed">
+                  State
+                </label>
                 <input id="state-fixed" type="text" value="Odisha" disabled />
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="district-select">District</label>
+                <label className="form-label" htmlFor="district-select">
+                  District
+                </label>
                 <select
                   id="district-select"
                   value={districtId}
@@ -696,8 +736,10 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="block-input">Block / Tehsil</label>
-                                <input
+                <label className="form-label" htmlFor="block-input">
+                  Block / Tehsil
+                </label>
+                <input
                   id="block-input"
                   type="text"
                   placeholder={blockPh.text}
@@ -710,8 +752,10 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="pincode-input">PIN Code</label>
-                                <input
+                <label className="form-label" htmlFor="pincode-input">
+                  PIN Code
+                </label>
+                <input
                   id="pincode-input"
                   type="text"
                   inputMode="numeric"
@@ -726,8 +770,10 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field reg-field-wide">
-                <label className="form-label" htmlFor="address-input">Street Address</label>
-                                <input
+                <label className="form-label" htmlFor="address-input">
+                  Street Address
+                </label>
+                <input
                   id="address-input"
                   type="text"
                   placeholder={addressPh.text}
@@ -759,7 +805,9 @@ export function ProjectRegistrationView({
 
             <div className="reg-fields">
               <div className="reg-field reg-field-wide">
-                <label className="form-label" htmlFor="org-select">Agency / Society</label>
+                <label className="form-label" htmlFor="org-select">
+                  Agency / Society
+                </label>
                 <select
                   id="org-select"
                   value={organisationId}
@@ -779,8 +827,10 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="incharge-name">In-Charge / Superintendent</label>
-                                <input
+                <label className="form-label" htmlFor="incharge-name">
+                  In-Charge / Superintendent
+                </label>
+                <input
                   id="incharge-name"
                   type="text"
                   placeholder={inChargePh.text}
@@ -794,8 +844,10 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field">
-                <label className="form-label" htmlFor="incharge-phone">Phone</label>
-                                <input
+                <label className="form-label" htmlFor="incharge-phone">
+                  Phone
+                </label>
+                <input
                   id="incharge-phone"
                   type="tel"
                   inputMode="tel"
@@ -810,8 +862,10 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field reg-field-wide">
-                <label className="form-label" htmlFor="incharge-email">Email</label>
-                                <input
+                <label className="form-label" htmlFor="incharge-email">
+                  Email
+                </label>
+                <input
                   id="incharge-email"
                   type="email"
                   placeholder={emailPh.text}
@@ -876,7 +930,9 @@ export function ProjectRegistrationView({
               </div>
 
               <div className="reg-field reg-field-wide">
-                <span className="form-label" id="capacity-label">Sanctioned Capacity</span>
+                <span className="form-label" id="capacity-label">
+                  Sanctioned Capacity
+                </span>
                 <div className="reg-capacity-box">
                   <input
                     id="capacity-input"
@@ -893,7 +949,9 @@ export function ProjectRegistrationView({
                   />
                   <span className="reg-capacity-unit">seats</span>
                 </div>
-                <div className="form-helper">Number of beneficiary seats this facility is sanctioned for.</div>
+                <div className="form-helper">
+                  Number of beneficiary seats this facility is sanctioned for.
+                </div>
               </div>
             </div>
           </section>
@@ -938,13 +996,18 @@ export function ProjectRegistrationView({
               />
               <IconCamera width={18} height={18} />
               <span className="reg-dropzone-title">Add photos</span>
-              <span className="reg-dropzone-sub">Select images - capture time and note per photo</span>
+              <span className="reg-dropzone-sub">
+                Select images - capture time and note per photo
+              </span>
             </label>
 
             {photos.length > 0 && (
               <div className="reg-photo-grid" style={{ marginTop: "0.9rem" }}>
                 {photos.map((entry) => (
-                  <div key={entry.key} className={`reg-photo-tile ${entry.uploaded ? "reg-photo-uploaded" : ""}`}>
+                  <div
+                    key={entry.key}
+                    className={`reg-photo-tile ${entry.uploaded ? "reg-photo-uploaded" : ""}`}
+                  >
                     {entry.previewUrl ? (
                       <img src={entry.previewUrl} alt={entry.caption || "New photo"} />
                     ) : (
@@ -1004,7 +1067,14 @@ export function ProjectRegistrationView({
               {savedCode && <span className="reg-summary-code">{savedCode}</span>}
             </div>
 
-            <div className="reg-meter" role="progressbar" aria-valuenow={completenessPct} aria-valuemin={0} aria-valuemax={100} aria-label="Registration completeness">
+            <div
+              className="reg-meter"
+              role="progressbar"
+              aria-valuenow={completenessPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Registration completeness"
+            >
               <div className="reg-meter-fill" style={{ width: `${completenessPct}%` }} />
             </div>
             <div className="reg-meter-caption">
@@ -1025,12 +1095,18 @@ export function ProjectRegistrationView({
                     href={`#section-${item.key === "identity" ? "identity" : item.key}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      document.getElementById(`section-${item.key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      document
+                        .getElementById(`section-${item.key}`)
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
                     className="reg-check-jump"
                     title="Jump to section"
                   >
-                    <IconChevronLeft width={11} height={11} style={{ transform: "rotate(180deg)" }} />
+                    <IconChevronLeft
+                      width={11}
+                      height={11}
+                      style={{ transform: "rotate(180deg)" }}
+                    />
                   </a>
                 </li>
               ))}
@@ -1040,19 +1116,15 @@ export function ProjectRegistrationView({
               <div className="reg-lifecycle">
                 <div className="reg-lifecycle-title">What happens next</div>
                 <p className="reg-lifecycle-note">
-                  An authority official verifies this registration before the facility becomes active.
+                  An authority official verifies this registration before the facility becomes
+                  active.
                 </p>
               </div>
             )}
 
             {/* Actions - stacked at the end of the summary rail, primary last */}
             <div className="reg-actions">
-              <button
-                type="button"
-                onClick={discard}
-                disabled={busy}
-                className="btn-secondary"
-              >
+              <button type="button" onClick={discard} disabled={busy} className="btn-secondary">
                 Discard
               </button>
               <button
@@ -1063,13 +1135,11 @@ export function ProjectRegistrationView({
               >
                 {busy ? "Saving…" : "Save as Draft"}
               </button>
-              <button
-                type="submit"
-                disabled={busy || !canCreate}
-                className="reg-submit"
-              >
+              <button type="submit" disabled={busy || !canCreate} className="reg-submit">
                 <IconCheck width={15} height={15} />
-                <span>{busy ? "Registering…" : isEdit ? "Save & Submit" : "Submit Registration"}</span>
+                <span>
+                  {busy ? "Registering…" : isEdit ? "Save & Submit" : "Submit Registration"}
+                </span>
               </button>
             </div>
           </div>

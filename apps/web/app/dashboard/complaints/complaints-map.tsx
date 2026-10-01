@@ -4,9 +4,7 @@ import { useMemo } from "react";
 import type { Complaint, ComplaintStatus } from "@netram/types";
 import { formatDistrict } from "../../../lib/presentation";
 import { districtCoordinatesByName } from "../projects/real-leaflet-map";
-import NetramOverviewMap, {
-  type MapFacility,
-} from "../../components/netram-overview-map";
+import NetramOverviewMap, { type MapFacility } from "../../components/netram-overview-map";
 import { ComplaintCard } from "./complaint-card";
 import { IconMapPin, IconChevronRight } from "../../components/icons";
 
@@ -163,7 +161,10 @@ export default function ComplaintsMap({ complaints }: ComplaintsMapProps) {
                 {f.name}
               </div>
               <div style={{ flexShrink: 0 }}>
-                <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-muted)" }} title={`${count} grievance${count === 1 ? "" : "s"}`}>
+                <span
+                  style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-muted)" }}
+                  title={`${count} grievance${count === 1 ? "" : "s"}`}
+                >
                   {count} grievance{count === 1 ? "" : "s"}
                 </span>
               </div>
@@ -182,12 +183,30 @@ export default function ComplaintsMap({ complaints }: ComplaintsMapProps) {
                 {f.code}
               </span>
               <span style={{ flexShrink: 0, opacity: 0.6 }}>·</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "0.2rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }} title={f.districtLabel}>
-                <IconMapPin width={11} height={11} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.2rem",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                }}
+                title={f.districtLabel}
+              >
+                <IconMapPin
+                  width={11}
+                  height={11}
+                  style={{ color: "var(--text-subtle)", flexShrink: 0 }}
+                />
                 {f.districtLabel}
               </span>
               <span style={{ flex: 1 }} />
-              <span title="Open facility details" style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}>
+              <span
+                title="Open facility details"
+                style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}
+              >
                 <IconChevronRight width={13} height={13} />
               </span>
             </div>
@@ -200,11 +219,21 @@ export default function ComplaintsMap({ complaints }: ComplaintsMapProps) {
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  color: "var(--color-navy-brand)",
+                }}
+              >
                 {c.complaints[0]!.projectName}
               </h3>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
-                {c.complaints[0]!.projectCode} · {c.complaints.length} grievance{c.complaints.length === 1 ? "" : "s"}
+              <div
+                style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}
+              >
+                {c.complaints[0]!.projectCode} · {c.complaints.length} grievance
+                {c.complaints.length === 1 ? "" : "s"}
               </div>
             </div>
             {c.complaints.map((complaint) => (

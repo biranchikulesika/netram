@@ -3,12 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { InspectionFlag, Project, ProjectFundOverview } from "@netram/types";
-import {
-  IconSearch,
-  IconX,
-  IconPlus,
-  IconChevronRight,
-} from "../../../../components/icons";
+import { IconSearch, IconX, IconPlus, IconChevronRight } from "../../../../components/icons";
 import {
   ALLOCATION_STATUS_FILTERS,
   EXPENSE_STATUS_FILTERS,
@@ -237,7 +232,9 @@ export function ProjectFundsClient({
   const [detailExpenseId, setDetailExpenseId] = useState<string | null>(null);
   const [allocationDetailId, setAllocationDetailId] = useState<string | null>(null);
   const [flagDetailId, setFlagDetailId] = useState<string | null>(null);
-  const [flagAction, setFlagAction] = useState<{ flag: InspectionFlag; action: FlagAction } | null>(null);
+  const [flagAction, setFlagAction] = useState<{ flag: InspectionFlag; action: FlagAction } | null>(
+    null,
+  );
   const [flagNote, setFlagNote] = useState("");
   const [inspectFlag, setInspectFlag] = useState<InspectionFlag | null>(null);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
@@ -356,7 +353,9 @@ export function ProjectFundsClient({
         throw new Error(err.error?.message || "Failed to trigger inspection");
       }
       const data = await res.json();
-      alert(`Special Field Inspection #${data.inspection?.id?.slice(0, 8)} successfully scheduled!`);
+      alert(
+        `Special Field Inspection #${data.inspection?.id?.slice(0, 8)} successfully scheduled!`,
+      );
       setInspectFlag(null);
       await refreshOverview();
     } catch (err: unknown) {
@@ -609,7 +608,11 @@ export function ProjectFundsClient({
           <div className="filter-tabs" role="tablist" aria-label="Facility fund sections">
             {(
               [
-                { key: "allocations" as const, label: "Allocations", count: filteredAllocations.length },
+                {
+                  key: "allocations" as const,
+                  label: "Allocations",
+                  count: filteredAllocations.length,
+                },
                 { key: "expenses" as const, label: "Expenditures", count: filteredExpenses.length },
                 ...(canViewFlags
                   ? [{ key: "flags" as const, label: "Alerts", count: filteredFlags.length }]
@@ -799,9 +802,7 @@ export function ProjectFundsClient({
                     <td>
                       <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>{exp.vendorName}</div>
                     </td>
-                    <td className="table-date">
-                      {formatDate(exp.transactionDate)}
-                    </td>
+                    <td className="table-date">{formatDate(exp.transactionDate)}</td>
                     <td
                       className="table-align-right"
                       style={{
@@ -853,7 +854,9 @@ export function ProjectFundsClient({
                   <td colSpan={3} className="table-empty-state">
                     <IconSearch width={22} height={22} className="table-empty-icon" />
                     <div className="table-empty-title">No financial alerts found</div>
-                    <div className="table-empty-desc">No active financial alerts recorded for this facility.</div>
+                    <div className="table-empty-desc">
+                      No active financial alerts recorded for this facility.
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -903,9 +906,7 @@ export function ProjectFundsClient({
                         </div>
                       )}
                     </td>
-                    <td className="table-date">
-                      {formatDate(f.createdAt)}
-                    </td>
+                    <td className="table-date">{formatDate(f.createdAt)}</td>
                   </tr>
                 ))
               )}
@@ -946,7 +947,9 @@ export function ProjectFundsClient({
                     <td colSpan={5} className="table-empty-state">
                       <IconSearch width={22} height={22} className="table-empty-icon" />
                       <div className="table-empty-title">No fund allocations found</div>
-                      <div className="table-empty-desc">No allocations match current filter criteria.</div>
+                      <div className="table-empty-desc">
+                        No allocations match current filter criteria.
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -979,9 +982,7 @@ export function ProjectFundsClient({
                       >
                         {formatCurrency(a.allocatedAmount)}
                       </td>
-                      <td className="table-date">
-                        {formatDate(a.updatedAt)}
-                      </td>
+                      <td className="table-date">{formatDate(a.updatedAt)}</td>
                     </tr>
                   ))
                 )}
@@ -1843,8 +1844,7 @@ export function ProjectFundsClient({
                     minWidth: "190px",
                     padding: "0.7rem 1.2rem",
                     borderRadius: "6px",
-                    background:
-                      "var(--color-navy-brand)",
+                    background: "var(--color-navy-brand)",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,

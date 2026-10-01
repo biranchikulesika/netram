@@ -172,7 +172,12 @@ export class ComplaintRepository {
   private async projectIdentity(
     executor: Pick<DrizzleDB, "select">,
     projectId: string,
-  ): Promise<{ code: string; name: string; districtId: string | null; districtName: string | null }> {
+  ): Promise<{
+    code: string;
+    name: string;
+    districtId: string | null;
+    districtName: string | null;
+  }> {
     const rows = await executor
       .select({
         code: projectsTable.code,
@@ -250,7 +255,9 @@ export class ComplaintRepository {
   }
 
   async findByTrackingCode(trackingCode: string): Promise<Complaint | null> {
-    const rows = await this.baseQuery().where(eq(complaintsTable.trackingCode, trackingCode)).limit(1);
+    const rows = await this.baseQuery()
+      .where(eq(complaintsTable.trackingCode, trackingCode))
+      .limit(1);
     const row = rows[0];
     if (!row) return null;
     return toComplaint(flattenComplaintRow(row));

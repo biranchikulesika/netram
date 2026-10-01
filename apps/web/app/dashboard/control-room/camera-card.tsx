@@ -44,8 +44,7 @@ export function CameraCard({ camera, onOpen }: CameraCardProps) {
   // would hide it on every idle camera and make it impossible to ever start
   // a stream. `active` is the administrative state: may this camera be used?
   // The tile label below is what carries honest stream state.
-  const idleLabel =
-    camera.status === "maintenance" ? "Camera under maintenance" : "Camera offline";
+  const idleLabel = camera.status === "maintenance" ? "Camera under maintenance" : "Camera offline";
 
   const handleOpen = useCallback(() => {
     if (online) onOpen(camera);

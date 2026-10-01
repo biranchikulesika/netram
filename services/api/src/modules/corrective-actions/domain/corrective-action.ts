@@ -1,7 +1,4 @@
-import type {
-  CorrectiveActionReviewOutcome,
-  CorrectiveActionStatus,
-} from "@netram/types";
+import type { CorrectiveActionReviewOutcome, CorrectiveActionStatus } from "@netram/types";
 import { CORRECTIVE_ACTION_SUBMIT_FROM } from "@netram/types";
 
 /**
@@ -13,9 +10,7 @@ import { CORRECTIVE_ACTION_SUBMIT_FROM } from "@netram/types";
  * the SLA job, never from users.
  */
 export function canSubmitAtr(from: CorrectiveActionStatus): boolean {
-  return (CORRECTIVE_ACTION_SUBMIT_FROM as readonly CorrectiveActionStatus[]).includes(
-    from,
-  );
+  return (CORRECTIVE_ACTION_SUBMIT_FROM as readonly CorrectiveActionStatus[]).includes(from);
 }
 
 export function resolveReviewTransition(

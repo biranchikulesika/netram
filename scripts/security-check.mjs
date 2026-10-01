@@ -41,9 +41,7 @@ const rel = (f) => f.slice(ROOT.length + 1).replaceAll("\\", "/");
 
 const FILES = walk(ROOT).filter(
   (f) =>
-    !/(\.env\.example$|package-lock\.json$|pnpm-lock\.yaml$|^\.gitignore$|^scripts\/)/.test(
-      rel(f),
-    ),
+    !/(\.env\.example$|package-lock\.json$|pnpm-lock\.yaml$|^\.gitignore$|^scripts\/)/.test(rel(f)),
 );
 
 // High-signal secret patterns. These are deliberately suspicious, not exhaustive.

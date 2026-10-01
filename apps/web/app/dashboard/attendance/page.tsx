@@ -20,22 +20,20 @@ export default async function AttendancePage({
   if (!session) redirect("/login");
 
   const params = await searchParams;
-  const date =
-    params.date && DATE_PATTERN.test(params.date) ? params.date : DEFAULT_DATE;
+  const date = params.date && DATE_PATTERN.test(params.date) ? params.date : DEFAULT_DATE;
   const searchQuery = params.q?.trim() ?? "";
 
   const client = await getClient();
   const range = { from: date, to: date };
 
-  const [attendanceCalculationsPage, attendanceAnomalies] =
-    await Promise.all([
-      client
-        .listAttendanceCalculations({ ...range, pageSize: 50 })
-        .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
-      client
-        .listAttendanceAnomalies({ pageSize: 20 })
-        .catch(() => ({ items: [], total: 0, page: 1, pageSize: 20 })),
-    ]);
+  const [attendanceCalculationsPage, attendanceAnomalies] = await Promise.all([
+    client
+      .listAttendanceCalculations({ ...range, pageSize: 50 })
+      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 50 })),
+    client
+      .listAttendanceAnomalies({ pageSize: 20 })
+      .catch(() => ({ items: [], total: 0, page: 1, pageSize: 20 })),
+  ]);
 
   const attendanceCalculations = attendanceCalculationsPage as unknown as {
     items: AttendanceCalculation[];

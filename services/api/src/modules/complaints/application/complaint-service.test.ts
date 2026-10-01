@@ -134,11 +134,9 @@ describe("ComplaintService", () => {
     const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
     const updated = await service.transitionComplaint(mockCtx(), "complaint-1", "under_review");
 
-    expect(authz.requirePermission).toHaveBeenCalledWith(
-      expect.anything(),
-      "complaint:resolve",
-      { districtId: "district-khordha" },
-    );
+    expect(authz.requirePermission).toHaveBeenCalledWith(expect.anything(), "complaint:resolve", {
+      districtId: "district-khordha",
+    });
     expect(repo.transitionWithAuditAndEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         complaintId: "complaint-1",
@@ -165,9 +163,9 @@ describe("ComplaintService", () => {
     const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
 
     // Missing resolutionText
-    await expect(
-      service.transitionComplaint(mockCtx(), "complaint-1", "resolved"),
-    ).rejects.toThrow(AppError);
+    await expect(service.transitionComplaint(mockCtx(), "complaint-1", "resolved")).rejects.toThrow(
+      AppError,
+    );
 
     // With resolutionText
     repo.transitionWithAuditAndEvent = vi.fn().mockResolvedValue({

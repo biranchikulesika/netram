@@ -115,7 +115,10 @@ export function StatusFilter({
         <IconChevronRight
           width={12}
           height={12}
-          style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}
+          style={{
+            transform: open ? "rotate(90deg)" : "rotate(0deg)",
+            transition: "transform 0.15s ease",
+          }}
         />
       </button>
       {open && (
@@ -151,7 +154,8 @@ export function StatusFilter({
                     padding: opt.value === "ALL" ? "0.45rem 0.6rem" : "0.4rem 0.6rem 0.4rem 1.9rem",
                     marginLeft: opt.value === "ALL" ? 0 : "0.5rem",
                     marginBottom: opt.value === "ALL" ? "0.35rem" : 0,
-                    borderLeft: opt.value === "ALL" ? "none" : "1px solid var(--color-border-subtle)",
+                    borderLeft:
+                      opt.value === "ALL" ? "none" : "1px solid var(--color-border-subtle)",
                     borderRadius: "7px",
                     cursor: isLastRemaining ? "not-allowed" : "pointer",
                     opacity: checked ? 1 : 0.75,

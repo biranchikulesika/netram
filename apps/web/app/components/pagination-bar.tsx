@@ -88,8 +88,8 @@ export function PaginationBar({
           </>
         ) : (
           <>
-            Showing <strong>{from.toLocaleString()}</strong>–<strong>{to.toLocaleString()}</strong> of{" "}
-            <strong>{total.toLocaleString()}</strong> {itemName}
+            Showing <strong>{from.toLocaleString()}</strong>–<strong>{to.toLocaleString()}</strong>{" "}
+            of <strong>{total.toLocaleString()}</strong> {itemName}
           </>
         )}
       </div>

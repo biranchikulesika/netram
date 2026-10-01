@@ -78,11 +78,7 @@ function normalizeIconName(name: string): { collection: string; iconName: string
 /**
  * Constructs a CDN URL for an icon.
  */
-export function getCdnIconUrl(
-  name: string,
-  size: number = 20,
-  color: string = "#FFFFFF"
-): string {
+export function getCdnIconUrl(name: string, size: number = 20, color: string = "#FFFFFF"): string {
   if (name.startsWith("http://") || name.startsWith("https://")) {
     return name;
   }
@@ -93,12 +89,7 @@ export function getCdnIconUrl(
   return `${CDN_BASE}/${cdnCollection}/${iconName}.svg?width=${size}&height=${size}&color=${encodedColor}`;
 }
 
-export function Icon({
-  name,
-  size = 20,
-  color = colors.darkTextPrimary,
-  style,
-}: IconProps) {
+export function Icon({ name, size = 20, color = colors.darkTextPrimary, style }: IconProps) {
   const iconUrl = getCdnIconUrl(name, size, color);
 
   if (name.startsWith("http://") || name.startsWith("https://")) {

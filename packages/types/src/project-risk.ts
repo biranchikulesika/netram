@@ -5,10 +5,11 @@ export type CompositeRiskLevel = "low" | "medium" | "high" | "critical";
 export type DataQuality = "sufficient" | "partial" | "sparse" | "no_data";
 
 export interface DimensionResult {
-  dimension: "financial" | "inspection_quality" | "attendance_anomaly" | "complaint_density" | "ai_anomaly";
+  dimension:
+    "financial" | "inspection_quality" | "attendance_anomaly" | "complaint_density" | "ai_anomaly";
   rawScore: number;
   normalizedScore: number; // 0 to 100 normalized within the dimension
-  weight: number;          // e.g. 40, 25, 20, 10, 5
+  weight: number; // e.g. 40, 25, 20, 10, 5
   weightedContribution: number; // (normalizedScore * weight) / 100
   dataQuality: DataQuality;
   explanation: string;
@@ -107,7 +108,12 @@ export interface SchedulingDecision {
   projectId: UUID;
   shouldSchedule: boolean;
   reason: string;
-  actionTaken: "scheduled" | "cooldown_skipped" | "existing_open_inspection_skipped" | "threshold_not_met" | "flagged_only";
+  actionTaken:
+    | "scheduled"
+    | "cooldown_skipped"
+    | "existing_open_inspection_skipped"
+    | "threshold_not_met"
+    | "flagged_only";
   inspectionId?: UUID;
   inspectionFlagId?: UUID;
 }

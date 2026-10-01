@@ -39,20 +39,12 @@ import { useSyncStatus } from "../../src/offline/sync-context";
 import { useAuth } from "../../src/auth/auth-context";
 import { formatCurrencyString } from "../../src/utils/currency";
 import { formatInspectionType } from "../../src/utils/formatters";
-import type {
-  InspectionFlag,
-  OrganisationView,
-  Project,
-  ProjectFundOverview,
-} from "@netram/types";
+import type { InspectionFlag, OrganisationView, Project, ProjectFundOverview } from "@netram/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** Video evidence may be typed loosely or only carry an .mp4/.mov file name. */
 function isVideoMedia(media: { evidence_type?: string | null; file_name?: string | null }) {
-  return (
-    media.evidence_type === "video" ||
-    /\.(mp4|mov)$/i.test(media.file_name ?? "")
-  );
+  return media.evidence_type === "video" || /\.(mp4|mov)$/i.test(media.file_name ?? "");
 }
 
 export default function InspectionDetailScreen() {
@@ -308,14 +300,11 @@ export default function InspectionDetailScreen() {
     }
   };
 
-  const openCheckIn = () =>
-    router.push({ pathname: "/check-in", params: { inspectionId: id } });
+  const openCheckIn = () => router.push({ pathname: "/check-in", params: { inspectionId: id } });
 
   // Persist the captures the user reviewed and saved in the camera. Location is
   // attached to every item, since they were all taken in the same pass.
-  const handleSaveMediaBatch = async (
-    items: CapturedMediaItem[],
-  ): Promise<boolean> => {
+  const handleSaveMediaBatch = async (items: CapturedMediaItem[]): Promise<boolean> => {
     if (!id || items.length === 0) return true;
     setActionBusy(true);
     try {
@@ -507,7 +496,6 @@ export default function InspectionDetailScreen() {
                 {inspection?.district_id ? ` · ${inspection.district_id}` : ""}
               </Text>
             </View>
-
           </View>
         </View>
 
@@ -519,117 +507,117 @@ export default function InspectionDetailScreen() {
           <View style={styles.pageContainer}>
             {/* ──────────────── FACILITY DOSSIER ──────────────── */}
             <>
-                {/* FACILITY IDENTITY */}
+              {/* FACILITY IDENTITY */}
+              <View style={styles.cleanSection}>
+                <SectionHeading title="Facility Identity" />
+                <MetaRow label="Inspection Ref" value={inspectionRef} mono />
+                <MetaRow
+                  label="Project Code"
+                  value={project?.code || inspection?.project_code}
+                  mono
+                />
+                <MetaRow
+                  label="Type"
+                  value={formatInspectionType(project?.type || inspection?.type)}
+                />
+                <MetaRow label="Operating Agency" value={organisation?.name} />
+                <MetaRow
+                  label="Status"
+                  value={(project?.status || inspection?.status || "active")
+                    .replace(/_/g, " ")
+                    .toUpperCase()}
+                />
+                <Pressable
+                  style={[styles.metaRow, { borderBottomColor: borderColor }]}
+                  onPress={openCheckIn}
+                  accessibilityRole="button"
+                  accessibilityLabel="View site on map"
+                >
+                  <Text style={[styles.metaLabel, { color: textMuted }]}>Location</Text>
+                  <View style={styles.metaLinkValue}>
+                    <Text style={[styles.metaValue, { color: accentBlue }]}>View on Map</Text>
+                    <Icon name="chevron-forward" size={14} color={accentBlue} />
+                  </View>
+                </Pressable>
+              </View>
+
+              {/* FUNDS & SANCTIONS */}
+              {fundOverview && (
                 <View style={styles.cleanSection}>
-                  <SectionHeading title="Facility Identity" />
-                  <MetaRow label="Inspection Ref" value={inspectionRef} mono />
+                  <SectionHeading title="Funds & Sanctions" />
                   <MetaRow
-                    label="Project Code"
-                    value={project?.code || inspection?.project_code}
-                    mono
+                    label="Total Sanctioned"
+                    value={formatCurrencyString(fundOverview.summary.totalAllocated)}
+                    bold
                   />
                   <MetaRow
-                    label="Type"
-                    value={formatInspectionType(project?.type || inspection?.type)}
+                    label="Total Released"
+                    value={formatCurrencyString(fundOverview.summary.totalReleased)}
                   />
-                  <MetaRow label="Operating Agency" value={organisation?.name} />
                   <MetaRow
-                    label="Status"
-                    value={(project?.status || inspection?.status || "active")
-                      .replace(/_/g, " ")
-                      .toUpperCase()}
+                    label="Total Expended"
+                    value={formatCurrencyString(fundOverview.summary.totalExpenditure)}
                   />
-                  <Pressable
-                    style={[styles.metaRow, { borderBottomColor: borderColor }]}
-                    onPress={openCheckIn}
-                    accessibilityRole="button"
-                    accessibilityLabel="View site on map"
-                  >
-                    <Text style={[styles.metaLabel, { color: textMuted }]}>Location</Text>
-                    <View style={styles.metaLinkValue}>
-                      <Text style={[styles.metaValue, { color: accentBlue }]}>View on Map</Text>
-                      <Icon name="chevron-forward" size={14} color={accentBlue} />
+                  <View style={styles.utilisationBlock}>
+                    <View style={styles.utilisationHeader}>
+                      <Text style={[styles.utilisationLabel, { color: textMuted }]}>
+                        UTILISATION
+                      </Text>
+                      <Text style={[styles.utilisationValue, { color: accentBlue }]}>
+                        {fundOverview.summary.utilizationRate.toFixed(1)}%
+                      </Text>
                     </View>
-                  </Pressable>
+                    <View style={[styles.utilisationTrack, { backgroundColor: bgSubtle }]}>
+                      <View
+                        style={[
+                          styles.utilisationFill,
+                          {
+                            backgroundColor: accentBlue,
+                            width: `${Math.min(100, Math.max(0, fundOverview.summary.utilizationRate))}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
                 </View>
+              )}
 
-                {/* FUNDS & SANCTIONS */}
-                {fundOverview && (
-                  <View style={styles.cleanSection}>
-                    <SectionHeading title="Funds & Sanctions" />
-                    <MetaRow
-                      label="Total Sanctioned"
-                      value={formatCurrencyString(fundOverview.summary.totalAllocated)}
-                      bold
-                    />
-                    <MetaRow
-                      label="Total Released"
-                      value={formatCurrencyString(fundOverview.summary.totalReleased)}
-                    />
-                    <MetaRow
-                      label="Total Expended"
-                      value={formatCurrencyString(fundOverview.summary.totalExpenditure)}
-                    />
-                    <View style={styles.utilisationBlock}>
-                      <View style={styles.utilisationHeader}>
-                        <Text style={[styles.utilisationLabel, { color: textMuted }]}>
-                          UTILISATION
-                        </Text>
-                        <Text style={[styles.utilisationValue, { color: accentBlue }]}>
-                          {fundOverview.summary.utilizationRate.toFixed(1)}%
-                        </Text>
-                      </View>
-                      <View style={[styles.utilisationTrack, { backgroundColor: bgSubtle }]}>
-                        <View
-                          style={[
-                            styles.utilisationFill,
-                            {
-                              backgroundColor: accentBlue,
-                              width: `${Math.min(100, Math.max(0, fundOverview.summary.utilizationRate))}%`,
-                            },
-                          ]}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                )}
-
-                {/* ADVISORY FLAGS */}
-                {inspectionFlags.length > 0 && (
-                  <View style={styles.cleanSection}>
-                    <SectionHeading title="Advisory Flags" count={inspectionFlags.length} />
-                    <View style={{ gap: 8, marginTop: 4 }}>
-                      {inspectionFlags.map((flag) => (
-                        <View
-                          key={flag.id}
-                          style={[
-                            styles.cleanFlagRow,
-                            {
-                              backgroundColor: bgSubtle,
-                              borderLeftColor:
-                                flag.riskLevel === "high" || flag.riskLevel === "critical"
-                                  ? "#EF4444"
-                                  : accentBlue,
-                            },
-                          ]}
-                        >
-                          <View style={styles.flagTopRow}>
-                            <NetramBadge
-                              label={flag.riskLevel.toUpperCase()}
-                              variant="severity"
-                              severity={flag.riskLevel}
-                              size="sm"
-                            />
-                          </View>
-                          <Text style={[styles.flagText, { color: textPrimary }]}>
-                            {flag.explanation}
-                          </Text>
+              {/* ADVISORY FLAGS */}
+              {inspectionFlags.length > 0 && (
+                <View style={styles.cleanSection}>
+                  <SectionHeading title="Advisory Flags" count={inspectionFlags.length} />
+                  <View style={{ gap: 8, marginTop: 4 }}>
+                    {inspectionFlags.map((flag) => (
+                      <View
+                        key={flag.id}
+                        style={[
+                          styles.cleanFlagRow,
+                          {
+                            backgroundColor: bgSubtle,
+                            borderLeftColor:
+                              flag.riskLevel === "high" || flag.riskLevel === "critical"
+                                ? "#EF4444"
+                                : accentBlue,
+                          },
+                        ]}
+                      >
+                        <View style={styles.flagTopRow}>
+                          <NetramBadge
+                            label={flag.riskLevel.toUpperCase()}
+                            variant="severity"
+                            severity={flag.riskLevel}
+                            size="sm"
+                          />
                         </View>
-                      ))}
-                    </View>
+                        <Text style={[styles.flagText, { color: textPrimary }]}>
+                          {flag.explanation}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
-                )}
-              </>
+                </View>
+              )}
+            </>
 
             {/* ──────────────── OBSERVATIONS ──────────────── */}
             <View style={styles.cleanSection}>
@@ -728,7 +716,6 @@ export default function InspectionDetailScreen() {
                 </View>
               )}
             </View>
-
           </View>
         </ScrollView>
 
@@ -757,9 +744,7 @@ export default function InspectionDetailScreen() {
                 style={({ pressed }) => [
                   styles.actionBarPrimary,
                   {
-                    backgroundColor: canSubmitInspection
-                      ? theme.actionGreen
-                      : theme.textMuted,
+                    backgroundColor: canSubmitInspection ? theme.actionGreen : theme.textMuted,
                   },
                   pressed && { opacity: 0.85 },
                 ]}
@@ -933,8 +918,8 @@ export default function InspectionDetailScreen() {
                 </Text>
                 <Text style={[styles.declarationText, { color: textPrimary }]}>
                   "I hereby solemnly declare that this inspection was conducted in person within the
-                  designated geofence boundary, and the field notes and media evidence recorded herein
-                  represent an accurate on-site verification."
+                  designated geofence boundary, and the field notes and media evidence recorded
+                  herein represent an accurate on-site verification."
                 </Text>
               </View>
 

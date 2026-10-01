@@ -6,12 +6,9 @@ import {
 } from "./corrective-action.js";
 
 describe("canSubmitAtr", () => {
-  it.each(["pending", "rejected", "overdue"] as const)(
-    "allows ATR submission when %s",
-    (from) => {
-      expect(canSubmitAtr(from)).toBe(true);
-    },
-  );
+  it.each(["pending", "rejected", "overdue"] as const)("allows ATR submission when %s", (from) => {
+    expect(canSubmitAtr(from)).toBe(true);
+  });
 
   it.each(["submitted", "under_review", "accepted", "escalated"] as const)(
     "rejects ATR submission when %s",

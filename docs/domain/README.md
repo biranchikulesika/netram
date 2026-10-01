@@ -31,7 +31,7 @@ Access control in Netram is a multi-dimensional, server-evaluated policy:
 - **`RoleAssignment`**: The binding of a User to a Role, bounded by an Authority, a Jurisdiction, and an explicit Scope (`national` vs `jurisdiction`).
 - **`Policy`**: Server-side evaluators (`AuthorizationService`) that decide access based on identity, active role assignments, resource jurisdiction, and operational context.
 
-*Rule:* Client-side UI visibility toggles are cosmetic. The server re-evaluates complete authorization and jurisdiction on every single API request (AGENTS.md §16–17).
+_Rule:_ Client-side UI visibility toggles are cosmetic. The server re-evaluates complete authorization and jurisdiction on every single API request (AGENTS.md §16–17).
 
 ---
 

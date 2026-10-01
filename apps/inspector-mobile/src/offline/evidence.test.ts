@@ -19,13 +19,17 @@ describe("Evidence Offline & Digest (P14-03)", () => {
       // Known SHA-256 of "hello world"
       // b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9
       const result = await computeSha256("hello world");
-      expect(result).toBe("sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+      expect(result).toBe(
+        "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+      );
     });
 
     it("computes SHA-256 hash correctly when given Uint8Array bytes", async () => {
       const bytes = new TextEncoder().encode("hello world");
       const result = await computeSha256(bytes);
-      expect(result).toBe("sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+      expect(result).toBe(
+        "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+      );
     });
 
     it("computes hash via Node fallback path when crypto.subtle is unavailable", async () => {
@@ -33,7 +37,9 @@ describe("Evidence Offline & Digest (P14-03)", () => {
       try {
         vi.stubGlobal("crypto", { subtle: undefined });
         const result = await computeSha256("hello world");
-        expect(result).toBe("sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+        expect(result).toBe(
+          "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+        );
       } finally {
         vi.stubGlobal("crypto", originalCrypto);
       }
@@ -69,7 +75,8 @@ describe("Evidence Offline & Digest (P14-03)", () => {
     });
 
     it("uses provided contentHash when explicitly passed", async () => {
-      const explicitHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+      const explicitHash =
+        "sha256:1111111111111111111111111111111111111111111111111111111111111111";
       const result = await captureEvidenceOffline(queue, {
         inspectionId,
         evidenceType: "document",

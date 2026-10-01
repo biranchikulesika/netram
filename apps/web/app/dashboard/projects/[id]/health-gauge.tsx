@@ -58,7 +58,9 @@ function mixColor(from: string, to: string, t: number): string {
   const channel = (shift: number) => {
     const a = Number.parseInt(from.slice(shift, shift + 2), 16);
     const b = Number.parseInt(to.slice(shift, shift + 2), 16);
-    return Math.round(a + (b - a) * t).toString(16).padStart(2, "0");
+    return Math.round(a + (b - a) * t)
+      .toString(16)
+      .padStart(2, "0");
   };
   return `#${channel(1)}${channel(3)}${channel(5)}`;
 }
@@ -155,11 +157,11 @@ export function HealthGauge({ snapshot }: HealthGaugeProps) {
           opacity={0.3}
         />
         {/*
-          * Filled stretch from 0 to the current health. Painted with the SAME
-          * ramp as the track - a solid status colour here would stripe the
-          * low-health end in the opposite hue (a green bar across the red
-          * segment). userSpaceOnUse keeps both arcs on one spectrum.
-          */}
+         * Filled stretch from 0 to the current health. Painted with the SAME
+         * ramp as the track - a solid status colour here would stripe the
+         * low-health end in the opposite hue (a green bar across the red
+         * segment). userSpaceOnUse keeps both arcs on one spectrum.
+         */}
         {health !== null && (
           <path
             d={arcPath(0, health)}

@@ -262,7 +262,15 @@ export class ProjectRepository {
     };
   }
 
-  async findAllActiveProjects(): Promise<Array<{ id: string; code: string; name: string; districtId: string | null; organisationId: string | null }>> {
+  async findAllActiveProjects(): Promise<
+    Array<{
+      id: string;
+      code: string;
+      name: string;
+      districtId: string | null;
+      organisationId: string | null;
+    }>
+  > {
     return this.db
       .select({
         id: projectsTable.id,
@@ -472,7 +480,10 @@ export class ProjectRepository {
   async listGeofences(projectIds?: string[]): Promise<ProjectGeofence[]> {
     if (projectIds && projectIds.length === 0) return [];
     const query = projectIds
-      ? this.db.select().from(projectGeofencesTable).where(inArray(projectGeofencesTable.projectId, projectIds))
+      ? this.db
+          .select()
+          .from(projectGeofencesTable)
+          .where(inArray(projectGeofencesTable.projectId, projectIds))
       : this.db.select().from(projectGeofencesTable);
     const rows = await query;
     return rows.map((r) => toProjectGeofence(r as unknown as ProjectGeofenceRow));
@@ -589,4 +600,3 @@ export interface SealGeofenceWrite {
   eventType: DomainEventType;
   eventPayload: Record<string, unknown>;
 }
-

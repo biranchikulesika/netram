@@ -247,8 +247,13 @@ function terminateChrome(chrome: ReturnType<typeof spawn>): Promise<void> {
 
 async function main(): Promise<void> {
   const GATEWAY = values["gateway-base"];
-  const SERVICE_SECRET = process.env["NETRAM_CCTV_SERVICE_SECRET"] ?? "replace-me-with-a-32-char-plus-cctv-service-secret";
-  const svcHeaders = { "Content-Type": "application/json", "x-netram-service-secret": SERVICE_SECRET };
+  const SERVICE_SECRET =
+    process.env["NETRAM_CCTV_SERVICE_SECRET"] ??
+    "replace-me-with-a-32-char-plus-cctv-service-secret";
+  const svcHeaders = {
+    "Content-Type": "application/json",
+    "x-netram-service-secret": SERVICE_SECRET,
+  };
   const cameraCtx = {
     id: CAMERA_ID,
     provider: "simulated",
@@ -260,7 +265,9 @@ async function main(): Promise<void> {
 
   // 1. MediaMTX control API reachable.
   try {
-    const res = await fetch(`${values["mediamtx-api"]}/v3/paths/list`, { headers: mediamtxHeaders() });
+    const res = await fetch(`${values["mediamtx-api"]}/v3/paths/list`, {
+      headers: mediamtxHeaders(),
+    });
     assert(res.status === 200, "MediaMTX control API reachable", `paths/list -> ${res.status}`);
   } catch (e) {
     fail("MediaMTX control API reachable", String(e));
@@ -270,7 +277,11 @@ async function main(): Promise<void> {
   try {
     const res = await fetch(`${GATEWAY}/media/health`);
     const body = (await res.json()) as { status?: string; mediamtx?: string };
-    assert(res.ok && body.status === "ok" && body.mediamtx === "reachable", "Gateway /media/health", JSON.stringify(body));
+    assert(
+      res.ok && body.status === "ok" && body.mediamtx === "reachable",
+      "Gateway /media/health",
+      JSON.stringify(body),
+    );
   } catch (e) {
     fail("Gateway /media/health", String(e));
   }
@@ -304,17 +315,25 @@ async function main(): Promise<void> {
     void playback;
     const body = (await res.json()) as typeof playback & { error?: unknown };
     if (res.status !== 201 || !body?.playback) {
-      fail("Playback contract via gateway", `HTTP ${res.status} ${JSON.stringify(body).slice(0, 200)}`);
+      fail(
+        "Playback contract via gateway",
+        `HTTP ${res.status} ${JSON.stringify(body).slice(0, 200)}`,
+      );
     } else {
       playback = body;
-      assert(body.playback.protocol === "webrtc", "Playback contract is WHEP/WebRTC", body.playback.whepUrl);
+      assert(
+        body.playback.protocol === "webrtc",
+        "Playback contract is WHEP/WebRTC",
+        body.playback.whepUrl,
+      );
       assert(
         body.playback.mediaPath === MEDIA_PATH,
         "Media path derived from DB camera endpoint",
         body.playback.mediaPath,
       );
       assert(
-        !JSON.stringify(body).includes("facility-nvr:8554") && !JSON.stringify(body).includes("rtsp"),
+        !JSON.stringify(body).includes("facility-nvr:8554") &&
+          !JSON.stringify(body).includes("rtsp"),
         "No ingest details leaked in playback contract",
       );
       const provisioned = await mediamtxConfigPathExists(MEDIA_PATH);
@@ -326,13 +345,21 @@ async function main(): Promise<void> {
 
   // 2b. Unknown camera → controlled error, no path created.
   try {
-    const unknownCtx = { ...cameraCtx, id: "00000000-0000-0000-0000-00000000000f", endpoint: "rtsp://host:554" };
+    const unknownCtx = {
+      ...cameraCtx,
+      id: "00000000-0000-0000-0000-00000000000f",
+      endpoint: "rtsp://host:554",
+    };
     const res = await fetch(`${GATEWAY}/cameras/00000000-0000-0000-0000-00000000000f/streams`, {
       method: "POST",
       headers: svcHeaders,
       body: JSON.stringify({ ttlSeconds: 60, ...unknownCtx }),
     });
-    assert(res.status >= 400 && res.status < 500, "Unknown camera fails controlled", `-> ${res.status}`);
+    assert(
+      res.status >= 400 && res.status < 500,
+      "Unknown camera fails controlled",
+      `-> ${res.status}`,
+    );
     const leaked = await mediamtxPath("unknown-test-path");
     assert(leaked === null, "No accidental MediaMTX path creation", "paths/get -> 404");
   } catch (e) {
@@ -351,7 +378,8 @@ async function main(): Promise<void> {
       body: JSON.stringify(cameraCtx),
     });
     const body = (await res.json()) as { status?: string; details?: { reason?: string } };
-    const idleOffline = body.status === "offline" && body.details?.reason === "source_never_delivered";
+    const idleOffline =
+      body.status === "offline" && body.details?.reason === "source_never_delivered";
     const lingeringOnline = body.status === "online" && body.details?.sourceType === "rtspSource";
     assert(
       res.ok && (idleOffline || lingeringOnline),
@@ -418,11 +446,14 @@ async function main(): Promise<void> {
           const camPage = (await cams.json()) as { items: { id: string; name: string }[] };
           const rig = camPage.items.find((c) => c.id === CAMERA_ID);
           if (!rig) throw new Error("rig camera not found in DB");
-          const stream = await fetch(`${values["api-base"]}/api/v1/cctv/cameras/${CAMERA_ID}/streams`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ ttlSeconds: 300 }),
-          });
+          const stream = await fetch(
+            `${values["api-base"]}/api/v1/cctv/cameras/${CAMERA_ID}/streams`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ ttlSeconds: 300 }),
+            },
+          );
           const body = (await stream.json()) as { token?: string; playback?: { token?: string } };
           playbackToken = body.playback?.token ?? body.token ?? "";
         } catch (e) {
@@ -435,22 +466,42 @@ async function main(): Promise<void> {
         page1 = await newPage(
           `${values["web-base"]}/dev/cctv-test?autostart=1&path=${encodeURIComponent(MEDIA_PATH)}${tokenParam}`,
         );
-        const status1 = await withTimeout(evaluate<{ state: string; text: string }>(page1.conn, WAIT_STATUS), 60_000, "viewer playback");
-        assert(status1.state === "playing", "Viewer playback via MediaMTX (Phase 2 intact)", status1.text.trim());
+        const status1 = await withTimeout(
+          evaluate<{ state: string; text: string }>(page1.conn, WAIT_STATUS),
+          60_000,
+          "viewer playback",
+        );
+        assert(
+          status1.state === "playing",
+          "Viewer playback via MediaMTX (Phase 2 intact)",
+          status1.text.trim(),
+        );
 
         const frames1 = await evaluate<number>(page1.conn, READ_FRAMES);
         assert(frames1 > 0, "Viewer decodes frames", `framesDecoded=${frames1}`);
 
         // 5. Source becomes active when a viewer connects.
         const p = await withTimeout(mediamtxPath(MEDIA_PATH), 10_000, "path state");
-        assert(p?.ready === true, "MediaMTX source active with viewer attached", `ready=${p?.ready}`);
-        assert((p?.readers.length ?? 0) >= 1, "MediaMTX reports reader(s)", `readers=${p?.readers.length}`);
+        assert(
+          p?.ready === true,
+          "MediaMTX source active with viewer attached",
+          `ready=${p?.ready}`,
+        );
+        assert(
+          (p?.readers.length ?? 0) >= 1,
+          "MediaMTX reports reader(s)",
+          `readers=${p?.readers.length}`,
+        );
 
         // 6. Fan-out: second + third viewers, ONE source, no extra gateway relays.
         const page2 = await newPage(
           `${values["web-base"]}/dev/cctv-test?autostart=1&path=${encodeURIComponent(MEDIA_PATH)}${tokenParam}`,
         );
-        const status2 = await withTimeout(evaluate<{ state: string; text: string }>(page2.conn, WAIT_STATUS), 60_000, "viewer 2");
+        const status2 = await withTimeout(
+          evaluate<{ state: string; text: string }>(page2.conn, WAIT_STATUS),
+          60_000,
+          "viewer 2",
+        );
         assert(status2.state === "playing", "Viewer 2 concurrent playback", status2.text.trim());
         const frames2 = await evaluate<number>(page2.conn, READ_FRAMES);
         assert(frames2 > 0, "Viewer 2 decodes frames", `framesDecoded=${frames2}`);
@@ -458,7 +509,11 @@ async function main(): Promise<void> {
         const page3 = await newPage(
           `${values["web-base"]}/dev/cctv-test?autostart=1&path=${encodeURIComponent(MEDIA_PATH)}${tokenParam}`,
         );
-        const status3 = await withTimeout(evaluate<{ state: string; text: string }>(page3.conn, WAIT_STATUS), 60_000, "viewer 3");
+        const status3 = await withTimeout(
+          evaluate<{ state: string; text: string }>(page3.conn, WAIT_STATUS),
+          60_000,
+          "viewer 3",
+        );
         assert(status3.state === "playing", "Viewer 3 concurrent playback", status3.text.trim());
 
         const p3 = await withTimeout(mediamtxPath(MEDIA_PATH), 10_000, "path state 3");
@@ -474,7 +529,9 @@ async function main(): Promise<void> {
 
         for (const p of [page1, page2, page3]) {
           if (p) {
-            await fetch(`http://127.0.0.1:${CDP_PORT}/json/close/${p.targetId}`).catch(() => undefined);
+            await fetch(`http://127.0.0.1:${CDP_PORT}/json/close/${p.targetId}`).catch(
+              () => undefined,
+            );
             p.conn.close();
           }
         }

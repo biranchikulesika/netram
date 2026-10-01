@@ -49,12 +49,12 @@ daemon). Docker is not installed and is not required.
 
 Consequences that shaped the configuration:
 
-| Constraint | Effect |
-|---|---|
-| Cannot bind `:80`/`:443` | Edge is nginx on the host, not a container |
-| `COPY dir ./` flattens `dir`'s contents | All Dockerfiles use an explicit destination (`COPY dir ./dir`) - see §7 |
+| Constraint                                   | Effect                                                                                                      |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Cannot bind `:80`/`:443`                     | Edge is nginx on the host, not a container                                                                  |
+| `COPY dir ./` flattens `dir`'s contents      | All Dockerfiles use an explicit destination (`COPY dir ./dir`) - see §7                                     |
 | `service_completed_successfully` = "stopped" | `podman-compose` does not inspect the exit code of one-shot services; verify `db-setup` by log after deploy |
-| Requires `default` network declared | `networks.default` is stated explicitly instead of being synthesised |
+| Requires `default` network declared          | `networks.default` is stated explicitly instead of being synthesised                                        |
 
 ## 3. DNS
 
@@ -66,7 +66,7 @@ DNS-only is required, not a preference:
 - Cloudflare's proxy does not forward UDP, so CCTV WebRTC playback (port
   `8189/udp`) would break behind the orange cloud.
 - With the record proxied, the origin certificate would also have to be a
-  Cloudflare origin cert, and SSL/TLS mode set to *Full (strict)*.
+  Cloudflare origin cert, and SSL/TLS mode set to _Full (strict)_.
 
 ## 4. Environment
 
@@ -79,12 +79,12 @@ DNS-only is required, not a preference:
 Secrets are generated per host. Each of these must be ≥ 32 characters and must
 match across every service that shares it:
 
-| Secret | Shared between |
-|---|---|
-| `NETRAM_DEV_AUTH_SECRET` | api · workers · realtime (dev-auth JWT signing) |
-| `NETRAM_CCTV_STREAM_SECRET` | api · workers · cctv-gateway (relay tokens) |
-| `NETRAM_CCTV_SERVICE_SECRET` | api · workers · cctv-gateway (control plane) |
-| `NETRAM_MEDIAMTX_HOOK_SECRET` | api ← mediamtx external auth hook |
+| Secret                        | Shared between                                  |
+| ----------------------------- | ----------------------------------------------- |
+| `NETRAM_DEV_AUTH_SECRET`      | api · workers · realtime (dev-auth JWT signing) |
+| `NETRAM_CCTV_STREAM_SECRET`   | api · workers · cctv-gateway (relay tokens)     |
+| `NETRAM_CCTV_SERVICE_SECRET`  | api · workers · cctv-gateway (control plane)    |
+| `NETRAM_MEDIAMTX_HOOK_SECRET` | api ← mediamtx external auth hook               |
 
 ## 5. Demo behaviour (deliberate, and not production-ready)
 
@@ -116,10 +116,10 @@ database-reading service waits for it so a fresh volume is never served empty.
 
 The seed lives in `db/seed/`:
 
-| File | Contents |
-|------|----------|
-| `index.ts` | Reference data: geography, roles, permissions, authorities, jurisdictions, organisations, programmes, scheme components, finding categories, disclosure policies, users, projects, plus attendance and CCTV simulation setup. |
-| `ids.ts` | The `did()` helper. Every id is UUIDv5 over a readable seed key, in one shared namespace. |
+| File                    | Contents                                                                                                                                                                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`              | Reference data: geography, roles, permissions, authorities, jurisdictions, organisations, programmes, scheme components, finding categories, disclosure policies, users, projects, plus attendance and CCTV simulation setup.                                                                           |
+| `ids.ts`                | The `did()` helper. Every id is UUIDv5 over a readable seed key, in one shared namespace.                                                                                                                                                                                                               |
 | `project-operations.ts` | Per-project operational history: inspection cycles, observations, findings, evidence, corrective actions, complaints and attachments, funds and releases, expenses and financial documents, risk snapshots, CCTV cameras, oversight video calls, and the offline operations the inspector app replayed. |
 
 Two properties are load-bearing, because the demo database is destroyed and
@@ -191,7 +191,7 @@ podman inspect netram-web --format '{{.Image}}'
 podman images localhost/netram_web --format '{{.Id}}'
 ```
 
-The two IDs must match. Recreating mid-build deploys the *previous* image.
+The two IDs must match. Recreating mid-build deploys the _previous_ image.
 
 ### Disk: the rootless image store is not self-cleaning
 
@@ -200,7 +200,7 @@ orphans the old one. Nothing garbage-collects it, so the store grew to 507
 images / 66GB and a build died with `no space left on device` while
 `/dev/sda1` was 90% full.
 
-A daily prune of *dangling* images is installed as a user timer:
+A daily prune of _dangling_ images is installed as a user timer:
 
 ```bash
 ./scripts/install-prune-timer.sh        # idempotent
@@ -230,15 +230,15 @@ podman image prune -f --filter until=24h
 
 ## 7. Repository changes made for this deployment
 
-| Change | Reason |
-|---|---|
-| Caddy service removed from `docker-compose.yml`; `infra/caddy/` deleted | `:80/:443` held by host nginx; rootless containers cannot bind them |
-| `web` published on `127.0.0.1:3100`, `realtime` on `127.0.0.1:3202` | give the host nginx something to proxy to (host ports 3000/4000 are taken by another tenant) |
-| `networks.default` declared explicitly | `podman-compose` does not synthesise the implicit default network |
-| `db-setup` one-shot service added; api/workers/realtime wait on it | a fresh volume otherwise has no schema until the first 30-min reset tick |
-| All four Dockerfiles use explicit COPY destinations | Buildah's `COPY dir ./` flattens the directory and breaks the pnpm workspace layout |
-| `infra/nginx/` + `scripts/deploy-nginx.sh` | edge configuration and its idempotent installer |
-| `infra/systemd/` + `scripts/install-prune-timer.sh` | daily dangling-image prune; the rootless image store otherwise fills the disk |
+| Change                                                                  | Reason                                                                                       |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Caddy service removed from `docker-compose.yml`; `infra/caddy/` deleted | `:80/:443` held by host nginx; rootless containers cannot bind them                          |
+| `web` published on `127.0.0.1:3100`, `realtime` on `127.0.0.1:3202`     | give the host nginx something to proxy to (host ports 3000/4000 are taken by another tenant) |
+| `networks.default` declared explicitly                                  | `podman-compose` does not synthesise the implicit default network                            |
+| `db-setup` one-shot service added; api/workers/realtime wait on it      | a fresh volume otherwise has no schema until the first 30-min reset tick                     |
+| All four Dockerfiles use explicit COPY destinations                     | Buildah's `COPY dir ./` flattens the directory and breaks the pnpm workspace layout          |
+| `infra/nginx/` + `scripts/deploy-nginx.sh`                              | edge configuration and its idempotent installer                                              |
+| `infra/systemd/` + `scripts/install-prune-timer.sh`                     | daily dangling-image prune; the rootless image store otherwise fills the disk                |
 
 ## 8. Troubleshooting
 
@@ -249,7 +249,7 @@ or still proxied. `dig +short netram.kulesika.in` must return `51.79.220.41`.
 `ss -tln | grep 3100`. If empty, the stack is down or the published port in
 `.env.vps` changed without re-running `up -d`.
 
-**Certificate fails to issue** - ACME needs DNS pointing here *and* `:80`
+**Certificate fails to issue** - ACME needs DNS pointing here _and_ `:80`
 reachable from the internet. `sudo certbot certonly --webroot -w /var/www/certbot
 -d netram.kulesika.in` shows the reason. Note the OVH edge firewall, if
 enabled, must allow `:80`, `:443` and `:8189` (udp and tcp).

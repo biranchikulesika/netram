@@ -9,7 +9,11 @@ interface AnomalyReviewProps {
 }
 
 const REVIEW_ACTIONS: { action: AttendanceReviewAction; label: string; description: string }[] = [
-  { action: "acknowledge", label: "Acknowledge", description: "Mark as reviewed - monitoring continues" },
+  {
+    action: "acknowledge",
+    label: "Acknowledge",
+    description: "Mark as reviewed - monitoring continues",
+  },
   { action: "dismiss", label: "Dismiss", description: "False alarm - no further action" },
   { action: "false_positive", label: "False Positive", description: "Confirmed not an anomaly" },
   { action: "investigate", label: "Investigate", description: "Escalate for field verification" },
@@ -17,12 +21,14 @@ const REVIEW_ACTIONS: { action: AttendanceReviewAction; label: string; descripti
 ];
 
 function severityColor(severity: string): string {
-  return {
-    LOW: "#137e3a",
-    MEDIUM: "#dd501e",
-    HIGH: "#dd501e",
-    CRITICAL: "#dc2626",
-  }[severity] ?? "var(--text-muted)";
+  return (
+    {
+      LOW: "#137e3a",
+      MEDIUM: "#dd501e",
+      HIGH: "#dd501e",
+      CRITICAL: "#dc2626",
+    }[severity] ?? "var(--text-muted)"
+  );
 }
 
 export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReviewProps) {
@@ -36,13 +42,19 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
         marginTop: "1rem",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "1rem",
+        }}
+      >
         <div>
-          <h3 style={{ margin: 0, fontSize: "1rem", color: "#002449" }}>
-            Review Anomaly
-          </h3>
+          <h3 style={{ margin: 0, fontSize: "1rem", color: "#002449" }}>Review Anomaly</h3>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.8rem", color: "var(--text-subtle)" }}>
-            {anomaly.projectCode && `#${anomaly.projectCode}`} · {anomaly.anomalyType.replace(/_/g, " ")}
+            {anomaly.projectCode && `#${anomaly.projectCode}`} ·{" "}
+            {anomaly.anomalyType.replace(/_/g, " ")}
           </p>
         </div>
         <button
@@ -61,9 +73,24 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "0.5rem", marginBottom: "1rem", fontSize: "0.85rem" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          gap: "0.5rem",
+          marginBottom: "1rem",
+          fontSize: "0.85rem",
+        }}
+      >
         <span style={{ color: "var(--text-subtle)" }}>State:</span>
-        <span style={{ fontWeight: 600, textTransform: "uppercase", fontSize: "0.75rem", color: severityColor(anomaly.severity) }}>
+        <span
+          style={{
+            fontWeight: 600,
+            textTransform: "uppercase",
+            fontSize: "0.75rem",
+            color: severityColor(anomaly.severity),
+          }}
+        >
           {anomaly.state}
         </span>
         <span style={{ color: "var(--text-subtle)" }}>Severity:</span>
@@ -122,7 +149,14 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
         </div>
       )}
 
-      <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.75rem", color: "var(--text-muted)" }}>
+      <div
+        style={{
+          fontWeight: 600,
+          fontSize: "0.85rem",
+          marginBottom: "0.75rem",
+          color: "var(--text-muted)",
+        }}
+      >
         Take action:
       </div>
 
@@ -152,7 +186,14 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
       </div>
 
       <div style={{ borderTop: "1px solid var(--color-border-subtle)", paddingTop: "0.75rem" }}>
-        <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.5rem", color: "var(--text-muted)" }}>
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            marginBottom: "0.5rem",
+            color: "var(--text-muted)",
+          }}
+        >
           Add note (optional):
         </div>
         <textarea
@@ -210,7 +251,13 @@ export function AnomalyReviewPanel({ anomaly, onReview, onClose }: AnomalyReview
   );
 }
 
-export function AnomalyReviewActions({ anomaly, actions }: { anomaly: AttendanceAnomaly; actions: Array<{ action: string; note?: string; createdAt: string }> }) {
+export function AnomalyReviewActions({
+  anomaly,
+  actions,
+}: {
+  anomaly: AttendanceAnomaly;
+  actions: Array<{ action: string; note?: string; createdAt: string }>;
+}) {
   if (actions.length === 0) return null;
 
   return (
@@ -235,11 +282,20 @@ export function AnomalyReviewActions({ anomaly, actions }: { anomaly: Attendance
             borderBottom: i < actions.length - 1 ? "1px solid var(--color-border-subtle)" : "none",
           }}
         >
-          <div style={{ fontWeight: 500, textTransform: "uppercase", fontSize: "0.7rem", color: severityColor(anomaly.severity) }}>
+          <div
+            style={{
+              fontWeight: 500,
+              textTransform: "uppercase",
+              fontSize: "0.7rem",
+              color: severityColor(anomaly.severity),
+            }}
+          >
             {a.action}
           </div>
           {a.note && (
-            <div style={{ color: "var(--text-muted)", marginTop: "0.15rem", whiteSpace: "pre-wrap" }}>
+            <div
+              style={{ color: "var(--text-muted)", marginTop: "0.15rem", whiteSpace: "pre-wrap" }}
+            >
               {a.note}
             </div>
           )}

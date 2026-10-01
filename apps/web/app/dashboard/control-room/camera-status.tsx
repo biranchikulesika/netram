@@ -106,13 +106,17 @@ export function CameraStatusView({
         <div className="table-empty-state">
           <IconCamera className="table-empty-icon" />
           <div className="table-empty-title">No Cameras Available</div>
-          <div className="table-empty-desc">No CCTV cameras are configured for your authorized jurisdiction.</div>
+          <div className="table-empty-desc">
+            No CCTV cameras are configured for your authorized jurisdiction.
+          </div>
         </div>
       ) : rows.length === 0 ? (
         <div className="table-empty-state">
           <IconCamera className="table-empty-icon" />
           <div className="table-empty-title">No matching cameras</div>
-          <div className="table-empty-desc">Nothing matches &quot;{query}&quot; in camera name, facility or district.</div>
+          <div className="table-empty-desc">
+            Nothing matches &quot;{query}&quot; in camera name, facility or district.
+          </div>
         </div>
       ) : (
         <div className="table-card">
@@ -134,7 +138,8 @@ export function CameraStatusView({
                       {group.facility}
                     </span>
                     <span className="status-group-meta">
-                      {group.district} · {group.cams.length} camera{group.cams.length === 1 ? "" : "s"}
+                      {group.district} · {group.cams.length} camera
+                      {group.cams.length === 1 ? "" : "s"}
                       {group.offlineCount > 0 && (
                         <span className="status-group-problem"> · {group.offlineCount} down</span>
                       )}
@@ -175,7 +180,11 @@ export function CameraStatusView({
                                     : "#dd501e",
                             }}
                           />
-                          {r.cam.status === "active" ? "Live" : r.cam.status === "inactive" ? "Offline" : "Maintenance"}
+                          {r.cam.status === "active"
+                            ? "Live"
+                            : r.cam.status === "inactive"
+                              ? "Offline"
+                              : "Maintenance"}
                         </span>
                       </td>
                       <td className="table-date">{formatDateTime(r.cam.updatedAt)}</td>

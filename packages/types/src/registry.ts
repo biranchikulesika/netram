@@ -10,12 +10,7 @@ import type { PermissionCode } from "./authorization.js";
  */
 export interface RegistryCapability {
   /** Stable identifier used in UI + API error details. */
-  key:
-    | "facility"
-    | "organisation"
-    | "programme"
-    | "inspector"
-    | "official";
+  key: "facility" | "organisation" | "programme" | "inspector" | "official";
   /** Display label for the registry card. */
   label: string;
   /** One-line explanation shown on the registry card. */
@@ -48,8 +43,7 @@ export const REGISTRY_CAPABILITIES: readonly RegistryCapability[] = [
   {
     key: "organisation",
     label: "Agency / Society",
-    description:
-      "Register an operating agency or society that runs facilities on the ground.",
+    description: "Register an operating agency or society that runs facilities on the ground.",
     permission: "organisation:create",
     who: "Authority officials",
     startsPending: false,
@@ -57,8 +51,7 @@ export const REGISTRY_CAPABILITIES: readonly RegistryCapability[] = [
   {
     key: "programme",
     label: "Scheme / Programme",
-    description:
-      "Register a welfare scheme or programme that facilities participate in.",
+    description: "Register a welfare scheme or programme that facilities participate in.",
     permission: "programme:create",
     who: "Authority officials",
     startsPending: false,

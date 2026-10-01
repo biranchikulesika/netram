@@ -25,12 +25,9 @@ export async function requestInspectionPermissions(): Promise<InspectionPermissi
       const locFineKey = PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION;
       const locCoarseKey = PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION;
 
-      const perms: Permission[] = [
-        camKey,
-        audioKey,
-        locFineKey,
-        locCoarseKey,
-      ].filter((p): p is Permission => Boolean(p));
+      const perms: Permission[] = [camKey, audioKey, locFineKey, locCoarseKey].filter(
+        (p): p is Permission => Boolean(p),
+      );
 
       if (perms.length > 0) {
         const statuses = await PermissionsAndroid.requestMultiple(perms);

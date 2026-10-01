@@ -4,6 +4,7 @@ This directory archives historical architectural analyses, previous phase build 
 
 > [!NOTE]
 > For active architectural contracts and operational specifications, always consult the primary documentation:
+>
 > - Architecture Overview: [`docs/architecture/README.md`](../architecture/README.md)
 > - Active CCTV Specification: [`docs/architecture/cctv.md`](../architecture/cctv.md)
 > - Operating Rules & Boundaries: [`AGENTS.md`](../../AGENTS.md)

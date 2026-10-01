@@ -8,10 +8,10 @@ Decisions are documented according to **AGENTS.md §1 & §2** to ensure historic
 
 ## Index of Decisions
 
-| ADR | Title | Status | Date | Primary Impact |
-|---|---|---|---|---|
-| **[`ADR-001`](ADR-001-monorepo.md)** | Monorepo with a Modular-Monolith Backend | **Accepted** | 2026-09 | Consolidated packages into single pnpm + Turborepo workspace; established REST `/api/v1` modular monolith. |
-| **[`ADR-002`](ADR-002-remove-reports-analytics.md)** | Remove Reports and Analytics Domains | **Accepted** | 2026-09-23 | Eliminated redundant derived reporting workers and tables; elevated Project Risk Engine and raw inspection records. |
+| ADR                                                                | Title                                                       | Status       | Date       | Primary Impact                                                                                                                    |
+| ------------------------------------------------------------------ | ----------------------------------------------------------- | ------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **[`ADR-001`](ADR-001-monorepo.md)**                               | Monorepo with a Modular-Monolith Backend                    | **Accepted** | 2026-09    | Consolidated packages into single pnpm + Turborepo workspace; established REST `/api/v1` modular monolith.                        |
+| **[`ADR-002`](ADR-002-remove-reports-analytics.md)**               | Remove Reports and Analytics Domains                        | **Accepted** | 2026-09-23 | Eliminated redundant derived reporting workers and tables; elevated Project Risk Engine and raw inspection records.               |
 | **[`ADR-003`](ADR-003-complaint-escalation-corrective-action.md)** | Automate Complaint Escalation into Corrective Action Orders | **Accepted** | 2026-09-26 | Introduced direct complaint-derived corrective action pathway with reviewer determination without fabricating synthetic findings. |
 
 ---

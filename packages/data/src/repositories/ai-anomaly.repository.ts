@@ -120,8 +120,7 @@ export class AiAnomalyRepository {
     if (filter.status) conditions.push(eq(aiAnomaliesTable.status, filter.status));
     if (filter.inspectionId)
       conditions.push(eq(aiAnomaliesTable.inspectionId, filter.inspectionId));
-    if (filter.projectId)
-      conditions.push(eq(projectsTable.id, filter.projectId));
+    if (filter.projectId) conditions.push(eq(projectsTable.id, filter.projectId));
     const where = and(...conditions);
 
     const scope = filter.jurisdictionIds?.length

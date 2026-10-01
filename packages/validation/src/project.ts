@@ -108,7 +108,8 @@ export const updateProjectContactSchema = z
     contactEmail: z.string().max(200).nullable().optional(),
   })
   .refine(
-    (v) => v.contactName !== undefined || v.contactPhone !== undefined || v.contactEmail !== undefined,
+    (v) =>
+      v.contactName !== undefined || v.contactPhone !== undefined || v.contactEmail !== undefined,
     { message: "At least one contact field is required" },
   );
 

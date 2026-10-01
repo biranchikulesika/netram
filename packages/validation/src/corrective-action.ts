@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  CORRECTIVE_ACTION_REVIEW_OUTCOMES,
-  CORRECTIVE_ACTION_STATUSES,
-} from "@netram/types";
+import { CORRECTIVE_ACTION_REVIEW_OUTCOMES, CORRECTIVE_ACTION_STATUSES } from "@netram/types";
 import { FINDING_SEVERITIES } from "@netram/types";
 import { paginationSchema, uuidSchema } from "./common.js";
 

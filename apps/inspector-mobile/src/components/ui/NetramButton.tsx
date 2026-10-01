@@ -55,11 +55,7 @@ export function NetramButton({
   }
 
   const sizeStyle: ViewStyle =
-    size === "sm"
-      ? styles.sizeSm
-      : size === "lg"
-        ? styles.sizeLg
-        : styles.sizeMd;
+    size === "sm" ? styles.sizeSm : size === "lg" ? styles.sizeLg : styles.sizeMd;
 
   return (
     <Pressable

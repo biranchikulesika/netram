@@ -176,9 +176,7 @@ describe("media path derivation", () => {
     expect(() => deriveMediaPath({ ...base, protocol: "hls", endpoint: "http://x/y" })).toThrow();
     expect(() => deriveMediaPath({ ...base, endpoint: "not a url" })).toThrow();
     expect(() => deriveMediaPath({ ...base, endpoint: "rtsp://host:554" })).toThrow();
-    expect(() =>
-      deriveMediaPath({ ...base, endpoint: "rtsp://host/with spaces%20/x" }),
-    ).toThrow();
+    expect(() => deriveMediaPath({ ...base, endpoint: "rtsp://host/with spaces%20/x" })).toThrow();
   });
 });
 
@@ -390,9 +388,7 @@ describe("reader correlation (Phase 5)", () => {
   it("kickReadersByNetramSession kicks exactly the readers whose query echoes the NETRAM session", async () => {
     const fetchFn = vi
       .fn()
-      .mockResolvedValueOnce(
-        jsonResponse(200, { itemCount: SESSIONS.length, items: SESSIONS }),
-      )
+      .mockResolvedValueOnce(jsonResponse(200, { itemCount: SESSIONS.length, items: SESSIONS }))
       .mockImplementation(async () => jsonResponse(200, { status: "ok" }));
     const client = new MediamtxClient({
       baseUrl: "http://mediamtx.test",
@@ -426,9 +422,7 @@ describe("reader correlation (Phase 5)", () => {
       baseUrl: "http://mediamtx.test",
       fetchFn: fetchFn as unknown as typeof fetch,
     });
-    await expect(client.kickReadersByNetramSession("sess-A")).rejects.toBeInstanceOf(
-      MediamtxError,
-    );
+    await expect(client.kickReadersByNetramSession("sess-A")).rejects.toBeInstanceOf(MediamtxError);
   });
 
   it("MediaControlService.kickSessionReaders delegates to the client", async () => {

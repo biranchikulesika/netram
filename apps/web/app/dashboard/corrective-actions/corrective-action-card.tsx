@@ -1,12 +1,7 @@
 import Link from "next/link";
 import type { CorrectiveAction, CorrectiveActionStatus } from "@netram/types";
 import { formatDate, formatDistrict } from "../../../lib/presentation";
-import {
-  IconAlertTriangle,
-  IconBuilding,
-  IconGavel,
-  IconClock,
-} from "../../components/icons";
+import { IconAlertTriangle, IconBuilding, IconGavel, IconClock } from "../../components/icons";
 
 export function getStatusBadge(status: CorrectiveActionStatus): {
   bg: string;

@@ -47,18 +47,14 @@ export function CameraWall({
   // Visible tiles auto-play; out-of-view tiles are torn down. Only active
   // cameras can play, so the observer still tracks the rest (an inactive
   // camera entering view must evict an auto-playing one, not sit in the list).
-  const wanted = (
-    suspended
-      ? []
-      : filtered
-          .filter((c) => visible.has(c.id) && c.status === "active")
-          .slice(0, MAX_WALL_TILES)
-          .map((c) => c.id)
-  );
+  const wanted = suspended
+    ? []
+    : filtered
+        .filter((c) => visible.has(c.id) && c.status === "active")
+        .slice(0, MAX_WALL_TILES)
+        .map((c) => c.id);
   const playing = useMemo(() => new Set(wanted), [wanted.join(",")]);
-  const visibleActive = filtered.filter(
-    (c) => visible.has(c.id) && c.status === "active",
-  ).length;
+  const visibleActive = filtered.filter((c) => visible.has(c.id) && c.status === "active").length;
 
   // Tile roots are the grid children, so they are observed in place rather
   // than wrapped (a wrapper div would become the grid item and break layout).
@@ -78,9 +74,7 @@ export function CameraWall({
             if (e.isIntersecting) next.add(id);
             else next.delete(id);
           }
-          return next.size === prev.size && [...next].every((id) => prev.has(id))
-            ? prev
-            : next;
+          return next.size === prev.size && [...next].every((id) => prev.has(id)) ? prev : next;
         });
       },
       // Start a little before the tile is fully on screen so it is already
@@ -132,11 +126,7 @@ export function CameraWall({
               playing.has(cam.id) ? (
                 <HlsWallTile key={cam.id} camera={cam} onOpen={onOpenCamera} />
               ) : (
-                <CameraCard
-                  key={cam.id}
-                  camera={cam}
-                  onOpen={onOpenCamera}
-                />
+                <CameraCard key={cam.id} camera={cam} onOpen={onOpenCamera} />
               ),
             )}
           </div>

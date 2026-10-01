@@ -152,7 +152,9 @@ describe("RtspCameraProvider Adapter", () => {
 
     expect(provider.unregisterCamera("cctv:rtsp-temp")).toBe(true);
     expect(await provider.cameraHealth("cctv:rtsp-temp")).toBe("offline");
-    await expect(provider.acquireRawStream("cctv:rtsp-temp")).rejects.toThrow("RTSP Camera not found");
+    await expect(provider.acquireRawStream("cctv:rtsp-temp")).rejects.toThrow(
+      "RTSP Camera not found",
+    );
   });
 });
 
@@ -178,7 +180,9 @@ describe("OnvifCameraProvider Adapter", () => {
     expect(cameras[0]?.status).toBe("online");
 
     const rawStream = await provider.acquireRawStream("cctv:onvif-corridor");
-    expect(rawStream).toContain("rtsp://security_admin:CameraPassword%231@10.0.1.20:8080/onvif/Profile_HQ");
+    expect(rawStream).toContain(
+      "rtsp://security_admin:CameraPassword%231@10.0.1.20:8080/onvif/Profile_HQ",
+    );
 
     const snapshot = await provider.acquireSnapshot("cctv:onvif-corridor");
     expect(snapshot.contentType).toBe("image/jpeg");
@@ -285,7 +289,9 @@ describe("ProviderRegistry Composite Adapter", () => {
 
     expect(registry.unregisterProvider("hls")).toBe(true);
     expect(await registry.cameraHealth("cctv:hls-gate")).toBe("offline");
-    await expect(registry.acquireRawStream("cctv:hls-gate")).rejects.toThrow("No camera provider found");
+    await expect(registry.acquireRawStream("cctv:hls-gate")).rejects.toThrow(
+      "No camera provider found",
+    );
   });
 });
 
@@ -315,9 +321,11 @@ const PATH_STATE_ONLINE = {
 function mediamtxStub(pathState: unknown | null, opts: { fail?: boolean } = {}) {
   return {
     ensurePath: vi.fn().mockResolvedValue({ created: true }),
-    getPath: vi.fn().mockImplementation(() =>
-      opts.fail ? Promise.reject(new Error("unreachable")) : Promise.resolve(pathState),
-    ),
+    getPath: vi
+      .fn()
+      .mockImplementation(() =>
+        opts.fail ? Promise.reject(new Error("unreachable")) : Promise.resolve(pathState),
+      ),
     getPathStats: vi.fn().mockImplementation(() => {
       if (opts.fail) return Promise.reject(new Error("unreachable"));
       if (pathState === null) return Promise.resolve(null);
@@ -490,7 +498,13 @@ describe("CCTV Gateway Server (media control bridge)", () => {
       method: "POST",
       url: `/cameras/${RIG_CAMERA.id}/streams`,
       headers: { "x-netram-service-secret": TEST_SERVICE_SECRET },
-      payload: { ttlSeconds: 120, id: "other-id", provider: "simulated", protocol: "rtsp", endpoint: "rtsp://x/y" },
+      payload: {
+        ttlSeconds: 120,
+        id: "other-id",
+        provider: "simulated",
+        protocol: "rtsp",
+        endpoint: "rtsp://x/y",
+      },
     });
     expect(res.statusCode).toBe(400);
     expect(JSON.parse(res.body).error.code).toBe("INVALID_CAMERA_CONTEXT");

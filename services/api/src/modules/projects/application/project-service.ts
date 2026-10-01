@@ -204,9 +204,9 @@ export class ProjectService {
       districtId: project.districtId,
     });
 
-    const changedFields = (
-      ["contactName", "contactPhone", "contactEmail"] as const
-    ).filter((f) => input[f] !== undefined && input[f] !== project[f]);
+    const changedFields = (["contactName", "contactPhone", "contactEmail"] as const).filter(
+      (f) => input[f] !== undefined && input[f] !== project[f],
+    );
 
     return this.repository.updateContactWithAuditAndEvent({
       projectId,

@@ -44,9 +44,7 @@ export function AgencyFormBody() {
       title="Register an agency"
       description="Register the operating agency or society that runs facilities on the ground."
     >
-      <OrganisationForm
-        onSuccess={(title, message) => setSuccess({ title, message })}
-      />
+      <OrganisationForm onSuccess={(title, message) => setSuccess({ title, message })} />
     </FormShell>
   );
 }

@@ -90,13 +90,11 @@ export function rewritePlaylist(body: string, token: string, basePath = ""): str
 function dropAudioRendition(line: string): string {
   if (line.startsWith("#EXT-X-MEDIA:") && line.includes("TYPE=AUDIO")) return "";
   if (!line.startsWith("#EXT-X-STREAM-INF:")) return line;
-  return line
-    .replace(/,?AUDIO="[^"]*"/, "")
-    .replace(/CODECS="([^"]*)"/, (_m, codecs: string) => {
-      const video = codecs
-        .split(",")
-        .filter((c) => !c.trim().startsWith("mp4a"))
-        .join(",");
-      return video.length > 0 ? `CODECS="${video}"` : "";
-    });
+  return line.replace(/,?AUDIO="[^"]*"/, "").replace(/CODECS="([^"]*)"/, (_m, codecs: string) => {
+    const video = codecs
+      .split(",")
+      .filter((c) => !c.trim().startsWith("mp4a"))
+      .join(",");
+    return video.length > 0 ? `CODECS="${video}"` : "";
+  });
 }

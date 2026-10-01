@@ -87,7 +87,13 @@ export class ComplaintService {
 
   async createComplaint(ctx: RequestUserContext, input: CreateComplaintInput): Promise<Complaint> {
     this.authz.requirePermission(ctx, CREATE);
-    return this.persistComplaint(input, [], ctx.userId, ctx.requestId ?? null, ctx.ipAddress ?? null);
+    return this.persistComplaint(
+      input,
+      [],
+      ctx.userId,
+      ctx.requestId ?? null,
+      ctx.ipAddress ?? null,
+    );
   }
 
   /**
@@ -121,37 +127,41 @@ export class ComplaintService {
       );
     }
     const storedFiles = await Promise.all(
-      files.map(async (file): Promise<{
-        id: string;
-        fileName: string;
-        mimeType: string;
-        sizeBytes: number;
-        storageKey: string;
-        contentHash: string;
-      }> => {
-        if (!isAllowedComplaintAttachmentType(file.mimeType)) {
-          throw AppError.badRequest(
-            `Attachment '${file.fileName}' uses an unsupported type '${file.mimeType}'. Only photos, videos, PDFs and office documents are accepted.`,
-          );
-        }
-        if (file.data.byteLength > MAX_COMPLAINT_ATTACHMENT_BYTES) {
-          throw AppError.badRequest(
-            `Attachment '${file.fileName}' exceeds the 100 MB size limit.`,
-          );
-        }
-        const id = randomUUID();
-        const storageKey = `complaints/${id}`;
-        const contentHash = `sha256:${createHash("sha256").update(file.data).digest("hex")}`;
-        await this.storage.put(storageKey, file.data, file.mimeType);
-        return {
-          id,
-          fileName: file.fileName,
-          mimeType: file.mimeType,
-          sizeBytes: file.data.byteLength,
-          storageKey,
-          contentHash,
-        };
-      }),
+      files.map(
+        async (
+          file,
+        ): Promise<{
+          id: string;
+          fileName: string;
+          mimeType: string;
+          sizeBytes: number;
+          storageKey: string;
+          contentHash: string;
+        }> => {
+          if (!isAllowedComplaintAttachmentType(file.mimeType)) {
+            throw AppError.badRequest(
+              `Attachment '${file.fileName}' uses an unsupported type '${file.mimeType}'. Only photos, videos, PDFs and office documents are accepted.`,
+            );
+          }
+          if (file.data.byteLength > MAX_COMPLAINT_ATTACHMENT_BYTES) {
+            throw AppError.badRequest(
+              `Attachment '${file.fileName}' exceeds the 100 MB size limit.`,
+            );
+          }
+          const id = randomUUID();
+          const storageKey = `complaints/${id}`;
+          const contentHash = `sha256:${createHash("sha256").update(file.data).digest("hex")}`;
+          await this.storage.put(storageKey, file.data, file.mimeType);
+          return {
+            id,
+            fileName: file.fileName,
+            mimeType: file.mimeType,
+            sizeBytes: file.data.byteLength,
+            storageKey,
+            contentHash,
+          };
+        },
+      ),
     );
 
     const id = randomUUID();

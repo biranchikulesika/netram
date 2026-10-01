@@ -112,10 +112,7 @@ function roleCodeForUser(userId: string | null | undefined): string | null {
  * institution itself - the account is the actor, not a person. A display name
  * (which may name the responsible operator) is shown as the account line.
  */
-export function resolveActor(
-  event: AuditEvent,
-  ctx: AuditFormatContext = {},
-): AuditActor | null {
+export function resolveActor(event: AuditEvent, ctx: AuditFormatContext = {}): AuditActor | null {
   if (!event.actorUserId) return null; // system/sweeper-driven
   const roleCode = roleCodeForUser(event.actorUserId);
   // Resolved from the injected user directory; a viewer without it sees the role.
@@ -253,9 +250,7 @@ function statusLabelFor(event: AuditEvent): string {
 }
 
 function humanizeEnum(value: string): string {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /* ------------------------------------------------------------------ */
@@ -318,9 +313,7 @@ function buildSummary({ event, subject }: SummaryInput): string {
       return subject ? `Project details updated${forFacility}` : "Project details updated";
     case "project.transitioned": {
       const to = str(event.metadata?.to);
-      return to
-        ? `Project status updated to ${humanizeEnum(to)}`
-        : "Project status updated";
+      return to ? `Project status updated to ${humanizeEnum(to)}` : "Project status updated";
     }
     case "project.approved":
       return subject ? `Project approved${forFacility}` : "Project approved";
@@ -341,9 +334,7 @@ function buildSummary({ event, subject }: SummaryInput): string {
     case "inspection.started":
       return subject ? `Inspection started${atFacility}` : "Inspection started";
     case "inspection.submitted":
-      return subject
-        ? `Inspection report submitted${forFacility}`
-        : "Inspection report submitted";
+      return subject ? `Inspection report submitted${forFacility}` : "Inspection report submitted";
     case "inspection.closed":
       return subject ? `Inspection closed${atFacility}` : "Inspection closed";
     case "inspection.transitioned": {
@@ -669,27 +660,19 @@ export function formatAuditActivity(
   };
 }
 
-export type TimeRangePreset =
-  | "all"
-  | "30m"
-  | "1h"
-  | "12h"
-  | "24h"
-  | "3d"
-  | "7d"
-  | "30d"
-  | "custom";
+export type TimeRangePreset = "all" | "30m" | "1h" | "12h" | "24h" | "3d" | "7d" | "30d" | "custom";
 
-export const TIME_RANGE_PRESETS: Array<{ id: Exclude<TimeRangePreset, "custom">; label: string }> = [
-  { id: "all", label: "All time" },
-  { id: "30m", label: "Last 30 minutes" },
-  { id: "1h", label: "Last 1 hour" },
-  { id: "12h", label: "Last 12 hours" },
-  { id: "24h", label: "Last 24 hours" },
-  { id: "3d", label: "Last 3 days" },
-  { id: "7d", label: "Last 7 days" },
-  { id: "30d", label: "Last 30 days" },
-];
+export const TIME_RANGE_PRESETS: Array<{ id: Exclude<TimeRangePreset, "custom">; label: string }> =
+  [
+    { id: "all", label: "All time" },
+    { id: "30m", label: "Last 30 minutes" },
+    { id: "1h", label: "Last 1 hour" },
+    { id: "12h", label: "Last 12 hours" },
+    { id: "24h", label: "Last 24 hours" },
+    { id: "3d", label: "Last 3 days" },
+    { id: "7d", label: "Last 7 days" },
+    { id: "30d", label: "Last 30 days" },
+  ];
 
 /**
  * Evaluates whether an audit event falls within the requested time preset or custom date range.
@@ -730,5 +713,3 @@ export function matchesTimeRange(
 
   return eventMs >= nowMs - ms;
 }
-
-

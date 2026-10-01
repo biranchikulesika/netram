@@ -2080,8 +2080,7 @@ export function FundsDashboardClient({
                     minWidth: "190px",
                     padding: "0.7rem 1.2rem",
                     borderRadius: "6px",
-                    background:
-                      "var(--color-navy-brand)",
+                    background: "var(--color-navy-brand)",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,
@@ -2710,8 +2709,7 @@ export function FundsDashboardClient({
                     gap: "0.4rem",
                     padding: "0.65rem 1rem",
                     borderRadius: "6px",
-                    background:
-                      "var(--action-green)",
+                    background: "var(--action-green)",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 700,

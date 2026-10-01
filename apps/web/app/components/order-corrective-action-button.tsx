@@ -117,7 +117,10 @@ export function OrderCorrectiveActionButton({
               }}
             >
               <div>
-                <h3 id="modal-order-ca-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
+                <h3
+                  id="modal-order-ca-title"
+                  style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}
+                >
                   Order Corrective Action
                 </h3>
                 <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.82rem" }}>
@@ -152,7 +155,14 @@ export function OrderCorrectiveActionButton({
                 background: "#edf0f5",
               }}
             >
-              <div style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.04em", marginBottom: "0.4rem" }}>
+              <div
+                style={{
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  marginBottom: "0.4rem",
+                }}
+              >
                 DEFICIENCY REFERENCE
               </div>
               <div style={{ fontSize: "0.9rem", fontWeight: 600, marginBottom: "0.3rem" }}>
@@ -160,12 +170,15 @@ export function OrderCorrectiveActionButton({
               </div>
               {finding.remediation && (
                 <div className="muted" style={{ fontSize: "0.8rem", marginBottom: "0.3rem" }}>
-                  <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Required remediation:</span>{" "}
+                  <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>
+                    Required remediation:
+                  </span>{" "}
                   {finding.remediation}
                 </div>
               )}
               <div className="muted" style={{ fontSize: "0.78rem" }}>
-                Facility: {project ? `${project.name} (${project.code})` : "Not linked to a facility"} ·{" "}
+                Facility:{" "}
+                {project ? `${project.name} (${project.code})` : "Not linked to a facility"} ·{" "}
                 Inspection: {inspectionId.slice(0, 8)}
               </div>
             </div>
@@ -229,7 +242,8 @@ export function OrderCorrectiveActionButton({
                   </p>
                 )}
                 <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.74rem" }}>
-                  The organisation accountable for the facility and liable to submit verified remediation.
+                  The organisation accountable for the facility and liable to submit verified
+                  remediation.
                 </p>
               </div>
 
@@ -262,7 +276,8 @@ export function OrderCorrectiveActionButton({
                   }}
                 />
                 <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.74rem" }}>
-                  Failure to submit verified remediation by this date triggers automated overdue SLA escalation.
+                  Failure to submit verified remediation by this date triggers automated overdue SLA
+                  escalation.
                 </p>
               </div>
 
@@ -288,7 +303,11 @@ export function OrderCorrectiveActionButton({
                   type="submit"
                   disabled={isSubmitting}
                   className="btn-primary"
-                  style={{ padding: "0.5rem 1.25rem", fontSize: "0.85rem", background: "var(--color-navy-brand)" }}
+                  style={{
+                    padding: "0.5rem 1.25rem",
+                    fontSize: "0.85rem",
+                    background: "var(--color-navy-brand)",
+                  }}
                 >
                   {isSubmitting ? "Issuing Order..." : "Issue Corrective Order"}
                 </button>

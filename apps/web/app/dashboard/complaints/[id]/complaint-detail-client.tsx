@@ -6,12 +6,7 @@ import type { Complaint, ComplaintStatus } from "@netram/types";
 import { formatDate, formatDateTime, formatDistrict } from "../../../../lib/presentation";
 import { getComplaintStatusBadge } from "../complaint-card";
 import { ComplaintTransitionModal } from "../complaint-transition-modal";
-import {
-  IconClock,
-  IconGavel,
-  IconClipboard,
-  IconShieldCheck,
-} from "../../../components/icons";
+import { IconClock, IconGavel, IconClipboard, IconShieldCheck } from "../../../components/icons";
 
 export interface ComplaintDetailClientProps {
   initialComplaint: Complaint;
@@ -109,7 +104,12 @@ export function ComplaintDetailClient({
               type="button"
               onClick={() => setIsTransitionOpen(true)}
               className="btn-primary"
-              style={{ padding: "0.55rem 1.25rem", fontSize: "0.85rem", background: "var(--color-navy-brand)", marginTop: "0.75rem" }}
+              style={{
+                padding: "0.55rem 1.25rem",
+                fontSize: "0.85rem",
+                background: "var(--color-navy-brand)",
+                marginTop: "0.75rem",
+              }}
             >
               Update Grievance Status &rarr;
             </button>
@@ -129,7 +129,16 @@ export function ComplaintDetailClient({
               <div key={stage.id} className={`workflow-step ${nodeClass}`}>
                 <div className="workflow-node" title={stage.label}>
                   {isPassed ? (
-                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : (
@@ -139,9 +148,7 @@ export function ComplaintDetailClient({
                 <div className="workflow-step-label" title={stage.label}>
                   {stage.label}
                 </div>
-                <div className="workflow-step-hint">
-                  {stage.hint}
-                </div>
+                <div className="workflow-step-hint">{stage.hint}</div>
               </div>
             );
           })}
@@ -160,9 +167,7 @@ export function ComplaintDetailClient({
           <span className="card-label">
             <IconClipboard width={13} height={13} /> Tracking Code
           </span>
-          <span className="card-val">
-            {complaint.trackingCode}
-          </span>
+          <span className="card-val">{complaint.trackingCode}</span>
         </div>
         <div className="overview-card">
           <span className="card-label">
@@ -185,7 +190,15 @@ export function ComplaintDetailClient({
         <div className="section-title-row">
           <h3>Grievance Narrative</h3>
         </div>
-        <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#002449", whiteSpace: "pre-wrap" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "0.9rem",
+            lineHeight: 1.6,
+            color: "#002449",
+            whiteSpace: "pre-wrap",
+          }}
+        >
           {complaint.description}
         </p>
       </section>
@@ -204,7 +217,15 @@ export function ComplaintDetailClient({
                   Recorded {formatDateTime(complaint.resolvedAt)}
                 </div>
               )}
-              <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6, color: "#002449", whiteSpace: "pre-wrap" }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.9rem",
+                  lineHeight: 1.6,
+                  color: "#002449",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
                 {complaint.resolutionText}
               </p>
             </div>
@@ -240,7 +261,9 @@ export function ComplaintDetailClient({
               No supporting evidence was lodged with this grievance.
             </div>
           ) : (
-            <ul style={{ display: "grid", gap: "0.4rem", margin: 0, padding: 0, listStyle: "none" }}>
+            <ul
+              style={{ display: "grid", gap: "0.4rem", margin: 0, padding: 0, listStyle: "none" }}
+            >
               {complaint.files.map((f) => (
                 <li key={f.id}>
                   <a
@@ -260,13 +283,22 @@ export function ComplaintDetailClient({
                       textDecoration: "none",
                     }}
                   >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1,
+                      }}
+                    >
                       {f.fileName}
                     </span>
                     <span className="muted" style={{ fontSize: "0.7rem", flexShrink: 0 }}>
                       {(f.sizeBytes / (1024 * 1024)).toFixed(1)} MB
                     </span>
-                    <span style={{ color: "var(--color-navy-brand)", fontWeight: 600, flexShrink: 0 }}>
+                    <span
+                      style={{ color: "var(--color-navy-brand)", fontWeight: 600, flexShrink: 0 }}
+                    >
                       Open &rarr;
                     </span>
                   </a>
@@ -282,7 +314,9 @@ export function ComplaintDetailClient({
           </div>
 
           <div style={{ marginBottom: "0.75rem" }}>
-            <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", fontWeight: 600 }}>NAME</div>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", fontWeight: 600 }}>
+              NAME
+            </div>
             <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#002449" }}>
               {complaint.complainantName || "Anonymous Citizen"}
             </div>

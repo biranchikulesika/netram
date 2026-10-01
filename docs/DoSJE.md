@@ -104,6 +104,7 @@ DoSJE scheme implementation reaches the ground through three channels:
 3. **Direct central components** - RVY, SAGE, SCOPE, coaching, PM DAKSH.
 
 Sources:
+
 - DoSJE main site: https://socialjustice.gov.in/
 - Scheme pages: https://socialjustice.gov.in/schemes/43 (AVYAY) etc.
 
@@ -112,18 +113,18 @@ Sources:
 Distinct roles that the DoSJE system actually distinguishes (NETRAM must keep
 them separate too):
 
-| Function | Who does it | Source status |
-| --- | --- | --- |
-| Owns schemes, funds them, sets audit framework | DoSJE (MoSJE) | Officially documented |
-| Implements state components | State Social Welfare / nodal departments | Officially documented |
-| Implements district administration | District Collector/DM, DSWO | Officially documented |
-| Runs GIA institutions | NGOs / voluntary organisations (societies, trusts) | Officially documented |
-| Conducts surprise inspections | PMU (I-MESA component 2), hosted in NISD | Officially documented |
-| Runs central CCTV monitoring | CSSU (I-MESA component 3) via external agency | Officially documented |
-| Conducts social audits | State SAUs via their Social Justice Cells | Officially documented |
-| Trains/handholds SAUs | NRCSA (technical resource agency) | Officially documented |
-| Responds to findings / submits ATRs | Implementing department / institution | Officially documented |
-| Reviews findings, orders action | District panel of the Social Justice Assembly; state assembly panel | Officially documented |
+| Function                                       | Who does it                                                         | Source status         |
+| ---------------------------------------------- | ------------------------------------------------------------------- | --------------------- |
+| Owns schemes, funds them, sets audit framework | DoSJE (MoSJE)                                                       | Officially documented |
+| Implements state components                    | State Social Welfare / nodal departments                            | Officially documented |
+| Implements district administration             | District Collector/DM, DSWO                                         | Officially documented |
+| Runs GIA institutions                          | NGOs / voluntary organisations (societies, trusts)                  | Officially documented |
+| Conducts surprise inspections                  | PMU (I-MESA component 2), hosted in NISD                            | Officially documented |
+| Runs central CCTV monitoring                   | CSSU (I-MESA component 3) via external agency                       | Officially documented |
+| Conducts social audits                         | State SAUs via their Social Justice Cells                           | Officially documented |
+| Trains/handholds SAUs                          | NRCSA (technical resource agency)                                   | Officially documented |
+| Responds to findings / submits ATRs            | Implementing department / institution                               | Officially documented |
+| Reviews findings, orders action                | District panel of the Social Justice Assembly; state assembly panel | Officially documented |
 
 Key separation: the **auditor is independent of the implementer**. SAUs sit
 outside the implementing departments (in Odisha under the Panchayati Raj
@@ -144,6 +145,7 @@ implementing organisation approve, review, or verify its own compliance.
   Review Meet jointly with DoSJE.
 
 **Officially documented.** Sources:
+
 - https://socialjustice.gov.in/social-audit/about-us-nrcsa
 - Social Audit Handbook for Social Justice Cell Members, NRC-CSA/NIRDPR, Sept 2022
   (https://socialjustice.gov.in/social-audit/public/report-doc/calender-material/Handbook%20for%20Social%20Audit%20of%20Scheme%20of%20DoSJE_05%20Sept.2022.pdf)
@@ -198,6 +200,7 @@ Chhattisgarh, Gujarat, J&K, Jharkhand, Manipur and West Bengal) that
 "communicated their inability to conduct social audits during the year".
 
 **Officially documented.** Sources:
+
 - https://ossaat.in/ ("constituted as a Society under the aegis of P.R. & D.W.
   Department")
 - https://socialjustice.gov.in/social-audit/about-us-nrcsa
@@ -378,16 +381,17 @@ into categories with per-year audit targets: GIA institutions, scholarships
 
 Schemes NETRAM seeds (names verified against official pages):
 
-| Scheme | Full official name | Auditable targets under social audit MIS |
-| --- | --- | --- |
-| AVYAY | Atal Vayo Abhyuday Yojana | Sr. Citizen Home (IPSrC component) |
-| NAPDDR | National Action Plan for Drug Demand Reduction | IRCA (Integrated Rehabilitation Centre for Addicts) |
-| PM-AJAY | Pradhan Mantri Anusuchit Jaati Abhyuday Yojana | Villages (Adarsh Gram component), Hostels (BJRC component), GIA projects |
-| SHRESHTA | Scheme for Residential Education for Students in High Schools in Targeted Areas | Schools (Mode 1: best CBSE private residential schools; Mode 2: NGO/VO operated schools) |
-| PM-YASASVI | PM Young Achievers Scholarship Award Scheme for Vibrant India (OBCs and others) | OBC Hostels (Top Class School Education + hostel construction component) |
-| I-MESA | Information, Monitoring, Evaluation and Social Audit (Central Sector Scheme) | Not a beneficiary scheme; it funds PMU, CSSU, social audit, evaluation |
+| Scheme     | Full official name                                                              | Auditable targets under social audit MIS                                                 |
+| ---------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| AVYAY      | Atal Vayo Abhyuday Yojana                                                       | Sr. Citizen Home (IPSrC component)                                                       |
+| NAPDDR     | National Action Plan for Drug Demand Reduction                                  | IRCA (Integrated Rehabilitation Centre for Addicts)                                      |
+| PM-AJAY    | Pradhan Mantri Anusuchit Jaati Abhyuday Yojana                                  | Villages (Adarsh Gram component), Hostels (BJRC component), GIA projects                 |
+| SHRESHTA   | Scheme for Residential Education for Students in High Schools in Targeted Areas | Schools (Mode 1: best CBSE private residential schools; Mode 2: NGO/VO operated schools) |
+| PM-YASASVI | PM Young Achievers Scholarship Award Scheme for Vibrant India (OBCs and others) | OBC Hostels (Top Class School Education + hostel construction component)                 |
+| I-MESA     | Information, Monitoring, Evaluation and Social Audit (Central Sector Scheme)    | Not a beneficiary scheme; it funds PMU, CSSU, social audit, evaluation                   |
 
 Sources:
+
 - Social audit MIS scheme list: https://socialjustice.gov.in/social-audit/ (scheme
   select: "Sr. Citizen Home under AVYAY", "IRCA under NAPDDR", "Hostels (BJRC)
   under PMAJAY", "Schools under SHRESHTA Mode 1/2", "Villages under PMAJAY",
@@ -406,10 +410,10 @@ Verified component structure for the schemes NETRAM models:
 - **NAPDDR**: GIA to IRCA de-addiction centres; CPLI; ODIC; preventive education
   and awareness; training. (Revised guideline 2023 on the MIS.)
 - **PM-AJAY** (merged scheme, three components):
-  - *Adarsh Gram*: integrated development of SC-majority villages (Rs 21 lakh/village
+  - _Adarsh Gram_: integrated development of SC-majority villages (Rs 21 lakh/village
     per the handbook); audited as **villages**.
-  - *Grant-in-aid for district/state level projects* (SCA-to-SCSP lineage).
-  - *Babu Jagjivan Ram Chhatrawas Yojana (BJRC)*: hostels for SC boys/girls;
+  - _Grant-in-aid for district/state level projects_ (SCA-to-SCSP lineage).
+  - _Babu Jagjivan Ram Chhatrawas Yojana (BJRC)_: hostels for SC boys/girls;
     audited as **hostels**.
 - **SHRESHTA**: Mode 1 (best private CBSE residential schools; meritorious SC
   students selected via NETS conducted by NTA, admitted to classes 9/11, fee
@@ -436,14 +440,14 @@ IPSrC Senior Citizen Home). The public MIS already names audits by
 
 Observed in the audit calendar data (2,914 records, 22 Sep 2026):
 
-| Calendar label | State+District | "Institute" column |
-| --- | --- | --- |
-| IRCA under NAPDDR | e.g. Mizoram/AIZAWL, Odisha/PURI | named NGO (e.g. "New Life Home Society", "NILACHAL SEVA PRATISTHAN") |
-| Sr. Citizen Home under AVYAY | e.g. Odisha/PURI | named NGO or home (e.g. "Nilachal Seva Pratisthan- Astaraag-II", "Bankeswari Jubak Sangha") |
-| Hostels (BJRC) under PMAJAY | e.g. Assam | named society/hostel |
-| Schools under SHRESHTA Mode 1 | e.g. Assam/KAMRUP | named school ("Royal Global School") |
-| Villages under PMAJAY | e.g. Odisha/JAJAPUR (32 records), Madhya Pradesh/BHIND | **N/A** - the village itself is the audited unit |
-| OBC Hostel under YASASVI | various | named hostel |
+| Calendar label                | State+District                                         | "Institute" column                                                                          |
+| ----------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| IRCA under NAPDDR             | e.g. Mizoram/AIZAWL, Odisha/PURI                       | named NGO (e.g. "New Life Home Society", "NILACHAL SEVA PRATISTHAN")                        |
+| Sr. Citizen Home under AVYAY  | e.g. Odisha/PURI                                       | named NGO or home (e.g. "Nilachal Seva Pratisthan- Astaraag-II", "Bankeswari Jubak Sangha") |
+| Hostels (BJRC) under PMAJAY   | e.g. Assam                                             | named society/hostel                                                                        |
+| Schools under SHRESHTA Mode 1 | e.g. Assam/KAMRUP                                      | named school ("Royal Global School")                                                        |
+| Villages under PMAJAY         | e.g. Odisha/JAJAPUR (32 records), Madhya Pradesh/BHIND | **N/A** - the village itself is the audited unit                                            |
+| OBC Hostel under YASASVI      | various                                                | named hostel                                                                                |
 
 Two facts matter:
 
@@ -564,17 +568,17 @@ descriptive metadata only.
 Who needs access in the real system, mapped to NETRAM roles (existing role
 codes retained):
 
-| Real actor | NETRAM role | Scope |
-| --- | --- | --- |
-| DoSJE / national administrator | `system_admin` | national |
-| NRCSA user (training/monitoring) | `authority_officer` variant, national reach | national (future) |
-| PMU member / State Coordinator (surprise inspector) | `inspector` | state/district |
-| State SW Dept officer / SAU director | `authority_officer` | state |
-| SJC resource person (social audit verifier) | `inspector` (social audit type) | district |
-| DSWO / district officer | `authority_officer` | district |
-| NGO/institution head (implements, submits ATR) | `institution_admin` | own facility |
-| Control room / CSSU operator | `control_room` | state |
-| Beneficiary/citizen | public complaint + tracking routes (no login) | public |
+| Real actor                                          | NETRAM role                                   | Scope             |
+| --------------------------------------------------- | --------------------------------------------- | ----------------- |
+| DoSJE / national administrator                      | `system_admin`                                | national          |
+| NRCSA user (training/monitoring)                    | `authority_officer` variant, national reach   | national (future) |
+| PMU member / State Coordinator (surprise inspector) | `inspector`                                   | state/district    |
+| State SW Dept officer / SAU director                | `authority_officer`                           | state             |
+| SJC resource person (social audit verifier)         | `inspector` (social audit type)               | district          |
+| DSWO / district officer                             | `authority_officer`                           | district          |
+| NGO/institution head (implements, submits ATR)      | `institution_admin`                           | own facility      |
+| Control room / CSSU operator                        | `control_room`                                | state             |
+| Beneficiary/citizen                                 | public complaint + tracking routes (no login) | public            |
 
 The existing seeded role set (`system_admin`, `authority_officer`,
 `control_room`, `institution_admin`, `inspector`) already covers these actors;
@@ -641,18 +645,18 @@ Citizen complaint (public, tracking code) -> under review
 Mapping from researched reality to the existing NETRAM schema (migration debt
 kept minimal; every change preserves existing functionality):
 
-| # | Current NETRAM | DoSJE reality | Required change (implemented) |
-| --- | --- | --- | --- |
-| 1 | Geography ends at `districts` | Audits need Block/GP/Village for village targets | Add `blocks`, `gram_panchayats`, `villages` tables; `villageId` on projects |
-| 2 | `PROJECT_TYPES = institution/authority_project/other` | Audit targets are institutions AND villages | Extend types with `village` |
-| 3 | `programmeIds` JSON array on projects; flat `programmes` | Schemes have components (IPSrC, BJRC, Adarsh Gram, Mode 1/2...) | Add `schemeComponents` table with `programmeId` FK; `schemeComponentId` on projects |
-| 4 | Findings have severity only | Issues are categorised (Category Wise Report) | Add `findingCategories` table + `categoryId` + `amountInr` + `responsibleOrganisationId` on findings |
-| 5 | Corrective action has no submission content | ATR is a real submission (action, evidence, dates, review) | Add `actionSummary`, `verifiedAt`, `verifiedByUserId`, `reviewRemarks` on corrective actions; ATR attachments (PDF/photo/video, max 5, ≤100 MB each) via `corrective_action_files` |
-| 6 | `INSPECTION_TYPES = surprise/routine/special/follow_up` | Social audit is a distinct official process | Add `social_audit` inspection type |
-| 7 | Orgs are free-form categories | Real org kinds: NGO/VO, state dept, SAU, national institute | Keep extensible `category` strings; seed real values |
-| 8 | `organisations` table not linked to geography/state | SAUs, state departments are state-bound | Add nullable `stateId` on organisations |
-| 9 | Seed schemes are fabricated ("National Scholarship Programme - Special Hostels", "Annual Surprise Inspection Drive") | Real schemes: AVYAY, NAPDDR, PM-AJAY, SHRESHTA, PM-YASASVI, I-MESA | Reseed with real schemes + components + real Odisha audit targets |
-| 10 | Every seed project is type=institution with an org | Real Odisha audit calendar includes village rows with N/A institute | Seed village targets with `organisationId = NULL` |
+| #   | Current NETRAM                                                                                                       | DoSJE reality                                                       | Required change (implemented)                                                                                                                                                      |
+| --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Geography ends at `districts`                                                                                        | Audits need Block/GP/Village for village targets                    | Add `blocks`, `gram_panchayats`, `villages` tables; `villageId` on projects                                                                                                        |
+| 2   | `PROJECT_TYPES = institution/authority_project/other`                                                                | Audit targets are institutions AND villages                         | Extend types with `village`                                                                                                                                                        |
+| 3   | `programmeIds` JSON array on projects; flat `programmes`                                                             | Schemes have components (IPSrC, BJRC, Adarsh Gram, Mode 1/2...)     | Add `schemeComponents` table with `programmeId` FK; `schemeComponentId` on projects                                                                                                |
+| 4   | Findings have severity only                                                                                          | Issues are categorised (Category Wise Report)                       | Add `findingCategories` table + `categoryId` + `amountInr` + `responsibleOrganisationId` on findings                                                                               |
+| 5   | Corrective action has no submission content                                                                          | ATR is a real submission (action, evidence, dates, review)          | Add `actionSummary`, `verifiedAt`, `verifiedByUserId`, `reviewRemarks` on corrective actions; ATR attachments (PDF/photo/video, max 5, ≤100 MB each) via `corrective_action_files` |
+| 6   | `INSPECTION_TYPES = surprise/routine/special/follow_up`                                                              | Social audit is a distinct official process                         | Add `social_audit` inspection type                                                                                                                                                 |
+| 7   | Orgs are free-form categories                                                                                        | Real org kinds: NGO/VO, state dept, SAU, national institute         | Keep extensible `category` strings; seed real values                                                                                                                               |
+| 8   | `organisations` table not linked to geography/state                                                                  | SAUs, state departments are state-bound                             | Add nullable `stateId` on organisations                                                                                                                                            |
+| 9   | Seed schemes are fabricated ("National Scholarship Programme - Special Hostels", "Annual Surprise Inspection Drive") | Real schemes: AVYAY, NAPDDR, PM-AJAY, SHRESHTA, PM-YASASVI, I-MESA  | Reseed with real schemes + components + real Odisha audit targets                                                                                                                  |
+| 10  | Every seed project is type=institution with an org                                                                   | Real Odisha audit calendar includes village rows with N/A institute | Seed village targets with `organisationId = NULL`                                                                                                                                  |
 
 Everything else (inspections, evidence, complaints, AI anomalies, attendance,
 CCTV, VC, audit events, outbox) already matches the domain and is untouched.
@@ -806,14 +810,14 @@ organisation and an institution row named from the record verbatim.
 
 ## 38. Assumptions and Confidence
 
-| Assumption | Confidence | Basis |
-| --- | --- | --- |
-| `Project` remains the single monitored-target entity with a widened type enum instead of a new `ImplementationUnit` table | High | Preserves all existing modules; domain distinction achieved by type + geography + component (AGENTS.md §14 (distinct domain concepts, no overbuilding per §78)) |
-| Village targets have `organisationId = NULL` and are located via village geography | High | Observed "N/A" institute column for village audits |
-| Scheme components are a real table rather than strings | High | PM-AJAY/AVYAY/SHRESHTA all have official named components with distinct target kinds |
-| `social_audit` inspection type distinct from surprise/routine | High | Social audit is a legally distinct process with its own actors (SJC) and forums |
-| Finding category table seeded with documentable categories | Medium | Category report exists; enumeration not public |
-| Corrective action = ATR equivalent, extended with submission content | High | Handbook ATR requirements map 1:1 onto corrective-action lifecycle already present |
-| Seeded organisations from the audit calendar are real public records | High | Extracted verbatim from the official calendar |
-| Seeded Odisha social audit inspections represent a pilot, not existing practice | High | Annual Report 2025-26 (3.38): Odisha did not conduct DoSJE social audits in FY 2024-25 |
-| Attendance/CCTV/anomaly demo rows stay synthetic | High | No public source exists; AGENTS.md §13 permits labelled synthetic seed data |
+| Assumption                                                                                                                | Confidence | Basis                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Project` remains the single monitored-target entity with a widened type enum instead of a new `ImplementationUnit` table | High       | Preserves all existing modules; domain distinction achieved by type + geography + component (AGENTS.md §14 (distinct domain concepts, no overbuilding per §78)) |
+| Village targets have `organisationId = NULL` and are located via village geography                                        | High       | Observed "N/A" institute column for village audits                                                                                                              |
+| Scheme components are a real table rather than strings                                                                    | High       | PM-AJAY/AVYAY/SHRESHTA all have official named components with distinct target kinds                                                                            |
+| `social_audit` inspection type distinct from surprise/routine                                                             | High       | Social audit is a legally distinct process with its own actors (SJC) and forums                                                                                 |
+| Finding category table seeded with documentable categories                                                                | Medium     | Category report exists; enumeration not public                                                                                                                  |
+| Corrective action = ATR equivalent, extended with submission content                                                      | High       | Handbook ATR requirements map 1:1 onto corrective-action lifecycle already present                                                                              |
+| Seeded organisations from the audit calendar are real public records                                                      | High       | Extracted verbatim from the official calendar                                                                                                                   |
+| Seeded Odisha social audit inspections represent a pilot, not existing practice                                           | High       | Annual Report 2025-26 (3.38): Odisha did not conduct DoSJE social audits in FY 2024-25                                                                          |
+| Attendance/CCTV/anomaly demo rows stay synthetic                                                                          | High       | No public source exists; AGENTS.md §13 permits labelled synthetic seed data                                                                                     |

@@ -64,7 +64,10 @@ export class AiAnomalyDimensionCalculator {
           break;
       }
 
-      const confidence = Math.min(1, Math.max(0, a.confidence ?? AiAnomalyDimensionCalculator.DEFAULT_CONFIDENCE));
+      const confidence = Math.min(
+        1,
+        Math.max(0, a.confidence ?? AiAnomalyDimensionCalculator.DEFAULT_CONFIDENCE),
+      );
       confidenceSum += confidence;
 
       let base: number;
@@ -91,7 +94,8 @@ export class AiAnomalyDimensionCalculator {
           break;
       }
 
-      const attenuation = a.status === "reviewed" ? AI_REVIEWED_ATTENUATION : 1 - AI_DISMISSED_ATTENUATION;
+      const attenuation =
+        a.status === "reviewed" ? AI_REVIEWED_ATTENUATION : 1 - AI_DISMISSED_ATTENUATION;
       rawScore += base * confidence * attenuation;
     }
 

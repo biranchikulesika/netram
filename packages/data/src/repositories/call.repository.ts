@@ -42,9 +42,7 @@ export function toCallRecord(row: typeof callRecordsTable.$inferSelect): CallRec
     projectName: row.projectName,
     callType: "video",
     durationSeconds: row.durationSeconds,
-    timestamp: row.startedAt
-      ? row.startedAt.toISOString()
-      : row.createdAt.toISOString(),
+    timestamp: row.startedAt ? row.startedAt.toISOString() : row.createdAt.toISOString(),
     condition: row.condition as CallCondition,
     reviewText: row.reviewText,
     flagInspection: row.flagInspection,
@@ -61,10 +59,7 @@ export class CallRepository {
   constructor(private db: DrizzleDB) {}
 
   async listContacts(): Promise<CallContact[]> {
-    const rows = await this.db
-      .select()
-      .from(callContactsTable)
-      .orderBy(callContactsTable.name);
+    const rows = await this.db.select().from(callContactsTable).orderBy(callContactsTable.name);
     return rows.map(toCallContact);
   }
 

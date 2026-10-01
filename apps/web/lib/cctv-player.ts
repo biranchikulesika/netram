@@ -149,8 +149,7 @@ export async function readPlaybackStats(pc: RTCPeerConnection): Promise<Playback
   return {
     framesDecoded,
     framesDropped,
-    jitterBufferMs:
-      jitterEmitted > 0 ? Math.round((jitterDelaySec / jitterEmitted) * 1000) : null,
+    jitterBufferMs: jitterEmitted > 0 ? Math.round((jitterDelaySec / jitterEmitted) * 1000) : null,
     bytesReceived,
   };
 }

@@ -47,9 +47,15 @@ export function InteractiveVideoPlayer({
   }, []);
 
   const webSrc = typeof src === "string" ? src : resolveUri(src);
-  const webInspectorSrc = typeof inspectorSrc === "string" ? inspectorSrc : resolveUri(inspectorSrc);
+  const webInspectorSrc =
+    typeof inspectorSrc === "string" ? inspectorSrc : resolveUri(inspectorSrc);
   const nativeSource = typeof src === "number" ? src : { uri: src };
-  const nativeInspectorSource = typeof inspectorSrc === "number" ? inspectorSrc : inspectorSrc ? { uri: inspectorSrc } : undefined;
+  const nativeInspectorSource =
+    typeof inspectorSrc === "number"
+      ? inspectorSrc
+      : inspectorSrc
+        ? { uri: inspectorSrc }
+        : undefined;
 
   if (!src) {
     return (
@@ -161,7 +167,7 @@ export function InteractiveVideoPlayer({
         }
       }
     },
-    [duration]
+    [duration],
   );
 
   // Play / Pause Toggle with synchronization
@@ -509,12 +515,7 @@ export function InteractiveVideoPlayer({
             hitSlop={6}
             accessibilityLabel="Seek video position"
           >
-            <View
-              style={[
-                styles.transparentProgressFill,
-                { width: `${progressPercent}%` },
-              ]}
-            />
+            <View style={[styles.transparentProgressFill, { width: `${progressPercent}%` }]} />
           </Pressable>
 
           {/* Mute Toggle Icon Button */}
@@ -524,11 +525,7 @@ export function InteractiveVideoPlayer({
             hitSlop={8}
             accessibilityLabel={isMuted ? "Unmute audio" : "Mute audio"}
           >
-            <Icon
-              name={isMuted ? "volume-mute" : "volume-high"}
-              size={15}
-              color="#FFFFFF"
-            />
+            <Icon name={isMuted ? "volume-mute" : "volume-high"} size={15} color="#FFFFFF" />
           </Pressable>
         </View>
       </Pressable>

@@ -143,12 +143,16 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
           {confirmTarget ? (
             <div className="transition-confirm-box">
               <div className="transition-confirm-header">
-                <IconAlertTriangle width={15} height={15} style={{ color: "#dd501e", flex: "none" }} />
-                <span>Confirm change to <strong>{confirmTarget}</strong>?</span>
+                <IconAlertTriangle
+                  width={15}
+                  height={15}
+                  style={{ color: "#dd501e", flex: "none" }}
+                />
+                <span>
+                  Confirm change to <strong>{confirmTarget}</strong>?
+                </span>
               </div>
-              <p className="transition-confirm-desc">
-                {STATUS_NOTES[confirmTarget]}
-              </p>
+              <p className="transition-confirm-desc">{STATUS_NOTES[confirmTarget]}</p>
               <div className="transition-confirm-audit">
                 This administrative action will be recorded in the permanent audit trail (§37).
               </div>
@@ -188,7 +192,14 @@ export function TransitionButton({ projectId, currentStatus }: TransitionButtonP
                     onClick={() => setConfirmTarget(nextStatus)}
                     className={`transition-option ${FORWARD_STATUSES.has(nextStatus) ? "forward" : ""}`}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                      }}
+                    >
                       <span className="transition-option-name">{nextStatus}</span>
                       <IconChevronRight width={12} height={12} style={{ opacity: 0.5 }} />
                     </div>

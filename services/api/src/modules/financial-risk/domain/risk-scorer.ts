@@ -1,7 +1,4 @@
-import type {
-  EvidenceRef,
-  InspectionFlagRiskLevel,
-} from "@netram/types";
+import type { EvidenceRef, InspectionFlagRiskLevel } from "@netram/types";
 import type { RuleEvaluationResult } from "./rule-evaluator.js";
 
 export interface ScoredRiskOutput {

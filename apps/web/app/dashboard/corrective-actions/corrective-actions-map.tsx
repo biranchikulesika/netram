@@ -4,9 +4,7 @@ import { useMemo } from "react";
 import type { CorrectiveAction, CorrectiveActionStatus } from "@netram/types";
 import { formatDistrict } from "../../../lib/presentation";
 import { districtCoordinatesByName, parseGpsCoordinates } from "../projects/real-leaflet-map";
-import NetramOverviewMap, {
-  type MapFacility,
-} from "../../components/netram-overview-map";
+import NetramOverviewMap, { type MapFacility } from "../../components/netram-overview-map";
 import { CorrectiveActionCard } from "./corrective-action-card";
 import { IconMapPin, IconChevronRight } from "../../components/icons";
 
@@ -78,7 +76,13 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
     for (const [projectId, items] of byProject.entries()) {
       const first = items[0]!;
       const loc = resolveLocation(first);
-      out.push({ projectId, project: first.project!, items, ...loc, color: projectStatusColor(items) });
+      out.push({
+        projectId,
+        project: first.project!,
+        items,
+        ...loc,
+        color: projectStatusColor(items),
+      });
     }
     return out.filter((c) => c.lat && c.lng);
   }, [actions]);
@@ -213,11 +217,18 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
                 }}
                 title={f.districtLabel}
               >
-                <IconMapPin width={11} height={11} style={{ color: "var(--text-subtle)", flexShrink: 0 }} />
+                <IconMapPin
+                  width={11}
+                  height={11}
+                  style={{ color: "var(--text-subtle)", flexShrink: 0 }}
+                />
                 {f.districtLabel}
               </span>
               <span style={{ flex: 1 }} />
-              <span title="Open facility details" style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}>
+              <span
+                title="Open facility details"
+                style={{ color: "#0c2a52", display: "inline-flex", flexShrink: 0 }}
+              >
                 <IconChevronRight width={13} height={13} />
               </span>
             </div>
@@ -230,11 +241,21 @@ export default function CorrectiveActionsMap({ actions }: CorrectiveActionsMapPr
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  color: "var(--color-navy-brand)",
+                }}
+              >
                 {c.project.name}
               </h3>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
-                {c.project.code} · {c.items.length} corrective {c.items.length === 1 ? "action" : "actions"}
+              <div
+                style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}
+              >
+                {c.project.code} · {c.items.length} corrective{" "}
+                {c.items.length === 1 ? "action" : "actions"}
               </div>
             </div>
             {c.items.map((ca) => (

@@ -228,12 +228,7 @@ export class AttendanceService {
     return this.repo.listSourceObservations({ projectId, from, to });
   }
 
-  async listIdentityMappings(
-    ctx: RequestUserContext,
-    projectId: string,
-    page = 1,
-    pageSize = 20,
-  ) {
+  async listIdentityMappings(ctx: RequestUserContext, projectId: string, page = 1, pageSize = 20) {
     this.authz.requirePermission(ctx, MONITOR_READ);
     await this.requireProjectScope(ctx, projectId, MONITOR_READ);
     return this.repo.listIdentityMappings({ projectId, page, pageSize });
@@ -295,7 +290,15 @@ export class AttendanceService {
     ctx: RequestUserContext,
     anomalyId: string,
     input: {
-      action: "acknowledge" | "dismiss" | "false_positive" | "investigate" | "actioned" | "link_inspection" | "link_complaint" | "note";
+      action:
+        | "acknowledge"
+        | "dismiss"
+        | "false_positive"
+        | "investigate"
+        | "actioned"
+        | "link_inspection"
+        | "link_complaint"
+        | "note";
       note?: string | null;
       linkedInspectionId?: string | null;
       linkedComplaintId?: string | null;
@@ -531,7 +534,10 @@ export class AttendanceService {
         opts: { scenario?: string; operationalDate: string },
       ) => ProviderDeviceEvent[];
     };
-    return provider.generate(device as unknown as Parameters<typeof provider.generate>[0], { operationalDate, scenario: cursor ?? undefined });
+    return provider.generate(device as unknown as Parameters<typeof provider.generate>[0], {
+      operationalDate,
+      scenario: cursor ?? undefined,
+    });
   }
 
   private async processDeviceEvents(
@@ -540,7 +546,11 @@ export class AttendanceService {
     ctx: RequestUserContext,
   ): Promise<SyncDeviceResult & { affectedWindows: AffectedKey[] }> {
     const windows = await this.repo.listWindows(device.projectId);
-    const config = (await this.repo.getConfig(device.projectId)) ?? { ...DEFAULT_CONFIG, projectId: device.projectId, updatedAt: new Date().toISOString() };
+    const config = (await this.repo.getConfig(device.projectId)) ?? {
+      ...DEFAULT_CONFIG,
+      projectId: device.projectId,
+      updatedAt: new Date().toISOString(),
+    };
     const affected = new Map<string, AffectedKey>();
 
     const rawWrites = events.map((e) => ({
@@ -570,7 +580,8 @@ export class AttendanceService {
         continue;
       }
 
-      const window = windows.find((w) => inWindow(new Date(raw.occurredAt), w.startTime, w.endTime)) ?? null;
+      const window =
+        windows.find((w) => inWindow(new Date(raw.occurredAt), w.startTime, w.endTime)) ?? null;
       const opDate = operationalDayFor(new Date(raw.occurredAt), config.dayStartTime);
       const eventType = normalizeEventType(raw.rawType);
 
@@ -587,7 +598,9 @@ export class AttendanceService {
           rawTransactionId: raw.id,
           windowId: window?.id ?? null,
           operationalDate: opDate,
-          dedupKey: window ? dedupKeyFor(device.projectId, window.id, opDate, mapping.personExternalId) : null,
+          dedupKey: window
+            ? dedupKeyFor(device.projectId, window.id, opDate, mapping.personExternalId)
+            : null,
         },
       ]);
       await this.repo.updateRawTransaction(raw.id, {
@@ -644,7 +657,8 @@ export class AttendanceService {
         resourceId: device.id,
         payload: { deviceId: device.id, projectId: device.projectId, normalized },
       });
-    }    return {
+    }
+    return {
       received: events.length,
       inserted: inserted.length,
       duplicates,
@@ -703,7 +717,11 @@ export class AttendanceService {
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
       auditAction: "attendance.observation_recorded",
-      auditMetadata: { source: input.source, operationalDate: input.operationalDate, observedCount: input.observedCount ?? null },
+      auditMetadata: {
+        source: input.source,
+        operationalDate: input.operationalDate,
+        observedCount: input.observedCount ?? null,
+      },
       resourceType: "attendance-observation",
       resourceId: observation.id,
     });
@@ -724,7 +742,11 @@ export class AttendanceService {
   ): Promise<AttendanceCalculation> {
     const window = await this.repo.findWindowById(windowId);
     if (!window) throw AppError.notFound("Attendance window not found.");
-    const config = (await this.repo.getConfig(window.projectId)) ?? { ...DEFAULT_CONFIG, projectId: window.projectId, updatedAt: new Date().toISOString() };
+    const config = (await this.repo.getConfig(window.projectId)) ?? {
+      ...DEFAULT_CONFIG,
+      projectId: window.projectId,
+      updatedAt: new Date().toISOString(),
+    };
 
     // Expected population frozen at window start (§13).
     let expected: number | null = null;
@@ -764,9 +786,15 @@ export class AttendanceService {
     const deviceCoverage: CoverageLevel =
       devices.length === 0
         ? "UNAVAILABLE"
-        : devices.every((d) => d.lastEventAt && new Date(d.lastEventAt).getTime() >= bounds.start.getTime() - 30 * 60_000)
+        : devices.every(
+              (d) =>
+                d.lastEventAt &&
+                new Date(d.lastEventAt).getTime() >= bounds.start.getTime() - 30 * 60_000,
+            )
           ? "COMPLETE"
-          : devices.some((d) => d.lastEventAt && new Date(d.lastEventAt).getTime() >= bounds.start.getTime())
+          : devices.some(
+                (d) => d.lastEventAt && new Date(d.lastEventAt).getTime() >= bounds.start.getTime(),
+              )
             ? "PARTIAL"
             : "INSUFFICIENT";
 
@@ -785,8 +813,14 @@ export class AttendanceService {
 
     const sourceCoverage = [
       { source: "BIOMETRIC" as const, coverage: deviceCoverage },
-      { source: "INSTITUTION_REPORTED" as const, coverage: reported ? reported.coverage : ("UNAVAILABLE" as CoverageLevel) },
-      { source: "CCTV" as const, coverage: cctv ? cctv.coverage : ("UNAVAILABLE" as CoverageLevel) },
+      {
+        source: "INSTITUTION_REPORTED" as const,
+        coverage: reported ? reported.coverage : ("UNAVAILABLE" as CoverageLevel),
+      },
+      {
+        source: "CCTV" as const,
+        coverage: cctv ? cctv.coverage : ("UNAVAILABLE" as CoverageLevel),
+      },
     ];
 
     const sourceCounts: Record<AttendanceSource, number> = {
@@ -796,10 +830,13 @@ export class AttendanceService {
       MANUAL: 0,
     };
 
-    const freshness = events.reduce((max, e) => {
-      const t = e.receivedAt.getTime();
-      return t > max ? t : max;
-    }, reported ? new Date(reported.observedAt).getTime() : 0);
+    const freshness = events.reduce(
+      (max, e) => {
+        const t = e.receivedAt.getTime();
+        return t > max ? t : max;
+      },
+      reported ? new Date(reported.observedAt).getTime() : 0,
+    );
     const freshnessDate = freshness > 0 ? new Date(freshness) : null;
     const stale = !freshnessDate || Date.now() - freshnessDate.getTime() > 24 * 3_600_000;
 
@@ -880,7 +917,16 @@ export class AttendanceService {
       },
     });
 
-    await this.detectAndPersistAnomalies(ctx, window.projectId, populationId, windowId, operationalDate, bounds, config, result);
+    await this.detectAndPersistAnomalies(
+      ctx,
+      window.projectId,
+      populationId,
+      windowId,
+      operationalDate,
+      bounds,
+      config,
+      result,
+    );
 
     return calculation;
   }
@@ -940,7 +986,13 @@ export class AttendanceService {
       operationalDate: string;
       bounds: { start: Date; end: Date };
       config: AttendanceConfig;
-      candidate: { anomalyType: string; score: number; severity: string; confidence: number; supportingSignals: Record<string, unknown> };
+      candidate: {
+        anomalyType: string;
+        score: number;
+        severity: string;
+        confidence: number;
+        supportingSignals: Record<string, unknown>;
+      };
       present: number;
     },
   ): Promise<void> {
@@ -979,7 +1031,12 @@ export class AttendanceService {
             requestId: ctx.requestId ?? null,
             ipAddress: ctx.ipAddress ?? null,
             auditAction: "attendance.anomaly_updated",
-            auditMetadata: { anomalyType, score: candidate.score, windowId: input.windowId, operationalDate: input.operationalDate },
+            auditMetadata: {
+              anomalyType,
+              score: candidate.score,
+              windowId: input.windowId,
+              operationalDate: input.operationalDate,
+            },
             resourceType: "attendance-anomaly",
             resourceId: existing.id,
           },
@@ -989,13 +1046,24 @@ export class AttendanceService {
             actorUserId: ctx.userId,
             resourceType: "attendance-anomaly",
             resourceId: existing.id,
-            payload: { anomalyId: existing.id, anomalyType, score: candidate.score, severity: candidate.severity },
+            payload: {
+              anomalyId: existing.id,
+              anomalyType,
+              score: candidate.score,
+              severity: candidate.severity,
+            },
           },
         });
         return;
       }
       // Reviewed: only a materially different result creates a linked anomaly (§33).
-      if (!materialityExceeded(existing.score, candidate.score, input.config.thresholds.materialityThreshold)) {
+      if (
+        !materialityExceeded(
+          existing.score,
+          candidate.score,
+          input.config.thresholds.materialityThreshold,
+        )
+      ) {
         return;
       }
     }
@@ -1029,7 +1097,14 @@ export class AttendanceService {
       groupId: group.id,
     });
 
-    const anomalyId = (await this.repo.findOpenAnomalyFor(input.projectId, input.windowId, input.operationalDate, anomalyType))?.id;
+    const anomalyId = (
+      await this.repo.findOpenAnomalyFor(
+        input.projectId,
+        input.windowId,
+        input.operationalDate,
+        anomalyType,
+      )
+    )?.id;
     await this.repo.recordAudit({
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
@@ -1088,7 +1163,13 @@ export class AttendanceService {
   async getConfig(ctx: RequestUserContext, projectId?: string): Promise<AttendanceConfig> {
     this.authz.requirePermission(ctx, MONITOR_READ);
     if (projectId) await this.requireProjectScope(ctx, projectId, MONITOR_READ);
-    return (await this.repo.getConfig(projectId ?? null)) ?? { projectId: projectId ?? null, ...DEFAULT_CONFIG, updatedAt: new Date().toISOString() };
+    return (
+      (await this.repo.getConfig(projectId ?? null)) ?? {
+        projectId: projectId ?? null,
+        ...DEFAULT_CONFIG,
+        updatedAt: new Date().toISOString(),
+      }
+    );
   }
 
   async updateConfig(
@@ -1205,7 +1286,12 @@ export class AttendanceService {
       actorUserId: ctx.userId,
       resourceType: "attendance-correction",
       resourceId: correction.id,
-      payload: { correctionId: correction.id, projectId: input.projectId, targetType: input.targetType, targetId: input.targetId },
+      payload: {
+        correctionId: correction.id,
+        projectId: input.projectId,
+        targetType: input.targetType,
+        targetId: input.targetId,
+      },
     });
     return correction;
   }
@@ -1242,7 +1328,9 @@ export class AttendanceService {
     }
     // Independent approval: the requester cannot approve their own correction (§34).
     if (correction.requestedBy === ctx.userId) {
-      throw AppError.forbidden("Approval must be made by a different authority than the requester.");
+      throw AppError.forbidden(
+        "Approval must be made by a different authority than the requester.",
+      );
     }
 
     if (decision === "reject") {
@@ -1270,11 +1358,12 @@ export class AttendanceService {
       const expected = calc.expected;
       const absent =
         expected !== null && calc.coverage === "COMPLETE" ? Math.max(0, expected - present) : null;
-      const unknown =
-        expected !== null ? Math.max(0, expected - present) : 0;
+      const unknown = expected !== null ? Math.max(0, expected - present) : 0;
       await this.repo.updateCalculationDerived(correction.targetId, { present, absent, unknown });
     } else if (correction.targetType === "calculation") {
-      throw AppError.badRequest("Only the calculation 'present' field is supported for correction.");
+      throw AppError.badRequest(
+        "Only the calculation 'present' field is supported for correction.",
+      );
     } else {
       throw AppError.badRequest("Only calculation corrections are supported in this version.");
     }
@@ -1285,7 +1374,12 @@ export class AttendanceService {
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
       auditAction: "attendance.correction_approved",
-      auditMetadata: { correctionId, projectId: correction.projectId, targetId: correction.targetId, field: correction.field },
+      auditMetadata: {
+        correctionId,
+        projectId: correction.projectId,
+        targetId: correction.targetId,
+        field: correction.field,
+      },
       resourceType: "attendance-correction",
       resourceId: correctionId,
     });
@@ -1319,7 +1413,12 @@ export class AttendanceService {
       id: randomUUID(),
       projectId: query.projectId ?? "",
       requestedBy: ctx.userId,
-      scope: { projectId: query.projectId ?? null, districtId: query.districtId ?? null, from: query.from ?? null, to: query.to ?? null },
+      scope: {
+        projectId: query.projectId ?? null,
+        districtId: query.districtId ?? null,
+        from: query.from ?? null,
+        to: query.to ?? null,
+      },
       format: "csv",
     });
 
@@ -1365,7 +1464,11 @@ export class AttendanceService {
     csv: string,
     recordCount: number,
   ): Promise<{ export: AttendanceExport; csv: string }> {
-    const config = (await this.repo.getConfig(null)) ?? { ...DEFAULT_CONFIG, projectId: null, updatedAt: new Date().toISOString() };
+    const config = (await this.repo.getConfig(null)) ?? {
+      ...DEFAULT_CONFIG,
+      projectId: null,
+      updatedAt: new Date().toISOString(),
+    };
     const artifactKey = `attendance-exports/${exportId}.csv`;
     await this.deps.storage.put(artifactKey, Buffer.from(csv, "utf8"), "text/csv");
     const expiresAt = new Date(Date.now() + config.retention.exportsHours * 3_600_000);
@@ -1412,7 +1515,10 @@ export class AttendanceService {
     return this.repo.listExports({ projectId });
   }
 
-  async downloadExport(ctx: RequestUserContext, id: string): Promise<{ csv: Buffer; filename: string }> {
+  async downloadExport(
+    ctx: RequestUserContext,
+    id: string,
+  ): Promise<{ csv: Buffer; filename: string }> {
     this.authz.requirePermission(ctx, EXPORT);
     const record = await this.repo.findExportById(id);
     if (!record) throw AppError.notFound("Attendance export not found.");
@@ -1451,7 +1557,11 @@ export class AttendanceService {
 
 /* ---------- Helpers ---------- */
 
-function localWindowBounds(opDate: string, startTime: string, endTime: string): { start: Date; end: Date } {
+function localWindowBounds(
+  opDate: string,
+  startTime: string,
+  endTime: string,
+): { start: Date; end: Date } {
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
   const start = new Date(`${opDate}T${startTime}:00.000Z`);

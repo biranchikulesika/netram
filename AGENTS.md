@@ -1898,24 +1898,24 @@ because it exists in older documentation or scripts.
 
 ## 68.1 Branch roles
 
-* `production`
+- `production`
 
   The only permanent branch. Represents the current production-ready state.
   Must never receive direct development commits.
 
-* `preview`
+- `preview`
 
   Temporary release-candidate branch. Created from the latest `production`.
   Exists only for the current release/development cycle. Deleted after it is
   successfully squash-merged into `production`.
 
-* `develop`
+- `develop`
 
   Temporary integration branch for the current release/development cycle.
   Created from the current `preview`. Feature branches are created from
   `develop`. Deleted after it is successfully squash-merged into `preview`.
 
-* `feature/*`
+- `feature/*`
 
   Temporary work branches. Created from the current `develop`. Multiple feature
   branches may exist simultaneously. Deleted after successful integration into

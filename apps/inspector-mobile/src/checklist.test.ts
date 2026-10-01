@@ -22,7 +22,8 @@ describe("Phase 5: Field Inspection Checklist System", () => {
       id: "chk-002",
       inspection_id: inspectionId,
       category: "Safety & Security",
-      question: "Are fire safety apparatus installed, within valid certification, and unobstructed?",
+      question:
+        "Are fire safety apparatus installed, within valid certification, and unobstructed?",
       is_required: true,
       response: null,
       note: null,
@@ -66,7 +67,11 @@ describe("Phase 5: Field Inspection Checklist System", () => {
     expect(updated?.response).toBe("pass");
 
     const pendingOps = await queue.getPendingOperations();
-    expect(pendingOps.some((o) => o.type === "update_checklist_item" && o.payload.checklistItemId === "chk-001")).toBe(true);
+    expect(
+      pendingOps.some(
+        (o) => o.type === "update_checklist_item" && o.payload.checklistItemId === "chk-001",
+      ),
+    ).toBe(true);
   });
 
   it("records FAIL response with deficiency note", async () => {

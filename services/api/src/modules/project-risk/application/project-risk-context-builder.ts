@@ -76,7 +76,9 @@ export class ProjectRiskContextBuilder {
         },
       })),
       this.financialRiskRepo.listRules(true).catch(() => []),
-      this.fundRepo.listAllocations({ projectId, pageSize: 1 }).catch(() => ({ total: 0, items: [] })),
+      this.fundRepo
+        .listAllocations({ projectId, pageSize: 1 })
+        .catch(() => ({ total: 0, items: [] })),
       this.expenseRepo.findByProject(projectId).catch(() => []),
       this.inspectionRepo.list({ projectId, page: 1, pageSize: 1000 }),
       this.attendanceRepo
@@ -113,7 +115,9 @@ export class ProjectRiskContextBuilder {
 
     // Gather corrective actions for all findings
     const caPromises = allFindings.map((f) =>
-      this.correctiveActionRepo.list({ findingId: f.id, page: 1, pageSize: 50 }).catch(() => ({ items: [], total: 0 })),
+      this.correctiveActionRepo
+        .list({ findingId: f.id, page: 1, pageSize: 50 })
+        .catch(() => ({ items: [], total: 0 })),
     );
     const caResults = await Promise.all(caPromises);
     const allCorrectiveActions = caResults.flatMap((r) => r.items);

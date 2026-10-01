@@ -24,14 +24,11 @@ export async function GET(request: NextRequest) {
 
   const qs = queryParams.toString();
   const env = loadClientEnv();
-  const res = await fetch(
-    `${env.NETRAM_API_BASE_URL}/api/v1/audit-events${qs ? `?${qs}` : ""}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/audit-events${qs ? `?${qs}` : ""}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
 
   const payload = await res.json().catch(() => null);
   return NextResponse.json(payload, { status: res.status });

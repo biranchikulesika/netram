@@ -64,11 +64,23 @@ export function evaluateOfflineOperation(
 
     case "draft_finding": {
       if (!ACTIVE_FIELD_STATUSES.includes(inspection.status)) {
-        return { outcome: "conflict", code: "INSPECTION_NOT_IN_FIELD_STAGE", message: `Cannot save a finding draft when inspection is in '${inspection.status}' state.` };
+        return {
+          outcome: "conflict",
+          code: "INSPECTION_NOT_IN_FIELD_STAGE",
+          message: `Cannot save a finding draft when inspection is in '${inspection.status}' state.`,
+        };
       }
-      const description = typeof op.payload.description === "string" ? op.payload.description.trim() : "";
-      if (!description || !["critical", "high", "medium", "low"].includes(String(op.payload.severity))) {
-        return { outcome: "rejected", code: "INVALID_FINDING_DRAFT", message: "A finding draft needs a description and valid severity." };
+      const description =
+        typeof op.payload.description === "string" ? op.payload.description.trim() : "";
+      if (
+        !description ||
+        !["critical", "high", "medium", "low"].includes(String(op.payload.severity))
+      ) {
+        return {
+          outcome: "rejected",
+          code: "INVALID_FINDING_DRAFT",
+          message: "A finding draft needs a description and valid severity.",
+        };
       }
       return { outcome: "accepted" };
     }
@@ -134,13 +146,19 @@ export function evaluateOfflineOperation(
       }
       return {
         outcome: "accepted",
-        message: "Field check-in recorded. Server validates jurisdiction against project geofence boundary.",
+        message:
+          "Field check-in recorded. Server validates jurisdiction against project geofence boundary.",
       };
     }
 
     case "record_attendance": {
       const workerCount = Number(op.payload.workerCount);
-      if (isNaN(workerCount) || !Number.isInteger(workerCount) || workerCount < 0 || workerCount > 5000) {
+      if (
+        isNaN(workerCount) ||
+        !Number.isInteger(workerCount) ||
+        workerCount < 0 ||
+        workerCount > 5000
+      ) {
         return {
           outcome: "rejected",
           code: "INVALID_WORKER_COUNT",
@@ -162,7 +180,10 @@ export function evaluateOfflineOperation(
         };
       }
       const validResponses = ["pass", "fail", "na", null];
-      if (op.payload.response !== undefined && !validResponses.includes(op.payload.response as string | null)) {
+      if (
+        op.payload.response !== undefined &&
+        !validResponses.includes(op.payload.response as string | null)
+      ) {
         return {
           outcome: "rejected",
           code: "INVALID_CHECKLIST_RESPONSE",

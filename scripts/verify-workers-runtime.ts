@@ -84,10 +84,18 @@ async function main() {
   assert(!claimedAfter.some((r) => r.id === eventId1), "Event should no longer be pending");
 
   // Verify BullMQ job queued
-  const waitingJobs = await notifQueue.getJobs(["waiting", "delayed", "prioritized", "active", "completed"]);
+  const waitingJobs = await notifQueue.getJobs([
+    "waiting",
+    "delayed",
+    "prioritized",
+    "active",
+    "completed",
+  ]);
   const foundJob = waitingJobs.find((j) => j.data.userId === testUserId);
   assert(Boolean(foundJob), "Expected BullMQ notification job for assigned user");
-  console.log(`✓ Outbox event translated to BullMQ notification job (${foundJob!.id}, state: ${await foundJob!.getState()})`);
+  console.log(
+    `✓ Outbox event translated to BullMQ notification job (${foundJob!.id}, state: ${await foundJob!.getState()})`,
+  );
 
   // -------------------------------------------------------------------------
   // Check 2: Outbox Exponential Backoff Retries & Dead-Lettering (§27)
@@ -124,15 +132,15 @@ async function main() {
   console.log("   -> Testing dead-letter marking on max retry exhaustion...");
   await outboxRepo.markDeadLetter(failingEventId, "Exhausted all 3 retry attempts");
 
-  const deadLetterRow = (await db.select().from(outboxEvents)).find(
-    (r) => r.id === failingEventId,
-  );
+  const deadLetterRow = (await db.select().from(outboxEvents)).find((r) => r.id === failingEventId);
   assert(deadLetterRow?.status === "failed", "Dead-letter status should be 'failed'");
   assert(
     deadLetterRow?.lastError?.startsWith("DEAD_LETTER:"),
     `Expected DEAD_LETTER prefix in lastError, got: ${deadLetterRow?.lastError}`,
   );
-  console.log(`✓ Outbox dead-lettering verified: status='failed', lastError='${deadLetterRow?.lastError}'`);
+  console.log(
+    `✓ Outbox dead-lettering verified: status='failed', lastError='${deadLetterRow?.lastError}'`,
+  );
 
   // -------------------------------------------------------------------------
   // Check 3: SLA Scheduled Job: Expired Corrective Actions Detection (§26, §29)
@@ -156,7 +164,9 @@ async function main() {
     status: "pending",
     deadline: pastDeadline,
   });
-  console.log(`   -> Created test pending corrective action with expired deadline (${pastDeadline.toISOString()})`);
+  console.log(
+    `   -> Created test pending corrective action with expired deadline (${pastDeadline.toISOString()})`,
+  );
 
   // Run ScheduledJobsRunner tick
   const scheduledRunner = new ScheduledJobsRunner(correctiveActionRepo, db);
@@ -164,7 +174,10 @@ async function main() {
   console.log(
     `   -> ScheduledJobsRunner tick completed: marked ${slaResult.overdueActionsMarked} action(s) overdue`,
   );
-  assert(slaResult.overdueActionsMarked >= 1, "Expected at least 1 corrective action marked overdue");
+  assert(
+    slaResult.overdueActionsMarked >= 1,
+    "Expected at least 1 corrective action marked overdue",
+  );
   assert(
     slaResult.overdueActionIds.includes(expiredActionId),
     "Expected test action to be in overdueActionIds",
@@ -174,7 +187,10 @@ async function main() {
   const updatedAction = (await db.select().from(correctiveActions)).find(
     (r) => r.id === expiredActionId,
   );
-  assert(updatedAction?.status === "overdue", `Expected status 'overdue', got '${updatedAction?.status}'`);
+  assert(
+    updatedAction?.status === "overdue",
+    `Expected status 'overdue', got '${updatedAction?.status}'`,
+  );
   console.log(`✓ Corrective action transitioned to 'overdue' in database`);
 
   // Verify Audit Trail for SLA escalation (§37)
@@ -210,14 +226,27 @@ async function main() {
     );
   }
   assert(processedOutbox?.status === "processed", "Outbox record should be marked 'processed'");
-  console.log(`✓ Outbox record marked 'processed' with timestamp ${processedOutbox?.processedAt?.toISOString()}`);
+  console.log(
+    `✓ Outbox record marked 'processed' with timestamp ${processedOutbox?.processedAt?.toISOString()}`,
+  );
 
   // Verify urgent notification queued in BullMQ (priority jobs live in the
   // 'prioritized' state in BullMQ v5, or may be picked up immediately by active workers)
-  const urgentJobs = await notifQueue.getJobs(["waiting", "delayed", "prioritized", "active", "completed"]);
-  const overdueJob = urgentJobs.find((j) => j.name === "notification.send" && j.data.title.includes("URGENT: Corrective Action Overdue"));
+  const urgentJobs = await notifQueue.getJobs([
+    "waiting",
+    "delayed",
+    "prioritized",
+    "active",
+    "completed",
+  ]);
+  const overdueJob = urgentJobs.find(
+    (j) =>
+      j.name === "notification.send" && j.data.title.includes("URGENT: Corrective Action Overdue"),
+  );
   assert(Boolean(overdueJob), "Expected urgent notification job queued in BullMQ");
-  console.log(`✓ Urgent notification job queued: id=${overdueJob!.id} (state: ${await overdueJob!.getState()}, high priority)`);
+  console.log(
+    `✓ Urgent notification job queued: id=${overdueJob!.id} (state: ${await overdueJob!.getState()}, high priority)`,
+  );
 
   // Cleanup connections
   await dispatcher.close();

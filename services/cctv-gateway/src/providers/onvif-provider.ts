@@ -129,7 +129,9 @@ export class OnvifCameraProvider implements CameraProvider {
       try {
         const headers: Record<string, string> = {};
         if (camera.username && camera.password) {
-          const credentials = Buffer.from(`${camera.username}:${camera.password}`).toString("base64");
+          const credentials = Buffer.from(`${camera.username}:${camera.password}`).toString(
+            "base64",
+          );
           headers["Authorization"] = `Basic ${credentials}`;
         }
 

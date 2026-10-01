@@ -105,5 +105,3 @@ vi.mock("expo-file-system", () => ({
   deleteAsync: vi.fn().mockResolvedValue(undefined),
   EncodingType: { Base64: "base64", UTF8: "utf8" },
 }));
-
-

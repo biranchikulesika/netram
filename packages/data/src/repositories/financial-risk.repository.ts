@@ -145,21 +145,13 @@ export class FinancialRiskRepository {
   }
 
   async findRuleByCode(code: string): Promise<FinancialRiskRule | null> {
-    const rows = await this.db
-      .select()
-      .from(rulesTable)
-      .where(eq(rulesTable.code, code))
-      .limit(1);
+    const rows = await this.db.select().from(rulesTable).where(eq(rulesTable.code, code)).limit(1);
     if (!rows[0]) return null;
     return toFinancialRiskRule(rows[0] as unknown as FinancialRiskRuleRow);
   }
 
   async findRuleById(id: string): Promise<FinancialRiskRule | null> {
-    const rows = await this.db
-      .select()
-      .from(rulesTable)
-      .where(eq(rulesTable.id, id))
-      .limit(1);
+    const rows = await this.db.select().from(rulesTable).where(eq(rulesTable.id, id)).limit(1);
     if (!rows[0]) return null;
     return toFinancialRiskRule(rows[0] as unknown as FinancialRiskRuleRow);
   }

@@ -11,10 +11,7 @@ import type { UUID, ISODateTime } from "./common.js";
  *
  * Nothing other than these two is a supported AI detection today.
  */
-export const ANOMALY_TYPES = [
-  "conflict",
-  "attendance_deviation",
-] as const;
+export const ANOMALY_TYPES = ["conflict", "attendance_deviation"] as const;
 export type AnomalyType = (typeof ANOMALY_TYPES)[number];
 
 export const ANOMALY_SEVERITIES = ["low", "medium", "high", "critical"] as const;

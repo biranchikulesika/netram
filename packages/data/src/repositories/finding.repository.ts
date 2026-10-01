@@ -141,9 +141,7 @@ export class FindingRepository {
               .from(correctiveActionsTable)
               .where(eq(correctiveActionsTable.findingId, findingsTable.id)),
           ),
-          jurisdictionIds?.length
-            ? inArray(projectsTable.districtId, jurisdictionIds)
-            : undefined,
+          jurisdictionIds?.length ? inArray(projectsTable.districtId, jurisdictionIds) : undefined,
         ),
       )
       .orderBy(desc(findingsTable.createdAt));

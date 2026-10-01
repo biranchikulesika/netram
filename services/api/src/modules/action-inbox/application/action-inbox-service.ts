@@ -212,7 +212,9 @@ export class ActionInboxService {
       page: 1,
       pageSize: MAX_ITEMS_PER_SECTION,
     });
-    const pending = page.items.filter((c) => c.status === "received" || c.status === "under_review");
+    const pending = page.items.filter(
+      (c) => c.status === "received" || c.status === "under_review",
+    );
     return pending.map((c) => ({
       id: c.id,
       kind: "complaint_review" as const,

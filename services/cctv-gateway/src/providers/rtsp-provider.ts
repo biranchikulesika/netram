@@ -132,7 +132,9 @@ export class RtspCameraProvider implements CameraProvider {
 
     if (camera.snapshotUrl) {
       try {
-        const response = await this.fetchFn(camera.snapshotUrl, { signal: AbortSignal.timeout(2000) });
+        const response = await this.fetchFn(camera.snapshotUrl, {
+          signal: AbortSignal.timeout(2000),
+        });
         if (response.ok) {
           const contentType = response.headers.get("content-type") ?? "image/jpeg";
           const arrayBuffer = await response.arrayBuffer();

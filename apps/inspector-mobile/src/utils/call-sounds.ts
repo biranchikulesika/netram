@@ -3,7 +3,11 @@ import { Audio } from "expo-av";
 
 import * as FileSystem from "expo-file-system";
 
-function encodeWav(sampleRate: number, numSamples: number, sampleFn: (t: number) => number): string {
+function encodeWav(
+  sampleRate: number,
+  numSamples: number,
+  sampleFn: (t: number) => number,
+): string {
   const dataSize = numSamples * 2;
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
@@ -46,13 +50,15 @@ function getPickupUri(): string {
   const tones = [
     { freq: 523, start: 0, end: 0.09 },
     { freq: 659, start: 0.09, end: 0.18 },
-    { freq: 784, start: 0.18, end: 0.40 },
+    { freq: 784, start: 0.18, end: 0.4 },
   ];
   return encodeWav(8000, 3360, (t) => {
     for (const { freq, start, end } of tones) {
       if (t >= start && t < end) {
         const lt = t - start;
-        return Math.sin(2 * Math.PI * freq * lt) * Math.min(1, lt / 0.01) * Math.exp(-lt * 6) * 0.65;
+        return (
+          Math.sin(2 * Math.PI * freq * lt) * Math.min(1, lt / 0.01) * Math.exp(-lt * 6) * 0.65
+        );
       }
     }
     return 0;
@@ -83,7 +89,11 @@ async function getNativeFileUri(fileName: string, getUri: () => string): Promise
 export async function startCallingSound(): Promise<void> {
   stopAllCallSounds();
 
-  if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.Audio !== "undefined") {
+  if (
+    Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    typeof window.Audio !== "undefined"
+  ) {
     try {
       const uri = getRingtoneUri();
       if (uri) {
@@ -147,7 +157,11 @@ export async function playCallPickupSound(): Promise<void> {
   // Always stop the calling sound first!
   stopCallingSound();
 
-  if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.Audio !== "undefined") {
+  if (
+    Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    typeof window.Audio !== "undefined"
+  ) {
     try {
       const uri = getPickupUri();
       if (uri) {
@@ -178,11 +192,11 @@ export async function playCallPickupSound(): Promise<void> {
       { uri: fileUri },
       { shouldPlay: true, volume: 1.0 },
     );
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
-        }
-      });
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        sound.unloadAsync().catch(() => {});
+      }
+    });
   } catch (err) {
     console.warn("Failed to play native pickup sound:", err);
   }

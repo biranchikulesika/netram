@@ -6,12 +6,12 @@ This directory contains the canonical developer guides, local setup procedures, 
 
 ## 1. Quick Navigation
 
-| Document | Purpose |
-|---|---|
-| **[`setup.md`](setup.md)** | Step-by-step local workstation installation, database lifecycle, service startup, and mobile emulation. |
+| Document                                 | Purpose                                                                                                  |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **[`setup.md`](setup.md)**               | Step-by-step local workstation installation, database lifecycle, service startup, and mobile emulation.  |
 | **[`environments.md`](environments.md)** | Multi-tier environment matrix (`dev`, `ci`, `demo`, `prod`), port allocations, and isolation boundaries. |
-| **[`../OWNERSHIP.md`](../OWNERSHIP.md)** | Team members, GitHub handles, area responsibilities, and `.github/CODEOWNERS` rules. |
-| **[`../../AGENTS.md`](../../AGENTS.md)** | Mandatory engineering operating manual (architectural boundaries, transactions, outbox, disclosure). |
+| **[`../OWNERSHIP.md`](../OWNERSHIP.md)** | Team members, GitHub handles, area responsibilities, and `.github/CODEOWNERS` rules.                     |
+| **[`../../AGENTS.md`](../../AGENTS.md)** | Mandatory engineering operating manual (architectural boundaries, transactions, outbox, disclosure).     |
 
 ---
 
@@ -20,6 +20,7 @@ This directory contains the canonical developer guides, local setup procedures, 
 All commands are run from the monorepo root via `pnpm`:
 
 ### Infrastructure & Database
+
 ```bash
 pnpm infra:up            # Start PostgreSQL 16, Redis 7, and MinIO S3 via Docker Compose
 pnpm infra:down          # Stop infrastructure containers
@@ -31,6 +32,7 @@ pnpm db:seed             # Populate deterministic synthetic seed data
 ```
 
 ### Application Services
+
 ```bash
 pnpm --filter @netram/api dev               # Core REST API on http://localhost:3001
 pnpm --filter @netram/web dev               # Next.js Web Platform on http://localhost:3000

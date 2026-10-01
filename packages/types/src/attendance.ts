@@ -11,12 +11,7 @@ import type { UUID, ISODateTime } from "./common.js";
 
 /* ---------- Sources & events ---------- */
 
-export const ATTENDANCE_SOURCES = [
-  "BIOMETRIC",
-  "INSTITUTION_REPORTED",
-  "CCTV",
-  "MANUAL",
-] as const;
+export const ATTENDANCE_SOURCES = ["BIOMETRIC", "INSTITUTION_REPORTED", "CCTV", "MANUAL"] as const;
 export type AttendanceSource = (typeof ATTENDANCE_SOURCES)[number];
 
 export const ATTENDANCE_EVENT_TYPES = [

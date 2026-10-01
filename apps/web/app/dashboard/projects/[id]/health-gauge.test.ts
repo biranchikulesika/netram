@@ -22,7 +22,9 @@ function trackColorAt(score: number): string {
   const [r0, g0, b0] = channels(lower.color);
   const [r1, g1, b1] = channels(upper.color);
   const blend = (a: number, b: number) =>
-    Math.round(a + (b - a) * t).toString(16).padStart(2, "0");
+    Math.round(a + (b - a) * t)
+      .toString(16)
+      .padStart(2, "0");
   return `#${blend(r0, r1)}${blend(g0, g1)}${blend(b0, b1)}`;
 }
 

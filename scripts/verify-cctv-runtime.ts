@@ -106,7 +106,9 @@ async function main() {
         err instanceof ApiError && err.code === "SERVICE_UNAVAILABLE",
         `Expected SERVICE_UNAVAILABLE without a media rig, got: ${err}`,
       );
-      console.log("✓ Stream request fails CLOSED without MediaMTX (SERVICE_UNAVAILABLE, no contract minted)");
+      console.log(
+        "✓ Stream request fails CLOSED without MediaMTX (SERVICE_UNAVAILABLE, no contract minted)",
+      );
     }
   } else {
     stream = await khordhaClient.requestCameraStream(vaniGate!.id, { ttlSeconds: 180 });
@@ -134,7 +136,7 @@ async function main() {
     console.log(`   - Playback:    ${stream.playback?.protocol} via ${stream.playback?.whepUrl}`);
     console.log(`   - Media path:  ${stream.playback?.mediaPath}`);
     console.log(`   - Expires At:  ${stream.expiresAt}`);
-  }  // 6/7. Media-plane verification with a rig only; without one the fail-closed
+  } // 6/7. Media-plane verification with a rig only; without one the fail-closed
   // behaviour was already verified in step 5 (the gateway no longer relays
   // bytes - MediaMTX owns the data plane, so token enforcement happens at the
   // WHEP auth hook).

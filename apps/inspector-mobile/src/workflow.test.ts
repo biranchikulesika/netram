@@ -3,12 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { InMemorySqliteDatabase, setTestDatabase } from "./offline/db";
 import { OfflineInspectionQueue } from "./offline/queue";
 import { captureEvidenceOffline, computeSha256 } from "./offline/evidence";
-import {
-  clearSession,
-  getStoredSession,
-  saveSession,
-  type InspectorSession,
-} from "./auth/session";
+import { clearSession, getStoredSession, saveSession, type InspectorSession } from "./auth/session";
 import type { NetramApiClient } from "@netram/api-client";
 import type { Inspection } from "@netram/types";
 
@@ -173,7 +168,10 @@ describe("Phase 15: End-to-End Workflow Verification", () => {
 
       // 2. Offline actions: start, observe, draft finding
       const op1 = await queue.startInspection(inspectionId);
-      const op2 = await queue.recordObservation(inspectionId, "Zero cellular connectivity at site.");
+      const op2 = await queue.recordObservation(
+        inspectionId,
+        "Zero cellular connectivity at site.",
+      );
       const op3 = await queue.saveFindingDraft(inspectionId, {
         severity: "low",
         description: "Minor paint peeling on exterior wall.",
@@ -299,7 +297,8 @@ describe("Phase 15: End-to-End Workflow Verification", () => {
               type: "submit_inspection",
               status: "conflict",
               code: "INSPECTION_NOT_IN_FIELD_STAGE",
-              message: "Cannot submit: Inspection has already been closed by the district authority.",
+              message:
+                "Cannot submit: Inspection has already been closed by the district authority.",
               syncedAt: new Date().toISOString(),
             },
           ],

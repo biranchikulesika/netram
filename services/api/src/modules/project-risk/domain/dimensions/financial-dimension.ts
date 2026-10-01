@@ -6,7 +6,8 @@ export class FinancialDimensionCalculator {
 
   calculate(ctx: ProjectRiskEvaluationContext, weight: number): DimensionResult {
     const rawScore = ctx.financial.totalScore;
-    const maxRawScore = ctx.financial.maxPossibleRawScore > 0 ? ctx.financial.maxPossibleRawScore : 220;
+    const maxRawScore =
+      ctx.financial.maxPossibleRawScore > 0 ? ctx.financial.maxPossibleRawScore : 220;
 
     // Normalize raw score (0 to maxRawScore) to 0-100
     const normalizedScore = Math.min(100, Math.round((rawScore / maxRawScore) * 100));

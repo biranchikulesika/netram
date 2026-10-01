@@ -4,10 +4,7 @@ import type { RequestUserContext } from "../../../infrastructure/request-context
 import type { ProjectRepositoryPort } from "../../projects/application/ports/project-repository.js";
 import type { ExpenseRepository, FundRepository } from "@netram/data";
 import type { Expense, ExpenseListQuery } from "@netram/types";
-import type {
-  CreateExpenseInput,
-  PatchExpenseInput,
-} from "@netram/validation";
+import type { CreateExpenseInput, PatchExpenseInput } from "@netram/validation";
 
 const EXPENSE_READ = "expense:read" as const;
 const EXPENSE_SUBMIT = "expense:submit" as const;
@@ -48,10 +45,7 @@ export class ExpenseService {
     return expense;
   }
 
-  async createExpense(
-    ctx: RequestUserContext,
-    input: CreateExpenseInput,
-  ): Promise<Expense> {
+  async createExpense(ctx: RequestUserContext, input: CreateExpenseInput): Promise<Expense> {
     const project = await this.projectRepo.findById(input.projectId);
     if (!project) throw AppError.notFound("Project not found");
     this.authz.requirePermission(ctx, EXPENSE_SUBMIT, { districtId: project.districtId });
@@ -230,11 +224,7 @@ export class ExpenseService {
     });
   }
 
-  async rejectExpense(
-    ctx: RequestUserContext,
-    id: string,
-    reason: string,
-  ): Promise<Expense> {
+  async rejectExpense(ctx: RequestUserContext, id: string, reason: string): Promise<Expense> {
     const existing = await this.getExpense(ctx, id);
     const project = await this.projectRepo.findById(existing.projectId);
     this.authz.requirePermission(ctx, EXPENSE_VERIFY, { districtId: project?.districtId });
@@ -265,11 +255,7 @@ export class ExpenseService {
     });
   }
 
-  async voidExpense(
-    ctx: RequestUserContext,
-    id: string,
-    voidReason: string,
-  ): Promise<Expense> {
+  async voidExpense(ctx: RequestUserContext, id: string, voidReason: string): Promise<Expense> {
     const existing = await this.getExpense(ctx, id);
     const project = await this.projectRepo.findById(existing.projectId);
     this.authz.requirePermission(ctx, EXPENSE_VOID, { districtId: project?.districtId });

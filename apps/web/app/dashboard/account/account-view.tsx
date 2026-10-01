@@ -12,7 +12,12 @@ export interface AccountViewProps {
 /** Permission verbs grouped by what an operator actually wants to know. */
 const ACTION_GROUPS = [
   { key: "view", label: "View", color: "#0c2a52", verbs: ["read", "stream", "list", "view"] },
-  { key: "create", label: "Create", color: "#137e3a", verbs: ["create", "register", "upload", "anomaly"] },
+  {
+    key: "create",
+    label: "Create",
+    color: "#137e3a",
+    verbs: ["create", "register", "upload", "anomaly"],
+  },
   {
     key: "decide",
     label: "Decide",
@@ -28,7 +33,9 @@ const ACTION_GROUPS = [
 ] as const;
 
 function classify(action: string): (typeof ACTION_GROUPS)[number] {
-  return ACTION_GROUPS.find((g) => (g.verbs as readonly string[]).includes(action)) ?? ACTION_GROUPS[0];
+  return (
+    ACTION_GROUPS.find((g) => (g.verbs as readonly string[]).includes(action)) ?? ACTION_GROUPS[0]
+  );
 }
 
 /** "ai" -> "AI", "corrective_action" -> "Corrective action". */
@@ -79,7 +86,14 @@ export function AccountView({ user, permissions }: AccountViewProps) {
   return (
     <div>
       <div className="section-title-row" style={{ marginBottom: "1.25rem" }}>
-        <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--color-navy-brand)" }}>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "1.35rem",
+            fontWeight: 700,
+            color: "var(--color-navy-brand)",
+          }}
+        >
           Account
         </h2>
       </div>
@@ -129,8 +143,12 @@ export function AccountView({ user, permissions }: AccountViewProps) {
           }}
         />
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.85rem" }}>
-          <h3 style={{ margin: 0, fontSize: "0.8rem", fontWeight: 600, color: "var(--text-subtle)" }}>
+        <div
+          style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.85rem" }}
+        >
+          <h3
+            style={{ margin: 0, fontSize: "0.8rem", fontWeight: 600, color: "var(--text-subtle)" }}
+          >
             {permissions.length} grants across {areas.size} areas
           </h3>
         </div>
@@ -148,7 +166,10 @@ export function AccountView({ user, permissions }: AccountViewProps) {
           }}
         >
           {mix.map((m) => (
-            <div key={m.key} style={{ width: `${(m.count / total) * 100}%`, background: m.color }} />
+            <div
+              key={m.key}
+              style={{ width: `${(m.count / total) * 100}%`, background: m.color }}
+            />
           ))}
         </div>
 
@@ -159,7 +180,13 @@ export function AccountView({ user, permissions }: AccountViewProps) {
               style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem" }}
             >
               <span
-                style={{ width: "8px", height: "8px", borderRadius: "2px", background: m.color, flexShrink: 0 }}
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "2px",
+                  background: m.color,
+                  flexShrink: 0,
+                }}
               />
               <span style={{ color: "var(--text-subtle)" }}>{m.label}</span>
               <strong style={{ color: "var(--text-primary, #0c2a52)" }}>{m.count}</strong>
@@ -196,10 +223,18 @@ export function AccountView({ user, permissions }: AccountViewProps) {
                   background: "var(--bg-subtle)",
                 }}
               >
-                <div style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--text-primary, #0c2a52)" }}>
+                <div
+                  style={{
+                    fontSize: "0.74rem",
+                    fontWeight: 700,
+                    color: "var(--text-primary, #0c2a52)",
+                  }}
+                >
                   {humanise(resource)}
                 </div>
-                <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", marginTop: "0.1rem" }}>
+                <div
+                  style={{ fontSize: "0.72rem", color: "var(--text-subtle)", marginTop: "0.1rem" }}
+                >
                   {codes
                     .filter(([r]) => r === resource)
                     .map(([, a]) => humanise(a))

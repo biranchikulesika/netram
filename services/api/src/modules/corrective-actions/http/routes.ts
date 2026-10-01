@@ -86,7 +86,8 @@ export async function registerCorrectiveActionRoutes(
         tags: ["corrective-actions"],
         security: [{ bearerAuth: [] }],
         consumes: ["multipart/form-data"],
-        params: paramsSchema,        response: {
+        params: paramsSchema,
+        response: {
           200: toJsonSchema("CorrectiveAction", correctiveActionSchema),
         },
       },
@@ -98,7 +99,11 @@ export async function registerCorrectiveActionRoutes(
       for await (const part of request.parts()) {
         if (part.type === "file") {
           const data = await part.toBuffer();
-          files.push({ data, fileName: part.filename || "attachment", mimeType: part.mimetype || "application/octet-stream" });
+          files.push({
+            data,
+            fileName: part.filename || "attachment",
+            mimeType: part.mimetype || "application/octet-stream",
+          });
         } else if (part.fieldname === "actionSummary" && typeof part.value === "string") {
           actionSummary = part.value;
         }
