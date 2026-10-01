@@ -20,7 +20,13 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
   const apiPath = `/api/v1/${subPath}`;
 
   const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
+  const sessionToken = store.get(SESSION_COOKIE)?.value;
+  // Native clients (inspector mobile app) have no session cookie and send a
+  // bearer Authorization header instead. Forward it verbatim; the API still
+  // authenticates and authorises every request independently. The session
+  // cookie wins when both are present.
+  const inboundAuth = request.headers.get("authorization");
+  const token = sessionToken ?? inboundAuth;
 
   // Unauthenticated API entry points (sign-in, public tracking, registry, docs)
   // must be reachable BEFORE a session exists. Requiring the cookie here would
@@ -40,8 +46,10 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
   const targetUrl = `${env.NETRAM_API_BASE_URL}${apiPath}${url.search}`;
 
   const headers = new Headers();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (sessionToken) {
+    headers.set("Authorization", `Bearer ${sessionToken}`);
+  } else if (inboundAuth) {
+    headers.set("Authorization", inboundAuth);
   }
   const contentType = request.headers.get("content-type");
   if (contentType) {
