@@ -88,4 +88,65 @@ defaultConfig.resolver.resolveRequest = (context, moduleName, platform) => {
 // 6. Disable hierarchical lookup is turned off to allow PNPM symlink traversing
 defaultConfig.resolver.disableHierarchicalLookup = false;
 
+// 7. Proxy /api requests to target remote backend for browser web development
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const https = require("https");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const http = require("http");
+
+const targetApiUrl = process.env.EXPO_PUBLIC_API_URL || "https://netram.kulesika.in";
+const parsedTarget = new URL(targetApiUrl);
+const transport = parsedTarget.protocol === "https:" ? https : http;
+
+const prevEnhance = defaultConfig.server?.enhanceMiddleware;
+defaultConfig.server = {
+  ...defaultConfig.server,
+  enhanceMiddleware: (metroMiddleware, server) => {
+    const wrapped = prevEnhance ? prevEnhance(metroMiddleware, server) : metroMiddleware;
+    return (req, res, next) => {
+      if (req.url && req.url.startsWith("/api/")) {
+        if (req.method === "OPTIONS") {
+          res.writeHead(204, {
+            "access-control-allow-origin": "*",
+            "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "access-control-allow-headers": "*",
+          });
+          res.end();
+          return;
+        }
+
+        const proxyReq = transport.request(
+          {
+            hostname: parsedTarget.hostname,
+            port: parsedTarget.port || (parsedTarget.protocol === "https:" ? 443 : 80),
+            path: req.url,
+            method: req.method,
+            headers: {
+              ...req.headers,
+              host: parsedTarget.hostname,
+            },
+          },
+          (proxyRes) => {
+            const headers = {
+              ...proxyRes.headers,
+              "access-control-allow-origin": "*",
+            };
+            res.writeHead(proxyRes.statusCode || 200, headers);
+            proxyRes.pipe(res, { end: true });
+          },
+        );
+
+        proxyReq.on("error", (err) => {
+          res.writeHead(502, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: err.message }));
+        });
+
+        req.pipe(proxyReq, { end: true });
+        return;
+      }
+      return wrapped(req, res, next);
+    };
+  },
+};
+
 module.exports = defaultConfig;

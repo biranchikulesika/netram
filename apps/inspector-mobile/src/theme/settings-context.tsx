@@ -82,7 +82,7 @@ export const pureDarkColors = {
 export type ThemeColors = typeof defaultLightColors | typeof pureDarkColors;
 
 export const defaultSettings: AppSettings = {
-  themeMode: "light",
+  themeMode: "system",
   language: "en",
   fontSize: "standard",
   geofenceAlert: true,

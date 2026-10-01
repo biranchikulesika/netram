@@ -45,7 +45,15 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [_initializing, setInitializing] = useState(true);
 
   // Same API server the web app talks to (shared config; defaults to :3001).
-  const apiBase = loadMobileEnv().EXPO_PUBLIC_API_URL;
+  // On local browser development (localhost/127.0.0.1), use same-origin proxy
+  // to avoid browser CORS blocks against the remote API server.
+  const rawApiBase = loadMobileEnv().EXPO_PUBLIC_API_URL;
+  const apiBase =
+    Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+      ? window.location.origin
+      : rawApiBase;
 
   useEffect(() => {
     let mounted = true;

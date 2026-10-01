@@ -43,10 +43,12 @@ type FindingSpec = {
   remediation: string;
   /**
    * What the organisation did about it. `open` leaves a corrective action
-   * outstanding (or overdue), `done` closes it, `none` means the finding needs
-   * authority review rather than a CA.
+   * outstanding (or overdue), `done` closes it, `submitted` lodges an ATR awaiting authority review,
+   * `none` means the finding needs authority review rather than a CA.
    */
-  outcome: "open" | "done" | "none";
+  outcome: "open" | "done" | "none" | "submitted";
+  /** Action Taken Report explanation if submitted. */
+  actionSummary?: string;
   /** Days allowed for remediation, used to derive the deadline. */
   dueInDays?: number;
   /** Rupees involved, financial categories only. */
@@ -197,7 +199,9 @@ const PROFILES: ProjectSpec[] = [
               "Weekly menu records for February showed dal and rice served on all seven days with no protein source, and the kitchen register recorded 412 kg of rice procured against 380 residents for the month. The dry-store physical count on the day of inspection was 90 kg short of the register balance.",
             remediation:
               "Explain the register-to-store variance, publish a menu with a daily protein source, and institute a weekly independent stock count with photographic evidence.",
-            outcome: "open",
+            outcome: "submitted",
+            actionSummary:
+              "Hostel management revised the weekly diet chart to mandate eggs, soya and dal rotation daily. Store stock verification register instituted with bi-weekly photographic log attached.",
             dueInDays: 14,
           },
           {
@@ -219,6 +223,14 @@ const PROFILES: ProjectSpec[] = [
         status: "in_progress",
         trigger: "scheduled",
         type: "regular",
+        findings: [],
+      },
+      {
+        key: "vani-2026-10",
+        date: "2026-10-02",
+        status: "assigned",
+        trigger: "surprise",
+        type: "surprise",
         findings: [],
       },
     ],
@@ -361,6 +373,14 @@ const PROFILES: ProjectSpec[] = [
           },
         ],
       },
+      {
+        key: "cuttack-2026-10",
+        date: "2026-10-04",
+        status: "assigned",
+        trigger: "complaint",
+        type: "special",
+        findings: [],
+      },
     ],
     funds: {
       programme: "programme:surprise-audit",
@@ -430,7 +450,9 @@ const PROFILES: ProjectSpec[] = [
               "The institution reported 168 present for March 2026 while the main biometric device recorded 142, a variance of 26 children (15.5%). The rear-gate device recorded 139 for the same period, so the variance is not a device fault.",
             remediation:
               "Account for each of the 26 absent children, correct the source observations, and stop reporting the claimed figure over the biometric count.",
-            outcome: "open",
+            outcome: "submitted",
+            actionSummary:
+              "Headmaster furnished sanctioned leave register for 26 children attending cultural festival; biometric enrollment records verified and dual manual registers discontinued.",
             dueInDays: 14,
           },
           {
@@ -445,6 +467,14 @@ const PROFILES: ProjectSpec[] = [
             dueInDays: 30,
           },
         ],
+      },
+      {
+        key: "ganjam-2026-10",
+        date: "2026-10-06",
+        status: "assigned",
+        trigger: "scheduled",
+        type: "routine",
+        findings: [],
       },
     ],
     funds: {
@@ -515,6 +545,14 @@ const PROFILES: ProjectSpec[] = [
             dueInDays: 30,
           },
         ],
+      },
+      {
+        key: "rourkela-2026-10",
+        date: "2026-10-08",
+        status: "assigned",
+        trigger: "scheduled",
+        type: "verification",
+        findings: [],
       },
     ],
     funds: {
@@ -1060,7 +1098,10 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
       const inspectionId = did(`inspection:${cycle.key}`);
       const start = at(cycle.date, "06:00:00");
       const end = at(cycle.date, "14:00:00");
-      const started = at(cycle.date, "06:12:00");
+      const started =
+        cycle.status === "assigned"
+          ? null
+          : at(cycle.date, "06:12:00");
       const submitted =
         cycle.status === "assigned" || cycle.status === "in_progress"
           ? null
@@ -1079,7 +1120,7 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
         startedAt: started,
         submittedAt: submitted,
         createdAt: start,
-        updatedAt: submitted ?? started,
+        updatedAt: submitted ?? started ?? start,
       });
 
       for (const [i, inspector] of [p.inspector, p.inspector2].entries()) {
@@ -1203,11 +1244,14 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
         if (f.outcome === "none") continue;
 
         const due = addDays(cycle.date, f.dueInDays ?? 21);
-        const submittedAt =
-          f.outcome === "done"
-            ? addDays(cycle.date, Math.max(1, Math.floor((f.dueInDays ?? 21) / 2)))
+        const isDone = f.outcome === "done";
+        const isSubmitted = f.outcome === "submitted";
+        const submittedAt = isDone
+          ? addDays(cycle.date, Math.max(1, Math.floor((f.dueInDays ?? 21) / 2)))
+          : isSubmitted
+            ? at("2026-09-25", "11:30:00")
             : null;
-        const verifiedAt = f.outcome === "done" ? addDays(cycle.date, f.dueInDays ?? 21) : null;
+        const verifiedAt = isDone ? addDays(cycle.date, f.dueInDays ?? 21) : null;
         const caId = did(`ca:${f.key}`);
 
         caRows.push({
@@ -1215,18 +1259,18 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
           findingId,
           inspectionId,
           organisationId: orgId,
-          status:
-            f.outcome === "done"
-              ? "accepted"
-              : // Overdue once the deadline has already passed as of seeding.
-                new Date("2026-09-30T00:00:00Z") > due
+          status: isDone
+            ? "accepted"
+            : isSubmitted
+              ? "submitted"
+              : new Date("2026-09-30T00:00:00Z") > due
                 ? "overdue"
                 : "submitted",
           deadline: due,
           submittedAt,
           createdAt: at(cycle.date, "09:00:00"),
           updatedAt: (verifiedAt ?? submittedAt ?? at(cycle.date, "09:00:00")) as Date,
-          actionSummary: f.remediation,
+          actionSummary: f.actionSummary ?? f.remediation,
           verifiedAt,
           verifiedByUserId: verifiedAt ? did(USERS.admin) : null,
           reviewRemarks: verifiedAt
@@ -1234,16 +1278,16 @@ export async function seedProjectOperations(db: DrizzleDB): Promise<void> {
             : null,
         });
 
-        if (f.outcome === "done") {
+        if (isDone || isSubmitted) {
           const key = `cafile:${f.key}`;
           caFileRows.push({
             id: did(key),
             correctiveActionId: caId,
-            fileName: "remediation-evidence.pdf",
+            fileName: isSubmitted ? `${f.key}-action-taken-report.pdf` : "remediation-evidence.pdf",
             mimeType: "application/pdf",
-            sizeBytes: 320_000,
+            sizeBytes: isSubmitted ? 450_000 : 320_000,
             contentHash: fakeSha(key),
-            storageKey: `corrective-actions/${f.key}/remediation-evidence.pdf`,
+            storageKey: `corrective-actions/${f.key}/${isSubmitted ? "action-taken-report.pdf" : "remediation-evidence.pdf"}`,
             createdAt: submittedAt ?? at(cycle.date, "09:00:00"),
           });
         }

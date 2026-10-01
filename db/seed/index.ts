@@ -209,66 +209,77 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       id: did("user:dept-admin"),
       email: "admin@netram.dev",
       displayName: "Biranchi (Dept Admin)",
+      phone: "+91 94370 10001",
       status: "active",
     },
     {
       id: did("user:officer-khordha"),
       email: "officer@netram.dev",
       displayName: "Sruti (Officer, Khordha)",
+      phone: "+91 94370 10002",
       status: "active",
     },
     {
       id: did("user:officer-cuttack"),
       email: "officer.cuttack@dev.netram.in",
       displayName: "Jyotirmaya (Officer, Cuttack)",
+      phone: "+91 94370 10003",
       status: "active",
     },
     {
       id: did("user:control-room"),
       email: "controlroom@netram.dev",
       displayName: "Room Ops",
+      phone: "+91 94370 10004",
       status: "active",
     },
     {
       id: did("user:institution"),
       email: "institute@netram.dev",
       displayName: "Vani Vihar Hostel Admin",
+      phone: "+91 94370 10005",
       status: "active",
     },
     {
       id: did("user:inspector-1"),
       email: "inspector@netram.dev",
       displayName: "Inspector Smruti",
+      phone: "+91 94370 10006",
       status: "active",
     },
     {
       id: did("user:inspector-2"),
       email: "inspector.two@dev.netram.in",
       displayName: "Inspector Diptesh",
+      phone: "+91 94370 10007",
       status: "active",
     },
     {
       id: did("user:inspector-3"),
       email: "inspector.three@dev.netram.in",
       displayName: "Inspector Bishnu",
+      phone: "+91 94370 10008",
       status: "active",
     },
     {
       id: did("user:sanctioning-authority"),
       email: "authority.sanction@dev.netram.in",
       displayName: "Dr. K. S. Rathore (Competent Authority / Joint Secy)",
+      phone: "+91 94370 10009",
       status: "active",
     },
     {
       id: did("user:programme-officer"),
       email: "programme.officer@dev.netram.in",
       displayName: "M. P. Mohapatra (Authorized Programme Officer / DDO)",
+      phone: "+91 94370 10010",
       status: "active",
     },
     {
       id: did("user:auditor"),
       email: "auditor.state@dev.netram.in",
       displayName: "Sunita Rao (Authorized Officer / Senior Auditor)",
+      phone: "+91 94370 10011",
       status: "active",
     },
   ] as const;
@@ -1853,8 +1864,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Ramesh Jena",
         role: "staff",
         title: "Facility In-Charge",
-        projectCode: "DOSJE-BBR-001",
-        projectName: "Sishhu Bhawan Senior Citizen Home",
+        projectId: did("project:purisch-1"),
+        projectCode: "PRJ-PURISCH-007",
+        projectName: "Nilachal Seva Pratisthan - Astaraag (Senior Citizen Home)",
         phone: "+91 94370 12890",
         isOnline: true,
         avatarColor: "#3a488b",
@@ -1865,8 +1877,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Dr. Anita Behera",
         role: "staff",
         title: "Medical Officer",
-        projectCode: "DOSJE-BBR-002",
-        projectName: "Kalyan Mandap IRCA Rehabilitation",
+        projectId: did("project:puri-irca"),
+        projectCode: "PRJ-PURIIRCA-008",
+        projectName: "IRCA - Nilachal Seva Pratisthan (Puri)",
         phone: "+91 98610 44521",
         isOnline: true,
         avatarColor: "#15803d",
@@ -1877,8 +1890,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Bipin Bihari Das",
         role: "beneficiary",
         title: "Senior Resident Lead",
-        projectCode: "DOSJE-BBR-001",
-        projectName: "Sishhu Bhawan Senior Citizen Home",
+        projectId: did("project:purisch-1"),
+        projectCode: "PRJ-PURISCH-007",
+        projectName: "Nilachal Seva Pratisthan - Astaraag (Senior Citizen Home)",
         phone: "+91 94381 77230",
         isOnline: true,
         avatarColor: "#f59e0b",
@@ -1889,8 +1903,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Er. Manoj Nayak",
         role: "staff",
         title: "Site Engineer",
-        projectCode: "DOSJE-BBR-003",
-        projectName: "Navajyoti SC/ST Girls Hostel",
+        projectId: did("project:cuttack-girls"),
+        projectCode: "PRJ-CUTG-003",
+        projectName: "Cuttack Girls' Hostel",
         phone: "+91 97760 99312",
         isOnline: false,
         avatarColor: "#1c3a63",
@@ -1900,9 +1915,10 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         id: "cnt-05",
         name: "Sunita Mohanty",
         role: "staff",
-        title: "Shelter Superintendent",
-        projectCode: "DOSJE-BBR-004",
-        projectName: "Swadhar Greh Women Shelter",
+        title: "Hostel Superintendent",
+        projectId: did("project:vani"),
+        projectCode: "PRJ-VANI-001",
+        projectName: "Vani Vihar SC/ST Hostel",
         phone: "+91 94392 65410",
         isOnline: true,
         avatarColor: "#002449",
@@ -1913,8 +1929,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Laxmi Murmu",
         role: "beneficiary",
         title: "Beneficiary Representative",
-        projectCode: "DOSJE-BBR-003",
-        projectName: "Navajyoti SC/ST Girls Hostel",
+        projectId: did("project:cuttack-girls"),
+        projectCode: "PRJ-CUTG-003",
+        projectName: "Cuttack Girls' Hostel",
         phone: "+91 98533 11840",
         isOnline: true,
         avatarColor: "#c2410c",
@@ -1925,8 +1942,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Pravat Kumar Rout",
         role: "staff",
         title: "Project Coordinator",
-        projectCode: "DOSJE-BBR-002",
-        projectName: "Kalyan Mandap IRCA Centre",
+        projectId: did("project:puri-irca"),
+        projectCode: "PRJ-PURIIRCA-008",
+        projectName: "IRCA - Nilachal Seva Pratisthan (Puri)",
         phone: "+91 94371 88902",
         isOnline: false,
         avatarColor: "#15803d",
@@ -1937,8 +1955,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         name: "Minati Sahoo",
         role: "beneficiary",
         title: "Resident Beneficiary",
-        projectCode: "DOSJE-BBR-004",
-        projectName: "Swadhar Greh Women Shelter",
+        projectId: did("project:ganjam-school"),
+        projectCode: "PRJ-GANJ-005",
+        projectName: "Ganjam Model School Hostel",
         phone: "+91 96924 55301",
         isOnline: true,
         avatarColor: "#0c2a52",
@@ -1956,8 +1975,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         contactName: "Dr. Anita Behera",
         contactTitle: "Medical Officer",
         role: "staff",
-        projectCode: "DOSJE-BBR-002",
-        projectName: "Kalyan Mandap IRCA Rehabilitation",
+        projectId: did("project:puri-irca"),
+        projectCode: "PRJ-PURIIRCA-008",
+        projectName: "IRCA - Nilachal Seva Pratisthan (Puri)",
         callType: "video",
         durationSeconds: 374,
         condition: "minor_issue",
@@ -1968,7 +1988,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         inspectorVideoUri: DEMO_VIDEO_FALLBACK,
         direction: "outgoing",
         status: "answered",
-        startedAt: new Date(Date.now() - 3600 * 1000 * 2),
+        startedAt: new Date("2026-09-30T16:30:00.000Z"),
       },
       {
         id: "hist-02",
@@ -1976,8 +1996,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         contactName: "Bipin Bihari Das",
         contactTitle: "Senior Resident Lead",
         role: "beneficiary",
-        projectCode: "DOSJE-BBR-001",
-        projectName: "Sishhu Bhawan Senior Citizen Home",
+        projectId: did("project:purisch-1"),
+        projectCode: "PRJ-PURISCH-007",
+        projectName: "Nilachal Seva Pratisthan - Astaraag (Senior Citizen Home)",
         callType: "video",
         durationSeconds: 220,
         condition: "satisfactory",
@@ -1988,7 +2009,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         inspectorVideoUri: DEMO_VIDEO_FALLBACK,
         direction: "incoming",
         status: "answered",
-        startedAt: new Date(Date.now() - 3600 * 1000 * 24),
+        startedAt: new Date("2026-09-29T11:15:00.000Z"),
       },
       {
         id: "hist-03",
@@ -1996,8 +2017,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         contactName: "Er. Manoj Nayak",
         contactTitle: "Site Engineer",
         role: "staff",
-        projectCode: "DOSJE-BBR-003",
-        projectName: "Navajyoti SC/ST Girls Hostel",
+        projectId: did("project:cuttack-girls"),
+        projectCode: "PRJ-CUTG-003",
+        projectName: "Cuttack Girls' Hostel",
         callType: "video",
         durationSeconds: 502,
         condition: "critical_problem",
@@ -2008,16 +2030,17 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         inspectorVideoUri: DEMO_VIDEO_FALLBACK,
         direction: "outgoing",
         status: "answered",
-        startedAt: new Date(Date.now() - 3600 * 1000 * 48),
+        startedAt: new Date("2026-09-28T09:45:00.000Z"),
       },
       {
         id: "hist-04",
         contactId: "cnt-05",
         contactName: "Sunita Mohanty",
-        contactTitle: "Shelter Superintendent",
+        contactTitle: "Hostel Superintendent",
         role: "staff",
-        projectCode: "DOSJE-BBR-004",
-        projectName: "Swadhar Greh Women Shelter",
+        projectId: did("project:vani"),
+        projectCode: "PRJ-VANI-001",
+        projectName: "Vani Vihar SC/ST Hostel",
         callType: "video",
         durationSeconds: 0,
         condition: "satisfactory",
@@ -2025,7 +2048,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         flagInspection: false,
         direction: "incoming",
         status: "missed",
-        startedAt: new Date(Date.now() - 3600 * 1000 * 72),
+        startedAt: new Date("2026-09-27T14:20:00.000Z"),
       },
       {
         id: "hist-05",
@@ -2033,8 +2056,9 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         contactName: "Ramesh Jena",
         contactTitle: "Facility In-Charge",
         role: "staff",
-        projectCode: "DOSJE-BBR-001",
-        projectName: "Sishhu Bhawan Senior Citizen Home",
+        projectId: did("project:purisch-1"),
+        projectCode: "PRJ-PURISCH-007",
+        projectName: "Nilachal Seva Pratisthan - Astaraag (Senior Citizen Home)",
         callType: "video",
         durationSeconds: 0,
         condition: "satisfactory",
@@ -2042,7 +2066,7 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         flagInspection: false,
         direction: "outgoing",
         status: "missed",
-        startedAt: new Date(Date.now() - 3600 * 1000 * 96),
+        startedAt: new Date("2026-09-26T17:00:00.000Z"),
       },
     ])
     .onConflictDoNothing();
@@ -2683,12 +2707,14 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
       id: did("user:institution-ganjam"),
       email: "institution.ganjam@dev.netram.in",
       displayName: "Ganjam School Hostel Admin",
+      phone: "+91 94370 10012",
       status: "active",
     },
     {
       id: did("user:inspector-4"),
       email: "inspector.four@dev.netram.in",
       displayName: "Inspector Sudhanshu",
+      phone: "+91 94370 10013",
       status: "active",
     },
   ] as const;
@@ -5148,6 +5174,21 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
     })
     .onConflictDoNothing();
 
+  await db
+    .insert(s.fundReleases)
+    .values({
+      id: did("release:rourkela-2024-tranche-1"),
+      allocationId: did("alloc:rourkela-2024"),
+      releasedAmount: "4500000.00",
+      releaseDate: new Date("2024-05-10T00:00:00Z"),
+      referenceNumber: "PFMS-OR-2024-0182",
+      remarks: "First tranche (56.25%) released for 2024-25 operations and hostel boarding subsidies",
+      status: "released",
+      createdAt: new Date("2024-05-10T00:00:00Z"),
+      updatedAt: new Date("2024-05-10T00:00:00Z"),
+    })
+    .onConflictDoNothing();
+
   // Submitted expense awaiting verification in the funds queue.
   await db
     .insert(s.expenses)
@@ -5658,6 +5699,70 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
 
     // 30 days of daily calculations, deterministic from the day index rather
     // than random, so the ledger below has real biometric counts to expand.
+    const calcRows: (typeof s.attendanceCalculations.$inferInsert)[] = [];
+    for (let dayOffset = 29; dayOffset >= 0; dayOffset--) {
+      const d = new Date(Date.UTC(2026, 8, 30));
+      d.setUTCDate(d.getUTCDate() - dayOffset);
+      const iso = d.toISOString().slice(0, 10);
+      const present = Math.max(
+        1,
+        Math.min(site.residents, site.base + Math.round(Math.sin(dayOffset / 5) * site.swing)),
+      );
+      calcRows.push({
+        id: did(`attcalc:${site.device}:${iso}`),
+        projectId,
+        windowId: did(site.window),
+        operationalDate: iso,
+        expected: site.residents,
+        present,
+        absent: site.residents - present,
+        unknown: 0,
+        sourceCounts: { BIOMETRIC: present, INSTITUTION_REPORTED: present, CCTV: 0, MANUAL: 0 },
+        coverage: "COMPLETE",
+        dataQuality: "GOOD",
+        freshness: new Date(`${iso}T${site.startTime.slice(0, 2)}:30:00Z`),
+        policy: { calculationVersion: "attendance-calc-0.1", expectedStrategy: "ROSTER" },
+        computedAt: new Date(`${iso}T${site.endTime.slice(0, 2)}:00:00Z`),
+      });
+    }
+    await db.insert(s.attendanceCalculations).values(calcRows).onConflictDoNothing();
+  }
+
+  // 30 days of daily calculations for Cuttack, Ganjam and Rourkela so their
+  // operational calendars and biometric event ledgers are fully populated.
+  for (const site of [
+    {
+      project: "project:cuttack-girls",
+      window: "attwindow:cuttack-morning",
+      device: "attdev:cuttack-main",
+      residents: 142,
+      base: 118,
+      swing: 5,
+      startTime: "06:00",
+      endTime: "09:00",
+    },
+    {
+      project: "project:ganjam-school",
+      window: "attwindow:ganjam-morning",
+      device: "attdev:ganjam-main",
+      residents: 110,
+      base: 104,
+      swing: 3,
+      startTime: "06:00",
+      endTime: "09:00",
+    },
+    {
+      project: "project:rourkela",
+      window: "attwindow:rourkela-morning",
+      device: "attdev:rourkela-main",
+      residents: 90,
+      base: 84,
+      swing: 3,
+      startTime: "06:00",
+      endTime: "09:00",
+    },
+  ]) {
+    const projectId = did(site.project);
     const calcRows: (typeof s.attendanceCalculations.$inferInsert)[] = [];
     for (let dayOffset = 29; dayOffset >= 0; dayOffset--) {
       const d = new Date(Date.UTC(2026, 8, 30));

@@ -66,6 +66,8 @@ venv/
 apps/inspector-mobile/.expo/
 apps/inspector-mobile/dist/
 apps/inspector-mobile/web-build/
+apps/inspector-mobile/android/
+apps/inspector-mobile/ios/
 
 # ================= IDE & OS =================
 .DS_Store

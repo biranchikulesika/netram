@@ -81,6 +81,7 @@ function buildLeafletHtml(params: {
   centerLat: number;
   centerLng: number;
   zoom: number;
+  userLocation?: { lat: number; lng: number } | null;
   mapType?: "street" | "satellite";
   isDark?: boolean;
 }): string {
@@ -90,12 +91,14 @@ function buildLeafletHtml(params: {
     centerLat,
     centerLng,
     zoom,
+    userLocation = null,
     mapType = "street",
     isDark = false,
   } = params;
 
   // `<` is escaped so a value can never close the <script> block it lives in
   const sitesJson = JSON.stringify(sites).replace(/</g, "\\u003c");
+  const userJson = JSON.stringify(userLocation);
 
   return `<!DOCTYPE html>
 <html>
@@ -140,9 +143,57 @@ function buildLeafletHtml(params: {
         0 2px 5px rgba(0,36,73,.55);
     }
 
-    /* Inspector position: small blue dot with white ring */
-    .user-dot{width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;
-      box-shadow:0 1px 5px rgba(0,36,73,.45)}
+    /* Inspector live position: crisp blue dot with animated radar pulse */
+    .user-marker-wrap{
+      position:relative;
+      width:36px;
+      height:36px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .user-marker-pulse{
+      position:absolute;
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      background:rgba(37,99,235,0.28);
+      animation:radarPulse 2s infinite ease-out;
+      pointer-events:none;
+    }
+    .user-dot{
+      width:14px;
+      height:14px;
+      border-radius:50%;
+      background:#2563eb;
+      border:2.5px solid #ffffff;
+      box-shadow:0 2px 8px rgba(0,36,73,0.45);
+      z-index:2;
+    }
+    @keyframes radarPulse{
+      0%{transform:scale(0.5);opacity:0.95}
+      70%{transform:scale(1.5);opacity:0.25}
+      100%{transform:scale(1.9);opacity:0}
+    }
+    .user-location-tooltip{
+      background:rgba(15,23,42,0.88);
+      border:1px solid rgba(255,255,255,0.18);
+      color:#ffffff;
+      font-size:11px;
+      font-weight:600;
+      padding:3px 8px;
+      border-radius:6px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    }
+    .user-location-tooltip::before{
+      border-top-color:rgba(15,23,42,0.88);
+    }
+
+    /* Dark mode tile filter - eliminates external proprietary API key requirements */
+    .dark-tiles {
+      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+      -webkit-filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    }
 
     /* Attribution is noise here - keep the map clean */
     .leaflet-control-attribution{display:none}
@@ -155,6 +206,7 @@ function buildLeafletHtml(params: {
   const SITES = ${sitesJson};
   let SELECTED_ID = "${selectedId}";
   const IS_DARK = ${isDark ? "true" : "false"};
+  const INITIAL_USER = ${userJson};
 
   // Site fields come from the API and land in raw HTML - escape once, here.
   function esc(s) {
@@ -166,17 +218,12 @@ function buildLeafletHtml(params: {
   const map = L.map('map', {zoomControl: false, attributionControl: false})
     .setView([${centerLat}, ${centerLng}], ${zoom});
 
-  // Base tile layers: CartoDB Dark Matter for dark mode, OpenStreetMap for light mode
-  const streetLayer = IS_DARK
-    ? L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: 'CartoDB Dark Matter'
-      })
-    : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: 'OpenStreetMap'
-      });
+  // Base tile layers: OpenStreetMap with dark-mode filter (100% resilient, no API keys required)
+  const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: 'OpenStreetMap',
+    className: IS_DARK ? 'dark-tiles' : ''
+  });
 
   const satImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 19,
@@ -225,23 +272,43 @@ function buildLeafletHtml(params: {
     }
   };
 
-  // Inspector position marker: created on first focus, moved on later ones.
-  let userMarker = null;
+  // Inspector position marker: created on initial load or first focus
   const userIcon = L.divIcon({
     className: '',
-    html: '<div class="user-dot"></div>',
-    iconSize: [16, 16],
-    iconAnchor: [8, 8]
+    html: '<div class="user-marker-wrap"><div class="user-marker-pulse"></div><div class="user-dot"></div></div>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18]
   });
 
-  window.focusUser = function(lat, lng) {
+  let userMarker = null;
+  if (INITIAL_USER && typeof INITIAL_USER.lat === 'number' && typeof INITIAL_USER.lng === 'number') {
+    userMarker = L.marker([INITIAL_USER.lat, INITIAL_USER.lng], {icon: userIcon, zIndexOffset: 1000}).addTo(map);
+    userMarker.bindTooltip("Your Current Location", {
+      direction: 'top',
+      offset: [0, -14],
+      className: 'user-location-tooltip'
+    });
+  }
+
+  window.updateUserLocation = function(lat, lng) {
     if (typeof lat !== 'number' || typeof lng !== 'number') return;
     if (userMarker) {
       userMarker.setLatLng([lat, lng]);
     } else {
       userMarker = L.marker([lat, lng], {icon: userIcon, zIndexOffset: 1000}).addTo(map);
+      userMarker.bindTooltip("Your Current Location", {
+        direction: 'top',
+        offset: [0, -14],
+        className: 'user-location-tooltip'
+      });
     }
-    map.setView([lat, lng], 16);
+  };
+
+  window.focusUser = function(lat, lng) {
+    if (typeof lat !== 'number' || typeof lng !== 'number') return;
+    window.updateUserLocation(lat, lng);
+    map.flyTo([lat, lng], 16, { animate: true, duration: 0.8 });
   };
 
   // Cross-platform message listener
@@ -249,6 +316,9 @@ function buildLeafletHtml(params: {
     if (!data) return;
     if (data.type === 'SET_MAP_TYPE' && (data.mapType === 'street' || data.mapType === 'satellite')) {
       window.switchLayer(data.mapType);
+    }
+    if (data.type === 'UPDATE_USER_LOCATION' || data.type === 'SET_USER_LOCATION') {
+      window.updateUserLocation(data.lat, data.lng);
     }
     if (data.type === 'FOCUS_USER') {
       window.focusUser(data.lat, data.lng);
@@ -343,6 +413,9 @@ export default function MapScreen() {
     "loading",
   );
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [initialUserCoords, setInitialUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dismissedLocationRationale, setDismissedLocationRationale] = useState(false);
+  const hasAutoCenteredUserRef = useRef(false);
 
   // ---------------------------------------------------------------------------
   // Data loading
@@ -375,62 +448,14 @@ export default function MapScreen() {
     void loadData();
   }, [loadData]);
 
-  // ---------------------------------------------------------------------------
-  // GPS acquisition
-  // ---------------------------------------------------------------------------
-
-  // Acquires a fresh GPS fix, updates state, and returns the fix so callers
-  // (e.g. focus-my-location) can act on the new coordinates immediately.
-  const acquireLocation = useCallback(async (): Promise<{
-    latitude: number;
-    longitude: number;
-  } | null> => {
-    try {
-      setLocationStatus("loading");
-      const perm = await Location.getForegroundPermissionsAsync();
-      const granted = perm.granted
-        ? true
-        : (await Location.requestForegroundPermissionsAsync()).granted;
-
-      if (!granted) {
-        setLocationStatus("denied");
-        return null;
-      }
-
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setLocation({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-        acquiredAt: Date.now(),
-      });
-      setLocationStatus("ready");
-      return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-    } catch {
-      setLocationStatus("error");
-      return null;
+  // Single channel for React → map commands, across iframe (web) and WebView.
+  const postToMap = useCallback((msg: string) => {
+    if (Platform.OS === "web" && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(msg, "*");
+    } else if (webViewRef.current) {
+      webViewRef.current.postMessage(msg);
     }
   }, []);
-
-  useEffect(() => {
-    void acquireLocation();
-    locationIntervalRef.current = setInterval(() => {
-      void acquireLocation();
-    }, 10_000);
-    return () => {
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-    };
-  }, [acquireLocation]);
-
-  // ---------------------------------------------------------------------------
-  // Select from URL param
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (params.inspectionId) setSelectedId(params.inspectionId);
-  }, [params.inspectionId]);
 
   // ---------------------------------------------------------------------------
   // Computed map sites
@@ -467,6 +492,77 @@ export default function MapScreen() {
       ];
     });
   }, [cachedInspections, remoteGeofences]);
+
+  // ---------------------------------------------------------------------------
+  // GPS acquisition
+  // ---------------------------------------------------------------------------
+
+  // Acquires a fresh GPS fix, updates state, and returns the fix so callers
+  // (e.g. focus-my-location) can act on the new coordinates immediately.
+  const acquireLocation = useCallback(async (): Promise<{
+    latitude: number;
+    longitude: number;
+  } | null> => {
+    try {
+      setLocationStatus("loading");
+      const perm = await Location.getForegroundPermissionsAsync();
+      const granted = perm.granted
+        ? true
+        : (await Location.requestForegroundPermissionsAsync()).granted;
+
+      if (!granted) {
+        setLocationStatus("denied");
+        return null;
+      }
+
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const coords = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        acquiredAt: Date.now(),
+      };
+      setLocation(coords);
+      setLocationStatus("ready");
+
+      if (!hasAutoCenteredUserRef.current && mapSites.length === 0) {
+        hasAutoCenteredUserRef.current = true;
+        setInitialUserCoords({ lat: coords.latitude, lng: coords.longitude });
+        postToMap(JSON.stringify({ type: "FOCUS_USER", lat: coords.latitude, lng: coords.longitude }));
+      } else {
+        if (!initialUserCoords) {
+          setInitialUserCoords({ lat: coords.latitude, lng: coords.longitude });
+        }
+        postToMap(JSON.stringify({ type: "UPDATE_USER_LOCATION", lat: coords.latitude, lng: coords.longitude }));
+      }
+
+      return { latitude: coords.latitude, longitude: coords.longitude };
+    } catch {
+      setLocationStatus("error");
+      return null;
+    }
+  }, [mapSites.length, initialUserCoords, postToMap]);
+
+  useEffect(() => {
+    void acquireLocation();
+    locationIntervalRef.current = setInterval(() => {
+      void acquireLocation();
+    }, 10_000);
+    return () => {
+      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+    };
+  }, [acquireLocation]);
+
+  // ---------------------------------------------------------------------------
+  // Select from URL param
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (params.inspectionId) setSelectedId(params.inspectionId);
+  }, [params.inspectionId]);
+
 
   // Live distance readouts for the bottom card - recomputed on every GPS tick
   // without touching the map HTML.
@@ -505,14 +601,19 @@ export default function MapScreen() {
   // Map HTML & center coordinates
   // ---------------------------------------------------------------------------
 
-  // The map HTML rebuilds only when the pins themselves change - never on a
-  // GPS tick - so the user's zoom survives while the card distance refreshes.
   const selectedPin = useMemo(
     () => mapSites.find((s) => s.id === selectedId) ?? null,
     [mapSites, selectedId],
   );
-  // No selection (or none mappable): frame the whole set of server-pinned
-  // sites instead of defaulting to a hardcoded coordinate.
+
+  // Regional Command Center fallback coordinate (Bhubaneswar, Odisha)
+  const defaultCenter = useMemo(() => ({ lat: 20.2961, lng: 85.8245 }), []);
+
+  // Resolves the center coordinate:
+  // 1. Focused site if selected
+  // 2. Set of assigned sites
+  // 3. User's live GPS position
+  // 4. Regional command headquarters
   const mapCenter = useMemo(() => {
     if (selectedPin) return { lat: selectedPin.lat, lng: selectedPin.lng };
     if (mapSites.length > 0) {
@@ -523,29 +624,41 @@ export default function MapScreen() {
         lng: (Math.min(...lngs) + Math.max(...lngs)) / 2,
       };
     }
-    return null;
-  }, [selectedPin, mapSites]);
+    if (initialUserCoords) return initialUserCoords;
+    if (location) return { lat: location.latitude, lng: location.longitude };
+    return defaultCenter;
+  }, [selectedPin, mapSites, initialUserCoords, location, defaultCenter]);
+
+  const initialZoom = useMemo(() => {
+    if (selectedPin) return 16;
+    if (mapSites.length > 0) return 13;
+    if (initialUserCoords || location) return 15;
+    return 12;
+  }, [selectedPin, mapSites.length, initialUserCoords, location]);
 
   const leafletHtml = useMemo(
     () =>
-      // Without a mappable site there is no trustworthy centre: render a
-      // blank slate and let the empty-state card explain why.
-      mapCenter
-        ? buildLeafletHtml({
-            // All sites are rendered so zooming out brings the whole set into
-            // frame. The selected one is the only one drawn as a large pin with
-            // a name label; the rest are small tappable dots.
-            sites: mapSites,
-            selectedId: selectedSite?.id ?? "",
-            centerLat: mapCenter.lat,
-            centerLng: mapCenter.lng,
-            // Land focused on the selected site; the empty state zooms out
-            zoom: selectedPin ? 16 : 13,
-            mapType,
-            isDark: isPureDark,
-          })
-        : "",
-    [mapSites, selectedPin, mapCenter, mapType, isPureDark],
+      buildLeafletHtml({
+        sites: mapSites,
+        selectedId: selectedSite?.id ?? "",
+        centerLat: mapCenter.lat,
+        centerLng: mapCenter.lng,
+        zoom: initialZoom,
+        userLocation:
+          initialUserCoords ?? (location ? { lat: location.latitude, lng: location.longitude } : null),
+        mapType,
+        isDark: isPureDark,
+      }),
+    [
+      mapSites,
+      selectedSite?.id,
+      mapCenter,
+      initialZoom,
+      initialUserCoords,
+      location,
+      mapType,
+      isPureDark,
+    ],
   );
 
   // ---------------------------------------------------------------------------
@@ -580,15 +693,6 @@ export default function MapScreen() {
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
-
-  // Single channel for React → map commands, across iframe (web) and WebView.
-  const postToMap = useCallback((msg: string) => {
-    if (Platform.OS === "web" && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(msg, "*");
-    } else if (webViewRef.current) {
-      webViewRef.current.postMessage(msg);
-    }
-  }, []);
 
   const toggleMapType = () => {
     const nextType = mapType === "street" ? "satellite" : "street";
@@ -649,7 +753,7 @@ export default function MapScreen() {
   // Statutory rationale view if location permission denied
   // ---------------------------------------------------------------------------
 
-  if (locationStatus === "denied") {
+  if (locationStatus === "denied" && !dismissedLocationRationale) {
     return (
       <View
         style={[
@@ -719,6 +823,14 @@ export default function MapScreen() {
               style={{ width: "100%", marginTop: 10 }}
             />
             <NetramButton
+              label="Continue to Map Without GPS"
+              variant="secondary"
+              onPress={() => {
+                setDismissedLocationRationale(true);
+              }}
+              style={{ width: "100%", marginTop: 8 }}
+            />
+            <NetramButton
               label="Back to Assignments"
               variant="secondary"
               onPress={() => {
@@ -734,37 +846,23 @@ export default function MapScreen() {
 
   return (
     <View style={styles.root}>
-      {/* ── 1. Map Layer (fills full screen) ─────────────────────────────────── */}
+      {/* ── 1. Map Layer (fills full screen - always active) ─────────────────── */}
       <View style={styles.mapLayer}>
-        {loading ? (
-          <View style={styles.mapPlaceholder}>
-            <ActivityIndicator size="large" color={colors.navyDark ?? "#002449"} />
-            <Text style={styles.mapPlaceholderText}>Loading map…</Text>
-          </View>
-        ) : leafletHtml ? (
-          Platform.OS === "web" ? (
-            renderWebIframe()
-          ) : (
-            <WebView
-              ref={webViewRef}
-              originWhitelist={["*"]}
-              source={{ html: leafletHtml }}
-              style={styles.iframe}
-              javaScriptEnabled
-              domStorageEnabled
-              geolocationEnabled
-              onMessage={(event) => {
-                handleMapMessage(event.nativeEvent.data);
-              }}
-            />
-          )
+        {Platform.OS === "web" ? (
+          renderWebIframe()
         ) : (
-          <View style={styles.mapPlaceholder}>
-            <Icon name="map-outline" size={28} color={colors.textMuted ?? "#64748b"} />
-            <Text style={styles.mapPlaceholderText}>
-              No mapped sites yet - sites appear here once their projects have server geofences.
-            </Text>
-          </View>
+          <WebView
+            ref={webViewRef}
+            originWhitelist={["*"]}
+            source={{ html: leafletHtml }}
+            style={styles.iframe}
+            javaScriptEnabled
+            domStorageEnabled
+            geolocationEnabled
+            onMessage={(event) => {
+              handleMapMessage(event.nativeEvent.data);
+            }}
+          />
         )}
       </View>
 
@@ -792,38 +890,12 @@ export default function MapScreen() {
           accessibilityLabel="Focus map on my current location"
         >
           <Icon name="locate" size={19} color={isPureDark ? "#FFFFFF" : "#002449"} />
-          {locationStatus === "ready" && <View style={styles.gpsActiveDot} />}
         </Pressable>
       </View>
 
-      {/* ── 3. Bottom Overlay: one frameless card ──────────────────────────── */}
-      <View style={styles.bottomOverlay} pointerEvents="box-none">
-        {!loading && cachedInspections.length === 0 && (
-          <View
-            style={[styles.emptyCard, { backgroundColor: theme.bgSurface }]}
-            pointerEvents="auto"
-          >
-            <Icon name="clipboard-outline" size={22} color={theme.textMuted} />
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              No active inspection assignments
-            </Text>
-          </View>
-        )}
-
-        {!loading && cachedInspections.length > 0 && mapSites.length === 0 && (
-          <View
-            style={[styles.emptyCard, { backgroundColor: theme.bgSurface }]}
-            pointerEvents="auto"
-          >
-            <Icon name="map-outline" size={22} color={theme.textMuted} />
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              Assigned sites have no map coordinates yet - a geofence must be sealed for each
-              project first.
-            </Text>
-          </View>
-        )}
-
-        {selectedSite && (
+      {/* ── 3. Bottom Overlay: interactive card (shown when site is selected) ── */}
+      {selectedSite && (
+        <View style={styles.bottomOverlay} pointerEvents="box-none">
           <View
             style={[styles.siteCard, { backgroundColor: theme.bgSurface }]}
             pointerEvents="auto"
@@ -918,8 +990,8 @@ export default function MapScreen() {
               </Pressable>
             </View>
           </View>
-        )}
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -984,17 +1056,6 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
-  gpsActiveDot: {
-    position: "absolute",
-    top: 7,
-    right: 7,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#15803d",
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-  },
 
   // Bottom overlay
   bottomOverlay: {
@@ -1005,21 +1066,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
     paddingBottom: 0,
     gap: 8,
-  },
-
-  // Empty state card
-  emptyCard: {
-    marginHorizontal: 16,
-    marginBottom: Platform.OS === "ios" ? 24 : 12,
-    borderRadius: 12,
-    paddingVertical: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  emptyText: {
-    fontSize: 13,
-    fontWeight: "500",
   },
 
   // Selected site card: frameless, lifted off the map
