@@ -5,9 +5,10 @@ Day-to-day setup: [`setup.md`](setup.md).
 
 This document defines the configuration, network topology, persistence rules,
 and security isolation across all Netram deployment targets. The `dev` and
-`ci` columns are **implemented**; `demo` and `prod` rows describe required
-properties of future environments (**Planned** - nothing is deployed there
-yet).
+`ci` columns are **implemented**. A **demo** environment is also deployed (the
+throwaway VPS described in [`../deployment.md`](../deployment.md)) and resets
+itself on a schedule by design, documented in §3.1. The `prod` column remains
+**Planned**: no platform deployment carries real institutional data yet.
 
 ---
 
@@ -18,7 +19,7 @@ yet).
 | **Purpose**                   | Day-to-day engineer development & vertical slices  | Automated regressions, guards, tests, and builds   | Client demonstration, preview testing, QA verifications | Mission-critical government oversight platform      |
 | **Hosting**                   | Local workstation / Docker                         | GitHub Actions runner (`ubuntu-latest`)            | Cloud container orchestrator (e.g., ECS/K8s/Fly)        | Sovereign government cloud infrastructure           |
 | **PostgreSQL**                | Local Docker container (`postgres:16-alpine`)      | Ephemeral service container (`postgres:16-alpine`) | Managed PostgreSQL (Supabase / RDS)                     | Dedicated high-availability PostgreSQL with PITR    |
-| **DB Reset / Seed**           | Allowed (`pnpm db:setup` / deterministic seed)     | Ephemeral on every run (`pnpm db:setup`)           | Managed seed reset upon deployment                      | **FORBIDDEN**. Never reset; forward-only migrations |
+| **DB Reset / Seed**           | Allowed (`pnpm db:setup` / deterministic seed)     | Ephemeral on every run (`pnpm db:setup`)           | Scheduled reset + deterministic reseed (`db-reset`, default every 30 min, opt-in via `NETRAM_ALLOW_DB_RESET=1`) | **FORBIDDEN**. Forward-only migrations, never reseed |
 | **Redis**                     | Local container (`redis:7-alpine`)                 | Service container or mock in memory                | Managed Redis instance                                  | Multi-node Redis cluster with persistence           |
 | **Object Storage (MinIO/S3)** | Local MinIO (`localhost:9000`)                     | Local ephemeral MinIO                              | Dedicated S3/MinIO demo bucket                          | Hardened sovereign S3 bucket with WORM compliance   |
 | **Auth Provider**             | Dev-auth token exchange (`/api/v1/auth/dev-login`) | Dev-auth mock tokens                               | Controlled staging auth / dev tokens                    | Production IAM / OIDC / Sovereign Govt IdP          |
@@ -49,7 +50,9 @@ yet).
 ### 3.1 Database Isolation
 
 - **No Shared Databases:** Environments must **never** share database instances or connection credentials. Local development must never point to demo or production.
-- **Production Reset Ban:** Destructive commands (`pnpm db:reset`, `DROP DATABASE`, manual table truncations) are strictly forbidden against production.
+- **Production Reset Ban:** Destructive commands (`pnpm db:reset`, `DROP DATABASE`, manual table truncations) are strictly forbidden against a real platform deployment. Such a deployment migrates forward-only and is never reseeded, because reseeding would destroy real institutional records.
+- **Demo Exception (deliberate, opt-in):** the deployed demonstration VPS is a throwaway environment and *does* drop and reseed on a schedule, so every visitor starts from the same coherent seeded state. This is only possible because that deployment sets `NETRAM_ALLOW_DB_RESET=1`, which opens the guard in `packages/data/src/db/migrate.ts`. Without it the guard refuses to reset any non-local database whenever `NODE_ENV` is `production` or `demo`. See [`../deployment.md`](../deployment.md) for the schedule, the `db-reset` loop, and the disruption this causes mid-reset.
+- **Do not generalise the demo exception:** the scheduled reseed is a property of that one throwaway deployment, not a supported operating mode. Nothing in the `prod` column inherits it.
 - **Reproducible Migrations:** Schema changes must be applied strictly through Drizzle migrations from zero (`packages/data/src/db/migrations`).
 
 ### 3.2 Secrets and Credentials Isolation
