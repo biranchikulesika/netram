@@ -54,10 +54,12 @@ export interface CachedInspectionRecord {
   type: string;
   status: string;
   district_id: string | null;
+  district_name: string | null;
   scheduled_start: string | null;
   scheduled_end: string | null;
   started_at: string | null;
   submitted_at: string | null;
+  assigned_user_ids: string;
   cached_at: string;
 }
 
@@ -294,8 +296,8 @@ export class OfflineInspectionQueue {
 
     for (const i of inspections) {
       await db.runAsync(
-        `INSERT OR REPLACE INTO cached_inspections (id, project_id, project_name, project_code, type, status, district_id, scheduled_start, scheduled_end, started_at, submitted_at, cached_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO cached_inspections (id, project_id, project_name, project_code, type, status, district_id, district_name, scheduled_start, scheduled_end, started_at, submitted_at, assigned_user_ids, cached_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           i.id,
           i.projectId,
@@ -304,10 +306,12 @@ export class OfflineInspectionQueue {
           i.type,
           i.status,
           i.districtId,
+          i.districtName,
           i.scheduledStart,
           i.scheduledEnd,
           i.startedAt,
           i.submittedAt,
+          JSON.stringify(i.assignedUserIds ?? []),
           now,
         ],
       );

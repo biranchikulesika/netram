@@ -188,10 +188,12 @@ CREATE TABLE IF NOT EXISTS cached_inspections (
   type TEXT NOT NULL,
   status TEXT NOT NULL,
   district_id TEXT,
+  district_name TEXT,
   scheduled_start TEXT,
   scheduled_end TEXT,
   started_at TEXT,
   submitted_at TEXT,
+  assigned_user_ids TEXT NOT NULL DEFAULT '[]',
   cached_at TEXT NOT NULL
 );
 

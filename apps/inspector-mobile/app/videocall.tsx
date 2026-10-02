@@ -22,6 +22,7 @@ import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { useAuth } from "../src/auth/auth-context";
 import { OfflineInspectionQueue } from "../src/offline/queue";
+import { formatDateTime } from "../src/utils/formatters";
 import {
   startCallingSound,
   playCallPickupSound,
@@ -72,6 +73,7 @@ function renderWebVideo(
 export default function CallsScreen() {
   const { theme, isPureDark } = useSettings();
   const { client } = useAuth();
+  const styles = useMemo(() => makeStyles(theme, isPureDark), [theme, isPureDark]);
 
   // Tab 1: Assigned Calls ("contacts") FIRST, Tab 2: Call History ("history") SECOND
   const [activeTab, setActiveTab] = useState<"contacts" | "history">("contacts");
@@ -749,7 +751,7 @@ export default function CallsScreen() {
                         styles.statusPulsingDotSmall,
                         {
                           backgroundColor:
-                            activeCall.status === "ringing" ? colors.gold : colors.accentBlue,
+                            activeCall.status === "ringing" ? theme.gold : theme.accentBlue,
                         },
                       ]}
                     />
@@ -775,14 +777,14 @@ export default function CallsScreen() {
             {Platform.OS === "web" ? (
               isVideoOff ? (
                 <View style={styles.pipCameraOff}>
-                  <Icon name="videocam-off" size={24} color={colors.navyDark} />
+                  <Icon name="videocam-off" size={24} color={theme.navyDark} />
                 </View>
               ) : (
                 renderWebVideo(localVideoRef, isFacingFront, streamRef.current)
               )
             ) : isVideoOff ? (
               <View style={styles.pipCameraOff}>
-                <Icon name="videocam-off" size={24} color={colors.navyDark} />
+                <Icon name="videocam-off" size={24} color={theme.navyDark} />
               </View>
             ) : (
               <CameraView
@@ -805,7 +807,7 @@ export default function CallsScreen() {
         <SafeAreaView style={styles.floatingHeaderContainer}>
           <View style={styles.floatingHeaderMinimal}>
             <Pressable style={styles.minimizeGlassBtn} onPress={endCall} hitSlop={12}>
-              <Icon name="chevron-down" size={26} color={colors.navyDark} />
+              <Icon name="chevron-down" size={26} color={theme.navyDark} />
             </Pressable>
 
             <View style={styles.headerInfoBlock}>
@@ -819,10 +821,10 @@ export default function CallsScreen() {
                     {
                       backgroundColor:
                         activeCall.status === "connected"
-                          ? colors.actionGreen
+                          ? theme.actionGreen
                           : activeCall.status === "ringing"
-                            ? colors.gold
-                            : colors.accentBlue,
+                            ? theme.gold
+                            : theme.accentBlue,
                     },
                   ]}
                 />
@@ -847,7 +849,7 @@ export default function CallsScreen() {
         {/* Evidence Snapshot Toast Alert */}
         {snapshotToast && (
           <View style={styles.snapshotToastBox}>
-            <Icon name="camera" size={16} color="#FFFFFF" />
+            <Icon name="camera" size={16} color={theme.textInverse} />
             <Text style={styles.snapshotToastText}>Snapshot Captured & Hashed</Text>
           </View>
         )}
@@ -857,7 +859,7 @@ export default function CallsScreen() {
           <View style={styles.frostedControlDock}>
             {/* Flip Camera */}
             <Pressable style={styles.dockControlBtn} onPress={flipCamera} hitSlop={6}>
-              <Icon name="camera-reverse-outline" size={22} color={colors.navyDark} />
+              <Icon name="camera-reverse-outline" size={22} color={theme.navyDark} />
             </Pressable>
 
             {/* Video Camera Toggle */}
@@ -869,7 +871,7 @@ export default function CallsScreen() {
               <Icon
                 name={isVideoOff ? "videocam-off" : "videocam"}
                 size={22}
-                color={isVideoOff ? "#FFFFFF" : colors.navyDark}
+                color={isVideoOff ? theme.textInverse : theme.navyDark}
               />
             </Pressable>
 
@@ -882,7 +884,7 @@ export default function CallsScreen() {
               <Icon
                 name={isMuted ? "mic-off" : "mic"}
                 size={22}
-                color={isMuted ? "#FFFFFF" : colors.navyDark}
+                color={isMuted ? theme.textInverse : theme.navyDark}
               />
             </Pressable>
 
@@ -898,20 +900,20 @@ export default function CallsScreen() {
               <Icon
                 name={isSpeakerOn ? "volume-high" : "volume-mute"}
                 size={22}
-                color={isSpeakerOn ? colors.navyDark : "#FFFFFF"}
+                color={isSpeakerOn ? theme.navyDark : theme.textInverse}
               />
             </Pressable>
 
             {/* Capture Evidence Snapshot */}
             {isConnected && (
               <Pressable style={styles.dockSnapshotBtn} onPress={captureSnapshot} hitSlop={6}>
-                <Icon name="camera-outline" size={22} color={colors.accentBlue} />
+                <Icon name="camera-outline" size={22} color={theme.accentBlue} />
               </Pressable>
             )}
 
             {/* End Call / Hang Up */}
             <Pressable style={styles.dockHangUpBtn} onPress={endCall} hitSlop={6}>
-              <Icon name="call" size={26} color="#FFFFFF" />
+              <Icon name="call" size={26} color={theme.textInverse} />
             </Pressable>
           </View>
         </SafeAreaView>
@@ -954,28 +956,28 @@ export default function CallsScreen() {
             style={[
               styles.togglePill,
               activeTab === "contacts" && {
-                backgroundColor: isPureDark ? "#27272A" : colors.navyDark,
+                backgroundColor: isPureDark ? theme.bgHover : theme.navyDark,
               },
             ]}
           >
             <Icon
               name={activeTab === "contacts" ? "people" : "people-outline"}
               size={18}
-              color={activeTab === "contacts" ? "#FFFFFF" : textMuted}
+              color={activeTab === "contacts" ? theme.textInverse : textMuted}
             />
           </View>
           <View
             style={[
               styles.togglePill,
               activeTab === "history" && {
-                backgroundColor: isPureDark ? "#27272A" : colors.navyDark,
+                backgroundColor: isPureDark ? theme.bgHover : theme.navyDark,
               },
             ]}
           >
             <Icon
               name={activeTab === "history" ? "time" : "time-outline"}
               size={18}
-              color={activeTab === "history" ? "#FFFFFF" : textMuted}
+              color={activeTab === "history" ? theme.textInverse : textMuted}
             />
           </View>
         </Pressable>
@@ -1042,7 +1044,7 @@ export default function CallsScreen() {
                       onPress={() => startVideoCall(contact)}
                       accessibilityLabel={`Video Call ${contact.name}`}
                     >
-                      <Icon name="videocam" size={20} color={colors.actionGreen} />
+                      <Icon name="videocam" size={20} color={theme.actionGreen} />
                     </Pressable>
                   </View>
                 </View>
@@ -1069,7 +1071,7 @@ export default function CallsScreen() {
             filteredCallHistory.map((item) => {
               const isExpanded = expandedCallId === item.id;
               const matchedContact = contacts.find((c) => c.id === item.contactId);
-              const avatarColor = matchedContact?.avatarColor || "#2563EB";
+              const avatarColor = matchedContact?.avatarColor || theme.accentBlue;
               const initials = item.contactName
                 .split(" ")
                 .map((p) => p[0])
@@ -1089,20 +1091,20 @@ export default function CallsScreen() {
 
               if (isPickedUp) {
                 iconName = isIncoming ? "call-received" : "call-made";
-                arrowColor = colors.actionGreen;
-                badgeBg = isPureDark ? "rgba(22, 163, 74, 0.25)" : "#DCFCE7";
+                arrowColor = theme.actionGreen;
+                badgeBg = isPureDark ? "rgba(34, 197, 94, 0.25)" : "#DCFCE7";
                 statusLabel = formatDuration(item.durationSeconds);
               } else if (isIncoming) {
                 // Incoming call not picked up -> Red bounce arrow & "Missed"
                 iconName = "call-missed";
-                arrowColor = colors.errorRed;
-                badgeBg = isPureDark ? "rgba(220, 38, 38, 0.25)" : "#FEE2E2";
+                arrowColor = theme.errorRed;
+                badgeBg = isPureDark ? "rgba(239, 68, 68, 0.25)" : "#FEE2E2";
                 statusLabel = "Missed";
               } else {
                 // Outgoing and unanswered -> North-East red arrow & "Unanswered"
                 iconName = "call-made";
-                arrowColor = colors.errorRed;
-                badgeBg = isPureDark ? "rgba(220, 38, 38, 0.25)" : "#FEE2E2";
+                arrowColor = theme.errorRed;
+                badgeBg = isPureDark ? "rgba(239, 68, 68, 0.25)" : "#FEE2E2";
                 statusLabel = "Unanswered";
               }
 
@@ -1124,7 +1126,7 @@ export default function CallsScreen() {
                           styles.videoHistoryBadge,
                           {
                             backgroundColor: badgeBg,
-                            borderColor: isPureDark ? colors.navyDark : "#FFFFFF",
+                            borderColor: isPureDark ? theme.bgCanvas : "#FFFFFF",
                           },
                         ]}
                       >
@@ -1146,11 +1148,10 @@ export default function CallsScreen() {
                       <Text
                         style={[styles.contactSubtitleMuted, { color: textMuted }]}
                         numberOfLines={1}
-                      >
-                        {item.timestamp} •{" "}
+                      >{formatDateTime(item.timestamp)} •{ ""}
                         <Text
                           style={{
-                            color: isPickedUp ? textMuted : colors.errorRed,
+                            color: isPickedUp ? textMuted : theme.errorRed,
                             fontWeight: isPickedUp ? "400" : "600",
                           }}
                         >
@@ -1178,7 +1179,7 @@ export default function CallsScreen() {
                       }}
                       accessibilityLabel={`Video Call ${item.contactName}`}
                     >
-                      <Icon name="videocam" size={20} color={colors.actionGreen} />
+                      <Icon name="videocam" size={20} color={theme.actionGreen} />
                     </Pressable>
                   </View>
 
@@ -1222,7 +1223,7 @@ export default function CallsScreen() {
 
                       {item.flagInspection && (
                         <View style={styles.flagInspectionBanner}>
-                          <Icon name="flag" size={13} color="#DC2626" />
+                          <Icon name="flag" size={13} color={theme.error} />
                           <Text style={styles.flagInspectionBannerText}>
                             Priority on-site physical inspection recommended
                           </Text>
@@ -1247,7 +1248,7 @@ export default function CallsScreen() {
               {/* Header */}
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleRow}>
-                  <Icon name="videocam-outline" size={18} color="#002449" />
+                  <Icon name="videocam-outline" size={18} color={theme.navyDark} />
                   <Text style={[styles.modalTitle, { color: textPrimary }]}>
                     Video Call Review & Problems
                   </Text>
@@ -1297,7 +1298,7 @@ export default function CallsScreen() {
                     <Icon
                       name="checkmark-circle"
                       size={14}
-                      color={reviewCondition === "satisfactory" ? "#FFFFFF" : colors.actionGreen}
+                      color={reviewCondition === "satisfactory" ? "#FFFFFF" : theme.actionGreen}
                     />
                     <Text
                       style={[
@@ -1321,7 +1322,7 @@ export default function CallsScreen() {
                     <Icon
                       name="warning"
                       size={14}
-                      color={reviewCondition === "minor_issue" ? "#FFFFFF" : colors.gold}
+                      color={reviewCondition === "minor_issue" ? "#FFFFFF" : theme.gold}
                     />
                     <Text
                       style={[
@@ -1346,7 +1347,7 @@ export default function CallsScreen() {
                     <Icon
                       name="alert-circle"
                       size={14}
-                      color={reviewCondition === "critical_problem" ? "#FFFFFF" : colors.error}
+                      color={reviewCondition === "critical_problem" ? "#FFFFFF" : theme.error}
                     />
                     <Text
                       style={[
@@ -1414,7 +1415,7 @@ export default function CallsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Record<string, string>, isPureDark: boolean) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -1510,7 +1511,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.actionGreen,
+    backgroundColor: theme.actionGreen,
     borderWidth: 1.5,
     borderColor: "#FFFFFF",
   },
@@ -1593,9 +1594,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "rgba(220, 38, 38, 0.08)",
+    backgroundColor: isPureDark ? "rgba(239, 68, 68, 0.15)" : "rgba(220, 38, 38, 0.08)",
     borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.2)",
+    borderColor: isPureDark ? "rgba(239, 68, 68, 0.3)" : "rgba(220, 38, 38, 0.2)",
     paddingHorizontal: 9,
     paddingVertical: 7,
     borderRadius: 8,
@@ -1603,7 +1604,7 @@ const styles = StyleSheet.create({
   flagInspectionBannerText: {
     fontSize: 11.5,
     fontWeight: "600",
-    color: "#DC2626",
+    color: theme.errorRed,
     flex: 1,
     lineHeight: 16,
   },
@@ -1612,7 +1613,7 @@ const styles = StyleSheet.create({
   // ---------------------------------------------------------------------------
   fullscreenCallContainer: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.bgCanvas,
     position: "relative",
   },
   remoteVideoCanvas: {
@@ -1621,7 +1622,7 @@ const styles = StyleSheet.create({
   },
   remoteVideoBackdrop: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: theme.bgSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1649,7 +1650,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: colors.actionGreen,
+    backgroundColor: theme.actionGreen,
   },
   remoteParticipantOverlayText: {
     fontSize: 12,
@@ -1660,12 +1661,12 @@ const styles = StyleSheet.create({
   connectedRemoteName: {
     fontSize: 20,
     fontWeight: "800",
-    color: colors.navyDark,
+    color: theme.navyDark,
     marginTop: 12,
   },
   connectedRemoteSub: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontWeight: "500",
   },
   remoteAvatarCircleHuge: {
@@ -1675,7 +1676,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#E2E8F0",
+    borderColor: theme.borderSubtle,
   },
   remoteAvatarHugeText: {
     fontSize: 44,
@@ -1694,7 +1695,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "rgba(0, 36, 73, 0.04)",
+    backgroundColor: isPureDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 36, 73, 0.04)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1702,7 +1703,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: "rgba(0, 36, 73, 0.08)",
+    backgroundColor: isPureDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 36, 73, 0.08)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1713,7 +1714,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#E2E8F0",
+    borderColor: theme.borderSubtle,
   },
   connectingAvatarText: {
     fontSize: 34,
@@ -1728,20 +1729,20 @@ const styles = StyleSheet.create({
   callingTargetName: {
     fontSize: 22,
     fontWeight: "800",
-    color: colors.navyDark,
+    color: theme.navyDark,
   },
   callingTargetTitle: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontWeight: "500",
   },
   callingBadgePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: theme.bgSubtle,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: theme.borderSubtle,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 14,
@@ -1750,7 +1751,7 @@ const styles = StyleSheet.create({
   callingBadgeText: {
     fontSize: 11,
     fontWeight: "800",
-    color: colors.navyDark,
+    color: theme.navyDark,
     letterSpacing: 0.8,
   },
 
@@ -1791,7 +1792,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: theme.bgSubtle,
   },
   pipFlipIndicator: {
     position: "absolute",
@@ -1811,9 +1812,9 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.bgCanvas,
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    borderBottomColor: theme.borderSubtle,
     zIndex: 30,
   },
   floatingHeaderMinimal: {
@@ -1834,7 +1835,7 @@ const styles = StyleSheet.create({
   headerCallerName: {
     fontSize: 20,
     fontWeight: "700",
-    color: colors.navyDark,
+    color: theme.navyDark,
   },
   liveTimerPill: {
     flexDirection: "row",
@@ -1853,15 +1854,15 @@ const styles = StyleSheet.create({
   },
   encryptionSubtitle: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontWeight: "600",
   },
   autoRecordHeaderBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#FEE2E2",
-    borderColor: "#FCA5A5",
+    backgroundColor: isPureDark ? "#450A0A" : "#FEE2E2",
+    borderColor: isPureDark ? "#7F1D1D" : "#FCA5A5",
     borderWidth: 1,
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -1870,7 +1871,7 @@ const styles = StyleSheet.create({
   autoRecordHeaderText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#B91C1C",
+    color: isPureDark ? "#FCA5A5" : "#B91C1C",
   },
 
   // Snapshot Toast
@@ -1881,12 +1882,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: colors.navyDark,
+    backgroundColor: theme.navyDark,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: theme.borderSubtle,
     zIndex: 40,
   },
   snapshotToastText: {
@@ -1908,34 +1909,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.bgCanvas,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 36,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: theme.borderSubtle,
     gap: 10,
   },
   dockControlBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: theme.bgSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
   dockControlBtnActive: {
-    backgroundColor: "#E0F2FE",
+    backgroundColor: isPureDark ? "#0C4A6E" : "#E0F2FE",
     borderWidth: 1.5,
-    borderColor: "#0284C7",
+    borderColor: theme.accentBlue,
   },
   dockControlBtnInactive: {
-    backgroundColor: "#F1F5F9",
+    backgroundColor: theme.bgSubtle,
   },
   dockControlBtnRecActive: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: isPureDark ? "#450A0A" : "#FEE2E2",
     borderWidth: 1.5,
-    borderColor: "#EF4444",
+    borderColor: theme.errorRed,
   },
   recIconWrap: {
     flexDirection: "row",
@@ -1946,20 +1947,20 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: "#EF4444",
+    backgroundColor: theme.errorRed,
   },
   recBtnText: {
     fontSize: 10,
     fontWeight: "800",
   },
   dockControlBtnMuted: {
-    backgroundColor: "#DC2626",
+    backgroundColor: theme.errorRed,
   },
   dockSnapshotBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F0F9FF",
+    backgroundColor: theme.bgSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1967,7 +1968,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#DC2626",
+    backgroundColor: theme.errorRed,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2050,25 +2051,25 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    backgroundColor: colors.bgSurface,
+    borderColor: theme.borderSubtle,
+    backgroundColor: theme.bgSurface,
   },
   conditionOptionSatisfactoryActive: {
-    backgroundColor: colors.actionGreen,
-    borderColor: colors.actionGreen,
+    backgroundColor: theme.actionGreen,
+    borderColor: theme.actionGreen,
   },
   conditionOptionMinorActive: {
-    backgroundColor: colors.gold,
-    borderColor: colors.gold,
+    backgroundColor: theme.gold,
+    borderColor: theme.gold,
   },
   conditionOptionCriticalActive: {
-    backgroundColor: colors.error,
-    borderColor: colors.error,
+    backgroundColor: theme.error,
+    borderColor: theme.error,
   },
   conditionOptionText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748B",
+    color: theme.textMuted,
   },
   conditionOptionTextActive: {
     color: "#FFFFFF",
@@ -2092,13 +2093,13 @@ const styles = StyleSheet.create({
     height: 17,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: "#94A3B8",
+    borderColor: theme.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
   checkboxActive: {
-    backgroundColor: "#DC2626",
-    borderColor: "#DC2626",
+    backgroundColor: theme.errorRed,
+    borderColor: theme.errorRed,
   },
   flagCheckLabel: {
     fontSize: 12,
@@ -2123,7 +2124,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#002449",
+    backgroundColor: theme.navyDark,
     paddingVertical: 9,
     paddingHorizontal: 18,
     borderRadius: 8,
