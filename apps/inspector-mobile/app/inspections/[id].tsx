@@ -395,7 +395,7 @@ export default function InspectionDetailScreen() {
   // a link to a real inspection and must not be bounced to another screen.
   if (!inspection && loadError) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas, paddingTop: insets.top }]}>
         <View
           style={[
             styles.inspTopBar,
@@ -407,8 +407,7 @@ export default function InspectionDetailScreen() {
               <Icon name="chevron-back" size={24} color={textPrimary} />
             </Pressable>
             <Text style={[styles.inspTitle, { color: textPrimary }]}>Inspection</Text>
-          </View>
-        </View>
+          </View>        </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <EmptyState
@@ -472,8 +471,7 @@ export default function InspectionDetailScreen() {
     </View>
   );
 
-  return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas }]}>
+  return (        <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas, paddingTop: insets.top }]}>
       <View style={[styles.container, { backgroundColor: bgCanvas }]}>
         {/* ── TOP BAR (video-call style) ── */}
         <View
@@ -493,7 +491,7 @@ export default function InspectionDetailScreen() {
               </Text>
               <Text style={[styles.inspSubtitle, { color: textMuted }]} numberOfLines={1}>
                 {project?.code || inspection?.project_code || ""}
-                {inspection?.district_id ? ` · ${inspection.district_id}` : ""}
+                {inspection?.district_name ? ` · ${inspection.district_name}` : ""}
               </Text>
             </View>
           </View>
@@ -722,7 +720,7 @@ export default function InspectionDetailScreen() {
         {/* ── BOTTOM ACTION BAR: capture + the one primary workflow action ── */}
         {(isFieldStage || canStart) && (
           <View
-            style={[styles.actionBar, { backgroundColor: bgSurface, borderTopColor: borderColor }]}
+            style={[styles.actionBar, { backgroundColor: bgSurface, borderTopColor: borderColor, ...Platform.select({ android: { paddingBottom: 14 + insets.bottom } }) }]}
           >
             {canStart ? (
               <Pressable
@@ -874,7 +872,7 @@ export default function InspectionDetailScreen() {
                 <Text style={{ fontSize: 11, color: textMuted, marginTop: 2 }}>
                   {[
                     inspection?.project_code,
-                    inspection?.district_id && `${inspection.district_id} District`,
+                    inspection?.district_name && `${inspection.district_name} District`,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "-"}

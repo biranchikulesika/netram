@@ -62,10 +62,12 @@ describe("UI Components Render Tests (P14-04)", () => {
       type: "routine",
       status: "assigned",
       district_id: "dist-01",
+      district_name: "Central District",
       scheduled_start: "2026-03-15T09:00:00Z",
       scheduled_end: "2026-03-15T17:00:00Z",
       started_at: null,
       submitted_at: null,
+      assigned_user_ids: "[]",
       cached_at: "2026-03-01T00:00:00Z",
     };
 

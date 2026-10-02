@@ -32,6 +32,7 @@ import type { ProjectGeofence } from "@netram/types";
 import { NetramButton } from "../src/components/ui/NetramButton";
 import { formatInspectionType } from "../src/utils/formatters";
 import { WebView } from "react-native-webview";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,7 +63,7 @@ interface MapSite {
   projectName: string;
   status: string;
   type: string;
-  districtId: string | null;
+  districtName: string | null;
   lat: number;
   lng: number;
   distanceMeters: number | null;
@@ -388,10 +389,11 @@ function buildLeafletHtml(params: {
 
 export default function MapScreen() {
   const router = useRouter();
-  const { client } = useAuth();
+  const { client, user } = useAuth();
   const { theme, isPureDark } = useSettings();
   const params = useLocalSearchParams<{ inspectionId?: string }>();
 
+  const insets = useSafeAreaInsets();
   // The busy flag is observed through `locationStatus`; only the setter is used.
   const [, setLoading] = useState(true);
   const [cachedInspections, setCachedInspections] = useState<CachedInspectionRecord[]>([]);
@@ -424,7 +426,19 @@ export default function MapScreen() {
   const loadData = useCallback(async () => {
     try {
       const local = await queue.getCachedInspections();
-      setCachedInspections(local);
+      // Only show inspections assigned to the logged-in inspector
+      const filterAssigned = (records: typeof local) =>
+        user?.id
+          ? records.filter((r) => {
+              try {
+                const ids = JSON.parse(r.assigned_user_ids || "[]") as string[];
+                return ids.includes(user.id);
+              } catch {
+                return false;
+              }
+            })
+          : records;
+      setCachedInspections(filterAssigned(local));
 
       if (client) {
         const [inspRes, geoRes] = await Promise.allSettled([
@@ -433,7 +447,7 @@ export default function MapScreen() {
         ]);
         if (inspRes.status === "fulfilled" && inspRes.value.items.length > 0) {
           await queue.cacheInspections(inspRes.value.items);
-          setCachedInspections(await queue.getCachedInspections());
+          setCachedInspections(filterAssigned(await queue.getCachedInspections()));
         }
         if (geoRes.status === "fulfilled") setRemoteGeofences(geoRes.value);
       }
@@ -442,7 +456,7 @@ export default function MapScreen() {
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, [client, user?.id]);
 
   useEffect(() => {
     void loadData();
@@ -474,7 +488,14 @@ export default function MapScreen() {
       }
     });
 
-    return cachedInspections.flatMap((insp) => {
+    // Only show scheduled and in-progress inspections on the map. Closed,
+    // submitted, and other terminal/review states are excluded so the map
+    // surfaces only sites an inspector may still need to visit.
+    const activeStatuses = new Set(["scheduled", "in_progress"]);
+
+    return cachedInspections
+      .filter((insp) => activeStatuses.has(insp.status))
+      .flatMap((insp) => {
       const geo = geoMap.get(insp.project_id);
       if (!geo) return [];
       return [
@@ -484,7 +505,7 @@ export default function MapScreen() {
           projectName: insp.project_name || "Inspection Site",
           status: insp.status || "assigned",
           type: insp.type || "routine",
-          districtId: insp.district_id,
+          districtName: insp.district_name,
           lat: geo.lat,
           lng: geo.lng,
           distanceMeters: null,
@@ -867,7 +888,7 @@ export default function MapScreen() {
       </View>
 
       {/* ── 2. Floating Top-Right Controls (No bulky top bar) ────────────────── */}
-      <View style={styles.floatingControls} pointerEvents="box-none">
+      <View style={[styles.floatingControls, { top: insets.top + 8 }]} pointerEvents="box-none">
         <Pressable
           style={[styles.mapIconBtn, { backgroundColor: isPureDark ? "#121212" : "#FFFFFF" }]}
           onPress={toggleMapType}
@@ -895,7 +916,7 @@ export default function MapScreen() {
 
       {/* ── 3. Bottom Overlay: interactive card (shown when site is selected) ── */}
       {selectedSite && (
-        <View style={styles.bottomOverlay} pointerEvents="box-none">
+        <View style={[styles.bottomOverlay, { paddingBottom: insets.bottom }]} pointerEvents="box-none">
           <View
             style={[styles.siteCard, { backgroundColor: theme.bgSurface }]}
             pointerEvents="auto"
@@ -963,7 +984,7 @@ export default function MapScreen() {
               {[
                 selectedSite.projectCode,
                 formatInspectionType(selectedSite.type),
-                selectedSite.districtId,
+                selectedSite.districtName,
               ]
                 .filter(Boolean)
                 .join(" \u00b7 ")}
@@ -1032,7 +1053,7 @@ const styles = StyleSheet.create({
   // Floating top controls (No bulky top bar)
   floatingControls: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 16,
+    top: 8,
     right: 16,
     zIndex: 10,
     flexDirection: "row",

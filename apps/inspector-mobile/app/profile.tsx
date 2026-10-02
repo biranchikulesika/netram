@@ -65,7 +65,7 @@ export default function ProfileScreen() {
               { borderColor: theme.borderSubtle, backgroundColor: theme.navyDark },
             ]}
           >
-            <Text style={styles.avatarInitials}>{initials}</Text>
+            <Text style={[styles.avatarInitials, { color: theme.textInverse }]}>{initials}</Text>
           </View>
           <Text style={[styles.nameText, { color: theme.navyDark }]}>{displayName}</Text>
           <Text style={[styles.officerIdText, { color: theme.accentBlue }]}>{officerId}</Text>

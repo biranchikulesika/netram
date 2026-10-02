@@ -51,7 +51,19 @@ export default function InspectorDashboardScreen() {
   const loadLocalState = useCallback(async () => {
     try {
       const cached = await queue.getCachedInspections();
-      setInspections(cached);
+      // Only show inspections assigned to the logged-in inspector.
+      // The assigned_user_ids column stores a JSON array of user UUIDs.
+      const filtered = user?.id
+        ? cached.filter((c) => {
+            try {
+              const ids = JSON.parse(c.assigned_user_ids || "[]") as string[];
+              return ids.includes(user.id);
+            } catch {
+              return false;
+            }
+          })
+        : cached;
+      setInspections(filtered);
       const pending = await queue.getPendingOperations();
       setPendingCount(pending.length);
       setPendingMedia(await queue.getPendingMediaUploads());
@@ -59,7 +71,7 @@ export default function InspectorDashboardScreen() {
     } catch (err) {
       console.warn("Error reading SQLite local state:", err);
     }
-  }, [queue, refreshPendingCount]);
+  }, [queue, refreshPendingCount, user?.id]);
 
   useEffect(() => {
     loadLocalState();
@@ -180,7 +192,7 @@ export default function InspectorDashboardScreen() {
               <Icon name="cloud-upload-outline" size={18} color={accentBlue} />
             )}
             <View style={[styles.uploadBadge, { backgroundColor: navyDark }]}>
-              <Text style={styles.uploadBadgeText}>{pendingCount}</Text>
+              <Text style={[styles.uploadBadgeText, { color: theme.textInverse }]}>{pendingCount}</Text>
             </View>
           </Pressable>
         ) : null}
@@ -255,7 +267,7 @@ export default function InspectorDashboardScreen() {
               <View style={styles.metaItem}>
                 <Icon name="location-outline" size={13} color={textMuted} style={styles.metaIcon} />
                 <Text style={[styles.metaText, { color: textMuted }]}>
-                  {currentTask.district_id || "District"}
+                  {currentTask.district_name || "District"}
                 </Text>
               </View>
               {currentTask.project_code && (
@@ -287,7 +299,7 @@ export default function InspectorDashboardScreen() {
                   currentTask.status === "in_progress" ? "Continue inspection" : "Start inspection"
                 }
               >
-                <Text style={styles.primaryBtnText}>
+                <Text style={[styles.primaryBtnText, { color: theme.textInverse }]}>
                   {currentTask.status === "in_progress"
                     ? "Continue Inspection"
                     : "Start Inspection"}
@@ -387,7 +399,7 @@ export default function InspectorDashboardScreen() {
               ) : (
                 <>
                   <Icon name="cloud-upload-outline" size={15} color="#FFFFFF" />
-                  <Text style={styles.syncBtnText}>Sync Now</Text>
+                  <Text style={[styles.syncBtnText, { color: theme.textInverse }]}>Sync Now</Text>
                 </>
               )}
             </Pressable>

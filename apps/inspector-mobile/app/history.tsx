@@ -20,6 +20,7 @@ import { Icon } from "../src/components/ui/Icon";
 import { NetramCard } from "../src/components/ui/NetramCard";
 import { EmptyState } from "../src/components/ui/EmptyState";
 import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
+import { useAuth } from "../src/auth/auth-context";
 import { CustomDatePicker } from "../src/components/CustomDatePicker";
 import { formatInspectionType } from "../src/utils/formatters";
 
@@ -51,6 +52,8 @@ const TYPE_OPTIONS: InspectionType[] = [
 export default function HistoryScreen() {
   const router = useRouter();
   const { theme } = useSettings();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { user } = useAuth();
   const queue = useMemo(() => new OfflineInspectionQueue(), []);
 
   const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);
@@ -113,15 +116,26 @@ export default function HistoryScreen() {
   const loadData = useCallback(async () => {
     try {
       const records = await queue.getCachedInspections();
+      // Only show inspections assigned to the logged-in inspector
+      const assigned = user?.id
+        ? records.filter((r) => {
+            try {
+              const ids = JSON.parse(r.assigned_user_ids || "[]") as string[];
+              return ids.includes(user.id);
+            } catch {
+              return false;
+            }
+          })
+        : records;
       // Inspected areas: submitted, closed, or in_progress (actively inspected)
-      const inspected = records.filter(
+      const inspected = assigned.filter(
         (r) => r.status === "submitted" || r.status === "closed" || r.status === "in_progress",
       );
       setInspections(inspected);
     } catch {
       // ignore
     }
-  }, [queue]);
+  }, [queue, user?.id]);
 
   useEffect(() => {
     void loadData();
@@ -182,7 +196,7 @@ export default function HistoryScreen() {
         (i) =>
           (i.project_name && i.project_name.toLowerCase().includes(q)) ||
           (i.project_code && i.project_code.toLowerCase().includes(q)) ||
-          (i.district_id && i.district_id.toLowerCase().includes(q)),
+          (i.district_name && i.district_name.toLowerCase().includes(q)),
       );
     }
 
@@ -583,7 +597,7 @@ export default function HistoryScreen() {
                     style={styles.metaIcon}
                   />
                   <Text style={[styles.metaText, { color: theme.textMuted }]}>
-                    {item.district_id || "District unavailable"}
+                    {item.district_name || "District unavailable"}
                   </Text>
                 </View>
 
@@ -628,10 +642,10 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Record<string, string>) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: theme.bgSubtle,
   },
   searchRow: {
     flexDirection: "row",
@@ -644,10 +658,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.bgSurface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: theme.borderSubtle,
     paddingHorizontal: 12,
     height: 42,
     gap: 8,
@@ -655,7 +669,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: "#0F172A",
+    color: theme.textPrimary,
     height: 40,
     paddingVertical: 0,
   },
@@ -666,7 +680,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: theme.borderSubtle,
   },
   // ── Filter Bottom Sheet ──
   sheetModalRoot: {
@@ -712,7 +726,7 @@ const styles = StyleSheet.create({
     width: 76,
     paddingVertical: 10,
     borderRightWidth: 1,
-    borderRightColor: "#EDF0F5",
+    borderRightColor: theme.borderSubtle,
   },
   sheetRailTab: {
     height: 44,
@@ -766,7 +780,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 8,
     gap: 2,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.bgSurface,
   },
   fieldLabel: {
     fontSize: 9,
@@ -813,10 +827,10 @@ const styles = StyleSheet.create({
   },
   historyCard: {
     padding: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.bgSurface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: theme.borderSubtle,
     marginBottom: 10,
     height: 134,
     justifyContent: "space-between",
@@ -841,7 +855,7 @@ const styles = StyleSheet.create({
   facilityName: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#0F172A",
+    color: theme.textPrimary,
     lineHeight: 23,
     height: 46,
   },
@@ -861,7 +875,7 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     lineHeight: 16,
-    color: "#64748B",
+    color: theme.textMuted,
     fontWeight: "500",
     includeFontPadding: false,
   },
