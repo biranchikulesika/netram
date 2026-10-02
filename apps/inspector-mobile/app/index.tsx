@@ -18,9 +18,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "../src/components/ui";
 import {
   OfflineInspectionQueue,
-  type CachedInspectionRecord,
   type PendingMediaUploadRecord,
 } from "../src/offline/queue";
+import { useAssignedInspections } from "../src/offline/inspection-feed";
 import { useAuth } from "../src/auth/auth-context";
 import { useSyncStatus } from "../src/offline/sync-context";
 import { typography } from "../src/theme/colors";
@@ -41,29 +41,20 @@ export default function InspectorDashboardScreen() {
   const queue = useMemo(() => new OfflineInspectionQueue(), []);
   const { refreshPendingCount } = useSyncStatus();
 
-  const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);
+  // Assigned inspections come from the authoritative API on every open, then
+  // fall back to the offline cache when the device cannot reach it (§5, §31).
+  const { inspections, refreshing, refresh: refreshInspections } = useAssignedInspections(
+    client,
+    user?.id,
+  );
+
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingMedia, setPendingMedia] = useState<PendingMediaUploadRecord[]>([]);
   const [showUploads, setShowUploads] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const loadLocalState = useCallback(async () => {
+  const loadPendingState = useCallback(async () => {
     try {
-      const cached = await queue.getCachedInspections();
-      // Only show inspections assigned to the logged-in inspector.
-      // The assigned_user_ids column stores a JSON array of user UUIDs.
-      const filtered = user?.id
-        ? cached.filter((c) => {
-            try {
-              const ids = JSON.parse(c.assigned_user_ids || "[]") as string[];
-              return ids.includes(user.id);
-            } catch {
-              return false;
-            }
-          })
-        : cached;
-      setInspections(filtered);
       const pending = await queue.getPendingOperations();
       setPendingCount(pending.length);
       setPendingMedia(await queue.getPendingMediaUploads());
@@ -71,27 +62,15 @@ export default function InspectorDashboardScreen() {
     } catch (err) {
       console.warn("Error reading SQLite local state:", err);
     }
-  }, [queue, refreshPendingCount, user?.id]);
+  }, [queue, refreshPendingCount]);
 
   useEffect(() => {
-    loadLocalState();
-  }, [loadLocalState, client]);
+    void loadPendingState();
+  }, [loadPendingState, client]);
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      if (client) {
-        const page = await client.listInspections({ pageSize: 50 });
-        if (page.items.length > 0) {
-          await queue.cacheInspections(page.items);
-        }
-      }
-      await loadLocalState();
-    } catch {
-      await loadLocalState();
-    } finally {
-      setRefreshing(false);
-    }
+    await refreshInspections();
+    await loadPendingState();
   };
 
   const handleSyncNow = async () => {
@@ -102,7 +81,9 @@ export default function InspectorDashboardScreen() {
     setSyncing(true);
     try {
       await queue.sync(client);
-      await loadLocalState();
+      // Re-read after reconciliation: the server now holds the accepted states.
+      await refreshInspections();
+      await loadPendingState();
       setShowUploads(false);
       Alert.alert("Sync Complete", "Inspections synchronised with central server.");
     } catch (err) {
