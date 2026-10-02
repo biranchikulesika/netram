@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, useEffect, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { NetramApiClient } from "@netram/api-client";
 import { loadMobileEnv } from "@netram/config/env/mobile";
@@ -55,6 +55,25 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       ? window.location.origin
       : rawApiBase;
 
+  // An expired or rejected token must not look like an empty inspection list.
+  // Dev tokens expire after 8h with no refresh, so a session restored from
+  // SecureStore can be dead on arrival. Drop it and return the user to login.
+  const handleUnauthorized = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    void clearSession();
+  }, []);
+
+  const makeClient = useCallback(
+    (token: string) =>
+      new NetramApiClient({
+        baseUrl: apiBase,
+        getToken: () => token,
+        onUnauthorized: handleUnauthorized,
+      }),
+    [apiBase, handleUnauthorized],
+  );
+
   useEffect(() => {
     let mounted = true;
     async function initSession() {
@@ -63,10 +82,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         if (mounted && stored?.token && stored?.user) {
           setToken(stored.token);
           setUser(stored.user);
-          const restoredClient = new NetramApiClient({
-            baseUrl: apiBase,
-            getToken: () => stored.token,
-          });
+          const restoredClient = makeClient(stored.token);
           void registerForPushNotifications(restoredClient);
         }
       } catch (err) {
@@ -83,14 +99,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       mounted = false;
     };
-  }, [apiBase]);
+  }, [makeClient]);
 
-  const client = token
-    ? new NetramApiClient({
-        baseUrl: apiBase,
-        getToken: () => token,
-      })
-    : null;
+  const client = token ? makeClient(token) : null;
 
   const login = async (email: string, password?: string) => {
     const normalized = email.trim();
@@ -98,10 +109,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     setToken(session.token);
     setUser(session.user);
 
-    const newClient = new NetramApiClient({
-      baseUrl: apiBase,
-      getToken: () => session.token,
-    });
+    const newClient = makeClient(session.token);
     void registerForPushNotifications(newClient);
   };
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { NetramApiClient } from "@netram/api-client";
+import { ApiError, type NetramApiClient } from "@netram/api-client";
 import type { Inspection } from "@netram/types";
 import { InMemorySqliteDatabase, setTestDatabase } from "./db";
 import { OfflineInspectionQueue, type CachedInspectionRecord } from "./queue";
@@ -97,7 +97,7 @@ describe("Assigned inspection feed", () => {
         })),
       } as unknown as NetramApiClient;
 
-      await expect(refreshInspectionsFromServer(client, queue)).resolves.toBe(true);
+      await expect(refreshInspectionsFromServer(client, queue)).resolves.toBe("refreshed");
       expect(client.listInspections).toHaveBeenCalledWith({ pageSize: 50 });
 
       const cached = await queue.getCachedInspections();
@@ -114,7 +114,24 @@ describe("Assigned inspection feed", () => {
         }),
       } as unknown as NetramApiClient;
 
-      await expect(refreshInspectionsFromServer(client, queue)).resolves.toBe(false);
+      await expect(refreshInspectionsFromServer(client, queue)).resolves.toBe("unavailable");
+      expect(await queue.getCachedInspections()).toHaveLength(1);
+    });
+
+    it("reports an expired session distinctly from being offline", async () => {
+      // A 401 must never be reported as a plain failure: collapsed into the same
+      // result it renders as an empty assignment list for a signed-in inspector.
+      await queue.cacheInspections([inspection("insp-cached", [INSPECTOR_ID])]);
+
+      const client = {
+        listInspections: vi.fn(async () => {
+          throw new ApiError(401, {
+            error: { code: "UNAUTHORIZED", message: "Invalid or expired token." },
+          });
+        }),
+      } as unknown as NetramApiClient;
+
+      await expect(refreshInspectionsFromServer(client, queue)).resolves.toBe("unauthorized");
       expect(await queue.getCachedInspections()).toHaveLength(1);
     });
 
@@ -125,7 +142,7 @@ describe("Assigned inspection feed", () => {
         listInspections: vi.fn(async () => ({ items: [], total: 0, page: 1, pageSize: 50 })),
       } as unknown as NetramApiClient;
 
-      await expect(refreshInspectionsFromServer(client, queue)).resolves.toBe(true);
+      await expect(refreshInspectionsFromServer(client, queue)).resolves.toBe("refreshed");
       expect(await queue.getCachedInspections()).toHaveLength(1);
     });
   });
