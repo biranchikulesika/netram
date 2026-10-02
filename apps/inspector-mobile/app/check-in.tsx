@@ -436,7 +436,7 @@ export default function MapScreen() {
       if (client) {
         // Geofences are best effort: a map failure must not hide assignments.
         void client.listProjectGeofences().then(setRemoteGeofences).catch(() => {});
-        if (await refreshInspectionsFromServer(client, queue)) {
+        if (await refreshInspectionsFromServer(client, queue) !== "unavailable") {
           setCachedInspections(
             filterAssignedInspections(await queue.getCachedInspections(), user?.id),
           );
