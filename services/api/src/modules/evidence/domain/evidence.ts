@@ -39,7 +39,7 @@ export function evaluateEvidenceIntegrity(
 /**
  * Decide the integrity outcome of a server-side upload against the
  * capture-time hash. Returns null when no capture-time hash was recorded
- * (nothing to compare against — the upload hash becomes authoritative instead).
+ * (nothing to compare against - the upload hash becomes authoritative instead).
  */
 export function decideIntegrityAfterUpload(
   storedHash: string | null,

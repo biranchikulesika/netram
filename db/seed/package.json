@@ -1,0 +1,16 @@
+{
+  "name": "@netram/seed",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic development seed data (development/demo only)",
+  "dependencies": {
+    "@netram/data": "workspace:*",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.19.2"
+  }
+}

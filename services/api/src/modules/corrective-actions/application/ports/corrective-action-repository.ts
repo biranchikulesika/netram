@@ -1,6 +1,7 @@
 import type {
   AuditAction,
   CorrectiveAction,
+  CorrectiveActionFile,
   CorrectiveActionStatus,
   DomainEventType,
   UUID,
@@ -24,10 +25,32 @@ export interface CreateCorrectiveActionCommand extends CorrectiveActionWriteCont
   deadline: Date | string | null;
 }
 
-export interface TransitionCorrectiveActionCommand extends CorrectiveActionWriteContext {
+/**
+ * Corrective action status is a byproduct of recorded work - never a manual
+ * toggle. The target status and work fields are persisted atomically with the
+ * audit record and outbox event.
+ */
+export interface CorrectiveActionWorkCommand extends CorrectiveActionWriteContext {
   correctiveActionId: UUID;
   to: CorrectiveActionStatus;
   note: string | null;
+  /** ATR content supplied on the submit step (docs/DoSJE.md §16). */
+  actionSummary?: string | null;
+  /** Attachments lodged with the ATR; replaces any earlier submission's files. */
+  files?: {
+    id: UUID;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    contentHash: string;
+    storageKey: string;
+  }[];
+}
+
+export interface CorrectiveActionFileWithStorageKey {
+  file: CorrectiveActionFile;
+  correctiveActionId: UUID;
+  storageKey: string;
 }
 
 export interface CorrectiveActionWithDistrict extends CorrectiveAction {
@@ -48,9 +71,10 @@ export interface CorrectiveActionRepositoryPort {
   list(filter: CorrectiveActionListFilter): Promise<{ items: CorrectiveAction[]; total: number }>;
   findById(id: UUID): Promise<CorrectiveActionWithDistrict | null>;
   createWithAuditAndEvent(cmd: CreateCorrectiveActionCommand): Promise<CorrectiveAction>;
-  transitionWithAuditAndEvent(
-    cmd: TransitionCorrectiveActionCommand,
+  applyWorkWithAuditAndEvent(
+    cmd: CorrectiveActionWorkCommand,
   ): Promise<CorrectiveActionWithDistrict>;
+  findFileById(id: UUID): Promise<CorrectiveActionFileWithStorageKey | null>;
   markOverdueActions(actorUserId?: string | null): Promise<{
     count: number;
     actionIds: string[];

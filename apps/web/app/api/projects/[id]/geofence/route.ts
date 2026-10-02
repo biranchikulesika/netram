@@ -4,10 +4,7 @@ import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
 import { SESSION_COOKIE } from "@/lib/api";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) {
@@ -20,7 +17,7 @@ export async function GET(
   const { id } = await params;
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/projects/${id}/geofence`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/projects/${id}/geofence`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -31,10 +28,7 @@ export async function GET(
   return NextResponse.json(payload, { status: res.status });
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) {
@@ -48,7 +42,7 @@ export async function POST(
   const body = await request.json();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/projects/${id}/geofence`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/projects/${id}/geofence`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

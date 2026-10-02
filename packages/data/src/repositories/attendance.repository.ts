@@ -19,6 +19,7 @@ import {
   auditEvents,
   outboxEvents,
   projects as projectsTable,
+  users as usersTable,
 } from "../db/schema.js";
 import type { DrizzleDB } from "../db/client.js";
 import type {
@@ -186,10 +187,15 @@ function toObservation(row: ObservationRow): AttendanceSourceObservation {
   };
 }
 
-function toCalculation(row: CalculationRow): AttendanceCalculation {
+function toCalculation(
+  row: CalculationRow,
+  project: { code: string; name: string },
+): AttendanceCalculation {
   return {
     id: row.id,
     projectId: row.projectId,
+    projectCode: project.code,
+    projectName: project.name,
     windowId: row.windowId,
     operationalDate: row.operationalDate,
     expected: row.expected,
@@ -203,6 +209,12 @@ function toCalculation(row: CalculationRow): AttendanceCalculation {
     policy: row.policy ?? {},
     computedAt: row.computedAt.toISOString(),
   };
+}
+
+/** Facility identity attached to a calculation row, so the API discloses it. */
+interface CalculationProjectRef {
+  code: string;
+  name: string;
 }
 
 function toDq(row: DqRow): AttendanceDataQuality {
@@ -234,7 +246,13 @@ function toGroup(row: GroupRow): AttendanceAnomalyGroup {
   };
 }
 
-function toAnomaly(row: AnomalyRow & { projectCode: string | null; projectName: string | null; districtId: string | null }): AttendanceAnomaly {
+function toAnomaly(
+  row: AnomalyRow & {
+    projectCode: string | null;
+    projectName: string | null;
+    districtId: string | null;
+  },
+): AttendanceAnomaly {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -315,6 +333,12 @@ function toExport(row: ExportRow): AttendanceExport {
 /* ---------- Write types ---------- */
 
 export interface RawTransactionWrite {
+  /**
+   * Optional explicit id. Callers that need a stable, reproducible id (the
+   * deterministic seed, which must mint ids via `did()`) supply it; everyone
+   * else inherits the `defaultRandom()` primary key.
+   */
+  id?: string;
   deviceId: string;
   externalUserId: string;
   deviceEventId: string | null;
@@ -444,8 +468,13 @@ export class AttendanceRepository {
     return rows[0] ? toDevice(rows[0]) : null;
   }
 
-  async listDevices(filter: { projectId?: string; jurisdictionIds?: string[] }): Promise<
-    Array<AttendanceDevice & { projectCode: string; projectName: string; districtId: string | null }>
+  async listDevices(filter: {
+    projectId?: string;
+    jurisdictionIds?: string[];
+  }): Promise<
+    Array<
+      AttendanceDevice & { projectCode: string; projectName: string; districtId: string | null }
+    >
   > {
     const scope = filter.jurisdictionIds?.length
       ? inArray(projectsTable.districtId, filter.jurisdictionIds)
@@ -482,10 +511,7 @@ export class AttendanceRepository {
   }
 
   async listPopulationMembers(populationId: string): Promise<MemberRow[]> {
-    return this.db
-      .select()
-      .from(membersTable)
-      .where(eq(membersTable.populationId, populationId));
+    return this.db.select().from(membersTable).where(eq(membersTable.populationId, populationId));
   }
 
   async listWindows(projectId: string): Promise<AttendanceWindow[]> {
@@ -579,7 +605,11 @@ export class AttendanceRepository {
     return rows[0]!;
   }
 
-  async listIdentityMappings(filter: { projectId: string; page: number; pageSize: number }): Promise<{
+  async listIdentityMappings(filter: {
+    projectId: string;
+    page: number;
+    pageSize: number;
+  }): Promise<{
     items: IdentityMappingRow[];
     total: number;
   }> {
@@ -646,7 +676,10 @@ export class AttendanceRepository {
 
   async insertEvents(events: NormalizedEventWrite[]): Promise<void> {
     if (events.length === 0) return;
-    await this.db.insert(eventsTable).values(events.map((e) => ({ ...e })));
+    await this.db
+      .insert(eventsTable)
+      .values(events.map((e) => ({ ...e })))
+      .onConflictDoNothing();
   }
 
   async listEventsForCalculation(
@@ -687,15 +720,14 @@ export class AttendanceRepository {
     projectId: string,
     personExternalId: string,
     opts: { windowId?: string; operationalDate?: string; from?: string; to?: string } = {},
-  ): Promise<
-    Array<EventRow & { deviceName: string | null; windowCode: string | null }>
-  > {
+  ): Promise<Array<EventRow & { deviceName: string | null; windowCode: string | null }>> {
     const conditions = [
       eq(eventsTable.projectId, projectId),
       eq(eventsTable.personExternalId, personExternalId),
     ];
     if (opts.windowId) conditions.push(eq(eventsTable.windowId, opts.windowId));
-    if (opts.operationalDate) conditions.push(eq(eventsTable.operationalDate, opts.operationalDate));
+    if (opts.operationalDate)
+      conditions.push(eq(eventsTable.operationalDate, opts.operationalDate));
     if (opts.from) conditions.push(gte(eventsTable.operationalDate, opts.from));
     if (opts.to) conditions.push(lte(eventsTable.operationalDate, opts.to));
 
@@ -733,9 +765,11 @@ export class AttendanceRepository {
     return toObservation(rows[0]!);
   }
 
-  async listSourceObservations(
-    filter: { projectId: string; from?: string; to?: string },
-  ): Promise<AttendanceSourceObservation[]> {
+  async listSourceObservations(filter: {
+    projectId: string;
+    from?: string;
+    to?: string;
+  }): Promise<AttendanceSourceObservation[]> {
     const conditions = [eq(observationsTable.projectId, filter.projectId)];
     if (filter.from) conditions.push(gte(observationsTable.operationalDate, filter.from));
     if (filter.to) conditions.push(lte(observationsTable.operationalDate, filter.to));
@@ -793,7 +827,11 @@ export class AttendanceRepository {
         computedAt: new Date(),
       })
       .onConflictDoUpdate({
-        target: [calculationsTable.projectId, calculationsTable.windowId, calculationsTable.operationalDate],
+        target: [
+          calculationsTable.projectId,
+          calculationsTable.windowId,
+          calculationsTable.operationalDate,
+        ],
         set: {
           expected: c.expected,
           present: c.present,
@@ -808,7 +846,17 @@ export class AttendanceRepository {
         },
       })
       .returning();
-    return toCalculation(rows[0]!);
+    return toCalculation(rows[0]!, await this.projectRef(rows[0]!.projectId));
+  }
+
+  /** Facility identity for calculations whose query has no projects join. */
+  private async projectRef(projectId: string): Promise<CalculationProjectRef> {
+    const rows = await this.db
+      .select({ code: projectsTable.code, name: projectsTable.name })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+    return rows[0] ?? { code: "-", name: "Unknown facility" };
   }
 
   async listCalculations(filter: AttendanceCalculationListFilter): Promise<{
@@ -828,7 +876,11 @@ export class AttendanceRepository {
 
     const [rows, count] = await Promise.all([
       this.db
-        .select({ calc: calculationsTable })
+        .select({
+          calc: calculationsTable,
+          projectCode: projectsTable.code,
+          projectName: projectsTable.name,
+        })
         .from(calculationsTable)
         .innerJoin(projectsTable, eq(calculationsTable.projectId, projectsTable.id))
         .where(and(where, scope))
@@ -842,7 +894,12 @@ export class AttendanceRepository {
         .where(and(where, scope)),
     ]);
     return {
-      items: rows.map((r) => toCalculation(r.calc as unknown as CalculationRow)),
+      items: rows.map((r) =>
+        toCalculation(r.calc as unknown as CalculationRow, {
+          code: r.projectCode,
+          name: r.projectName,
+        }),
+      ),
       total: count[0]?.count ?? 0,
     };
   }
@@ -853,7 +910,7 @@ export class AttendanceRepository {
       .from(calculationsTable)
       .where(eq(calculationsTable.id, id))
       .limit(1);
-    return rows[0] ? toCalculation(rows[0]) : null;
+    return rows[0] ? toCalculation(rows[0], await this.projectRef(rows[0].projectId)) : null;
   }
 
   async updateCalculationDerived(
@@ -865,10 +922,10 @@ export class AttendanceRepository {
       .set({ ...update, computedAt: new Date() })
       .where(eq(calculationsTable.id, id))
       .returning();
-    return rows[0] ? toCalculation(rows[0]) : null;
+    return rows[0] ? toCalculation(rows[0], await this.projectRef(rows[0].projectId)) : null;
   }
 
-  /** All calculations matching scope/filters (unpaginated) — for CSV exports. */
+  /** All calculations matching scope/filters (unpaginated) - for CSV exports. */
   async listAllCalculations(filter: {
     projectId?: string;
     jurisdictionIds?: string[];
@@ -883,12 +940,21 @@ export class AttendanceRepository {
       ? inArray(projectsTable.districtId, filter.jurisdictionIds)
       : undefined;
     const rows = await this.db
-      .select({ calc: calculationsTable })
+      .select({
+        calc: calculationsTable,
+        projectCode: projectsTable.code,
+        projectName: projectsTable.name,
+      })
       .from(calculationsTable)
       .innerJoin(projectsTable, eq(calculationsTable.projectId, projectsTable.id))
       .where(and(and(...conditions), scope))
       .orderBy(desc(calculationsTable.operationalDate));
-    return rows.map((r) => toCalculation(r.calc as unknown as CalculationRow));
+    return rows.map((r) =>
+      toCalculation(r.calc as unknown as CalculationRow, {
+        code: r.projectCode,
+        name: r.projectName,
+      }),
+    );
   }
 
   /** Aggregate-first overview rows: latest calculations + project context. */
@@ -938,9 +1004,10 @@ export class AttendanceRepository {
     ]);
     return {
       items: rows.map((r) => ({
-        ...toCalculation(r.calc as unknown as CalculationRow),
-        projectCode: r.projectCode,
-        projectName: r.projectName,
+        ...toCalculation(r.calc as unknown as CalculationRow, {
+          code: r.projectCode,
+          name: r.projectName,
+        }),
         districtId: r.districtId,
       })),
       total: count[0]?.count ?? 0,
@@ -978,7 +1045,7 @@ export class AttendanceRepository {
       .where(eq(calculationsTable.projectId, projectId))
       .orderBy(desc(calculationsTable.computedAt))
       .limit(1);
-    return rows[0] ? toCalculation(rows[0]) : null;
+    return rows[0] ? toCalculation(rows[0], await this.projectRef(rows[0].projectId)) : null;
   }
 
   async listHistoricalPresent(
@@ -1068,7 +1135,9 @@ export class AttendanceRepository {
         and(
           eq(groupsTable.projectId, projectId),
           eq(groupsTable.anomalyType, anomalyType),
-          populationId ? eq(groupsTable.populationId, populationId) : isNull(groupsTable.populationId),
+          populationId
+            ? eq(groupsTable.populationId, populationId)
+            : isNull(groupsTable.populationId),
           eq(groupsTable.state, "NEW"),
         ),
       )
@@ -1126,7 +1195,11 @@ export class AttendanceRepository {
       projectCode: r.projectCode,
       projectName: r.projectName,
       districtId: r.districtId,
-    } as unknown as AnomalyRow & { projectCode: string | null; projectName: string | null; districtId: string | null });
+    } as unknown as AnomalyRow & {
+      projectCode: string | null;
+      projectName: string | null;
+      districtId: string | null;
+    });
   }
 
   async listAnomalies(filter: AttendanceAnomalyListFilter): Promise<{
@@ -1164,7 +1237,11 @@ export class AttendanceRepository {
           projectCode: r.projectCode,
           projectName: r.projectName,
           districtId: r.districtId,
-        } as unknown as AnomalyRow & { projectCode: string | null; projectName: string | null; districtId: string | null }),
+        } as unknown as AnomalyRow & {
+          projectCode: string | null;
+          projectName: string | null;
+          districtId: string | null;
+        }),
       ),
       total: count[0]?.count ?? 0,
     };
@@ -1182,7 +1259,9 @@ export class AttendanceRepository {
           eq(anomaliesTable.projectId, projectId),
           eq(anomaliesTable.anomalyType, anomalyType),
           windowId ? eq(anomaliesTable.windowId, windowId) : isNull(anomaliesTable.windowId),
-          operationalDate ? eq(anomaliesTable.operationalDate, operationalDate) : isNull(anomaliesTable.operationalDate),
+          operationalDate
+            ? eq(anomaliesTable.operationalDate, operationalDate)
+            : isNull(anomaliesTable.operationalDate),
           inArray(anomaliesTable.state, ["NEW", "REVIEWED", "INVESTIGATING"]),
         ),
       )
@@ -1194,7 +1273,11 @@ export class AttendanceRepository {
       projectCode: r.projectCode,
       projectName: r.projectName,
       districtId: r.districtId,
-    } as unknown as AnomalyRow & { projectCode: string | null; projectName: string | null; districtId: string | null });
+    } as unknown as AnomalyRow & {
+      projectCode: string | null;
+      projectName: string | null;
+      districtId: string | null;
+    });
   }
 
   /** Recomputes an unreviewed (NEW) anomaly in place + audit + outbox (§33). */
@@ -1339,7 +1422,10 @@ export class AttendanceRepository {
     return toCorrection(rows[0]!);
   }
 
-  async listCorrections(filter: { projectId: string; status?: string }): Promise<AttendanceCorrection[]> {
+  async listCorrections(filter: {
+    projectId: string;
+    status?: string;
+  }): Promise<AttendanceCorrection[]> {
     const rows = await this.db
       .select()
       .from(correctionsTable)
@@ -1383,6 +1469,13 @@ export class AttendanceRepository {
     requestedBy: string;
     scope: Record<string, unknown>;
     format: "csv";
+    /**
+     * Optional explicit request time. Defaults to the column's `now()`, which is
+     * correct for a live request but not for the deterministic seed, where
+     * `generatedAt`/`expiresAt` are offsets from a literal date and would
+     * otherwise land *before* the row's own `requestedAt`.
+     */
+    requestedAt?: Date;
   }): Promise<AttendanceExport> {
     const rows = await this.db
       .insert(exportsTable)
@@ -1485,6 +1578,49 @@ export class AttendanceRepository {
       resourceId: write.resourceId,
       payload: write.payload as never,
     });
+  }
+
+  /**
+   * Pending corrections across the caller's jurisdiction (Action Inbox,
+   * AGENTS.md §16-§17). The caller's corrections endpoint is project-scoped;
+   * the inbox needs a cross-project, jurisdiction-scoped read so approvers see
+   * every pending correction they could lawfully decide on. Joins the project
+   * for name/district context.
+   */
+  async listPendingCorrections(jurisdictionIds?: string[]): Promise<
+    (AttendanceCorrection & {
+      projectCode: string | null;
+      projectName: string | null;
+      districtId: string | null;
+      requesterName: string | null;
+    })[]
+  > {
+    const rows = await this.db
+      .select({
+        correction: correctionsTable,
+        projectCode: projectsTable.code,
+        projectName: projectsTable.name,
+        districtId: projectsTable.districtId,
+        requesterName: usersTable.displayName,
+      })
+      .from(correctionsTable)
+      .innerJoin(projectsTable, eq(correctionsTable.projectId, projectsTable.id))
+      .leftJoin(usersTable, eq(correctionsTable.requestedBy, usersTable.id))
+      .where(
+        and(
+          eq(correctionsTable.status, "PENDING"),
+          jurisdictionIds?.length ? inArray(projectsTable.districtId, jurisdictionIds) : undefined,
+        ),
+      )
+      .orderBy(desc(correctionsTable.createdAt))
+      .limit(100);
+    return rows.map((r) => ({
+      ...toCorrection(r.correction as CorrectionRow),
+      projectCode: r.projectCode,
+      projectName: r.projectName,
+      districtId: r.districtId,
+      requesterName: r.requesterName,
+    }));
   }
 
   async projectDistrictId(projectId: string): Promise<string | null> {

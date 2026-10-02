@@ -20,6 +20,30 @@ export interface District {
   name: string;
 }
 
+/** Sub-district unit (tehsil/block). Needed for village-based audit targets. */
+export interface Block {
+  id: UUID;
+  districtId: UUID;
+  code: string;
+  name: string;
+}
+
+/** Gram Panchayat under a block. */
+export interface GramPanchayat {
+  id: UUID;
+  blockId: UUID;
+  code: string;
+  name: string;
+}
+
+/** Revenue village under a gram panchayat. */
+export interface Village {
+  id: UUID;
+  gramPanchayatId: UUID;
+  code: string;
+  name: string;
+}
+
 export interface GeographyRef {
   countryId: UUID;
   stateId: UUID;

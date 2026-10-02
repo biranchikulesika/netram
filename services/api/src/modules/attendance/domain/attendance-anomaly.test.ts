@@ -106,8 +106,12 @@ describe("attendance anomaly domain", () => {
     });
 
     it("reduces confidence with poor coverage or quality", () => {
-      expect(confidenceFor(0.5, "INSUFFICIENT", "GOOD")).toBeLessThan(confidenceFor(0.5, "COMPLETE", "GOOD"));
-      expect(confidenceFor(0.5, "COMPLETE", "POOR")).toBeLessThan(confidenceFor(0.5, "COMPLETE", "GOOD"));
+      expect(confidenceFor(0.5, "INSUFFICIENT", "GOOD")).toBeLessThan(
+        confidenceFor(0.5, "COMPLETE", "GOOD"),
+      );
+      expect(confidenceFor(0.5, "COMPLETE", "POOR")).toBeLessThan(
+        confidenceFor(0.5, "COMPLETE", "GOOD"),
+      );
     });
   });
 

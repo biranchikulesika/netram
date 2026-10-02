@@ -1,0 +1,33 @@
+diff --git a/src/Assets.js b/src/Assets.js
+index a94d722574aab457395814e858fcf36741714feb..b21e22058e461e2859a36ddebb2cbf41f03b88f3 100644
+--- a/src/Assets.js
++++ b/src/Assets.js
+@@ -3,7 +3,27 @@
+ const AssetPaths = require("./node-haste/lib/AssetPaths");
+ const crypto = require("crypto");
+ const fs = require("fs");
+-const getImageSize = require("image-size");
++// Netram patch: image-size >= 2.0.3 fixes the JXL/HEIF/ICNS parser DoS
++// (GHSA-5p2g-fcmc-qvqq and ICNS advisory) but its CJS export is a namespace
++// object, not the callable metro expects. Support both 1.x (callable) and
++// 2.x (.imageSize / .default) so the patched version can be forced via
++// the pnpm override in pnpm-workspace.yaml.
++const _imageSizeModule = require("image-size");
++const _imageSizeIsLegacyCallable = typeof _imageSizeModule === "function";
++const getImageSize = (input) => {
++  const resolved = _imageSizeIsLegacyCallable
++    ? _imageSizeModule
++    : typeof _imageSizeModule.imageSize === "function"
++      ? _imageSizeModule.imageSize
++      : _imageSizeModule.default;
++  // image-size 2.x's sync API accepts only buffers; metro may pass a path
++  // string (see getAssetData's zip vs plain-file handling below).
++  const arg =
++    !_imageSizeIsLegacyCallable && typeof input === "string"
++      ? fs.readFileSync(input)
++      : input;
++  return resolved(arg);
++};
+ const path = require("path");
+ function isAssetTypeAnImage(type) {
+   return (

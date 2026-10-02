@@ -4,10 +4,7 @@ import { NextResponse } from "next/server";
 import { loadClientEnv } from "@netram/config";
 import { SESSION_COOKIE } from "../../../../lib/api";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
@@ -21,7 +18,7 @@ export async function PATCH(
   const body = await request.json();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/projects/${id}`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/projects/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

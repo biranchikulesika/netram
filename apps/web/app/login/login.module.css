@@ -1,4 +1,4 @@
-/* Netram Login Page Styles — Strict Implementation of DESIGN.md */
+/* Netram Login Page Styles - Strict Implementation of DESIGN.md */
 
 .pageWrapper {
   min-height: 100vh;
@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: var(--bg-canvas, #f6f8fc);
+  background-color: var(--bg-canvas, #edf0f5);
   color: var(--text-primary, #0c2a52);
   padding: 2rem 1.25rem;
   box-sizing: border-box;
@@ -15,54 +15,51 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Institutional Top Header */
-.topBar {
-  width: 100%;
-  max-width: 440px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: auto;
-  margin-bottom: 1.5rem;
-  padding: 0 0.25rem;
-}
-
-.deptAffiliation {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted, #475569);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.ashokaPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-navy-dark, #002449);
-  color: #ffffff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  letter-spacing: 0.08em;
-}
-
 /* Central Card */
+/* Masthead - shared by every public page, see ../components/masthead.module.css.
+   Do not re-add it here; a private copy is how the old, false "Government of
+   India" identity survived across three pages at once. */
+
+/* Bottom cross-navigation */
+.crossLinks {
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-subtle, var(--color-border-subtle));
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.crossBtn {
+  color: var(--color-accent-blue, #0c2a52);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.crossBtn + .crossBtn {
+  padding-left: 1rem;
+  margin-left: 0.6rem;
+  border-left: 1px solid var(--color-border-subtle, var(--color-border-strong));
+}
+
+.crossBtn:hover,
+.crossBtn:focus-visible {
+  text-decoration: underline;
+}
+
 .mainContainer {
   width: 100%;
   max-width: 440px;
-  margin: 0 auto;
-  margin-bottom: auto;
+  margin: auto;
   padding: 0;
 }
 
 .loginCard {
   background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--color-border-subtle, #e2e8f0);
+  border: 1px solid var(--color-border-subtle, var(--color-border-subtle));
   border-radius: 12px;
   padding: 2.25rem 2rem;
   box-shadow:
@@ -90,7 +87,7 @@
 
 .brandSubtitle {
   font-size: 0.825rem;
-  color: var(--text-muted, #475569);
+  color: var(--text-muted, var(--text-muted));
   font-weight: 500;
   margin: 0;
   line-height: 1.45;
@@ -98,40 +95,6 @@
 
 .formContainer {
   width: 100%;
-}
-
-.cardHeader {
-  margin-bottom: 1.35rem;
-  border-bottom: 1px solid var(--color-border-subtle, #e2e8f0);
-  padding-bottom: 0.85rem;
-}
-
-.sectionEyebrow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem; /* 11px */
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-accent-blue, #3a488b);
-  margin-bottom: 0.35rem;
-}
-
-.formTitle {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-primary, #0c2a52);
-  margin: 0 0 0.25rem;
-  letter-spacing: -0.015em;
-}
-
-.formDescription {
-  font-size: 0.8125rem;
-  color: var(--text-muted, #475569);
-  margin: 0;
-  line-height: 1.45;
 }
 
 /* Form Layout */
@@ -147,45 +110,6 @@
   gap: 0.35rem;
 }
 
-.labelRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-primary, #0c2a52);
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.requiredAsterisk {
-  color: var(--tag-rust, #c2410c);
-  font-weight: 700;
-}
-
-.forgotLink {
-  font-size: 0.775rem;
-  font-weight: 500;
-  color: var(--color-accent-blue, #3a488b);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.forgotLink:hover,
-.forgotLink:focus-visible {
-  color: var(--text-primary, #0c2a52);
-  text-decoration: underline;
-  outline: none;
-}
-
 .inputWrapper {
   position: relative;
   display: flex;
@@ -195,7 +119,7 @@
 .inputPrefixIcon {
   position: absolute;
   left: 0.85rem;
-  color: var(--text-subtle, #64748b);
+  color: var(--text-subtle, var(--text-subtle));
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -208,10 +132,12 @@
   font-size: 0.925rem;
   color: var(--text-primary, #0c2a52);
   background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--color-border-strong, #cbd5e1);
+  border: 1px solid var(--color-border-strong, var(--color-border-strong));
   border-radius: 8px;
   padding: 0.65rem 0.85rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   line-height: 1.5;
 }
 
@@ -224,22 +150,22 @@
 }
 
 .input::placeholder {
-  color: var(--text-subtle, #94a3b8);
+  color: var(--text-subtle, var(--text-subtle));
 }
 
 .input:hover {
-  border-color: var(--color-accent-blue, #3a488b);
+  border-color: var(--color-accent-blue, #0c2a52);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--color-accent-blue, #3a488b);
-  box-shadow: 0 0 0 3px rgba(58, 72, 139, 0.18);
+  border-color: var(--color-accent-blue, #0c2a52);
+  box-shadow: 0 0 0 3px rgba(12, 42, 82, 0.18);
 }
 
 .inputError {
   border-color: var(--color-error, #dc2626) !important;
-  background: #fffcfc;
+  background: #ffffff;
 }
 
 .inputError:focus {
@@ -269,20 +195,21 @@
   border-radius: 6px;
   border: none;
   background: transparent;
-  color: var(--text-muted, #475569);
+  box-shadow: none;
+  color: var(--text-muted, var(--text-muted));
   cursor: pointer;
   padding: 0;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .togglePasswordButton:hover {
   color: var(--text-primary, #0c2a52);
-  background: var(--bg-subtle, #f3f6fb);
 }
 
 .togglePasswordButton:focus-visible {
-  outline: 2px solid var(--color-accent-blue, #3a488b);
+  outline: 2px solid var(--color-accent-blue, #0c2a52);
   outline-offset: 1px;
+  box-shadow: none;
 }
 
 /* Alert / Error Banner */
@@ -290,11 +217,11 @@
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--tint-red);
+  border: 1px solid var(--tint-red);
   border-radius: 8px;
   padding: 0.75rem 0.9rem;
-  color: #991b1b;
+  color: #dc2626;
   font-size: 0.8125rem;
   line-height: 1.45;
   margin-bottom: 1rem;
@@ -318,7 +245,7 @@
 .alertCloseButton {
   background: none;
   border: none;
-  color: #991b1b;
+  color: #dc2626;
   cursor: pointer;
   padding: 0.2rem;
   line-height: 1;
@@ -329,14 +256,14 @@
   background: rgba(220, 38, 38, 0.1);
 }
 
-/* Primary Action Button — Institutional Green per DESIGN.md */
+/* Primary Action Button - Institutional Green per DESIGN.md */
 .submitButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  background: linear-gradient(to right, var(--action-green, #15803d), var(--action-green-dark, #0e7a34));
+  background: var(--action-green);
   color: #ffffff;
   font-family: inherit;
   font-size: 0.925rem;
@@ -345,19 +272,23 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: filter 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 1px 3px 0 rgba(14, 122, 52, 0.25);
+  transition:
+    filter 0.15s ease,
+    box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px 0 rgba(19, 126, 58, 0.25);
   margin-top: 0.35rem;
 }
 
 .submitButton:hover:not(:disabled) {
   filter: brightness(1.08);
-  box-shadow: 0 2px 6px 0 rgba(14, 122, 52, 0.35);
+  box-shadow: 0 2px 6px 0 rgba(19, 126, 58, 0.35);
 }
 
 .submitButton:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #86efac, 0 0 0 4px #ffffff;
+  box-shadow:
+    0 0 0 2px var(--tint-green),
+    0 0 0 4px #ffffff;
 }
 
 .submitButton:disabled {
@@ -382,115 +313,92 @@
 }
 
 /* Institutional Help Modal / Callout */
-.infoBox {
-  background: var(--bg-subtle, #f3f6fb);
-  border: 1px solid var(--color-border-subtle, #e2e8f0);
-  border-radius: 8px;
-  padding: 0.85rem;
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--text-muted, #475569);
-  line-height: 1.45;
-}
-
-.infoBoxHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-  color: var(--text-primary, #0c2a52);
-  margin-bottom: 0.35rem;
-}
-
-.infoBoxClose {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  line-height: 1;
-  color: var(--text-subtle, #64748b);
-  cursor: pointer;
-  padding: 0 0.25rem;
-}
-
-.infoBoxClose:hover {
-  color: var(--text-primary, #0c2a52);
-}
-
 /* Development Quick-Fill Helper */
 .devSection {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px dashed var(--color-border-strong, #cbd5e1);
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--color-border-strong, var(--color-border-strong));
 }
 
 .devToggle {
   background: none;
   border: none;
+  box-shadow: none;
   padding: 0;
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted, #475569);
+  color: var(--text-muted, var(--text-muted));
   cursor: pointer;
-  width: 100%;
-  text-align: left;
+  text-align: center;
 }
 
 .devToggle:hover {
   color: var(--text-primary, #0c2a52);
 }
 
-.devBadge {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.65rem;
-  font-weight: 700;
-  background: var(--bg-subtle, #f3f6fb);
-  color: var(--text-muted, #475569);
-  border: 1px solid var(--color-border-strong, #cbd5e1);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.devToggle:focus-visible {
+  outline: 2px solid var(--color-accent-blue, #0c2a52);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.devChevron {
+  transition: transform 0.15s ease;
+}
+
+.devToggle[aria-expanded="true"] .devChevron {
+  transform: rotate(180deg);
 }
 
 .devAccountsList {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
 }
 
 .devAccountButton {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  background: var(--bg-subtle, #f3f6fb);
-  border: 1px solid var(--color-border-subtle, #e2e8f0);
-  border-radius: 6px;
-  padding: 0.45rem 0.65rem;
-  font-size: 0.75rem;
-  color: var(--text-primary, #0c2a52);
+  gap: 0.35rem;
+  background: var(--bg-subtle, #edf0f5);
+  border: 1px solid transparent;
+  box-shadow: none;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--text-muted));
   cursor: pointer;
-  text-align: left;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .devAccountButton:hover {
-  background: var(--bg-hover, #edf2fa);
-  border-color: var(--color-accent-blue, #3a488b);
+  background: var(--bg-hover, #edf0f5);
+  color: var(--text-primary, #0c2a52);
+}
+
+.devAccountButton:focus-visible {
+  outline: 2px solid var(--color-accent-blue, #0c2a52);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+/* Seeded account currently sitting in the email field. */
+.devAccountActive {
+  background: rgba(12, 42, 82, 0.12);
   color: var(--text-primary, #0c2a52);
 }
 
 .devAccountRole {
   font-weight: 600;
-}
-
-.devAccountEmail {
-  color: var(--text-muted, #475569);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.72rem;
 }
 
 /* Responsive adjustments */
@@ -524,11 +432,5 @@
   .submitButton {
     padding: 0.85rem 1rem;
     font-size: 1rem;
-  }
-
-  .topBar {
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 1rem;
   }
 }

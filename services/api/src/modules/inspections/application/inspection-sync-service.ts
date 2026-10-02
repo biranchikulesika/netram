@@ -203,24 +203,44 @@ export class InspectionSyncService {
       }
 
       case "draft_finding": {
-        if (!this.findingRepo) throw new Error("Finding repository is required for finding drafts.");
-        const findingId = typeof op.payload.findingId === "string" ? op.payload.findingId : randomUUID();
+        if (!this.findingRepo)
+          throw new Error("Finding repository is required for finding drafts.");
+        const findingId =
+          typeof op.payload.findingId === "string" ? op.payload.findingId : randomUUID();
         const finding = await this.findingRepo.createWithAuditAndEvent({
           id: findingId,
           inspectionId: op.inspectionId,
-          observationId: typeof op.payload.observationId === "string" ? op.payload.observationId : null,
+          observationId:
+            typeof op.payload.observationId === "string" ? op.payload.observationId : null,
           severity: op.payload.severity as "critical" | "high" | "medium" | "low",
           description: String(op.payload.description ?? ""),
           remediation: typeof op.payload.remediation === "string" ? op.payload.remediation : null,
+          categoryId: typeof op.payload.categoryId === "string" ? op.payload.categoryId : null,
+          amountInr:
+            typeof op.payload.amountInr === "number" && Number.isFinite(op.payload.amountInr)
+              ? Math.trunc(op.payload.amountInr)
+              : null,
+          responsibleOrganisationId:
+            typeof op.payload.responsibleOrganisationId === "string"
+              ? op.payload.responsibleOrganisationId
+              : null,
           actorUserId: ctx.userId,
           requestId: ctx.requestId ?? null,
           ipAddress: ctx.ipAddress ?? null,
           auditAction: "finding.created",
-          auditMetadata: { inspectionId: op.inspectionId, operationId: op.operationId, source: "inspector_draft" },
+          auditMetadata: {
+            inspectionId: op.inspectionId,
+            operationId: op.operationId,
+            source: "inspector_draft",
+          },
           eventType: "finding.created",
           eventPayload: { inspectionId: op.inspectionId, findingId, source: "inspector_draft" },
         });
-        resultData = { findingId: finding.id, inspectionId: op.inspectionId, status: finding.status };
+        resultData = {
+          findingId: finding.id,
+          inspectionId: op.inspectionId,
+          status: finding.status,
+        };
         break;
       }
 
@@ -290,6 +310,15 @@ export class InspectionSyncService {
           });
         }
         resultData = { inspectionId: op.inspectionId, status: "submitted" };
+        break;
+      }
+
+      case "update_checklist_item": {
+        resultData = {
+          checklistItemId: op.payload.checklistItemId,
+          response: op.payload.response,
+          inspectionId: op.inspectionId,
+        };
         break;
       }
     }

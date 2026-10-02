@@ -1,50 +1,47 @@
 import { describe, expect, it } from "vitest";
 import {
-  evaluateCorrectiveActionTransition,
-  InvalidCorrectiveActionTransitionError,
+  canSubmitAtr,
+  InvalidCorrectiveActionReviewError,
+  resolveReviewTransition,
 } from "./corrective-action.js";
 
-describe("evaluateCorrectiveActionTransition", () => {
-  it("marks submit as the institution step", () => {
-    expect(evaluateCorrectiveActionTransition("pending", "submitted")).toEqual({
-      to: "submitted",
-      isInstitutionStep: true,
-    });
+describe("canSubmitAtr", () => {
+  it.each(["pending", "rejected", "overdue"] as const)("allows ATR submission when %s", (from) => {
+    expect(canSubmitAtr(from)).toBe(true);
   });
 
-  it("marks acceptance/rejection as authority review steps", () => {
-    expect(evaluateCorrectiveActionTransition("under_review", "accepted").isInstitutionStep).toBe(
-      false,
-    );
-    expect(evaluateCorrectiveActionTransition("under_review", "rejected").isInstitutionStep).toBe(
-      false,
-    );
+  it.each(["submitted", "under_review", "accepted", "escalated"] as const)(
+    "rejects ATR submission when %s",
+    (from) => {
+      expect(canSubmitAtr(from)).toBe(false);
+    },
+  );
+});
+
+describe("resolveReviewTransition", () => {
+  it("starts review from submitted", () => {
+    expect(resolveReviewTransition("submitted", "under_review")).toBe("under_review");
   });
 
-  it("allows resubmission after rejection", () => {
-    expect(evaluateCorrectiveActionTransition("rejected", "submitted").isInstitutionStep).toBe(
-      true,
-    );
+  it("accepts from submitted or under_review", () => {
+    expect(resolveReviewTransition("submitted", "accepted")).toBe("accepted");
+    expect(resolveReviewTransition("under_review", "accepted")).toBe("accepted");
   });
 
-  it("rejects skipping review and terminal mutations", () => {
-    expect(() => evaluateCorrectiveActionTransition("pending", "accepted")).toThrow(
-      InvalidCorrectiveActionTransitionError,
-    );
-    expect(() => evaluateCorrectiveActionTransition("accepted", "rejected")).toThrow(
-      InvalidCorrectiveActionTransitionError,
-    );
-    expect(() => evaluateCorrectiveActionTransition("submitted", "rejected")).toThrow(
-      InvalidCorrectiveActionTransitionError,
-    );
+  it("rejects from submitted or under_review", () => {
+    expect(resolveReviewTransition("submitted", "rejected")).toBe("rejected");
+    expect(resolveReviewTransition("under_review", "rejected")).toBe("rejected");
   });
 
-  it("never allows users to jump directly to job-driven states", () => {
-    expect(() => evaluateCorrectiveActionTransition("pending", "overdue")).toThrow(
-      InvalidCorrectiveActionTransitionError,
+  it("throws when the review outcome is invalid for the current status", () => {
+    expect(() => resolveReviewTransition("pending", "accepted")).toThrow(
+      InvalidCorrectiveActionReviewError,
     );
-    expect(() => evaluateCorrectiveActionTransition("submitted", "escalated")).toThrow(
-      InvalidCorrectiveActionTransitionError,
+    expect(() => resolveReviewTransition("under_review", "under_review")).toThrow(
+      InvalidCorrectiveActionReviewError,
+    );
+    expect(() => resolveReviewTransition("accepted", "rejected")).toThrow(
+      InvalidCorrectiveActionReviewError,
     );
   });
 });

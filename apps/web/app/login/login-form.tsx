@@ -1,59 +1,68 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { NetramApiClient } from "@netram/api-client";
 import styles from "./login.module.css";
 
 export interface LoginFormProps {
-  apiUrl: string;
   isDev?: boolean;
+  /**
+   * The server holds a session cookie but could not verify it, because the API
+   * could not be asked (restarting, database rebuilding). Showing the sign-in
+   * form here would tell an already-authenticated visitor that they are signed
+   * out, so the page holds a reconnecting state instead.
+   */
+  sessionCheckFailed?: boolean;
 }
 
 const SEED_ACCOUNTS = [
   {
     role: "Department Admin",
-    email: "admin.example-social@dev.netram.in",
+    email: "admin@netram.dev",
+    password: "Admin@netram2026",
     description: "Full state-level oversight & admin permissions",
   },
   {
-    role: "District Officer (Khordha)",
-    email: "officer.khordha@dev.netram.in",
+    role: "District Officer",
+    email: "officer@netram.dev",
+    password: "Officer@netram2026",
     description: "District jurisdiction inspection approvals & projects",
   },
   {
     role: "Control Room Ops",
-    email: "controlroom@dev.netram.in",
+    email: "controlroom@netram.dev",
+    password: "Controlroom@netram2026",
     description: "CCTV feeds, live monitoring & AI anomaly triage",
   },
   {
-    role: "Institution Admin (Vani Vihar)",
-    email: "institution.vani@dev.netram.in",
+    role: "Institution Admin",
+    email: "institute@netram.dev",
+    password: "Institute@netram2026",
     description: "Institution reports & corrective actions",
   },
   {
     role: "Field Inspector",
-    email: "inspector.one@dev.netram.in",
+    email: "inspector@netram.dev",
+    password: "Inspector@netram2026",
     description: "Inspection observation capture & assignment",
   },
 ];
 
-export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
+export function LoginForm({ isDev = true, sessionCheckFailed = false }: LoginFormProps) {
   const router = useRouter();
 
   // Form states
-  const [email, setEmail] = useState("admin.example-social@dev.netram.in");
-  const [password, setPassword] = useState("••••••••••••");
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState(isDev ? (SEED_ACCOUNTS[0]?.email ?? "") : "");
+  const [password, setPassword] = useState(isDev ? (SEED_ACCOUNTS[0]?.password ?? "") : "");
+  const [showPassword, setShowPassword] = useState(isDev);
   const [busy, setBusy] = useState(false);
 
   // Validation & Error states
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-
-  // UI state for institutional password reset assistance
-  const [showForgotInfo, setShowForgotInfo] = useState(false);
   const [showDevAccounts, setShowDevAccounts] = useState(false);
 
   function validate(): boolean {
@@ -86,29 +95,18 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
     setServerError(null);
 
     try {
-      let baseUrl = apiUrl;
-      if (
-        typeof window !== "undefined" &&
-        window.location.hostname !== "localhost" &&
-        window.location.hostname !== "127.0.0.1"
-      ) {
-        try {
-          const parsed = new URL(apiUrl);
-          baseUrl = `${window.location.protocol}//${window.location.hostname}:${parsed.port || "3001"}`;
-        } catch {
-          // fallback to apiUrl
-        }
-      }
-
       const client = new NetramApiClient({
-        baseUrl,
+        // Same-origin BFF proxy: the browser never talks to the Fastify API
+        // directly. The BFF forwards /api/v1/* to the API over the internal
+        // network and attaches the session token from the httpOnly cookie.
+        baseUrl: "",
         fetchImpl: (...args) => fetch(...args),
       });
 
-      // Authentication integration point:
-      // In the current local/dev slice, we resolve the session via devLogin.
-      // When password verification is activated on the backend, this cleanly
-      // transitions to client.login({ email, password }).
+      // Demo deployment runs the dev auth provider: authentication is by
+      // email only (any of the seeded demo accounts). When a real password
+      // verification backend is activated, this transitions to
+      // client.login({ email, password }).
       const { token } = await client.devLogin(email.trim());
 
       const res = await fetch("/api/session", {
@@ -126,7 +124,7 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
         );
       }
 
-      router.push("/projects");
+      router.push("/dashboard");
       router.refresh();
     } catch (err) {
       setServerError(
@@ -139,26 +137,59 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
     }
   }
 
-  function handleQuickFill(seedEmail: string) {
-    setEmail(seedEmail);
-    setPassword("NetramSecure2026!");
+  function handleQuickFill(account: (typeof SEED_ACCOUNTS)[number]) {
+    setEmail(account.email);
+    setPassword(account.password);
     setEmailError(null);
     setPasswordError(null);
     setServerError(null);
   }
 
+  // A held session that could not be verified is not the same as being signed
+  // out. Rendering the sign-in form would tell an authenticated visitor they
+  // have no session, so hold the page in a reconnecting state that retries the
+  // server render instead.
+  if (sessionCheckFailed) {
+    return (
+      <div className={styles.formContainer}>
+        <div className={styles.alertBanner} role="status">
+          <svg
+            className={styles.alertIcon}
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <div className={styles.alertContent}>
+            <div className={styles.alertTitle}>Reconnecting</div>
+            <div>
+              We could not confirm your existing session just now. You are still signed in -
+              retrying will take you straight back to your dashboard.
+            </div>
+            <button
+              type="button"
+              className={styles.crossBtn}
+              style={{ marginTop: "12px" }}
+              onClick={() => router.refresh()}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.formContainer}>
-      <div className={styles.cardHeader}>
-        <div className={styles.sectionEyebrow}>
-          <span>Portal Access</span>
-        </div>
-        <h2 className={styles.formTitle}>Authorized Sign In</h2>
-        <p className={styles.formDescription}>
-          Enter your official credentials to access the Netram monitoring and inspection portal.
-        </p>
-      </div>
-
       {serverError && (
         <div className={styles.alertBanner} role="alert">
           <svg
@@ -191,13 +222,9 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
           </button>
         </div>
       )}
-
       <form className={styles.form} onSubmit={handleSubmit} method="POST" noValidate>
         {/* Email or Username Field */}
         <div className={styles.fieldGroup}>
-          <label htmlFor="email" className={styles.label}>
-            Official Email <span className={styles.requiredAsterisk}>*</span>
-          </label>
           <div className={styles.inputWrapper}>
             <span className={styles.inputPrefixIcon} aria-hidden="true">
               <svg
@@ -221,7 +248,8 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck="false"
-              placeholder="officer@netram.in"
+              aria-label="Official email"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -257,19 +285,6 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
 
         {/* Password Field */}
         <div className={styles.fieldGroup}>
-          <div className={styles.labelRow}>
-            <label htmlFor="password" className={styles.label}>
-              Password <span className={styles.requiredAsterisk}>*</span>
-            </label>
-            <button
-              type="button"
-              className={styles.forgotLink}
-              onClick={() => setShowForgotInfo(!showForgotInfo)}
-            >
-              Forgot password?
-            </button>
-          </div>
-
           <div className={styles.inputWrapper}>
             <span className={styles.inputPrefixIcon} aria-hidden="true">
               <svg
@@ -291,6 +306,7 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
               name="password"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
+              aria-label="Password"
               placeholder="Enter your password"
               value={password}
               onChange={(e) => {
@@ -367,61 +383,18 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
           )}
         </div>
 
-        {/* Institutional Password Reset Info Box */}
-        {showForgotInfo && (
-          <div className={styles.infoBox} role="status">
-            <div className={styles.infoBoxHeader}>
-              <span>Credential Assistance</span>
-              <button
-                type="button"
-                className={styles.infoBoxClose}
-                onClick={() => setShowForgotInfo(false)}
-                aria-label="Close message"
-              >
-                ×
-              </button>
-            </div>
-            Netram accounts are provisioned and managed by your Department Nodal Officer
-            or Organization Administrator. To reset your password or recover access, please
-            contact your designated system administrator or email{" "}
-            <strong>support@netram.gov.in</strong>.
-          </div>
-        )}
-
         {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={busy}
-          className={styles.submitButton}
-          aria-busy={busy}
-        >
+        <button type="submit" disabled={busy} className={styles.submitButton} aria-busy={busy}>
           {busy ? (
             <>
               <span className={styles.spinner} aria-hidden="true" />
               <span>Authenticating…</span>
             </>
           ) : (
-            <>
-              <span>Sign In</span>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
-            </>
+            <span>Sign In</span>
           )}
         </button>
-      </form>
-
+      </form>{" "}
       {/* Development Quick-Fill Helper (only shown in development environments) */}
       {isDev && (
         <div className={styles.devSection}>
@@ -431,26 +404,55 @@ export function LoginForm({ apiUrl, isDev = true }: LoginFormProps) {
             onClick={() => setShowDevAccounts(!showDevAccounts)}
             aria-expanded={showDevAccounts}
           >
-            <span className={styles.devBadge}>Dev Helper</span>
-            <span>{showDevAccounts ? "Hide seeded accounts ▲" : "Quick-fill test account ▼"}</span>
+            <span>Test accounts</span>
+            <svg
+              className={styles.devChevron}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
           </button>
 
           {showDevAccounts && (
             <div className={styles.devAccountsList}>
-              {SEED_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  className={styles.devAccountButton}
-                  onClick={() => handleQuickFill(acc.email)}
-                  title={acc.description}
-                >
-                  <span className={styles.devAccountRole}>{acc.role}</span>
-                  <span className={styles.devAccountEmail}>{acc.email}</span>
-                </button>
-              ))}
+              {SEED_ACCOUNTS.map((acc) => {
+                const active = acc.email === email.trim();
+                return (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    className={`${styles.devAccountButton} ${
+                      active ? styles.devAccountActive : ""
+                    }`}
+                    onClick={() => handleQuickFill(acc)}
+                    title={`${acc.email} - ${acc.description}`}
+                    aria-pressed={active}
+                  >
+                    <span className={styles.devAccountRole}>{acc.role}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
+        </div>
+      )}
+      {/* The dev account list takes the bottom slot; links would compete with it. */}
+      {!showDevAccounts && (
+        <div className={styles.crossLinks}>
+          <Link href="/" className={styles.crossBtn}>
+            Home
+          </Link>
+          <Link href="/register-complaint" className={styles.crossBtn}>
+            Register a Complaint
+          </Link>
         </div>
       )}
     </div>

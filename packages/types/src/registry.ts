@@ -2,7 +2,7 @@ import type { UUID, ISODateTime } from "./common.js";
 import type { PermissionCode } from "./authorization.js";
 
 /**
- * Registration capability matrix — the single source of truth for
+ * Registration capability matrix - the single source of truth for
  * "who can register what" in the Registry (see apps/web/app/registry).
  *
  * The API enforces `permission` server-side on every registry route;
@@ -10,12 +10,7 @@ import type { PermissionCode } from "./authorization.js";
  */
 export interface RegistryCapability {
   /** Stable identifier used in UI + API error details. */
-  key:
-    | "facility"
-    | "organisation"
-    | "programme"
-    | "inspector"
-    | "official";
+  key: "facility" | "organisation" | "programme" | "inspector" | "official";
   /** Display label for the registry card. */
   label: string;
   /** One-line explanation shown on the registry card. */
@@ -48,8 +43,7 @@ export const REGISTRY_CAPABILITIES: readonly RegistryCapability[] = [
   {
     key: "organisation",
     label: "Agency / Society",
-    description:
-      "Register an operating agency or society that runs facilities on the ground.",
+    description: "Register an operating agency or society that runs facilities on the ground.",
     permission: "organisation:create",
     who: "Authority officials",
     startsPending: false,
@@ -57,8 +51,7 @@ export const REGISTRY_CAPABILITIES: readonly RegistryCapability[] = [
   {
     key: "programme",
     label: "Scheme / Programme",
-    description:
-      "Register a welfare scheme or programme that facilities participate in.",
+    description: "Register a welfare scheme or programme that facilities participate in.",
     permission: "programme:create",
     who: "Authority officials",
     startsPending: false,
@@ -125,7 +118,6 @@ export interface OrganisationView {
   name: string;
   category: string;
   authorityId: UUID | null;
-  districtId: UUID | null;
   createdAt: ISODateTime;
 }
 
@@ -156,7 +148,6 @@ export interface CreateOrganisationInput {
   code: string;
   name: string;
   category: string;
-  districtId?: UUID | null;
 }
 
 export interface CreateProgrammeInput {

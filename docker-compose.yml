@@ -1,38 +1,63 @@
-# Netram local development infrastructure.
+# Netram - single-VPS demo deployment (docker compose / podman-compose).
 #
-# This file provides the SUPPORT SERVICES the platform depends on. The
-# application services (api, web, realtime, ...) are orchestrated through
-# pnpm/Turborepo during development (see README.md).
+# Topology (everything on one host, one compose network):
 #
-# Service applications can also be containerized individually (see each
-# service's Dockerfile). To run the full stack through Docker, start every
-# component with its own profile.
+#   Internet ──▶ nginx (host, :80/:443, TLS + Let's Encrypt)   ← owns the edge
+#                 ├── netram.kulesika.in     → 127.0.0.1:3100  web    (Next.js BFF)
+#                 │     └── /api/* (same-origin)  ───────────→ api    (Fastify,
+#                 │                                          internal only)
+#                 └── netram.kulesika.in/ws  → 127.0.0.1:3202  realtime (WebSocket)
+#
+#   Media plane:
+#     netram-media 8189/udp  published publicly (WebRTC media bypasses the
+#     same-origin proxy; only signalling goes through nginx).
+#
+#   Data plane (internal only, never published):
+#     postgres · redis · minio · cctv-gateway · facility rig
+#
+# Why nginx and not the bundled Caddy: this host already runs nginx for
+# other tenants, and it owns :80/:443. Two TLS terminators cannot share a
+# port, and a rootless podman container cannot bind :80/:443 at all. nginx
+# therefore stays the single edge; see infra/nginx/netram.conf.
+#
+# Demo behaviour (intentional, see docs/deployment.md):
+#   - NETRAM_AUTH_PROVIDER=dev → visitors sign in with the seeded demo
+#     accounts (no password verification). This is a DEMO choice, not a
+#     production auth model.
+#   - db-reset loops every NETRAM_DEMO_RESET_SECONDS (default 1800 = 30 min):
+#     schema dropped and rebuilt from migrations + deterministic seed, so every
+#     visitor starts from the same state. Requires NETRAM_ALLOW_DB_RESET=1
+#     (the reset guard stays closed otherwise).
+#
+# All secrets/URLs come from the environment file: cp .env.vps.example .env.vps
+# and edit it before `podman-compose -f docker-compose.yml --env-file .env.vps up -d`.
 
 name: netram
 
 services:
+  # ------------------------------------------------------------- data stores
   postgres:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     container_name: netram-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: netram
-      POSTGRES_PASSWORD: netram
-      POSTGRES_DB: netram
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-netram}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-netram}
+      POSTGRES_DB: ${POSTGRES_DB:-netram}
     volumes:
       - db-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U netram -d netram"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-netram} -d ${POSTGRES_DB:-netram}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     container_name: netram-redis
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -40,16 +65,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # MinIO removed its public images from Docker Hub and quay.io (401 on
+  # anonymous pulls since ~2026-09-24). Bitnami's frozen legacy mirror is the
+  # pullable source; MINIO_DEFAULT_BUCKETS replaces the former mc init container.
   minio:
-    image: quay.io/minio/minio:latest
+    image: docker.io/bitnamilegacy/minio:latest
     container_name: netram-minio
-    command: server /data --console-address ":9001"
+    restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: netram
-      MINIO_ROOT_PASSWORD: netram-secret
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+      MINIO_ROOT_USER: ${NETRAM_OBJECT_STORAGE_ACCESS_KEY:-netram}
+      MINIO_ROOT_PASSWORD: ${NETRAM_OBJECT_STORAGE_SECRET_KEY:-netram-secret}
+      MINIO_DEFAULT_BUCKETS: ${NETRAM_OBJECT_STORAGE_BUCKET:-netram}
+      MINIO_SERVER_PORT: 9000
+      MINIO_CONSOLE_PORT: 9001
     volumes:
       - minio-data:/data
     healthcheck:
@@ -58,43 +86,42 @@ services:
       timeout: 5s
       retries: 10
 
-  minio-init:
-    image: quay.io/minio/mc:latest
-    container_name: netram-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 netram netram-secret &&
-      mc mb --ignore-existing local/netram &&
-      echo 'MinIO bucket ready'
-      "
-
-  # =================================================================
-  # Application Services (Profile: "full")
-  # Run backing infra with: pnpm infra:up
-  # Run full containerized stack with: docker compose --profile full up -d
-  # =================================================================
-
+  # ------------------------------------------------------------- applications
   api:
     build:
       context: .
       dockerfile: services/api/Dockerfile
     container_name: netram-api
-    profiles: ["full", "services"]
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://netram:netram@postgres:5432/netram
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
       REDIS_URL: redis://redis:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # DEMO: dev auth provider (email-only sign-in with seeded accounts).
+      NETRAM_AUTH_PROVIDER: dev
+      NETRAM_DEV_AUTH_SECRET: ${NETRAM_DEV_AUTH_SECRET}
+      NETRAM_API_HOST: 0.0.0.0
       NETRAM_API_PORT: 3001
-      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+      # Same-origin deployment: the browser only ever reaches the API through
+      # the web BFF, so no CORS surface is needed.
+      NETRAM_CORS_ORIGIN: ${NETRAM_CORS_ORIGIN:-https://netram.kulesika.in}
       NETRAM_OBJECT_STORAGE_ENDPOINT: http://minio:9000
-      NETRAM_OBJECT_STORAGE_ACCESS_KEY: netram
-      NETRAM_OBJECT_STORAGE_SECRET_KEY: netram-secret
-      NETRAM_OBJECT_STORAGE_BUCKET: netram
+      NETRAM_OBJECT_STORAGE_ACCESS_KEY: ${NETRAM_OBJECT_STORAGE_ACCESS_KEY:-netram}
+      NETRAM_OBJECT_STORAGE_SECRET_KEY: ${NETRAM_OBJECT_STORAGE_SECRET_KEY:-netram-secret}
+      NETRAM_OBJECT_STORAGE_BUCKET: ${NETRAM_OBJECT_STORAGE_BUCKET:-netram}
       NETRAM_OBJECT_STORAGE_USE_SSL: "false"
-    ports:
-      - "3001:3001"
+      NETRAM_API_URL: http://api:3001
+      # Server-to-server reachability into the compose network.
+      NETRAM_CCTV_GATEWAY_URL: http://cctv-gateway:3003
+      # Must match the gateway's secret: relay tokens are signed/verified across services.
+      NETRAM_CCTV_STREAM_SECRET: ${NETRAM_CCTV_STREAM_SECRET}
+      # Service-to-service secret presented to the CCTV gateway (§14).
+      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET}
+      # MediaMTX external auth hook secret (Phase 4): must match the gateway.
+      NETRAM_MEDIAMTX_HOOK_SECRET: ${NETRAM_MEDIAMTX_HOOK_SECRET}
+    expose:
+      - "3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,46 +129,112 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      # Schema + seed must exist before the API serves traffic.
+      db-setup:
+        condition: service_completed_successfully
 
   workers:
     build:
       context: .
       dockerfile: services/api/Dockerfile
     container_name: netram-workers
-    profiles: ["full", "services"]
+    restart: unless-stopped
     command: ["pnpm", "workers"]
     environment:
-      DATABASE_URL: postgres://netram:netram@postgres:5432/netram
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
       REDIS_URL: redis://redis:6379
-      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NETRAM_AUTH_PROVIDER: dev
+      NETRAM_DEV_AUTH_SECRET: ${NETRAM_DEV_AUTH_SECRET}
       NETRAM_OBJECT_STORAGE_ENDPOINT: http://minio:9000
-      NETRAM_OBJECT_STORAGE_ACCESS_KEY: netram
-      NETRAM_OBJECT_STORAGE_SECRET_KEY: netram-secret
-      NETRAM_OBJECT_STORAGE_BUCKET: netram
+      NETRAM_OBJECT_STORAGE_ACCESS_KEY: ${NETRAM_OBJECT_STORAGE_ACCESS_KEY:-netram}
+      NETRAM_OBJECT_STORAGE_SECRET_KEY: ${NETRAM_OBJECT_STORAGE_SECRET_KEY:-netram-secret}
+      NETRAM_OBJECT_STORAGE_BUCKET: ${NETRAM_OBJECT_STORAGE_BUCKET:-netram}
       NETRAM_OBJECT_STORAGE_USE_SSL: "false"
+      # CCTV stream-session sweeper (Phase 4).
+      NETRAM_CCTV_GATEWAY_URL: http://cctv-gateway:3003
+      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-setup:
+        condition: service_completed_successfully
 
   realtime:
     build:
       context: .
       dockerfile: services/realtime/Dockerfile
     container_name: netram-realtime
-    profiles: ["full", "services"]
+    restart: unless-stopped
     environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
       NETRAM_REALTIME_PORT: 3002
-      REDIS_URL: redis://redis:6379
+      NETRAM_REALTIME_POLL_MS: ${NETRAM_REALTIME_POLL_MS:-1000}
+      NETRAM_REALTIME_OUTBOX_BATCH: ${NETRAM_REALTIME_OUTBOX_BATCH:-50}
       NETRAM_API_URL: http://api:3001
-      NETRAM_DEV_AUTH_SECRET: dev-only-secret-00000000000000000000000000000000
+      NETRAM_DEV_AUTH_SECRET: ${NETRAM_DEV_AUTH_SECRET}
+    expose:
+      - "3002"
+    # Published on loopback only: the host nginx upgrades /ws to this port.
+    # Never reachable from the internet directly.
     ports:
-      - "3002:3002"
+      - "127.0.0.1:${NETRAM_REALTIME_PUBLISHED_PORT:-3202}:3002"
     depends_on:
-      redis:
-        condition: service_healthy
       api:
+        condition: service_started
+      db-setup:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Public values needed while `next build` prerenders Server Components
+        # that validate the client env schema. No secrets. Runtime values come
+        # from the container `environment:` block below.
+        NEXT_PUBLIC_API_URL: ${NETRAM_SITE_ORIGIN:-https://netram.kulesika.in}
+        NEXT_PUBLIC_REALTIME_WS_URL: wss://${NETRAM_DOMAIN:-netram.kulesika.in}/ws
+        NETRAM_AUTH_PROVIDER: dev
+        NETRAM_MEDIAMTX_WHEP_URL: http://netram-media:8189
+        NETRAM_MEDIAMTX_WHEP_USERNAME: ${NETRAM_MEDIAMTX_API_USERNAME:-admin}
+        NETRAM_MEDIAMTX_WHEP_PASSWORD: ${NETRAM_MEDIAMTX_API_PASSWORD:-netram-dev-internal}
+        NETRAM_MEDIAMTX_HLS_URL: http://netram-media:8888
+    container_name: netram-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Public origin of the site (browser-facing). The Next.js BFF proxies
+      # /api/* server-side to the Fastify API over the compose network using
+      # NETRAM_API_BASE_URL below, not this value.
+      NEXT_PUBLIC_API_URL: ${NETRAM_SITE_ORIGIN:-https://netram.kulesika.in}
+      # Server-side-only base URL for the web app's outbound calls to the API.
+      # Uses the internal service name, so the app never leaves the compose
+      # network and does not depend on public DNS or the edge certificate being
+      # correct before a single API call can succeed.
+      NETRAM_API_BASE_URL: http://api:3001
+      # Browser WebSocket base for the realtime service. nginx terminates TLS
+      # on 443 and upgrades /ws to the realtime container.
+      NEXT_PUBLIC_REALTIME_WS_URL: wss://${NETRAM_DOMAIN:-netram.kulesika.in}/ws
+      # MediaMTX endpoints for the server-side WHEP/HLS proxy routes.
+      NETRAM_MEDIAMTX_WHEP_URL: http://netram-media:8189
+      NETRAM_MEDIAMTX_WHEP_USERNAME: ${NETRAM_MEDIAMTX_API_USERNAME:-admin}
+      NETRAM_MEDIAMTX_WHEP_PASSWORD: ${NETRAM_MEDIAMTX_API_PASSWORD:-netram-dev-internal}
+      NETRAM_MEDIAMTX_HLS_URL: http://netram-media:8888
+    expose:
+      - "3000"
+    # Published on loopback only: the host nginx proxies the public origin
+    # (pages + same-origin /api/* BFF + media proxy) to this port.
+    ports:
+      - "127.0.0.1:${NETRAM_WEB_PUBLISHED_PORT:-3100}:3000"
+    depends_on:
+      api:
+        condition: service_started
+      realtime:
         condition: service_started
 
   cctv-gateway:
@@ -149,43 +242,177 @@ services:
       context: .
       dockerfile: services/cctv-gateway/Dockerfile
     container_name: netram-cctv-gateway
-    profiles: ["full", "services"]
+    restart: unless-stopped
     environment:
-      CCTV_GATEWAY_PORT: 3003
-      NETRAM_API_URL: http://api:3001
-    ports:
-      - "3003:3003"
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NETRAM_CCTV_GATEWAY_HOST: 0.0.0.0
+      NETRAM_CCTV_GATEWAY_PORT: 3003
+      NETRAM_CCTV_GATEWAY_URL: http://cctv-gateway:3003
+      # Must match the API's secret: relay tokens are signed/verified across services.
+      NETRAM_CCTV_STREAM_SECRET: ${NETRAM_CCTV_STREAM_SECRET}
+      # Service-to-service secret the API presents on control-plane calls (§14).
+      NETRAM_CCTV_SERVICE_SECRET: ${NETRAM_CCTV_SERVICE_SECRET}
+      # Internal MediaMTX control API over the compose network.
+      NETRAM_MEDIAMTX_API_URL: http://netram-media:9997
+      NETRAM_MEDIAMTX_API_USERNAME: ${NETRAM_MEDIAMTX_API_USERNAME:-admin}
+      NETRAM_MEDIAMTX_API_PASSWORD: ${NETRAM_MEDIAMTX_API_PASSWORD:-netram-dev-internal}
+      # Base minted into playback contracts. The web app rewrites to its
+      # same-origin proxy before anything reaches the browser, so the exact
+      # host here is internal; it must simply be a valid URL.
+      NETRAM_MEDIAMTX_WHEP_PUBLIC_URL: http://netram-media:8189
+      # Simulated facility feed (see netram-media + facility rig below).
+      NETRAM_MEDIAMTX_DEV_INGEST_SOURCE: rtsp://facility-nvr:8554/facility-vani/cam-gate
+    expose:
+      - "3003"
     depends_on:
       api:
         condition: service_started
 
-  ai:
+  # ------------------------------------------------------------- initial schema
+  # One-shot: build the schema from migrations and apply the deterministic seed
+  # BEFORE the API serves traffic. Without this, a fresh volume has no tables
+  # and the app stays broken until the first db-reset tick (up to 30 min).
+  # Exits when done; every service that reads the database waits for it.
+  #
+  # NOTE: podman-compose maps `service_completed_successfully` to "container
+  # stopped" and does NOT inspect the exit code, so verify this container's log
+  # after a deploy (`podman logs netram-db-setup`).
+  db-setup:
     build:
       context: .
-      dockerfile: services/ai/Dockerfile
-    container_name: netram-ai
-    profiles: ["full", "services"]
-    ports:
-      - "8000:8000"
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: netram-web
-    profiles: ["full", "web"]
+      dockerfile: services/api/Dockerfile
+    container_name: netram-db-setup
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["pnpm db:setup"]
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXT_PUBLIC_REALTIME_WS_URL: ws://localhost:3002
-    ports:
-      - "3000:3000"
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
+      # Explicit operator opt-in required by the reset guard.
+      NETRAM_ALLOW_DB_RESET: "1"
+      LOG_LEVEL: info
     depends_on:
-      api:
-        condition: service_started
-      realtime:
-        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  # ------------------------------------------------------------- demo db reset
+  # Drops and rebuilds the demo database every NETRAM_DEMO_RESET_SECONDS
+  # (default 30 min): migrations from zero + deterministic seed. Every visitor
+  # then starts from the same coherent state; trial edits disappear. The
+  # built-in reset guard (§12/§71) stays closed unless NETRAM_ALLOW_DB_RESET=1.
+  db-reset:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: netram-db-reset
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "db-reset loop: resetting every ${NETRAM_DEMO_RESET_SECONDS:-1800}s"
+        while true; do
+          sleep "${NETRAM_DEMO_RESET_SECONDS:-1800}"
+          echo "[$(date -u +%FT%TZ)] Resetting demo database (migrate from zero + seed)..."
+          if pnpm --filter @netram/data db:setup; then
+            echo "[$(date -u +%FT%TZ)] Demo database restored."
+          else
+            echo "[$(date -u +%FT%TZ)] Demo database reset FAILED - retrying next cycle." >&2
+          fi
+        done
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-netram}:${POSTGRES_PASSWORD:-netram}@postgres:5432/${POSTGRES_DB:-netram}
+      # Explicit operator opt-in required by the reset guard.
+      NETRAM_ALLOW_DB_RESET: "1"
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Never reset concurrently with the initial build of the schema.
+      db-setup:
+        condition: service_completed_successfully
+
+  # ------------------------------------------------------------- CCTV media plane
+  # NETRAM-side media server (data plane). Serves WHEP (WebRTC) + HLS to the
+  # browser through the same-origin Next.js proxy. Pulls the simulated camera
+  # on demand across the network boundary (pilot topology).
+  netram-media:
+    image: docker.io/bluenviron/mediamtx:latest
+    container_name: netram-media
+    restart: unless-stopped
+    ports:
+      # WebRTC media (ICE/SRTP) flows browser → MediaMTX directly over UDP;
+      # the same-origin proxy only carries signaling. This port MUST be
+      # reachable from the internet for camera playback to work.
+      - "8189:8189/udp"
+      # ICE-TCP fallback for networks that block UDP.
+      - "8189:8189"
+    volumes:
+      - ./infra/mediamtx/mediamtx.yml:/mediamtx.yml:ro,Z
+    environment:
+      # Phase 4: the external auth hook endpoint. MTX_ env vars override the
+      # config file (MediaMTX does not env-substitute the YAML itself). The
+      # API is on the same compose network here, so the hook resolves it by
+      # service name. The hook secret is embedded as a query parameter
+      # because MediaMTX cannot send custom headers.
+      MTX_AUTHHTTPADDRESS: http://api:3001/media/auth?hookSecret=${NETRAM_MEDIAMTX_HOOK_SECRET}
+      # Advertise the public hostname as an ICE candidate so browsers on the
+      # internet can reach the media plane. (The demo DNS record must be
+      # DNS-only/grey-cloud in Cloudflare: its proxy does not pass UDP.)
+      MTX_WEBRTCADDITIONALHOSTS: ${NETRAM_DOMAIN:-netram.kulesika.in}
+    expose:
+      # HLS + control API stay internal: the browser reaches HLS through the
+      # web app's same-origin proxy, and the gateway reaches the control API
+      # over the compose network.
+      - "8888"
+      - "9997"
+    networks:
+      - default
+      - facility
+
+  # Simulated remote facility. Topology inside the boundary mirrors a real
+  # site: the FFmpeg "camera" registers itself with the facility NVR (an RTSP
+  # server); NETRAM's media server pulls from the NVR across the network
+  # boundary on demand (pilot topology).
+  camera-sim:
+    build:
+      context: ./infra/facility-sim
+    image: netram-camera-sim:dev
+    container_name: netram-camera-sim
+    environment:
+      CAMERA_MODE: ${NETRAM_CCTV_SIM_MODE:-pull}
+      SAMPLE_VIDEO: /media/sample.mp4
+    volumes:
+      - ./services/cctv-gateway/samples/boys-at-lab.mp4:/media/sample.mp4:ro,Z
+    networks:
+      - facility
+    depends_on:
+      - facility-nvr
+    restart: unless-stopped
+
+  # Facility NVR stand-in: accepts the camera's RTSP push INSIDE the facility
+  # network only (no route into NETRAM infra, no host ports). This is what
+  # netram-media pulls - exactly like a real site's NVR.
+  facility-nvr:
+    image: docker.io/bluenviron/mediamtx:latest
+    container_name: netram-facility-nvr
+    volumes:
+      - ./infra/facility-sim/nvr.yml:/mediamtx.yml:ro,Z
+    networks:
+      - facility
+    restart: unless-stopped
+
+networks:
+  # NETRAM infrastructure network. Docker Compose synthesises an implicit
+  # `default` network; podman-compose requires it to be declared, so it is
+  # stated explicitly here for both runtimes. All NETRAM services live here
+  # and reach each other by service name.
+  default: {}
+  # Logical "remote facility" network. The camera simulator lives here;
+  # MediaMTX is the only member bridging into NETRAM infra (default network).
+  facility: {}
 
 volumes:
   db-data:
   minio-data:
-

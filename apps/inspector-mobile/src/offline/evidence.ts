@@ -25,14 +25,19 @@ export async function computeSha256(data: Uint8Array | string): Promise<string> 
     return `sha256:${hex}`;
   }
 
-  // Node fallback for tests
-  try {
-    const { createHash } = await import("node:crypto");
-    const hex = createHash("sha256").update(bytes).digest("hex");
-    return `sha256:${hex}`;
-  } catch {
-    return `sha256:0000000000000000000000000000000000000000000000000000000000000000`;
+  // Node.js test environment fallback when crypto.subtle is stubbed
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const nodeCrypto = require("node:crypto");
+      const hex = nodeCrypto.createHash("sha256").update(bytes).digest("hex");
+      return `sha256:${hex}`;
+    } catch {
+      // fallback
+    }
   }
+
+  return `sha256:0000000000000000000000000000000000000000000000000000000000000000`;
 }
 
 export interface CaptureEvidenceOfflineInput {

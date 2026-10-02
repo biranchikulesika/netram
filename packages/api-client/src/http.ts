@@ -2,7 +2,7 @@ import type { AuthenticatedUser } from "@netram/types";
 
 /**
  * Token supplier. Web passes cookies-based server tokens; mobile passes a
- * bearer token obtained from login. The client never decides authentication —
+ * bearer token obtained from login. The client never decides authentication -
  * it only transports whatever the host environment provides.
  */
 export type TokenSupplier = () => string | null | Promise<string | null>;
@@ -122,8 +122,8 @@ export class HttpClient {
     return this.request<T>("PUT", path, body);
   }
 
-  delete<T>(path: string): Promise<T> {
-    return this.request<T>("DELETE", path);
+  delete<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("DELETE", path, body);
   }
 }
 

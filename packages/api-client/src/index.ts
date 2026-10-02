@@ -1,8 +1,6 @@
 import type {
   AIAnomaly,
   AIAnomalyListQuery,
-  AnalyticsQuery,
-  AuthorityAnalyticsOverview,
   AnomalyStatus,
   AssignRoleInput,
   AssignmentListQuery,
@@ -24,10 +22,10 @@ import type {
   PublicComplaintTracking,
   CorrectiveAction,
   CorrectiveActionListQuery,
-  CorrectiveActionStatus,
   Evidence,
   EvidenceType,
   Finding,
+  FindingAwaitingOrder,
   FindingStatus,
   Inspection,
   InspectionAssignment,
@@ -45,10 +43,6 @@ import type {
   SealGeofenceCommand,
   ProjectListQuery,
   ProjectStatus,
-  Report,
-  ReportFormat,
-  ReportListQuery,
-  ReportListResponse,
   RoleAssignmentView,
   RoleView,
   UpdateUserInput,
@@ -66,6 +60,9 @@ import type {
   VcJoinDetails,
   VcSessionWithParticipants,
   VcParticipantRole,
+  CallContact,
+  CallRecord,
+  CreateCallRecordInput,
   OrganisationView,
   ProgrammeView,
   RegistryUserView,
@@ -75,7 +72,33 @@ import type {
   RegisterOfficialInput,
   StateView,
   DistrictView,
+  FundAllocation,
+  FundRelease,
+  Expense,
+  FinancialDocument,
+  FinancialRiskRule,
+  FinancialRiskEvent,
+  InspectionFlag,
+  FundSummary,
+  ProjectFundOverview,
+  AllocationListQuery,
+  ExpenseListQuery,
+  InspectionFlagListQuery,
+  ProjectRiskSnapshot,
+  ProjectRankEntry,
+  ProjectRiskRankingQuery,
+  ProjectRiskSnapshotQuery,
+  ActionInboxResponse,
 } from "@netram/types";
+import type {
+  CreateAllocationInput,
+  UpdateAllocationInput,
+  CreateReleaseInput,
+  CreateExpenseInput,
+  PatchExpenseInput,
+  CreateRiskRuleInput,
+  PatchRiskRuleInput,
+} from "@netram/validation";
 import { HttpClient } from "./http.js";
 import type { HttpOptions } from "./http.js";
 
@@ -154,7 +177,7 @@ export interface VcSessionPage {
  *
  * Web (Next.js) uses it server-side with cookie/SSR tokens; inspector-mobile
  * uses it with a bearer token. URLs and payload shapes mirror the OpenAPI
- * contract — do not diverge here without updating the contract first.
+ * contract - do not diverge here without updating the contract first.
  */
 export class NetramApiClient extends HttpClient {
   constructor(opts: ApiClientOptions) {
@@ -162,6 +185,13 @@ export class NetramApiClient extends HttpClient {
   }
 
   // auth
+  async login(credentials: {
+    email: string;
+    password?: string;
+  }): Promise<{ token: string; user: AuthenticatedUser }> {
+    return this.post("/api/v1/auth/dev-login", { email: credentials.email });
+  }
+
   async devLogin(email: string): Promise<{ token: string; user: AuthenticatedUser }> {
     return this.post("/api/v1/auth/dev-login", { email });
   }
@@ -182,6 +212,18 @@ export class NetramApiClient extends HttpClient {
 
   async getProject(id: string): Promise<Project> {
     return this.get(`/api/v1/projects/${id}`);
+  }
+
+  /** Updates a facility's contact details (person in charge + contacts). */
+  async updateProjectContact(
+    id: string,
+    body: {
+      contactName?: string | null;
+      contactPhone?: string | null;
+      contactEmail?: string | null;
+    },
+  ): Promise<Project> {
+    return this.patch(`/api/v1/projects/${id}/contact`, body);
   }
 
   async listProjectPhotos(id: string): Promise<ProjectPhoto[]> {
@@ -283,6 +325,11 @@ export class NetramApiClient extends HttpClient {
     return this.post(`/api/v1/findings/${id}/transitions`, { to, note });
   }
 
+  /** Confirmed findings awaiting a remediation order across the caller's jurisdiction. */
+  async listFindingsAwaitingOrder(): Promise<FindingAwaitingOrder[]> {
+    return this.get("/api/v1/findings/awaiting-order");
+  }
+
   // corrective actions
   async listCorrectiveActions(
     query: CorrectiveActionListQuery = {},
@@ -302,15 +349,30 @@ export class NetramApiClient extends HttpClient {
     return this.post("/api/v1/corrective-actions", input);
   }
 
-  async transitionCorrectiveAction(
+  async submitAtr(
     id: string,
-    to: CorrectiveActionStatus,
-    note?: string,
+    input: { actionSummary: string; files?: { data: Blob; name: string; type?: string }[] },
   ): Promise<CorrectiveAction> {
-    return this.post(`/api/v1/corrective-actions/${id}/transitions`, {
-      to,
-      note,
-    });
+    const form = new FormData();
+    form.append("actionSummary", input.actionSummary);
+    for (const f of input.files ?? []) {
+      form.append("files", f.data, f.name);
+    }
+    return this.post(`/api/v1/corrective-actions/${id}/submit-atr`, form);
+  }
+
+  async reviewCorrectiveAction(
+    id: string,
+    input: { outcome: "under_review" | "accepted" | "rejected"; note?: string },
+  ): Promise<CorrectiveAction> {
+    return this.post(`/api/v1/corrective-actions/${id}/review`, input);
+  }
+
+  async updateCorrectiveAction(
+    id: string,
+    input: { status: "under_review" | "accepted" | "rejected"; note?: string },
+  ): Promise<CorrectiveAction> {
+    return this.reviewCorrectiveAction(id, { outcome: input.status, note: input.note });
   }
 
   // observations
@@ -365,14 +427,16 @@ export class NetramApiClient extends HttpClient {
   }
 
   // attendance monitoring (aggregate-first, §36)
-  async listAttendanceOverview(query: {
-    projectId?: string;
-    districtId?: string;
-    from?: string;
-    to?: string;
-    page?: number;
-    pageSize?: number;
-  } = {}): Promise<{ items: AttendanceOverviewItem[]; total: number; page: number; pageSize: number }> {
+  async listAttendanceOverview(
+    query: {
+      projectId?: string;
+      districtId?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ): Promise<{ items: AttendanceOverviewItem[]; total: number; page: number; pageSize: number }> {
     return this.get(`/api/v1/attendance/overview${queryString(query)}`);
   }
 
@@ -384,39 +448,46 @@ export class NetramApiClient extends HttpClient {
     from?: string;
     to?: string;
   }): Promise<AttendanceDrillDownRow[]> {
-    return this.get<AttendanceDrillDownRow[]>(
-      `/api/v1/attendance/individual${queryString(query)}`,
-    );
+    return this.get<AttendanceDrillDownRow[]>(`/api/v1/attendance/individual${queryString(query)}`);
   }
 
-  async listAttendanceAnomalies(query: {
-    projectId?: string;
-    type?: AttendanceAnomalyType;
-    severity?: AttendanceAnomalySeverity;
-    state?: AttendanceAnomalyState;
-    from?: string;
-    to?: string;
-    page?: number;
-    pageSize?: number;
-  } = {}): Promise<{ items: AttendanceAnomaly[]; total: number; page: number; pageSize: number }> {
+  async listAttendanceAnomalies(
+    query: {
+      projectId?: string;
+      type?: AttendanceAnomalyType;
+      severity?: AttendanceAnomalySeverity;
+      state?: AttendanceAnomalyState;
+      from?: string;
+      to?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ): Promise<{ items: AttendanceAnomaly[]; total: number; page: number; pageSize: number }> {
     return this.get(`/api/v1/attendance/anomalies${queryString(query)}`);
   }
 
   async reviewAttendanceAnomaly(
     id: string,
-    input: { action: AttendanceReviewAction; note?: string | null; linkedInspectionId?: string | null; linkedComplaintId?: string | null },
+    input: {
+      action: AttendanceReviewAction;
+      note?: string | null;
+      linkedInspectionId?: string | null;
+      linkedComplaintId?: string | null;
+    },
   ): Promise<{ items: AttendanceAnomaly[]; total: number; page: number; pageSize: number }> {
     return this.post(`/api/v1/attendance/anomalies/${id}/review`, input);
   }
 
-  async listAttendanceCalculations(query: {
-    projectId?: string;
-    windowId?: string;
-    from?: string;
-    to?: string;
-    page?: number;
-    pageSize?: number;
-  } = {}): Promise<{ items: AttendanceCalculation[]; total: number; page: number; pageSize: number }> {
+  async listAttendanceCalculations(
+    query: {
+      projectId?: string;
+      windowId?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ): Promise<{ items: AttendanceCalculation[]; total: number; page: number; pageSize: number }> {
     return this.get(`/api/v1/attendance/calculations${queryString(query)}`);
   }
 
@@ -503,20 +574,15 @@ export class NetramApiClient extends HttpClient {
     return this.post("/api/v1/notifications/read-all", {});
   }
 
-  async listReports(query: ReportListQuery = {}): Promise<ReportListResponse> {
-    return this.get(`/api/v1/reports${queryString(query)}`);
-  }
-
-  async getReport(id: string): Promise<Report> {
-    return this.get(`/api/v1/reports/${id}`);
-  }
-
-  async createReport(inspectionId: string, format: ReportFormat = "json"): Promise<Report> {
-    return this.post("/api/v1/reports", { inspectionId, format });
-  }
-
-  async finalizeReport(id: string): Promise<Report> {
-    return this.post(`/api/v1/reports/${id}/finalize`, {});
+  async registerDevicePushToken(input: {
+    token: string;
+    platform: string;
+  }): Promise<{ success: boolean }> {
+    try {
+      return await this.post("/api/v1/notifications/device-token", input);
+    } catch {
+      return { success: false };
+    }
   }
 
   async listUsers(query: UserListQuery = {}): Promise<UserListResponse> {
@@ -602,6 +668,25 @@ export class NetramApiClient extends HttpClient {
     return this.post(`/api/v1/cctv/cameras/${id}/streams`, input);
   }
 
+  // action inbox (unified pending-decision queue, AGENTS.md §32)
+  async listActionInbox(): Promise<ActionInboxResponse> {
+    return this.get("/api/v1/action-inbox");
+  }
+
+  /** Keep a stream session alive against the sweeper (Phase 4). */
+  async streamHeartbeat(cameraId: string, streamId: string): Promise<{ lastHeartbeatAt: string }> {
+    return this.post(`/api/v1/cctv/cameras/${cameraId}/streams/${streamId}/heartbeat`, {});
+  }
+
+  /** End a stream session (viewer stop or admin revoke, Phase 4). */
+  async endCameraStream(
+    cameraId: string,
+    streamId: string,
+    input: { endReason?: "viewer_stop" | "admin_revoke" } = {},
+  ): Promise<{ ended: true; endReason: string }> {
+    return this.delete(`/api/v1/cctv/cameras/${cameraId}/streams/${streamId}`, input);
+  }
+
   async getCameraSnapshot(id: string): Promise<Blob> {
     return this.getBlob(`/api/v1/cctv/cameras/${id}/snapshot`);
   }
@@ -635,9 +720,199 @@ export class NetramApiClient extends HttpClient {
     return this.post(`/api/v1/vc/sessions/${id}/leave`, {});
   }
 
-  // analytics & statutory SLA compliance
-  async getAnalyticsOverview(query: AnalyticsQuery = {}): Promise<AuthorityAnalyticsOverview> {
-    return this.get(`/api/v1/analytics/overview${queryString(query)}`);
+  // Calls (Video Oversight Directory & History)
+  async listCallContacts(): Promise<CallContact[]> {
+    return this.get("/api/v1/calls/contacts");
+  }
+
+  async listCallHistory(query: Record<string, unknown> = {}): Promise<CallRecord[]> {
+    return this.get(`/api/v1/calls/history${queryString(query)}`);
+  }
+
+  async createCallRecord(input: CreateCallRecordInput): Promise<CallRecord> {
+    return this.post("/api/v1/calls/history", input);
+  }
+
+  // Funds & Allocations
+  async listAllocations(
+    query: AllocationListQuery = {},
+  ): Promise<{ items: FundAllocation[]; total: number; page: number; pageSize: number }> {
+    return this.get(`/api/v1/funds/allocations${queryString(query)}`);
+  }
+
+  async getAllocation(id: string): Promise<FundAllocation> {
+    return this.get(`/api/v1/funds/allocations/${id}`);
+  }
+
+  async createAllocation(input: CreateAllocationInput): Promise<FundAllocation> {
+    return this.post("/api/v1/funds/allocations", input);
+  }
+
+  async updateAllocation(id: string, input: UpdateAllocationInput): Promise<FundAllocation> {
+    return this.patch(`/api/v1/funds/allocations/${id}`, input);
+  }
+
+  async listReleases(allocationId: string): Promise<FundRelease[]> {
+    return this.get(`/api/v1/funds/allocations/${allocationId}/releases`);
+  }
+
+  async createRelease(input: CreateReleaseInput): Promise<FundRelease> {
+    return this.post("/api/v1/funds/releases", input);
+  }
+
+  async reverseRelease(id: string, remarks?: string): Promise<FundRelease> {
+    return this.post(`/api/v1/funds/releases/${id}/reverse`, { remarks });
+  }
+
+  async getProjectFundSummary(projectId: string): Promise<FundSummary> {
+    return this.get(`/api/v1/funds/projects/${projectId}/summary`);
+  }
+
+  async getProjectFundOverview(projectId: string): Promise<ProjectFundOverview> {
+    return this.get(`/api/v1/funds/projects/${projectId}/overview`);
+  }
+
+  // Expenses
+  async listExpenses(
+    query: ExpenseListQuery = {},
+  ): Promise<{ items: Expense[]; total: number; page: number; pageSize: number }> {
+    return this.get(`/api/v1/funds/expenses${queryString(query)}`);
+  }
+
+  async getExpense(id: string): Promise<Expense> {
+    return this.get(`/api/v1/funds/expenses/${id}`);
+  }
+
+  async createExpense(input: CreateExpenseInput): Promise<Expense> {
+    return this.post("/api/v1/funds/expenses", input);
+  }
+
+  async updateExpense(id: string, input: PatchExpenseInput): Promise<Expense> {
+    return this.patch(`/api/v1/funds/expenses/${id}`, input);
+  }
+
+  async submitExpense(id: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/submit`, {});
+  }
+
+  async verifyExpense(id: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/verify`, {});
+  }
+
+  async rejectExpense(id: string, reason: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/reject`, { reason });
+  }
+
+  async voidExpense(id: string, voidReason: string): Promise<Expense> {
+    return this.post(`/api/v1/funds/expenses/${id}/void`, { voidReason });
+  }
+
+  // Financial Documents
+  async getFinancialDocument(id: string): Promise<FinancialDocument> {
+    return this.get(`/api/v1/funds/documents/${id}`);
+  }
+
+  async listExpenseDocuments(expenseId: string): Promise<FinancialDocument[]> {
+    return this.get(`/api/v1/funds/expenses/${expenseId}/documents`);
+  }
+
+  async verifyFinancialDocument(
+    id: string,
+    input: { status: "verified" | "rejected" | "flagged"; rejectionReason?: string },
+  ): Promise<FinancialDocument> {
+    return this.post(`/api/v1/funds/documents/${id}/verify`, input);
+  }
+
+  // Financial Risk & Evaluation
+  async evaluateProjectRisk(projectId: string): Promise<{
+    flag: InspectionFlag | null;
+    events: FinancialRiskEvent[];
+    scoreOutput: Record<string, unknown>;
+  }> {
+    return this.post(`/api/v1/financial-risk/evaluate/${projectId}`, {});
+  }
+
+  async listRiskRules(enabledOnly?: boolean): Promise<FinancialRiskRule[]> {
+    return this.get(`/api/v1/financial-risk/rules${queryString({ enabledOnly })}`);
+  }
+
+  async getRiskRule(id: string): Promise<FinancialRiskRule> {
+    return this.get(`/api/v1/financial-risk/rules/${id}`);
+  }
+
+  async createRiskRule(input: CreateRiskRuleInput): Promise<FinancialRiskRule> {
+    return this.post("/api/v1/financial-risk/rules", input);
+  }
+
+  async updateRiskRule(id: string, input: PatchRiskRuleInput): Promise<FinancialRiskRule> {
+    return this.patch(`/api/v1/financial-risk/rules/${id}`, input);
+  }
+
+  async listRiskEvents(projectId: string): Promise<FinancialRiskEvent[]> {
+    return this.get(`/api/v1/financial-risk/events${queryString({ projectId })}`);
+  }
+
+  // Inspection Flags
+  async listInspectionFlags(
+    query: InspectionFlagListQuery = {},
+  ): Promise<{ items: InspectionFlag[]; total: number; page: number; pageSize: number }> {
+    return this.get(`/api/v1/inspection-flags${queryString(query)}`);
+  }
+
+  async getInspectionFlag(id: string): Promise<InspectionFlag> {
+    return this.get(`/api/v1/inspection-flags/${id}`);
+  }
+
+  async assignInspectionFlag(id: string, assignedInspectorId: string): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/assign`, { assignedInspectorId });
+  }
+
+  async createInspectionFromFlag(
+    id: string,
+    opts: { templateId?: string; scheduledStart?: string; scheduledEnd?: string } = {},
+  ): Promise<{ flag: InspectionFlag; inspection: Inspection }> {
+    return this.post(`/api/v1/inspection-flags/${id}/create-inspection`, opts);
+  }
+
+  async reviewInspectionFlag(
+    id: string,
+    reviewNotes: string,
+    status?: string,
+  ): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/review`, { reviewNotes, status });
+  }
+
+  async resolveInspectionFlag(id: string, resolution: string): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/resolve`, { resolution });
+  }
+
+  async dismissInspectionFlag(id: string, dismissedReason: string): Promise<InspectionFlag> {
+    return this.post(`/api/v1/inspection-flags/${id}/dismiss`, { dismissedReason });
+  }
+
+  // Project Risk & Priority Scheduling
+  async listProjectRiskRankings(
+    query: ProjectRiskRankingQuery = {},
+  ): Promise<{ items: ProjectRankEntry[]; total: number }> {
+    return this.get(`/api/v1/project-risk/rankings${queryString(query)}`);
+  }
+
+  async getProjectRiskSnapshots(query: ProjectRiskSnapshotQuery): Promise<ProjectRiskSnapshot[]> {
+    return this.get(
+      `/api/v1/project-risk/projects/${query.projectId}/snapshots${queryString(query)}`,
+    );
+  }
+
+  async getLatestProjectRiskSnapshot(projectId: string): Promise<ProjectRiskSnapshot | null> {
+    return this.get(`/api/v1/project-risk/projects/${projectId}/latest`);
+  }
+
+  async evaluateProjectRiskScore(projectId: string): Promise<ProjectRiskSnapshot> {
+    return this.post(`/api/v1/project-risk/evaluate/${projectId}`, {});
+  }
+
+  async sweepProjectRiskScores(): Promise<{ evaluatedCount: number; scheduledCount: number }> {
+    return this.post("/api/v1/project-risk/sweep", {});
   }
 }
 

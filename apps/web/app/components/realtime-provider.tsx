@@ -74,7 +74,7 @@ export function RealtimeProvider() {
                 title = "🎥 Live Hearing Started";
                 message = String(payload.title ?? "A tripartite video review has begun");
                 if (payload.inspectionId) {
-                  link = `/inspections/${payload.inspectionId}`;
+                  link = `/dashboard/inspections/${payload.inspectionId}`;
                 }
               } else if (type === "inspection.started" || type === "inspection.submitted") {
                 title = "📋 Inspection Updated";
@@ -82,7 +82,7 @@ export function RealtimeProvider() {
               } else if (type === "ai.anomaly_detected") {
                 title = "⚠️ Advisory AI Signal";
                 message = "New advisory anomaly flagged for review";
-                link = "/control-room";
+                link = "/dashboard/control-room";
               } else if (type.startsWith("project.")) {
                 title = "🏗️ Project Updated";
                 message = "Project state has been modified";

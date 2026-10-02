@@ -8,9 +8,9 @@ import {
   correctiveActionSchema,
   createCorrectiveActionSchema,
   idParamsSchema,
-  transitionCorrectiveActionSchema,
+  reviewCorrectiveActionSchema,
 } from "@netram/validation";
-import type { CorrectiveActionListQuery, CorrectiveActionStatus } from "@netram/types";
+import type { CorrectiveActionListQuery } from "@netram/types";
 
 export async function registerCorrectiveActionRoutes(
   app: FastifyInstance,
@@ -18,6 +18,10 @@ export async function registerCorrectiveActionRoutes(
 ): Promise<void> {
   const correctiveActionService = container.correctiveActionService;
   const paramsSchema = toJsonSchema("CorrectiveActionIdParams", idParamsSchema);
+  const atrFileParamsSchema = toJsonSchema(
+    "CorrectiveActionFileIdParams",
+    idParamsSchema.extend({ fileId: idParamsSchema.shape.id }),
+  );
 
   app.get(
     "/corrective-actions",
@@ -76,13 +80,13 @@ export async function registerCorrectiveActionRoutes(
   );
 
   app.post(
-    "/corrective-actions/:id/transitions",
+    "/corrective-actions/:id/submit-atr",
     {
       schema: {
         tags: ["corrective-actions"],
         security: [{ bearerAuth: [] }],
+        consumes: ["multipart/form-data"],
         params: paramsSchema,
-        body: toJsonSchema("TransitionCorrectiveActionBody", transitionCorrectiveActionSchema),
         response: {
           200: toJsonSchema("CorrectiveAction", correctiveActionSchema),
         },
@@ -90,16 +94,72 @@ export async function registerCorrectiveActionRoutes(
     },
     async (request) => {
       const { id } = request.params as { id: string };
-      const body = request.body as {
-        to: CorrectiveActionStatus;
-        note?: string;
-      };
-      return correctiveActionService.transitionCorrectiveAction(
+      let actionSummary = "";
+      const files: { data: Buffer; fileName: string; mimeType: string }[] = [];
+      for await (const part of request.parts()) {
+        if (part.type === "file") {
+          const data = await part.toBuffer();
+          files.push({
+            data,
+            fileName: part.filename || "attachment",
+            mimeType: part.mimetype || "application/octet-stream",
+          });
+        } else if (part.fieldname === "actionSummary" && typeof part.value === "string") {
+          actionSummary = part.value;
+        }
+      }
+      const body = { actionSummary, files };
+      return correctiveActionService.submitAtr(request.netram!, id, body);
+    },
+  );
+
+  app.get(
+    "/corrective-actions/:id/files/:fileId",
+    {
+      schema: {
+        tags: ["corrective-actions"],
+        security: [{ bearerAuth: [] }],
+        params: atrFileParamsSchema,
+        response: {
+          200: { type: "string", format: "binary" },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id, fileId } = request.params as { id: string; fileId: string };
+      const { file, stream } = await correctiveActionService.getAtrFileContent(
         request.netram!,
         id,
-        body.to,
-        body.note,
+        fileId,
       );
+      reply.header("content-type", file.mimeType ?? "application/octet-stream");
+      if (file.sizeBytes !== null) reply.header("content-length", String(file.sizeBytes));
+      void reply.header("x-netram-attachment-id", file.id);
+      void reply.header(
+        "content-disposition",
+        `inline; filename="${encodeURIComponent(file.fileName)}"`,
+      );
+      return reply.send(stream);
+    },
+  );
+
+  app.post(
+    "/corrective-actions/:id/review",
+    {
+      schema: {
+        tags: ["corrective-actions"],
+        security: [{ bearerAuth: [] }],
+        params: paramsSchema,
+        body: toJsonSchema("ReviewCorrectiveActionBody", reviewCorrectiveActionSchema),
+        response: {
+          200: toJsonSchema("CorrectiveAction", correctiveActionSchema),
+        },
+      },
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as z.infer<typeof reviewCorrectiveActionSchema>;
+      return correctiveActionService.reviewAction(request.netram!, id, body);
     },
   );
 }

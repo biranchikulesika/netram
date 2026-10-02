@@ -1,0 +1,12 @@
+[Unit]
+Description=Prune the Netram rootless Podman store (dangling images, build cache, stale one-shot containers)
+Documentation=file:///home/keeler/projects/netram/docs/deployment.md
+
+[Service]
+Type=oneshot
+# See netram-podman-prune.sh for the full scope and its safety invariants:
+# dangling-only image prunes (never an image a container references), a
+# build-in-flight guard around the same-day pass, and a 24h age gate on the
+# stopped-container sweep. Runs as the deploying user, so it only ever
+# touches the ROOTLESS store; other tenants run separate podman storage.
+ExecStart=/home/keeler/projects/netram/infra/systemd/netram-podman-prune.sh

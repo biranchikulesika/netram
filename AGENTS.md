@@ -10,7 +10,7 @@ and rationale live under `docs/` (`docs/architecture`, `docs/domain`,
 file wins.
 
 This file defines operational rules, engineering boundaries, repository conventions,
-development practices, verification requirements, and agent behavior.
+development practices, verification requirements, and agent behaviour.
 
 ---
 
@@ -186,13 +186,13 @@ The server remains authoritative.
 
 Offline mode does NOT bypass:
 
-- authorization
+- authorisation
 - jurisdiction
 - workflow rules
 - state-transition rules
 - evidence integrity requirements
 
-Never implement last-write-wins synchronization for authoritative inspection state.
+Never implement last-write-wins synchronisation for authoritative inspection state.
 
 Rejected or conflicting operations must remain traceable.
 
@@ -206,10 +206,10 @@ The primary backend is:
 
 It is a modular monolith.
 
-The API owns core application and domain behavior including, where applicable:
+The API owns core application and domain behaviour including, where applicable:
 
 - authentication context
-- authorization
+- authorisation
 - users
 - roles
 - permissions
@@ -239,7 +239,7 @@ Do not split these into separate microservices without a demonstrated technical 
 
 # 7. SERVICE BOUNDARIES
 
-Specialized services exist only for concerns that justify separation.
+Specialised services exist only for concerns that justify separation.
 
 ## AI
 
@@ -281,7 +281,7 @@ Responsible for:
 - stream acquisition
 - provider/protocol abstraction
 - stream health
-- authorized stream delivery
+- authorised stream delivery
 - integration with processing pipelines
 
 Browsers and mobile clients must NOT receive raw RTSP credentials.
@@ -565,7 +565,7 @@ Authentication answers:
 
     "Who is this user?"
 
-Authorization answers:
+Authorisation answers:
 
     "What is this user allowed to do here?"
 
@@ -573,9 +573,9 @@ Do not combine these concepts.
 
 ---
 
-# 16. AUTHORIZATION
+# 16. AUTHORISATION
 
-Authorization is server-side and mandatory.
+Authorisation is server-side and mandatory.
 
 Use:
 
@@ -599,7 +599,7 @@ A role assignment may have:
 - permissions
 - applicable policy
 
-Do not hard-code authorization around a small fixed list such as:
+Do not hard-code authorisation around a small fixed list such as:
 
     GLOBAL
     STATE
@@ -607,13 +607,13 @@ Do not hard-code authorization around a small fixed list such as:
     ORGANIZATION
 
 unless those are represented as extensible jurisdiction concepts rather than
-the entire authorization model.
+the entire authorisation model.
 
-The authorization system must be extensible.
+The authorisation system must be extensible.
 
 The client may hide UI controls for usability.
 
-The server must independently enforce the same authorization decision.
+The server must independently enforce the same authorisation decision.
 
 ---
 
@@ -623,15 +623,15 @@ Jurisdiction is a first-class access-control primitive.
 
 Do not scatter jurisdiction checks throughout controllers.
 
-Authorization policy should be centralized and reusable.
+Authorisation policy should be centralised and reusable.
 
 A user may have authority in one jurisdiction while lacking authority in another.
 
 Never assume:
 
-    user role = complete authorization decision
+    user role = complete authorisation decision
 
-The authorization decision depends on the relevant:
+The authorisation decision depends on the relevant:
 
 - identity
 - permission
@@ -727,7 +727,7 @@ Reusable presentation components.
 
 ## `packages/config`
 
-Centralized validated configuration.
+Centralised validated configuration.
 
 Do not turn shared packages into junk drawers.
 
@@ -740,7 +740,7 @@ Do not move code into shared packages merely to make imports look cleaner.
 
 # 21. CONFIGURATION
 
-Configuration is centralized and validated.
+Configuration is centralised and validated.
 
 Do not scatter:
 
@@ -750,7 +750,7 @@ throughout the codebase.
 
 Environment configuration should be:
 
-- centralized
+- centralised
 - typed
 - validated
 - documented
@@ -803,11 +803,11 @@ the repository owner.
 
 Feature flags are separate from configuration.
 
-Use feature flags for controlled application behavior.
+Use feature flags for controlled application behaviour.
 
 Do not use feature flags as a substitute for:
 
-- authorization
+- authorisation
 - security controls
 - data validation
 - business policy
@@ -836,7 +836,7 @@ A useful boundary is:
         → calls application service
 
     Application Service
-        → authorization
+        → authorisation
         → business workflow
         → domain decisions
         → repository operations
@@ -939,7 +939,7 @@ After:
 - reconnect
 - missed messages
 - application resume
-- synchronization failure
+- synchronisation failure
 
 the client should resynchronize from the authoritative API.
 
@@ -1015,7 +1015,7 @@ Each operation should have a client-generated idempotency/operation identifier.
 The server must:
 
 1. authenticate the request
-2. authorize it
+2. authorise it
 3. validate the operation
 4. compare against current state
 5. accept, reject, or flag conflict
@@ -1055,7 +1055,7 @@ decisions.
 
 # 33. PROJECT LIFECYCLE
 
-Project lifecycle transitions must be explicit, authorized, and audited.
+Project lifecycle transitions must be explicit, authorised, and audited.
 
 Expected lifecycle includes:
 
@@ -1091,7 +1091,7 @@ Do not merely send sensitive information to the client with:
 
 and expect the UI to hide it.
 
-If a user is not authorized to receive a field:
+If a user is not authorised to receive a field:
 
     DO NOT SEND THE FIELD.
 
@@ -1104,7 +1104,7 @@ Disclosure policies may depend on:
 - timing
 - assignment
 - geofence
-- manual authorization
+- manual authorisation
 - configured policy
 
 ---
@@ -1160,7 +1160,7 @@ Never encode:
 
     AI detected anomaly
         =
-    organization is guilty
+    organisation is guilty
 
 That would be both bad engineering and an impressively efficient way to create
 a government scandal.
@@ -1174,7 +1174,7 @@ Audit logging is cross-cutting and mandatory.
 Audit records should capture relevant:
 
 - administrative actions
-- authorization-sensitive actions
+- authorisation-sensitive actions
 - state transitions
 - evidence events
 - security events
@@ -1217,7 +1217,7 @@ Do not put sensitive personal information into operational logs unnecessarily.
 
 Follow:
 
-- data minimization
+- data minimisation
 - least privilege
 - encryption in transit
 - encryption at rest where applicable
@@ -1242,7 +1242,7 @@ programme/legal context.
 # 40. LOCATION
 
 Live location is permitted only where required for active inspection workflows
-and according to authorization/policy.
+and according to authorisation/policy.
 
 Location access must be:
 
@@ -1301,7 +1301,7 @@ Expected architecture:
         ↓
     CCTV Gateway
         ↓
-    Authorized Stream
+    Authorised Stream
         ↓
     Control Room / Processing
         ↓
@@ -1320,7 +1320,7 @@ Video conferencing must be provider-agnostic.
 Netram owns:
 
 - session lifecycle
-- participant authorization
+- participant authorisation
 - session context
 - tokens/access
 - audit
@@ -1345,7 +1345,7 @@ Use Client Components only when required for:
 - browser APIs
 - realtime UI
 - local state
-- other client-only behavior
+- other client-only behaviour
 
 Do not put business logic in UI components.
 
@@ -1361,7 +1361,7 @@ Reusable UI primitives may live in:
 
     packages/ui
 
-Do not move page-specific business behavior into the UI package.
+Do not move page-specific business behaviour into the UI package.
 
 UI components should remain presentation-oriented.
 
@@ -1373,7 +1373,7 @@ Use `next/image` appropriately in the web application.
 
 Remote image sources must be explicitly configured.
 
-Do not disable image optimization without a legitimate reason.
+Do not disable image optimisation without a legitimate reason.
 
 Do not introduce random image-hosting dependencies.
 
@@ -1404,10 +1404,10 @@ Testing must exist at multiple levels.
 Test isolated:
 
 - domain logic
-- authorization policies
+- authorisation policies
 - assignment algorithms
 - validation
-- utility behavior
+- utility behaviour
 
 ## Integration tests
 
@@ -1417,7 +1417,7 @@ Test:
 - database interactions
 - transactions
 - API/application workflows
-- authorization against realistic data
+- authorisation against realistic data
 
 ## Contract tests
 
@@ -1429,13 +1429,13 @@ Test critical user workflows.
 
 ## Mobile tests
 
-Test critical offline/synchronization behavior.
+Test critical offline/synchronisation behaviour.
 
 ## AI tests
 
-Test deterministic model/service behavior and anomaly processing logic.
+Test deterministic model/service behaviour and anomaly processing logic.
 
-Tests must verify behavior, not merely inflate coverage statistics.
+Tests must verify behaviour, not merely inflate coverage statistics.
 
 ---
 
@@ -1447,7 +1447,7 @@ Examples:
 
     authenticated user
         ↓
-    authorization
+    authorisation
         ↓
     API
         ↓
@@ -1467,7 +1467,7 @@ Tests should verify failure paths as well as successful paths.
 
 Especially test:
 
-- unauthorized access
+- unauthorised access
 - wrong jurisdiction
 - invalid lifecycle transition
 - duplicate operation
@@ -1547,11 +1547,11 @@ Examples:
 - environment variables
 - external provider responses
 - uploaded metadata
-- mobile synchronization operations
+- mobile synchronisation operations
 
 Use Zod or the repository's approved validation mechanism.
 
-Never trust client-provided authorization claims.
+Never trust client-provided authorisation claims.
 
 ---
 
@@ -1701,7 +1701,7 @@ file and hope nobody notices.
 
 # 60. DOCUMENTATION
 
-Important architecture and contracts are first-class repository artifacts.
+Important architecture and contracts are first-class repository artefacts.
 
 Relevant documentation includes:
 
@@ -1715,7 +1715,7 @@ Relevant documentation includes:
 
 Documentation must describe the current architecture.
 
-Do not document obsolete behavior as though it were current.
+Do not document obsolete behaviour as though it were current.
 
 ---
 
@@ -1816,7 +1816,7 @@ Security is a system property, not a frontend feature.
 Always consider:
 
 - authentication
-- authorization
+- authorisation
 - jurisdiction
 - input validation
 - secrets
@@ -1826,7 +1826,7 @@ Always consider:
 - file upload security
 - object storage access
 - replay/idempotency
-- offline synchronization
+- offline synchronisation
 - service authentication
 - provider credentials
 
@@ -1891,31 +1891,31 @@ Netram uses a controlled promotion pipeline:
         ↓
     feature/*
 
-This policy is authoritative for Git branching behavior in the Netram repository.
+This policy is authoritative for Git branching behaviour in the Netram repository.
 When existing repository instructions conflict with this policy, this policy is
-the intended branching model. Do not preserve legacy branching behavior merely
+the intended branching model. Do not preserve legacy branching behaviour merely
 because it exists in older documentation or scripts.
 
 ## 68.1 Branch roles
 
-* `production`
+- `production`
 
   The only permanent branch. Represents the current production-ready state.
   Must never receive direct development commits.
 
-* `preview`
+- `preview`
 
   Temporary release-candidate branch. Created from the latest `production`.
   Exists only for the current release/development cycle. Deleted after it is
   successfully squash-merged into `production`.
 
-* `develop`
+- `develop`
 
   Temporary integration branch for the current release/development cycle.
   Created from the current `preview`. Feature branches are created from
   `develop`. Deleted after it is successfully squash-merged into `preview`.
 
-* `feature/*`
+- `feature/*`
 
   Temporary work branches. Created from the current `develop`. Multiple feature
   branches may exist simultaneously. Deleted after successful integration into
@@ -2060,13 +2060,13 @@ branch because:
 - the agent thinks another branch would be cleaner
 - `develop` has received unrelated changes
 
-Default behavior:
+Default behaviour:
 
     STAY ON THE CURRENT FEATURE BRANCH.
 
 Create a new branch only when explicitly requested by the user, or when the
 current work is clearly a separate, independently deliverable task and the user
-has authorized splitting the work.
+has authorised splitting the work.
 
 ## 68.11 Agent branch verification
 
@@ -2090,7 +2090,7 @@ switch branches.
 Never discard uncommitted user work. Before switching branches, rebasing,
 merging, resetting, cleaning, or deleting a branch, inspect the working tree.
 Do not use destructive commands (`git reset --hard`, `git clean -fd`) unless
-explicitly authorized and the affected work is confirmed disposable. If
+explicitly authorised and the affected work is confirmed disposable. If
 uncommitted work belongs to the current feature, continue on the current
 feature branch.
 
@@ -2174,7 +2174,7 @@ A bug discovered while implementing the current feature belongs to the current
 feature branch if it is part of that feature's scope. Do not create another
 branch simply because the change is technically a bug fix. For an independent
 bug unrelated to the current feature, create a separate branch from the current
-`develop` only when the user explicitly requests or authorizes separate work.
+`develop` only when the user explicitly requests or authorises separate work.
 Do not invent additional branch categories (`bugfix/*`, `hotfix/*`,
 `refactor/*`) unless this policy is explicitly updated. For now, all temporary
 work branches use `feature/*`.
@@ -2248,24 +2248,24 @@ The next cycle starts again from the latest `production`.
 
 When an agent receives a development request, follow this decision process:
 
-- **Case 1** — Already on an appropriate feature branch: continue on the
+- **Case 1** - Already on an appropriate feature branch: continue on the
   current branch. Do not create a new branch.
-- **Case 2** — On `develop` and the user requests a new feature: create a new
+- **Case 2** - On `develop` and the user requests a new feature: create a new
   feature branch from the latest `develop`.
-- **Case 3** — On `production`, `preview`, or another inappropriate branch: do
+- **Case 3** - On `production`, `preview`, or another inappropriate branch: do
   not begin feature development there. Determine the correct feature branch
   workflow before modifying code.
-- **Case 4** — User explicitly requests a new branch: follow the user's
+- **Case 4** - User explicitly requests a new branch: follow the user's
   explicit branch instruction, provided it does not violate this policy.
-- **Case 5** — User asks to merge work: verify the current and target branches.
+- **Case 5** - User asks to merge work: verify the current and target branches.
   Confirm the merge direction is `feature/* → develop`, `develop → preview`, or
   `preview → production`. Then use a Pull Request and Squash and Merge.
-- **Case 6** — A branch has already been merged: do not continue working on it.
+- **Case 6** - A branch has already been merged: do not continue working on it.
   Prune remote references and delete the local merged branch.
 
 ---
 
-# 69. COMMIT AND PUSH AUTHORIZATION
+# 69. COMMIT AND PUSH AUTHORISATION
 
 AI agents must NOT:
 
@@ -2398,7 +2398,7 @@ A task is complete when:
 - builds pass where applicable
 - architecture checks pass
 - database changes are reproducible
-- relevant runtime behavior has been verified
+- relevant runtime behaviour has been verified
 - no obvious boundary violations remain
 
 Do not claim a task is verified unless it was actually verified.
@@ -2439,7 +2439,7 @@ Where applicable, verify:
       ↓
     API
       ↓
-    authorization
+    authorisation
       ↓
     application service
       ↓
@@ -2523,7 +2523,7 @@ vertical slice slightly harder.
 
 Do not omit:
 
-- authorization
+- authorisation
 - audit
 - outbox
 - repository boundaries
@@ -2563,7 +2563,7 @@ Do not create new code using obsolete terminology.
 
 ---
 
-# 81. AGENT BEHAVIOR
+# 81. AGENT BEHAVIOUR
 
 AI agents working in this repository must:
 
@@ -2576,7 +2576,7 @@ AI agents working in this repository must:
 - avoid destructive commands
 - avoid speculative architecture
 - never silently weaken security
-- never bypass authorization
+- never bypass authorisation
 - never bypass the data layer
 - never expose secrets
 - never invent infrastructure requirements
@@ -2587,7 +2587,7 @@ rather than quietly implementing an incompatible design.
 
 ---
 
-# 82. HUMAN TEAM BEHAVIOR
+# 82. HUMAN TEAM BEHAVIOUR
 
 The same architecture applies to human contributors.
 
@@ -2599,7 +2599,7 @@ Developers should:
 - avoid vendor leakage
 - document significant architectural decisions
 - keep changes reviewable
-- test boundary behavior
+- test boundary behaviour
 - communicate cross-service changes
 - avoid modifying unrelated areas
 
@@ -2626,7 +2626,7 @@ Before merging significant work, ask:
 
 - Is the API contract updated?
 - Is runtime validation present?
-- Is authorization enforced server-side?
+- Is authorisation enforced server-side?
 
 ### Security
 
@@ -2648,14 +2648,14 @@ Before merging significant work, ask:
 
 ### Offline
 
-- Does this affect mobile synchronization?
+- Does this affect mobile synchronisation?
 - Is the operation idempotent?
 - What happens during conflict?
 
 ### Testing
 
-- Is the behavior tested?
-- Are authorization failures tested?
+- Is the behaviour tested?
+- Are authorisation failures tested?
 - Are integration boundaries tested?
 
 ### Operations

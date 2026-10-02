@@ -15,7 +15,7 @@ export async function GET() {
 
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/projects/geofences`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/projects/geofences`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,

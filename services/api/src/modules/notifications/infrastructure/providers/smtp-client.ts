@@ -49,9 +49,9 @@ export class SmtpClient {
         await session.command(`EHLO ${this.opts.host}`, [250]);
       }
       if (this.opts.username) {
-        const token = Buffer.from(`\u0000${this.opts.username}\u0000${this.opts.password ?? ""}`).toString(
-          "base64",
-        );
+        const token = Buffer.from(
+          `\u0000${this.opts.username}\u0000${this.opts.password ?? ""}`,
+        ).toString("base64");
         await session.command(`AUTH PLAIN ${token}`, [235]);
       }
       await session.command(`MAIL FROM:<${options.from}>`, [250]);
@@ -185,10 +185,8 @@ class SmtpSession {
       const raw = this.buffer.slice(0, nl).replace(/\r$/, "");
       this.buffer = this.buffer.slice(nl + 1);
       if (raw.length >= 4 && /^\d{3} /.test(raw)) {
-        // Final line of a (possibly multi-line) reply — resolve the pending read.
-        const reply = this.replyParts.length
-          ? `${this.replyParts.join("\n")}\n${raw}`
-          : raw;
+        // Final line of a (possibly multi-line) reply - resolve the pending read.
+        const reply = this.replyParts.length ? `${this.replyParts.join("\n")}\n${raw}` : raw;
         this.replyParts = [];
         if (this.pendingResolve) {
           const resolve = this.pendingResolve;

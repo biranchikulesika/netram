@@ -4,6 +4,7 @@ import { toJsonSchema } from "../../../infrastructure/schema-helper.js";
 import {
   createProjectSchema,
   updateProjectSchema,
+  updateProjectContactSchema,
   idParamsSchema,
   projectListQuerySchema,
   projectPageSchema,
@@ -14,6 +15,7 @@ import {
   projectPhotoListSchema,
   projectPhotoSchema,
   uploadProjectPhotoSchema,
+  publicProjectRegistrySchema,
 } from "@netram/validation";
 import { z } from "zod";
 import { AppError } from "../../../infrastructure/errors.js";
@@ -91,6 +93,18 @@ export async function registerProjectRoutes(
     async (request) => {
       return projectService.listGeofences(request.netram!);
     },
+  );
+
+  app.get(
+    "/projects/registry",
+    {
+      config: { public: true },
+      schema: {
+        tags: ["projects"],
+        response: { 200: toJsonSchema("PublicProjectRegistry", publicProjectRegistrySchema) },
+      },
+    },
+    async () => projectService.listPublicRegistry(),
   );
 
   app.get(
@@ -178,6 +192,24 @@ export async function registerProjectRoutes(
       const { id } = request.params as { id: string };
       const body = request.body as z.infer<typeof updateProjectSchema>;
       return projectService.updateProject(request.netram!, id, body);
+    },
+  );
+
+  app.patch(
+    "/projects/:id/contact",
+    {
+      schema: {
+        tags: ["projects"],
+        security: [{ bearerAuth: [] }],
+        params: paramsSchema,
+        body: toJsonSchema("UpdateProjectContactBody", updateProjectContactSchema),
+        response: { 200: toJsonSchema("Project", projectSchema) },
+      },
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as z.infer<typeof updateProjectContactSchema>;
+      return projectService.updateContact(request.netram!, id, body);
     },
   );
 

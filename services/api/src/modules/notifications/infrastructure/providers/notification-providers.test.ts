@@ -85,9 +85,7 @@ describe("InAppNotificationProvider", () => {
   it("skips persistence for placeholder recipients and reports advisory-only", async () => {
     const repo = stubRepo();
     const provider = new InAppNotificationProvider(repo);
-    const result = await provider.send(
-      outbound({ userId: PLACEHOLDER_USER_ID }),
-    );
+    const result = await provider.send(outbound({ userId: PLACEHOLDER_USER_ID }));
 
     expect(result.delivered).toBe(false);
     expect(result.reason).toContain("placeholder recipient");

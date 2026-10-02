@@ -9,8 +9,10 @@ export const OFFLINE_OPERATION_TYPES = [
   "start_inspection",
   "record_observation",
   "capture_evidence",
-  "draft_finding",
   "submit_inspection",
+  "check_in",
+  "record_attendance",
+  "update_checklist_item",
 ] as const;
 
 export type OfflineOperationType = (typeof OFFLINE_OPERATION_TYPES)[number];

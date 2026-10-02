@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily dangling-image prune for the Netram Podman store
+Documentation=file:///home/keeler/projects/netram/docs/deployment.md
+
+[Timer]
+OnCalendar=daily
+# Spread the load off any other nightly work on the box.
+RandomizedDelaySec=45m
+# Catch up after the machine was off, rather than skipping a day.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

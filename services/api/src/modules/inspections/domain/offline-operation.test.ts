@@ -9,6 +9,7 @@ function makeInspection(status: Inspection["status"]): Inspection {
     projectCode: "PRJ-001",
     projectName: "Hostel A",
     districtId: "33333333-3333-4333-8333-333333333333",
+    districtName: "Khordha",
     templateId: null,
     type: "routine",
     trigger: "risk_engine",
@@ -130,6 +131,62 @@ describe("evaluateOfflineOperation", () => {
       const res = evaluateOfflineOperation(makeInspection("assigned"), op);
       expect(res.outcome).toBe("conflict");
       expect(res.code).toBe("CANNOT_SUBMIT_UNSTARTED");
+    });
+  });
+
+  describe("check_in", () => {
+    it("accepts valid GPS coordinates and records server jurisdiction validation message", () => {
+      const op: OfflineOperation = {
+        operationId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        inspectionId: "11111111-1111-4111-8111-111111111111",
+        type: "check_in",
+        timestamp: "2026-03-01T06:05:00Z",
+        payload: { latitude: 28.6139, longitude: 77.209, accuracy: 12.5 },
+      };
+      const res = evaluateOfflineOperation(makeInspection("assigned"), op);
+      expect(res.outcome).toBe("accepted");
+      expect(res.message).toContain("Server validates jurisdiction");
+    });
+
+    it("rejects invalid GPS coordinates", () => {
+      const op: OfflineOperation = {
+        operationId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        inspectionId: "11111111-1111-4111-8111-111111111111",
+        type: "check_in",
+        timestamp: "2026-03-01T06:05:00Z",
+        payload: { latitude: 999, longitude: 77.209 },
+      };
+      const res = evaluateOfflineOperation(makeInspection("assigned"), op);
+      expect(res.outcome).toBe("rejected");
+      expect(res.code).toBe("INVALID_CHECK_IN_COORDINATES");
+    });
+  });
+
+  describe("record_attendance", () => {
+    it("accepts valid worker headcount", () => {
+      const op: OfflineOperation = {
+        operationId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        inspectionId: "11111111-1111-4111-8111-111111111111",
+        type: "record_attendance",
+        timestamp: "2026-03-01T06:15:00Z",
+        payload: { workerCount: 42, note: "Day shift crew present" },
+      };
+      const res = evaluateOfflineOperation(makeInspection("in_progress"), op);
+      expect(res.outcome).toBe("accepted");
+      expect(res.message).toContain("Attendance headcount record verified");
+    });
+
+    it("rejects unreasonable worker headcount", () => {
+      const op: OfflineOperation = {
+        operationId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        inspectionId: "11111111-1111-4111-8111-111111111111",
+        type: "record_attendance",
+        timestamp: "2026-03-01T06:15:00Z",
+        payload: { workerCount: -5 },
+      };
+      const res = evaluateOfflineOperation(makeInspection("in_progress"), op);
+      expect(res.outcome).toBe("rejected");
+      expect(res.code).toBe("INVALID_WORKER_COUNT");
     });
   });
 });

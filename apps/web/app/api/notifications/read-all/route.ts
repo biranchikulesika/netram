@@ -15,15 +15,12 @@ export async function POST(_request: NextRequest) {
   }
 
   const env = loadClientEnv();
-  const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/notifications/read-all`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/notifications/read-all`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
 
   const payload = await res.json().catch(() => null);
   return NextResponse.json(payload, { status: res.status });

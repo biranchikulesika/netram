@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   projects as projectsTable,
+  districts as districtsTable,
   inspections as inspectionsTable,
   inspectionAssignments,
   disclosurePolicies,
@@ -23,6 +24,7 @@ export interface InspectionRow {
   projectCode: string;
   projectName: string;
   districtId: string | null;
+  districtName: string | null;
   templateId: string | null;
   type: InspectionType;
   trigger: InspectionTrigger;
@@ -44,6 +46,7 @@ export function toInspection(row: InspectionRow, assignedUserIds: string[]): Ins
     projectCode: row.projectCode,
     projectName: row.projectName,
     districtId: row.districtId,
+    districtName: row.districtName,
     templateId: row.templateId,
     type: row.type,
     trigger: row.trigger,
@@ -89,14 +92,20 @@ export class InspectionRepository {
     );
   }
 
-  async findById(id: string): Promise<Inspection | null> {
-    const rows = await this.db
+  /**
+   * Inspection rows joined to their project and the project's district, so the
+   * API discloses the district name instead of leaving the client to guess it
+   * from a UUID.
+   */
+  private baseQuery() {
+    return this.db
       .select({
         id: inspectionsTable.id,
         projectId: inspectionsTable.projectId,
         projectCode: projectsTable.code,
         projectName: projectsTable.name,
         districtId: projectsTable.districtId,
+        districtName: districtsTable.name,
         templateId: inspectionsTable.templateId,
         type: inspectionsTable.type,
         trigger: inspectionsTable.trigger,
@@ -112,9 +121,12 @@ export class InspectionRepository {
       })
       .from(inspectionsTable)
       .innerJoin(projectsTable, eq(inspectionsTable.projectId, projectsTable.id))
-      .leftJoin(disclosurePolicies, eq(inspectionsTable.disclosurePolicyId, disclosurePolicies.id))
-      .where(eq(inspectionsTable.id, id))
-      .limit(1);
+      .leftJoin(districtsTable, eq(projectsTable.districtId, districtsTable.id))
+      .leftJoin(disclosurePolicies, eq(inspectionsTable.disclosurePolicyId, disclosurePolicies.id));
+  }
+
+  async findById(id: string): Promise<Inspection | null> {
+    const rows = await this.baseQuery().where(eq(inspectionsTable.id, id)).limit(1);
     const row = rows[0];
     if (!row) return null;
     return (await this.enrich([row as unknown as InspectionRow]))[0]!;
@@ -131,32 +143,7 @@ export class InspectionRepository {
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [rows, count] = await Promise.all([
-      this.db
-        .select({
-          id: inspectionsTable.id,
-          projectId: inspectionsTable.projectId,
-          projectCode: projectsTable.code,
-          projectName: projectsTable.name,
-          districtId: projectsTable.districtId,
-          templateId: inspectionsTable.templateId,
-          type: inspectionsTable.type,
-          trigger: inspectionsTable.trigger,
-          status: inspectionsTable.status,
-          disclosurePolicyId: inspectionsTable.disclosurePolicyId,
-          disclosureRuleType: disclosurePolicies.ruleType,
-          scheduledStart: inspectionsTable.scheduledStart,
-          scheduledEnd: inspectionsTable.scheduledEnd,
-          startedAt: inspectionsTable.startedAt,
-          submittedAt: inspectionsTable.submittedAt,
-          createdAt: inspectionsTable.createdAt,
-          updatedAt: inspectionsTable.updatedAt,
-        })
-        .from(inspectionsTable)
-        .innerJoin(projectsTable, eq(inspectionsTable.projectId, projectsTable.id))
-        .leftJoin(
-          disclosurePolicies,
-          eq(inspectionsTable.disclosurePolicyId, disclosurePolicies.id),
-        )
+      this.baseQuery()
         .where(where)
         .orderBy(desc(inspectionsTable.createdAt))
         .limit(filter.pageSize)
@@ -198,9 +185,11 @@ export class InspectionRepository {
           code: projectsTable.code,
           name: projectsTable.name,
           districtId: projectsTable.districtId,
+          districtName: districtsTable.name,
           disclosureRuleType: disclosurePolicies.ruleType,
         })
         .from(projectsTable)
+        .leftJoin(districtsTable, eq(projectsTable.districtId, districtsTable.id))
         .leftJoin(
           disclosurePolicies,
           row.disclosurePolicyId ? eq(disclosurePolicies.id, row.disclosurePolicyId) : sql`false`,
@@ -253,6 +242,7 @@ export class InspectionRepository {
           projectCode: proj.code,
           projectName: proj.name,
           districtId: proj.districtId,
+          districtName: proj.districtName,
           disclosureRuleType: proj.disclosureRuleType ?? null,
         },
         cmd.assigneeUserIds,
@@ -275,6 +265,7 @@ export class InspectionRepository {
         projectCode: projectsTable.code,
         projectName: projectsTable.name,
         districtId: projectsTable.districtId,
+        districtName: districtsTable.name,
         templateId: inspectionsTable.templateId,
         disclosurePolicyId: inspectionsTable.disclosurePolicyId,
         disclosureRuleType: disclosurePolicies.ruleType,
@@ -285,6 +276,7 @@ export class InspectionRepository {
       })
       .from(inspectionsTable)
       .innerJoin(projectsTable, eq(inspectionsTable.projectId, projectsTable.id))
+      .leftJoin(districtsTable, eq(projectsTable.districtId, districtsTable.id))
       .leftJoin(disclosurePolicies, eq(inspectionsTable.disclosurePolicyId, disclosurePolicies.id))
       .where(eq(inspectionsTable.id, cmd.inspectionId))
       .limit(1);

@@ -9,6 +9,7 @@ import {
   varchar,
   boolean,
   integer,
+  numeric,
   real,
   doublePrecision,
   unique,
@@ -38,6 +39,36 @@ export const districts = pgTable("districts", {
     .notNull()
     .references(() => states.id),
   code: varchar("code", { length: 10 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+});
+
+/** Sub-district unit (block/tehsil) for village-based audit targets. */
+export const blocks = pgTable("blocks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  districtId: uuid("district_id")
+    .notNull()
+    .references(() => districts.id),
+  code: varchar("code", { length: 20 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+});
+
+/** Gram panchayat under a block. */
+export const gramPanchayats = pgTable("gram_panchayats", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  blockId: uuid("block_id")
+    .notNull()
+    .references(() => blocks.id),
+  code: varchar("code", { length: 20 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+});
+
+/** Revenue village under a gram panchayat. */
+export const villages = pgTable("villages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  gramPanchayatId: uuid("gram_panchayat_id")
+    .notNull()
+    .references(() => gramPanchayats.id),
+  code: varchar("code", { length: 20 }).unique().notNull(),
   name: varchar("name", { length: 200 }).notNull(),
 });
 
@@ -142,10 +173,33 @@ export const organisations = pgTable("organisations", {
   name: varchar("name", { length: 300 }).notNull(),
   category: varchar("category", { length: 80 }).notNull(),
   authorityId: uuid("authority_id").references(() => authorities.id),
-  districtId: uuid("district_id").references(() => districts.id),
+  /** State an SAU / state department / state-level NGO belongs to. */
+  stateId: uuid("state_id").references(() => states.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Scheme component (docs/DoSJE.md §21): operational subdivision of a scheme
+ * whose targets get audited (e.g. IPSrC under AVYAY, Adarsh Gram / BJRC under
+ * PM-AJAY, IRCA under NAPDDR, SHRESHTA Mode 1/2).
+ */
+export const schemeComponents = pgTable(
+  "scheme_components",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    programmeId: uuid("programme_id")
+      .notNull()
+      .references(() => programmes.id, { onDelete: "cascade" }),
+    code: varchar("code", { length: 50 }).unique().notNull(),
+    name: varchar("name", { length: 300 }).notNull(),
+    description: text("description"),
+    /** Typical auditable target kind produced by this component. */
+    targetKind: varchar("target_kind", { length: 50 }).notNull().default("institution"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("scheme_components_programme_idx").on(t.programmeId)],
+);
 
 export const programmes = pgTable("programmes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -165,22 +219,37 @@ export const programmes = pgTable("programmes", {
 
 /* ---------- Projects ---------- */
 
-export const projects = pgTable("projects", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  code: varchar("code", { length: 50 }).unique().notNull(),
-  name: varchar("name", { length: 300 }).notNull(),
-  type: varchar("type", { length: 50 }).notNull().default("institution"),
-  description: text("description"),
-  organisationId: uuid("organisation_id").references(() => organisations.id),
-  authorityId: uuid("authority_id").references(() => authorities.id),
-  districtId: uuid("district_id").references(() => districts.id),
-  status: varchar("status", { length: 30 }).notNull().default("Draft"),
-  approvedById: uuid("approved_by_id").references(() => users.id),
-  approvedAt: timestamp("approved_at", { withTimezone: true }),
-  programmeIds: json("programme_ids").$type<string[]>().default([]).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: varchar("code", { length: 50 }).unique().notNull(),
+    name: varchar("name", { length: 300 }).notNull(),
+    type: varchar("type", { length: 50 }).notNull().default("institution"),
+    description: text("description"),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    authorityId: uuid("authority_id").references(() => authorities.id),
+    districtId: uuid("district_id").references(() => districts.id),
+    /** Village-level location for village-type targets (PM-AJAY Adarsh Gram). */
+    villageId: uuid("village_id").references(() => villages.id),
+    /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
+    schemeComponentId: uuid("scheme_component_id").references(() => schemeComponents.id),
+    status: varchar("status", { length: 30 }).notNull().default("Draft"),
+    approvedById: uuid("approved_by_id").references(() => users.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    /** Structured facility contact details (person in charge + contacts). */
+    contactName: varchar("contact_name", { length: 200 }),
+    contactPhone: varchar("contact_phone", { length: 40 }),
+    contactEmail: varchar("contact_email", { length: 200 }),
+    programmeIds: json("programme_ids").$type<string[]>().default([]).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Jurisdiction-scoped verification queue and lifecycle filters (§16).
+    index("projects_status_district_idx").on(t.status, t.districtId),
+  ],
+);
 
 export const projectGeofences = pgTable("project_geofences", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -260,23 +329,31 @@ export const inspectionTemplates = pgTable("inspection_templates", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const inspections = pgTable("inspections", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id")
-    .notNull()
-    .references(() => projects.id),
-  templateId: uuid("template_id").references(() => inspectionTemplates.id),
-  type: varchar("type", { length: 50 }).notNull(),
-  trigger: varchar("trigger", { length: 50 }).notNull(),
-  status: varchar("status", { length: 30 }).notNull().default("assigned"),
-  disclosurePolicyId: uuid("disclosure_policy_id").references(() => disclosurePolicies.id),
-  scheduledStart: timestamp("scheduled_start", { withTimezone: true }),
-  scheduledEnd: timestamp("scheduled_end", { withTimezone: true }),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  submittedAt: timestamp("submitted_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const inspections = pgTable(
+  "inspections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    templateId: uuid("template_id").references(() => inspectionTemplates.id),
+    type: varchar("type", { length: 50 }).notNull(),
+    trigger: varchar("trigger", { length: 50 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("assigned"),
+    disclosurePolicyId: uuid("disclosure_policy_id").references(() => disclosurePolicies.id),
+    scheduledStart: timestamp("scheduled_start", { withTimezone: true }),
+    scheduledEnd: timestamp("scheduled_end", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Review queues filter by workflow status; findings join on it (§32).
+    index("inspections_status_idx").on(t.status),
+    index("inspections_project_idx").on(t.projectId),
+  ],
+);
 
 export const inspectionAssignments = pgTable("inspection_assignments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -313,8 +390,22 @@ export const findings = pgTable("findings", {
   description: text("description").notNull(),
   remediation: text("remediation"),
   status: varchar("status", { length: 30 }).notNull().default("new"),
+  /** Issue category (DoSJE MIS tracks issues by category). */
+  categoryId: uuid("category_id").references(() => findingCategories.id),
+  /** Disputed/misappropriated amount in INR when the issue is financial. */
+  amountInr: integer("amount_inr"),
+  /** Organisation expected to answer the issue (ATR submitter). */
+  responsibleOrganisationId: uuid("responsible_organisation_id").references(() => organisations.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Issue categories for findings (docs/DoSJE.md §15). Extensible by seeding. */
+export const findingCategories = pgTable("finding_categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
 });
 
 /* ---------- Evidence ---------- */
@@ -354,45 +445,102 @@ export const correctiveActions = pgTable("corrective_actions", {
   status: varchar("status", { length: 30 }).notNull().default("pending"),
   deadline: timestamp("deadline", { withTimezone: true }),
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  /** Action Taken Report content: what was actually done (docs/DoSJE.md §16). */
+  actionSummary: text("action_summary"),
+  /** When the authority verified the submitted action. */
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  verifiedByUserId: uuid("verified_by_user_id").references(() => users.id),
+  /** Reviewer remarks recorded at accept/reject time. */
+  reviewRemarks: text("review_remarks"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Supporting attachments (PDFs, photos, videos) lodged with the Action Taken
+ * Report. Blobs live in object storage; only metadata is persisted (AGENTS.md §30).
+ */
+export const correctiveActionFiles = pgTable("corrective_action_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  correctiveActionId: uuid("corrective_action_id")
+    .notNull()
+    .references(() => correctiveActions.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 300 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  contentHash: varchar("content_hash", { length: 128 }).notNull(),
+  storageKey: varchar("storage_key", { length: 300 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- Complaints ---------- */
 
-export const complaints = pgTable("complaints", {
+export const complaints = pgTable(
+  "complaints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    complainantName: varchar("complainant_name", { length: 200 }),
+    contactInfo: varchar("contact_info", { length: 300 }),
+    trackingCode: varchar("tracking_code", { length: 50 }).unique().notNull(),
+    description: text("description").notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("received"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+    resolutionText: text("resolution_text"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Oversight queue: status + receipt recency; jurisdiction resolved via the
+    // project join (§35).
+    index("complaints_status_received_idx").on(t.status, t.receivedAt),
+  ],
+);
+
+/**
+ * Supporting attachments (PDFs, photos, videos, docs) lodged with a public
+ * grievance. Blobs live in object storage; only metadata is persisted (AGENTS.md §30).
+ */
+export const complaintFiles = pgTable("complaint_files", {
   id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id")
+  complaintId: uuid("complaint_id")
     .notNull()
-    .references(() => projects.id),
-  complainantName: varchar("complainant_name", { length: 200 }),
-  contactInfo: varchar("contact_info", { length: 300 }),
-  trackingCode: varchar("tracking_code", { length: 50 }).unique().notNull(),
-  description: text("description").notNull(),
-  status: varchar("status", { length: 30 }).notNull().default("received"),
-  receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
-  resolutionText: text("resolution_text"),
-  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    .references(() => complaints.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 300 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  contentHash: varchar("content_hash", { length: 128 }).notNull(),
+  storageKey: varchar("storage_key", { length: 300 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- AI ---------- */
 
-export const aiAnomalies = pgTable("ai_anomalies", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  inspectionId: uuid("inspection_id").references(() => inspections.id),
-  evidenceId: uuid("evidence_id").references(() => evidence.id),
-  type: varchar("type", { length: 80 }).notNull(),
-  severity: varchar("severity", { length: 20 }).notNull(),
-  confidence: real("confidence").notNull(),
-  modelVersion: varchar("model_version", { length: 50 }),
-  explanation: text("explanation"),
-  status: varchar("status", { length: 30 }).notNull().default("new"),
-  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  reviewedBy: uuid("reviewed_by").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const aiAnomalies = pgTable(
+  "ai_anomalies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    inspectionId: uuid("inspection_id").references(() => inspections.id),
+    evidenceId: uuid("evidence_id").references(() => evidence.id),
+    type: varchar("type", { length: 80 }).notNull(),
+    severity: varchar("severity", { length: 20 }).notNull(),
+    confidence: real("confidence").notNull(),
+    modelVersion: varchar("model_version", { length: 50 }),
+    explanation: text("explanation"),
+    status: varchar("status", { length: 30 }).notNull().default("new"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: uuid("reviewed_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Review queue filters (§36): advisory alerts await authority review.
+    index("ai_anomalies_status_created_idx").on(t.status, t.createdAt),
+    index("ai_anomalies_inspection_idx").on(t.inspectionId),
+  ],
+);
 
 /* ---------- CCTV ---------- */
 
@@ -403,6 +551,8 @@ export const cctvCameras = pgTable("cctv_cameras", {
   protocol: varchar("protocol", { length: 50 }).notNull(),
   endpoint: varchar("endpoint", { length: 500 }).notNull(),
   districtId: uuid("district_id").references(() => districts.id),
+  /** Monitored target this camera watches; exact attribution for control-room links. */
+  projectId: uuid("project_id").references(() => projects.id),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -418,6 +568,18 @@ export const cctvStreams = pgTable("cctv_streams", {
   startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // ---- Phase 4 session lifecycle (docs/history/cctv-phase-4.md) ----
+  /** MediaMTX path the playback token is scoped to (media-plane contract). */
+  mediaPath: varchar("media_path", { length: 200 }),
+  /** SHA-256 of the playback token; plaintext is never persisted (§22). */
+  tokenHash: varchar("token_hash", { length: 64 }),
+  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+  /** Token expiry; the sweeper never ends a session before this. */
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  /** "viewer" | "sweeper" | "admin" - who drove the end. */
+  endedBy: varchar("ended_by", { length: 20 }),
+  /** "viewer_stop" | "token_expired" | "heartbeat_timeout" | "admin_revoke". */
+  endReason: varchar("end_reason", { length: 40 }),
 });
 
 /* ---------- Video Conferencing ---------- */
@@ -453,6 +615,45 @@ export const vcParticipants = pgTable("vc_participants", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/* ---------- Video Oversight / Calls ---------- */
+
+export const callContacts = pgTable("call_contacts", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull().default("staff"),
+  title: varchar("title", { length: 200 }).notNull(),
+  projectId: uuid("project_id").references(() => projects.id),
+  projectCode: varchar("project_code", { length: 50 }).notNull(),
+  projectName: varchar("project_name", { length: 300 }).notNull(),
+  phone: varchar("phone", { length: 40 }).notNull(),
+  isOnline: boolean("is_online").notNull().default(true),
+  avatarColor: varchar("avatar_color", { length: 30 }).notNull().default("#2563EB"),
+  videoUri: text("video_uri"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const callRecords = pgTable("call_records", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  contactId: varchar("contact_id", { length: 64 }).notNull(),
+  contactName: varchar("contact_name", { length: 200 }).notNull(),
+  contactTitle: varchar("contact_title", { length: 200 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull().default("staff"),
+  projectId: uuid("project_id").references(() => projects.id),
+  projectCode: varchar("project_code", { length: 50 }).notNull(),
+  projectName: varchar("project_name", { length: 300 }).notNull(),
+  callType: varchar("call_type", { length: 30 }).notNull().default("video"),
+  durationSeconds: integer("duration_seconds").notNull().default(0),
+  direction: varchar("direction", { length: 20 }).notNull().default("outgoing"),
+  status: varchar("status", { length: 20 }).notNull().default("answered"),
+  condition: varchar("condition", { length: 50 }).notNull().default("satisfactory"),
+  reviewText: text("review_text").notNull(),
+  flagInspection: boolean("flag_inspection").notNull().default(false),
+  videoUri: text("video_uri"),
+  inspectorVideoUri: text("inspector_video_uri"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 /* ---------- Notifications ---------- */
 
 export const notifications = pgTable("notifications", {
@@ -466,30 +667,6 @@ export const notifications = pgTable("notifications", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-/* ---------- Audit ---------- */
-
-/* ---------- Reports ---------- */
-
-export const reports = pgTable("reports", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  inspectionId: uuid("inspection_id")
-    .notNull()
-    .references(() => inspections.id),
-  format: varchar("format", { length: 20 }).notNull().default("json"),
-  status: varchar("status", { length: 20 }).notNull().default("requested"),
-  requestedBy: uuid("requested_by").references(() => users.id),
-  requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
-  artifact: json("artifact").$type<Record<string, unknown>>(),
-  storageRef: varchar("storage_ref", { length: 300 }),
-  generatedBy: uuid("generated_by").references(() => users.id),
-  generatedAt: timestamp("generated_at", { withTimezone: true }),
-  error: text("error"),
-  finalizedBy: uuid("finalized_by").references(() => users.id),
-  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /* ---------- Audit ---------- */
@@ -508,21 +685,30 @@ export const auditEvents = pgTable("audit_events", {
 
 /* ---------- Outbox ---------- */
 
-export const outboxEvents = pgTable("outbox_events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  type: varchar("type", { length: 80 }).notNull(),
-  correlationId: varchar("correlation_id", { length: 100 }).notNull(),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
-  actorUserId: uuid("actor_user_id").references(() => users.id),
-  resourceType: varchar("resource_type", { length: 50 }).notNull(),
-  resourceId: varchar("resource_id", { length: 100 }).notNull(),
-  payload: json("payload").$type<Record<string, unknown>>().default({}).notNull(),
-  status: varchar("status", { length: 20 }).notNull().default("pending"),
-  attemptCount: integer("attempt_count").notNull().default(0),
-  availableAfter: timestamp("available_after", { withTimezone: true }),
-  lastError: text("last_error"),
-  processedAt: timestamp("processed_at", { withTimezone: true }),
-});
+export const outboxEvents = pgTable(
+  "outbox_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: varchar("type", { length: 80 }).notNull(),
+    correlationId: varchar("correlation_id", { length: 100 }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+    actorUserId: uuid("actor_user_id").references(() => users.id),
+    resourceType: varchar("resource_type", { length: 50 }).notNull(),
+    resourceId: varchar("resource_id", { length: 100 }).notNull(),
+    payload: json("payload").$type<Record<string, unknown>>().default({}).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    availableAfter: timestamp("available_after", { withTimezone: true }),
+    lastError: text("last_error"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [
+    // Dispatcher poll + resource-history reads (§27).
+    index("outbox_events_status_idx").on(t.status, t.availableAfter),
+    index("outbox_events_type_idx").on(t.type),
+    index("outbox_events_resource_idx").on(t.resourceType, t.resourceId),
+  ],
+);
 
 /* ---------- Feature Flags ---------- */
 
@@ -854,6 +1040,8 @@ export const attendanceAnomalies = pgTable(
   (t) => [
     index("attendance_anomalies_project_state_idx").on(t.projectId, t.state),
     index("attendance_anomalies_group_idx").on(t.groupId),
+    index("attendance_anomalies_state_created_idx").on(t.state, t.createdAt),
+    index("attendance_anomalies_severity_idx").on(t.severity),
   ],
 );
 
@@ -895,7 +1083,10 @@ export const attendanceCorrections = pgTable(
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("attendance_corrections_project_idx").on(t.projectId, t.status)],
+  (t) => [
+    index("attendance_corrections_project_idx").on(t.projectId, t.status),
+    index("attendance_corrections_status_created_idx").on(t.status, t.createdAt),
+  ],
 );
 
 export const attendanceExports = pgTable(
@@ -920,4 +1111,260 @@ export const attendanceExports = pgTable(
     error: text("error"),
   },
   (t) => [index("attendance_exports_project_status_idx").on(t.projectId, t.status)],
+);
+
+/* ---------- Fund Utilization & Transparency ---------- */
+
+export const fundAllocations = pgTable(
+  "fund_allocations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    programmeId: uuid("programme_id").references(() => programmes.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    allocatedAmount: numeric("allocated_amount", { precision: 18, scale: 2 }).notNull(),
+    fiscalYear: varchar("fiscal_year", { length: 10 }).notNull(),
+    currency: varchar("currency", { length: 5 }).notNull().default("INR"),
+    sanctionedById: uuid("sanctioned_by_id").references(() => users.id),
+    sanctionedAt: timestamp("sanctioned_at", { withTimezone: true }),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    scheme: text("scheme"),
+    description: text("description"),
+    notes: text("notes"),
+    createdById: uuid("created_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("fund_allocations_project_idx").on(t.projectId),
+    index("fund_allocations_org_idx").on(t.organisationId),
+    index("fund_allocations_fy_idx").on(t.fiscalYear),
+  ],
+);
+
+export const fundReleases = pgTable(
+  "fund_releases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    allocationId: uuid("allocation_id")
+      .notNull()
+      .references(() => fundAllocations.id),
+    releasedAmount: numeric("released_amount", { precision: 18, scale: 2 }).notNull(),
+    releaseDate: timestamp("release_date", { withTimezone: true }).notNull(),
+    referenceNumber: varchar("reference_number", { length: 100 }).unique().notNull(),
+    releasedById: uuid("released_by_id").references(() => users.id),
+    remarks: text("remarks"),
+    status: varchar("status", { length: 20 }).notNull().default("released"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("fund_releases_allocation_idx").on(t.allocationId)],
+);
+
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    allocationId: uuid("allocation_id").references(() => fundAllocations.id),
+    category: varchar("category", { length: 80 }).notNull(),
+    description: text("description").notNull(),
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    transactionDate: timestamp("transaction_date", { withTimezone: true }).notNull(),
+    vendorName: varchar("vendor_name", { length: 300 }).notNull(),
+    vendorGstin: varchar("vendor_gstin", { length: 20 }),
+    invoiceNumber: varchar("invoice_number", { length: 100 }),
+    invoiceDate: timestamp("invoice_date", { withTimezone: true }),
+    paymentReference: varchar("payment_reference", { length: 200 }),
+    paymentMethod: varchar("payment_method", { length: 50 }),
+    status: varchar("status", { length: 30 }).notNull().default("draft"),
+    submittedById: uuid("submitted_by_id").references(() => users.id),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    verifiedById: uuid("verified_by_id").references(() => users.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    voidReason: text("void_reason"),
+    voidedById: uuid("voided_by_id").references(() => users.id),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    createdById: uuid("created_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("expenses_project_idx").on(t.projectId),
+    index("expenses_status_idx").on(t.status),
+    index("expenses_tx_date_idx").on(t.transactionDate),
+    index("expenses_project_invoice_idx").on(t.projectId, t.invoiceNumber),
+    index("expenses_status_submitted_idx").on(t.status, t.submittedAt),
+  ],
+);
+
+export const financialDocuments = pgTable(
+  "financial_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expenseId: uuid("expense_id").references(() => expenses.id),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    documentType: varchar("document_type", { length: 80 }).notNull(),
+    fileName: varchar("file_name", { length: 300 }).notNull(),
+    mimeType: varchar("mime_type", { length: 100 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256Hash: varchar("sha256_hash", { length: 64 }).notNull(),
+    storageKey: varchar("storage_key", { length: 300 }).notNull(),
+    verificationStatus: varchar("verification_status", { length: 20 }).notNull().default("pending"),
+    uploadedById: uuid("uploaded_by_id").references(() => users.id),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow().notNull(),
+    verifiedById: uuid("verified_by_id").references(() => users.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    rejectionReason: text("rejection_reason"),
+    duplicateOfId: uuid("duplicate_of_id").references((): AnyPgColumn => financialDocuments.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("financial_docs_expense_idx").on(t.expenseId),
+    index("financial_docs_hash_idx").on(t.sha256Hash),
+    index("financial_docs_project_idx").on(t.projectId),
+    index("financial_docs_status_created_idx").on(t.verificationStatus, t.createdAt),
+  ],
+);
+
+export const financialRiskRules = pgTable("financial_risk_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull(),
+  description: text("description").notNull(),
+  conditionConfig: json("condition_config").$type<Record<string, unknown>>().default({}).notNull(),
+  weight: integer("weight").notNull(),
+  severity: varchar("severity", { length: 20 }).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const financialRiskEvents = pgTable(
+  "financial_risk_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => financialRiskRules.id),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    expenseId: uuid("expense_id").references(() => expenses.id),
+    documentId: uuid("document_id").references(() => financialDocuments.id),
+    allocationId: uuid("allocation_id").references(() => fundAllocations.id),
+    scoreContribution: integer("score_contribution").notNull(),
+    detail: json("detail").$type<Record<string, unknown>>().default({}).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("open"),
+    resolvedById: uuid("resolved_by_id").references(() => users.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("risk_events_project_idx").on(t.projectId),
+    index("risk_events_rule_idx").on(t.ruleId),
+    index("risk_events_status_idx").on(t.status),
+  ],
+);
+
+export const inspectionFlags = pgTable(
+  "inspection_flags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    organisationId: uuid("organisation_id").references(() => organisations.id),
+    allocationId: uuid("allocation_id").references(() => fundAllocations.id),
+    riskScore: integer("risk_score").notNull(),
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+    triggerSource: varchar("trigger_source", { length: 30 }).notNull(),
+    explanation: text("explanation").notNull(),
+    evidenceRefs: json("evidence_refs")
+      .$type<Array<Record<string, unknown>>>()
+      .default([])
+      .notNull(),
+    status: varchar("status", { length: 40 }).notNull().default("open"),
+    assignedInspectorId: uuid("assigned_inspector_id").references(() => users.id),
+    linkedInspectionId: uuid("linked_inspection_id").references(() => inspections.id),
+    reviewNotes: text("review_notes"),
+    resolution: text("resolution"),
+    reviewerById: uuid("reviewer_id").references(() => users.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    dismissedReason: text("dismissed_reason"),
+    dismissedById: uuid("dismissed_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("inspection_flags_project_idx").on(t.projectId),
+    index("inspection_flags_status_idx").on(t.status),
+    index("inspection_flags_risk_level_idx").on(t.riskLevel),
+  ],
+);
+
+/* ---------- Project Risk Snapshots ---------- */
+
+export const projectRiskSnapshots = pgTable(
+  "project_risk_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).defaultNow().notNull(),
+    scoringVersion: varchar("scoring_version", { length: 50 }).notNull(),
+    totalScore: integer("total_score").notNull(),
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+    financialScore: integer("financial_score").notNull(),
+    inspectionQualityScore: integer("inspection_quality_score").notNull(),
+    attendanceAnomalyScore: integer("attendance_anomaly_score").notNull(),
+    complaintDensityScore: integer("complaint_density_score").notNull(),
+    aiAnomalyScore: integer("ai_anomaly_score").notNull(),
+    financialSignals: json("financial_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    inspectionQualitySignals: json("inspection_quality_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    attendanceAnomalySignals: json("attendance_anomaly_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    complaintDensitySignals: json("complaint_density_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    aiAnomalySignals: json("ai_anomaly_signals")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    topContributors: json("top_contributors")
+      .$type<Array<Record<string, unknown>>>()
+      .default([])
+      .notNull(),
+    explanation: text("explanation").notNull(),
+    inspectionFlagId: uuid("inspection_flag_id").references(() => inspectionFlags.id),
+    scheduledInspectionId: uuid("scheduled_inspection_id").references(() => inspections.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("project_risk_snapshots_project_idx").on(t.projectId),
+    index("project_risk_snapshots_calculated_at_idx").on(t.calculatedAt),
+    index("project_risk_snapshots_total_score_idx").on(t.totalScore),
+    index("project_risk_snapshots_risk_level_idx").on(t.riskLevel),
+  ],
 );

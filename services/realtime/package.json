@@ -14,9 +14,7 @@
   "dependencies": {
     "@netram/config": "workspace:*",
     "@netram/data": "workspace:*",
-    "@netram/types": "workspace:*",
     "fastify": "^5.2.1",
-    "undici": "^7.2.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
@@ -25,6 +23,6 @@
     "eslint": "^9.17.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.3"
+    "vitest": "^5.0.1"
   }
 }

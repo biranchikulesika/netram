@@ -1,59 +1,84 @@
 # Netram Design System Specification
 
-This document defines the authoritative visual language, color palette, typography, and styling rules for the Netram platform across **all web applications (`apps/web`) and mobile applications (`apps/inspector-mobile`)**.
+This document defines the authoritative visual language, colour palette, typography, and styling rules for the Netram platform across **all web applications (`apps/web`) and mobile applications (`apps/inspector-mobile`)**.
 
-Netram is a **mission-critical public-sector product** built for the Department of Social Justice & Empowerment (DoSJE), Government of India. 
+Netram is a **mission-critical public-sector product** addressing a problem statement from the Department of Social Justice & Empowerment (DoSJE). It is a **Smart India Hackathon 2026 project, not an official Government of India or DoSJE platform**, and no screen, document or metadata may present it as one.
 
 > ### 🏛️ Core Principle: Government Product Standards
-> * **Zero decorative animation**: Strictly no bouncy animations, floating elements, spinning loops, or distracting micro-animations.
-> * **Zero over-styling**: Strictly no aggressive glassmorphism, decorative rainbow gradients, or oversized cartoonish rounded corners.
-> * **High legibility & trust**: Subdued, crisp, authoritative institutional layouts with strict WCAG AA contrast compliance.
-> * **Consistency**: Every feature, screen, modal, and mobile workflow must adhere to these tokens.
+>
+> - **Zero decorative animation**: Strictly no bouncy animations, floating elements, spinning loops, or distracting micro-animations.
+> - **Zero over-styling**: Strictly no aggressive glassmorphism, decorative rainbow gradients, or oversized cartoonish rounded corners.
+> - **High legibility & trust**: Subdued, crisp, authoritative institutional layouts with strict WCAG AA contrast compliance.
+> - **Consistency**: Every feature, screen, modal, and mobile workflow must adhere to these tokens.
 
 ---
 
-## 1. Official Color Palette
+## 1. Official Colour Palette (Strict)
 
-The color system is derived from the official Netram portal identity:
+Netram uses a **closed 8-colour palette**. These are the ONLY colours permitted in
+the web application. No gradients, no additional blues/greens/oranges/greys,
+no arbitrary hex values, and no semi-random opacity colours. Colour usage must
+be restrained: **white is the primary background**; navy carries identity and
+structure; green is the primary action; red is reserved for destructive/error
+states only.
 
-### 1.1 Canvas & Background Colors
+### 1.1 The Palette
 
-| Token Name | Hex Code | Purpose & Usage |
-| :--- | :--- | :--- |
-| `--color-bg-canvas` | `#f6f8fc` | **Primary application background**. Soft, clean grey-blue tint. |
-| `--color-bg-surface` | `#ffffff` | Primary cards, content panels, modals, and input fields. |
-| `--color-bg-subtle` | `#f3f6fb` | Table headers, metadata key columns, badge backgrounds, and inactive panels. |
-| `--color-bg-hover` | `#edf2fa` | Interactive row hover, list item hover, and secondary button hover. |
-| `--color-backdrop` | `#001a38` | Modal/dialog scrim backdrop (applied with `rgba(0, 26, 56, 0.55)`). |
+| Colour            | Hex Code  | Role                                                                                       |
+| :---------------- | :-------- | :----------------------------------------------------------------------------------------- |
+| **White**         | `#FFFFFF` | Primary background and surfaces. Cards, panels, modals, inputs, tables.                    |
+| **Netram Navy**   | `#0C2A52` | Primary brand colour. Headings, primary text, links, info status, primary data-viz slot.   |
+| **Deep Navy**     | `#002449` | Dark surfaces: topbars, institutional badges, video scrims, selected rows, shadows/scrims. |
+| **Netram Orange** | `#DD501E` | Accent: status tags, ID badges, alert bullets, priority, **warning** status.               |
+| **Netram Green**  | `#137E3A` | Primary actions (sign in, submit, verify) and **success** status.                          |
+| **Cool Neutral**  | `#45556C` | Secondary text, strong interactive borders, input borders.                                 |
+| **Light Neutral** | `#EDF0F5` | Borders, dividers, subtle surfaces, table headers, hover fills.                            |
+| **Red**           | `#DC2626` | Critical/destructive/error ONLY. Validation errors, rejections, destructive buttons.       |
 
-### 1.2 Institutional Navy & Text Colors
+### 1.2 Semantic Status Mapping
 
-| Token Name | Hex Code | Purpose & Usage |
-| :--- | :--- | :--- |
-| `--color-navy-dark` | `#002449` | Deepest institutional navy. Header accents, institution badges. |
-| `--color-text-primary` | `#0c2a52` | **Primary text color**. Headings, card titles, prominent labels. |
-| `--color-text-data` | `#1c3a63` | Data values in tables, definition lists, and formal metrics. |
-| `--color-text-muted` | `#475569` | Body copy, descriptions, explanatory text (slate-600). |
-| `--color-text-subtle` | `#64748b` | Timestamps, field hints, secondary metadata (slate-500). |
-| `--color-navy-light` | `#9fc0e8` | Subtitle text on dark navy surfaces (`#002449`). |
+| Status           | Colour                  | Notes                                                    |
+| :--------------- | :---------------------- | :------------------------------------------------------- |
+| Success          | Netram Green `#137E3A`  | Verified, approved, acted upon, completed.               |
+| Info             | Netram Navy `#0C2A52`   | Reviewed, informational, neutral emphasis.               |
+| Warning          | Netram Orange `#DD501E` | Pending, overdue-risk, investigating, priority.          |
+| Error / Critical | Red `#DC2626`           | Failed, rejected, critical. **Never used decoratively.** |
 
-### 1.3 Structural Accents & Dividers
+**Colour is never the only indicator**: every status must also carry a text label,
+icon, or position that identifies it without relying on hue.
 
-| Token Name | Hex Code | Purpose & Usage |
-| :--- | :--- | :--- |
-| `--color-accent-blue` | `#3a488b` | Structural section headers, active borders, uppercase category tags. |
-| `--color-border-subtle` | `#e2e8f0` | Standard card borders, table dividers, panel outlines (slate-200). |
-| `--color-border-strong` | `#cbd5e1` | Input field borders, active card borders on hover (slate-300). |
+### 1.3 Tints and Alpha Variants
 
-### 1.4 Functional & Status Colors
+The only permitted tints are **alpha (opacity) variants of palette colours**,
+exposed in `apps/web/globals.css` as tokens:
 
-| Token Name | Hex Code | Purpose & Usage |
-| :--- | :--- | :--- |
-| `--color-action-green` | `#15803d` | **Primary Action / Verification**. Sign in buttons, submit actions. |
-| `--color-action-green-dark` | `#0e7a34` | Darker bound for green buttons (`from-[#15803d] to-[#0e7a34]`). |
-| `--color-tag-rust` | `#c2410c` | Status tags, ID badges (`#26095`), alert bullets, priority tags. |
-| `--color-tag-rust-dark` | `#a5340a` | Darker bound for rust badges (`from-[#c2410c] to-[#a5340a]`). |
-| `--color-error` | `#dc2626` | Validation errors, critical rejection alerts, negative findings. |
+| Token           | Value                     | Usage                                          |
+| :-------------- | :------------------------ | :--------------------------------------------- |
+| `--tint-navy`   | `rgba(12, 42, 82, 0.06)`  | Info/navy-tinted backgrounds, selected states. |
+| `--tint-green`  | `rgba(19, 126, 58, 0.08)` | Success-tinted backgrounds.                    |
+| `--tint-orange` | `rgba(221, 80, 30, 0.08)` | Warning-tinted backgrounds.                    |
+| `--tint-red`    | `rgba(220, 38, 38, 0.08)` | Error-tinted backgrounds.                      |
+| `--scrim-video` | `rgba(0, 36, 73, 0.9)`    | Video overlay scrims (control room).           |
+| `--bg-backdrop` | `rgba(0, 36, 73, 0.55)`   | Modal/dialog scrims.                           |
+
+Elevation shadows use navy-based alpha (`rgba(12, 42, 82, a)`,
+`rgba(0, 36, 73, a)`) - never grey or black.
+
+### 1.4 Data Visualisation Exception
+
+Chart series colours may exceed the palette **only when a chart genuinely
+requires more than two distinguishable datasets**. Any such additions must be
+restrained, must never leak into UI components, and must be documented here.
+Two-series charts must use Navy + Netram Green. Single-series charts use Navy.
+
+### 1.5 Legacy Palette (Removed)
+
+The following are **no longer approved** and were fully removed from the codebase:
+canvas `#f6f8fc`, accent blue `#3a488b`, rust `#c2410c`/`#a5340a`, action greens
+`#15803d`/`#0e7a34`, data-text `#1c3a63`, muted slate `#475569`/`#64748b`, borders
+`#e2e8f0`/`#cbd5e1`, and all Tailwind-style arbitrary hexes (`#2563eb`, `#3b82f6`,
+`#10b981`, `#22c55e`, `#f59e0b`, `#6b7280`, `#64748b`, `#ef4444`, etc.).
+Any reintroduction is a design-system regression.
 
 ---
 
@@ -62,31 +87,39 @@ The color system is derived from the official Netram portal identity:
 ### 2.1 Font Families
 
 1. **Primary Interface Font**:
+
    ```css
-   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+   font-family:
+     "Inter",
+     system-ui,
+     -apple-system,
+     BlinkMacSystemFont,
+     "Segoe UI",
+     Roboto,
+     sans-serif;
    ```
-   * Used for all UI text, headings, buttons, body paragraphs, and forms.
-   * Always apply `antialiased` rendering (`-webkit-font-smoothing: antialiased`).
+   - Used for all UI text, headings, buttons, body paragraphs, and forms.
+   - Always apply `antialiased` rendering (`-webkit-font-smoothing: antialiased`).
 
 2. **Technical / Monospace Font**:
    ```css
    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
    ```
-   * Used for:
-     * Problem Statement / Project IDs (e.g., `#26095`, `PRJ-2026-001`)
-     * Deadlines, timestamps, and dates
-     * Section category headers (uppercase tracking)
-     * Definition list metadata keys (`dt` elements)
-     * Version identifiers (`v1.0.0`)
+   - Used for:
+     - Problem Statement / Project IDs (e.g., `#26095`, `PRJ-2026-001`)
+     - Deadlines, timestamps, and dates
+     - Section category headers (uppercase tracking)
+     - Definition list metadata keys (`dt` elements)
+     - Version identifiers (`v1.0.0`)
 
 ### 2.2 Typographic Hierarchy
 
-* **Page / View Title**: `28px - 36px` (`1.75rem - 2.25rem`), font-weight `700` or `800`, tracking `tight` (`-0.025em`), color `#0c2a52`.
-* **Section / Card Heading**: `18px - 22px` (`1.125rem - 1.375rem`), font-weight `600` or `700`, color `#0c2a52`.
-* **Section Eyebrow / Tag**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em - 0.2em`, color `#3a488b`, font-weight `600`.
-* **Body Text**: `14px - 15px` (`0.875rem - 0.9375rem`), font-weight `400` or `500`, line-height `1.5 - 1.6`, color `#475569`.
-* **Technical Labels / Keys**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em`, color `#475569`, background `#f3f6fb`.
-* **Form Inputs & Buttons**: `15px - 16px` (ensuring 16px on mobile to prevent iOS viewport auto-zoom), font-weight `500` - `600`.
+- **Page / View Title**: `28px - 36px` (`1.75rem - 2.25rem`), font-weight `700` or `800`, tracking `tight` (`-0.025em`), colour `#0c2a52`.
+- **Section / Card Heading**: `18px - 22px` (`1.125rem - 1.375rem`), font-weight `600` or `700`, colour `#0c2a52`.
+- **Section Eyebrow / Tag**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em - 0.2em`, colour `#0c2a52`, font-weight `600`.
+- **Body Text**: `14px - 15px` (`0.875rem - 0.9375rem`), font-weight `400` or `500`, line-height `1.5 - 1.6`, colour `#45556c`.
+- **Technical Labels / Keys**: `10px - 11px`, `font-mono`, uppercase, letter-spacing `0.15em`, colour `#45556c`, background `#edf0f5`.
+- **Form Inputs & Buttons**: `15px - 16px`, font-weight `500` - `600`.
 
 ---
 
@@ -94,85 +127,117 @@ The color system is derived from the official Netram portal identity:
 
 ### 3.1 Buttons
 
-* **Primary Action Button**:
-  * Background: Solid or subtle linear gradient from `#15803d` to `#0e7a34`.
-  * Text: `#ffffff`, font-weight `600`, 14px - 15px.
-  * Border radius: `8px` (inputs/cards) or pill `9999px` (landing actions).
-  * Focus state: `outline: 2px solid #86efac`, `outline-offset: 2px`.
-  * Hover: `brightness(1.08)` (no scale bounce or physical distortion).
+Button colours are consistent across the entire application: **green = primary
+action**, **navy/neutral = secondary**, **red = destructive only**. No gradients.
 
-* **Secondary / Neutral Button**:
-  * Background: `#f3f6fb` (hover: `#edf2fa`).
-  * Border: `1px solid #cbd5e1` (hover: `#3a488b`).
-  * Text: `#0c2a52`, font-weight `600`.
+- **Primary Action Button**:
+  - Background: Solid Netram Green `#137E3A`.
+  - Text: `#ffffff`, font-weight `600`, 14px - 15px.
+  - Border radius: `8px` (inputs/cards) or pill `9999px` (landing actions).
+  - Focus state: `outline: 2px solid var(--action-green)`, `outline-offset: 2px`.
+  - Hover: `brightness(1.08)` (no scale bounce or physical distortion).
+
+- **Secondary / Neutral Button**:
+  - Background: Light Neutral `#EDF0F5`.
+  - Border: `1px solid var(--color-border-strong)` (`#45556C`).
+  - Text: Netram Navy `#0c2a52`, font-weight `600`.
+
+- **Destructive Button**:
+  - Background: Solid Red `#DC2626`. Used only for irreversible/destructive
+    operations (rejections, deletions). Never for emphasis.
 
 ### 3.2 Form Inputs
 
-* Background: `#ffffff`.
-* Border: `1px solid #cbd5e1`.
-* Text: `#0c2a52` (placeholder: `#94a3b8`).
-* Focus ring: `outline: none; border-color: #3a488b; box-shadow: 0 0 0 2px rgba(58, 72, 139, 0.2);`.
-* Error state: `border-color: #dc2626; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);`.
+- Background: `#ffffff`.
+- Border: `1px solid var(--color-border-strong)` (`#45556C`).
+- Text: `#0c2a52` (placeholder: `var(--text-subtle)`, `#45556C`).
+- Focus ring: `outline: none; border-color: #0c2a52; box-shadow: 0 0 0 2px rgba(12, 42, 82, 0.2);`.
+- Error state: `border-color: #dc2626; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);`.
 
 ### 3.3 Cards & Data Tables
 
-* Card background: `#ffffff`.
-* Border: `1px solid #e2e8f0`.
-* Border radius: `8px` to `12px` (restrained, clean).
-* Box shadow: `0 1px 3px rgba(12, 42, 82, 0.04), 0 4px 12px rgba(12, 42, 82, 0.03)` (subtle, crisp elevation).
-* Table header: Background `#f3f6fb`, border-bottom `1px solid #e2e8f0`, text `font-mono text-[10px] uppercase text-[#475569]`.
-* Table cell: Text `#1c3a63`, border-bottom `1px solid #e2e8f0`.
+- Card background: `#ffffff`.
+- Border: `1px solid var(--color-border-subtle)` (`#EDF0F5`).
+- Border radius: `8px` to `12px` (restrained, clean).
+- Box shadow: `0 1px 3px rgba(12, 42, 82, 0.04), 0 4px 12px rgba(12, 42, 82, 0.03)` (subtle, crisp, navy-based elevation).
+- **Tables are monochromatic**: white body rows, Light Neutral `#EDF0F5` headers,
+  navy text; no coloured row backgrounds except alpha tints for status.
+- Table header: Background `#edf0f5`, border-bottom `1px solid #edf0f5`, text uppercase `#45556C`.
+- Table cell: Text `#0c2a52`, border-bottom `1px solid #edf0f5`.
 
 ### 3.4 Badges & Status Chips
 
-* **ID / Reference Badge**: Background gradient `from-[#c2410c] to-[#a5340a]`, text `#ffffff`, `font-mono`, uppercase, letter-spacing `0.1em`.
-* **Institutional Badge**: Background `#002449`, text `#ffffff`, `font-semibold`.
-* **Standard Status Pill**: Background `#f3f6fb`, border `1px solid #e2e8f0`, text `#475569`.
+- **ID / Reference Badge**: Background Netram Orange `#DD501E`, text `#ffffff`,
+  `font-mono`, uppercase, letter-spacing `0.1em`. No gradients.
+- **Institutional Badge**: Background Deep Navy `#002449`, text `#ffffff`, `font-semibold`.
+- **Standard Status Pill**: Background `#edf0f5`, border `1px solid #edf0f5`, text `#45556C`.
+- **Semantic Status Pills**: alpha tint background + palette colour text per §1.2
+  (e.g. `var(--tint-red)` + `#dc2626`), always paired with a text label.
 
 ---
 
 ## 4. CSS Custom Properties Reference
 
-Add these tokens to root CSS variables (`globals.css` / theme root):
+Add these tokens to root CSS variables (`globals.css` / theme root). These are
+implemented in `apps/web/globals.css` and are the **only** sanctioned colour
+channel for web UI code - prefer `var(…)` tokens over raw hex in component code.
 
 ```css
 :root {
-  /* Canvas & Backgrounds */
-  --bg-canvas: #f6f8fc;
+  /* The 8 approved colours */
+  --color-white: #ffffff;
+  --color-navy-brand: #0c2a52; /* Netram Navy */
+  --color-navy-dark: #002449; /* Deep Navy */
+  --color-orange: #dd501e; /* Netram Orange */
+  --action-green: #137e3a; /* Netram Green */
+  --color-neutral-cool: #45556c; /* Cool Neutral */
+  --color-neutral-light: #edf0f5; /* Light Neutral */
+  --color-error: #dc2626; /* Red */
+
+  /* Canvas & Surfaces (white primary background) */
+  --bg-canvas: #ffffff;
   --bg-surface: #ffffff;
-  --bg-subtle: #f3f6fb;
-  --bg-hover: #edf2fa;
-  --bg-backdrop: rgba(0, 26, 56, 0.55);
+  --bg-subtle: #edf0f5;
+  --bg-hover: #edf0f5;
+  --bg-backdrop: rgba(0, 36, 73, 0.55);
 
-  /* Deep Navy & Primary Brand */
-  --color-navy-dark: #002449;
-  --color-navy-brand: #0c2a52;
-  --color-navy-data: #1c3a63;
-  --color-navy-light: #9fc0e8;
+  /* Borders */
+  --color-border-subtle: #edf0f5;
+  --color-border-strong: #45556c;
 
-  /* Structural Blue & Borders */
-  --color-accent-blue: #3a488b;
-  --color-border-subtle: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-
-  /* Text Colors */
+  /* Text */
   --text-primary: #0c2a52;
-  --text-data: #1c3a63;
-  --text-muted: #475569;
-  --text-subtle: #64748b;
+  --text-data: #0c2a52;
+  --text-muted: #45556c;
+  --text-subtle: #45556c;
 
-  /* Functional Accents */
-  --action-green: #15803d;
-  --action-green-dark: #0e7a34;
-  --tag-rust: #c2410c;
-  --tag-rust-dark: #a5340a;
+  /* Actions & Status */
+  --action-green: #137e3a;
+  --tag-rust: #dd501e;
+  --color-warning: #dd501e;
   --color-error: #dc2626;
 
+  /* Alpha tints - the only permitted colour variants */
+  --tint-navy: rgba(12, 42, 82, 0.06);
+  --tint-green: rgba(19, 126, 58, 0.08);
+  --tint-orange: rgba(221, 80, 30, 0.08);
+  --tint-red: rgba(220, 38, 38, 0.08);
+  --scrim-video: rgba(0, 36, 73, 0.9);
+
   /* Typography */
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans:
+    "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
 }
 ```
+
+### 4.1 Enforcement Notes
+
+- Component code should consume tokens (`var(--action-green)`), not raw hex.
+- Inline `style` colours in TSX must resolve to the palette - no `#2563eb`,
+  `bg-emerald-600`, `rgba(59, 130, 246, …)` style values, etc.
+- No CSS gradients are used for decoration; video overlay scrims are the only
+  permitted alpha overlays (`--scrim-video`, `--bg-backdrop`).
 
 ---
 
@@ -181,5 +246,6 @@ Add these tokens to root CSS variables (`globals.css` / theme root):
 1. **No animations**: Do not introduce CSS `@keyframes` for floating, bouncing, pulse glows, or entry slide effects.
 2. **Transition limits**: Transitions are strictly limited to simple state changes (e.g. `color 0.15s ease`, `background-color 0.15s ease`, `border-color 0.15s ease`).
 3. **No gratuitous rounded shapes**: Avoid 24px+ bubble radii on content cards; standard cards must use 8px to 12px.
-4. **Contrast compliance**: Always ensure text on `--bg-canvas` (`#f6f8fc`) uses `--text-primary` (`#0c2a52`) or `--text-muted` (`#475569`).
-5. **Cross-platform parity**: Mobile inspector UI components (`apps/inspector-mobile`) must use the same hex values and typography hierarchy.
+4. **Contrast compliance**: Always ensure text on `--bg-canvas` (`#ffffff`) uses `--text-primary` (`#0c2a52`) or `--text-muted` (`#45556c`).
+5. **Cross-platform parity**: Mobile inspector UI components (`apps/inspector-mobile`) must use the same palette values and typography hierarchy.
+6. **Closed palette**: The 8 colours in §1.1 are the complete set. Every new UI surface must be expressible with them; if one genuinely cannot, that is an architectural decision requiring a DESIGN.md update first - never a local hex literal.

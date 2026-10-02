@@ -33,7 +33,6 @@ function makeOrg(overrides: Partial<OrganisationRow> = {}): OrganisationRow {
     name: "Test Welfare Society",
     category: "SC/ST Hostel",
     authorityId: "auth-1",
-    districtId: null,
     createdAt: new Date("2026-01-01T00:00:00Z"),
     ...overrides,
   };
@@ -70,7 +69,7 @@ function makeRepo(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe("RegistryService — capability gating", () => {
+describe("RegistryService - capability gating", () => {
   it("throws forbidden when creating an organisation without organisation:create", async () => {
     const authz = new AuthorizationService();
     const service = new RegistryService(authz, makeRepo() as never);
@@ -129,7 +128,7 @@ describe("RegistryService — capability gating", () => {
   });
 });
 
-describe("RegistryService — organisation & programme registration", () => {
+describe("RegistryService - organisation & programme registration", () => {
   it("creates an organisation with uppercased code and registrar's authority", async () => {
     const authz = new AuthorizationService();
     const repo = makeRepo();
@@ -247,7 +246,7 @@ describe("RegistryService — organisation & programme registration", () => {
   });
 });
 
-describe("RegistryService — people registration", () => {
+describe("RegistryService - people registration", () => {
   it("invites an inspector as suspended with the inspector role", async () => {
     const authz = new AuthorizationService();
     const repo = makeRepo();

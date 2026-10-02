@@ -8,7 +8,7 @@ try {
   // Ignore if .env does not exist or already loaded
 }
 
-const MIGRATIONS_DIR = join(resolve(import.meta.dirname), "../../../../supabase/migrations");
+const MIGRATIONS_DIR = join(resolve(import.meta.dirname), "../../../../db/migrations");
 
 const MIGRATION_TABLE = "_schema_migrations";
 
@@ -27,10 +27,17 @@ function isLocalUrl(url: string): boolean {
 }
 
 function guardReset(databaseUrl: string) {
+  // Explicit operator opt-in: the demo VPS intentionally resets its throwaway
+  // database on a schedule (§12 lifecycle, containerized Postgres). Any other
+  // non-local environment stays protected.
+  if (process.env.NETRAM_ALLOW_DB_RESET === "1") return;
   if (!isLocalUrl(databaseUrl)) {
     const env = process.env.NODE_ENV ?? "production";
     if (["production", "demo"].includes(env)) {
-      throw new Error(`Refusing to reset non-local database in environment '${env}'.`);
+      throw new Error(
+        `Refusing to reset non-local database in environment '${env}'. ` +
+          "Set NETRAM_ALLOW_DB_RESET=1 only on throwaway demo databases.",
+      );
     }
   }
 }

@@ -1,7 +1,20 @@
 {
   "extends": "../../packages/config/tsconfig/react-native.json",
   "compilerOptions": {
-    "baseUrl": "."
+    "baseUrl": ".",
+    // This app pins React 18 (peer of expo ~52 / RN 0.76) while other
+    // workspace apps use React 19. pnpm hoists a single @types/react
+    // (19.x) into node_modules/.pnpm/node_modules, and tsc realpaths the
+    // expo-router / @expo/vector-icons symlinks into that store, so
+    // library types resolved ReactNode/JSX from @types/react@19 while the
+    // app compiled against 18.3.x -> TS2786 "cannot be used as a JSX
+    // component" for Tabs/Stack/Ionicons. Pinning the "react" type
+    // resolution to this app's own @types/react copy restores a single
+    // React type universe. Remove when the app upgrades to React 19
+    // (Expo SDK 53+) and the workspace has one @types/react again.
+    "paths": {
+      "react": ["./node_modules/@types/react"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx"]
 }

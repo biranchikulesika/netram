@@ -11,7 +11,6 @@ import {
   AiAnomalyRepository,
   InspectionAssignmentRepository,
   NotificationRepository,
-  ReportRepository,
   AuditRepository,
   OutboxRepository,
   UserRepository,
@@ -22,15 +21,21 @@ import {
   CctvRepository,
   VcSessionRepository,
   AttendanceRepository,
-  AnalyticsRepository,
+  FundRepository,
+  ExpenseRepository,
+  FinancialDocumentRepository,
+  FinancialRiskRepository,
+  InspectionFlagRepository,
+  ProjectRiskRepository,
+  CallRepository,
 } from "@netram/data";
 import type { AppConfig } from "../config.js";
 import { AppError } from "./errors.js";
 import { AuthService } from "../modules/auth/application/auth-service.js";
+import { CallService } from "../modules/calls/application/call-service.js";
 import { DevAuthProvider } from "../modules/auth/infrastructure/providers/dev-auth-provider.js";
 import { SupabaseAuthProvider } from "../modules/auth/infrastructure/providers/supabase-auth-provider.js";
 import { AuthorizationService } from "../modules/authorization/application/authorization-service.js";
-import { AnalyticsService } from "../modules/analytics/application/analytics-service.js";
 import { ProjectService } from "../modules/projects/application/project-service.js";
 import { ProjectPhotoService } from "../modules/projects/application/project-photo-service.js";
 import { InspectionService } from "../modules/inspections/application/inspection-service.js";
@@ -44,19 +49,26 @@ import { AuditService } from "../modules/audit/application/audit-service.js";
 import { AiAnomalyService } from "../modules/ai-anomalies/application/ai-anomaly-service.js";
 import { InspectionAssignmentService } from "../modules/assignments/application/inspection-assignment-service.js";
 import { NotificationService } from "../modules/notifications/application/notification-service.js";
-import { ReportService } from "../modules/reports/application/report-service.js";
 import { UserAdminService } from "../modules/user-admin/application/user-admin-service.js";
 import { RegistryService } from "../modules/registry/application/registry-service.js";
 import { CctvService } from "../modules/cctv/application/cctv-service.js";
 import { VcService } from "../modules/vc/application/vc-service.js";
 import { WebRtcMeshProvider } from "../modules/vc/infrastructure/providers/webrtc-mesh-provider.js";
-import { BullReportJobQueue } from "../modules/reports/infrastructure/bull-report-job-queue.js";
 import { AttendanceService } from "../modules/attendance/application/attendance-service.js";
 import { BiometricSimulatorProvider } from "../modules/attendance/infrastructure/providers/biometric-simulator.js";
 import { BullAttendanceExportJobQueue } from "../modules/attendance/infrastructure/bull-attendance-export-job-queue.js";
 import { MinioObjectStorage } from "./object-storage.js";
 import { NotificationProviderRegistry } from "../modules/notifications/infrastructure/providers/notification-provider-registry.js";
 import type { AuthProvider } from "../modules/auth/application/auth-provider-port.js";
+import { FundService } from "../modules/funds/application/fund-service.js";
+import { ExpenseService } from "../modules/funds/application/expense-service.js";
+import { FinancialDocumentService } from "../modules/funds/application/document-service.js";
+import { FinancialRiskService } from "../modules/financial-risk/application/financial-risk-service.js";
+import { ProjectRiskService } from "../modules/project-risk/application/project-risk-service.js";
+import { ActionInboxService } from "../modules/action-inbox/application/action-inbox-service.js";
+import { ProjectRiskContextBuilder } from "../modules/project-risk/application/project-risk-context-builder.js";
+import { CompositeRiskScorer } from "../modules/project-risk/domain/composite-risk-scorer.js";
+import { InspectionScheduler } from "../modules/project-risk/application/inspection-scheduler.js";
 
 export interface Container {
   config: AppConfig;
@@ -77,7 +89,6 @@ export interface Container {
   aiAnomalyService: AiAnomalyService;
   inspectionAssignmentService: InspectionAssignmentService;
   notificationService: NotificationService;
-  reportService: ReportService;
   userAdminService: UserAdminService;
   registryService: RegistryService;
   cctvService: CctvService;
@@ -87,12 +98,27 @@ export interface Container {
   auditRepo: AuditRepository;
   outboxRepo: OutboxRepository;
   attendanceService: AttendanceService;
-  analyticsService: AnalyticsService;
+  fundService: FundService;
+  expenseService: ExpenseService;
+  financialDocumentService: FinancialDocumentService;
+  financialRiskService: FinancialRiskService;
+  fundRepo: FundRepository;
+  expenseRepo: ExpenseRepository;
+  docRepo: FinancialDocumentRepository;
+  riskRepo: FinancialRiskRepository;
+  flagRepo: InspectionFlagRepository;
+  projectRiskService: ProjectRiskService;
+  projectRiskRepo: ProjectRiskRepository;
+  actionInboxService: ActionInboxService;
+  callService: CallService;
+  callRepo: CallRepository;
 }
 
 export function buildContainer(config: AppConfig): Container {
   const db = getDb(config.DATABASE_URL);
 
+  const callRepo = new CallRepository(db);
+  const callService = new CallService(callRepo);
   const userRepo = new UserRepository(db);
   const authzRepo = new AuthorizationRepository(db);
   const auditRepo = new AuditRepository(db);
@@ -115,7 +141,6 @@ export function buildContainer(config: AppConfig): Container {
   const aiAnomalyRepo = new AiAnomalyRepository(db);
   const inspectionAssignmentRepo = new InspectionAssignmentRepository(db);
   const notificationRepo = new NotificationRepository(db);
-  const reportRepo = new ReportRepository(db);
 
   const syncRepo = new InspectionSyncRepository(db);
 
@@ -141,12 +166,18 @@ export function buildContainer(config: AppConfig): Container {
     evidenceRepo,
     findingRepo,
   );
-  const findingService = new FindingService(authorizationService, inspectionService, findingRepo);
+  const findingService = new FindingService(
+    authorizationService,
+    inspectionService,
+    projectRepo,
+    findingRepo,
+  );
   const correctiveActionService = new CorrectiveActionService(
     authorizationService,
     inspectionService,
     findingRepo,
     correctiveActionRepo,
+    objectStorage,
   );
   const observationService = new ObservationService(
     authorizationService,
@@ -159,9 +190,20 @@ export function buildContainer(config: AppConfig): Container {
     evidenceRepo,
     objectStorage,
   );
-  const complaintService = new ComplaintService(authorizationService, projectRepo, complaintRepo);
+  const complaintService = new ComplaintService(
+    authorizationService,
+    projectRepo,
+    complaintRepo,
+    objectStorage,
+  );
   const auditService = new AuditService(authorizationService, auditRepo);
-  const aiAnomalyService = new AiAnomalyService(authorizationService, aiAnomalyRepo);
+  const aiAnomalyService = new AiAnomalyService(
+    authorizationService,
+    aiAnomalyRepo,
+    // Resolves the anomaly's project for follow-up inspection creation on
+    // escalation to `investigated` (§36 → §32).
+    inspectionRepo,
+  );
   const inspectionAssignmentService = new InspectionAssignmentService(
     authorizationService,
     inspectionService,
@@ -176,13 +218,6 @@ export function buildContainer(config: AppConfig): Container {
     authz: authorizationService,
     providers: [notificationRegistry.get("in_app")],
   });
-  const reportJobs = new BullReportJobQueue(config.REDIS_URL);
-  const reportService = new ReportService(
-    authorizationService,
-    inspectionService,
-    reportRepo,
-    reportJobs,
-  );
   const userAdminRepo = new UserAdminRepository(db);
   const userAdminService = new UserAdminService(authorizationService, userAdminRepo);
   const registryRepo = new RegistryRepository(db);
@@ -192,6 +227,7 @@ export function buildContainer(config: AppConfig): Container {
     authorizationService,
     cctvRepo,
     config.NETRAM_CCTV_GATEWAY_URL,
+    config.NETRAM_CCTV_SERVICE_SECRET,
   );
   const vcRepo = new VcSessionRepository(db);
   const vcProvider = new WebRtcMeshProvider({
@@ -213,8 +249,85 @@ export function buildContainer(config: AppConfig): Container {
     exportJobs: attendanceExportJobs,
   });
 
-  const analyticsRepo = new AnalyticsRepository(db);
-  const analyticsService = new AnalyticsService(authorizationService, analyticsRepo);
+  const fundRepo = new FundRepository(db);
+  const expenseRepo = new ExpenseRepository(db);
+  const docRepo = new FinancialDocumentRepository(db);
+  const riskRepo = new FinancialRiskRepository(db);
+  const flagRepo = new InspectionFlagRepository(db);
+
+  const fundService = new FundService(
+    authorizationService,
+    projectRepo,
+    fundRepo,
+    expenseRepo,
+    riskRepo,
+    flagRepo,
+  );
+  const expenseService = new ExpenseService(
+    authorizationService,
+    projectRepo,
+    expenseRepo,
+    fundRepo,
+  );
+  const financialDocumentService = new FinancialDocumentService(
+    authorizationService,
+    projectRepo,
+    expenseRepo,
+    docRepo,
+    objectStorage,
+  );
+  const financialRiskService = new FinancialRiskService(
+    authorizationService,
+    projectRepo,
+    inspectionRepo,
+    inspectionService,
+    fundRepo,
+    expenseRepo,
+    docRepo,
+    riskRepo,
+    flagRepo,
+  );
+
+  const projectRiskRepo = new ProjectRiskRepository(db);
+  const projectRiskContextBuilder = new ProjectRiskContextBuilder(
+    projectRepo,
+    inspectionRepo,
+    findingRepo,
+    correctiveActionRepo,
+    attendanceRepo,
+    complaintRepo,
+    aiAnomalyRepo,
+    riskRepo,
+    fundRepo,
+    expenseRepo,
+    financialRiskService,
+  );
+  const compositeRiskScorer = new CompositeRiskScorer();
+  const inspectionScheduler = new InspectionScheduler(projectRiskRepo, flagRepo, inspectionService);
+  const projectRiskService = new ProjectRiskService(
+    authorizationService,
+    projectRiskContextBuilder,
+    compositeRiskScorer,
+    inspectionScheduler,
+    projectRiskRepo,
+    auditRepo,
+  );
+
+  // Action Inbox aggregates each module's pending-decision queue (§32). It
+  // depends only on the application services (never repositories directly) and
+  // enforces its own permission gating before each section fetch.
+  const actionInboxService = new ActionInboxService({
+    authz: authorizationService,
+    projectService,
+    findingService,
+    correctiveActionService,
+    complaintService,
+    aiAnomalyService,
+    attendanceService,
+    expenseService,
+    financialDocumentService,
+    financialRiskService,
+  });
 
   let provider: AuthProvider;
   let devAuthProvider: DevAuthProvider | null = null;
@@ -261,7 +374,6 @@ export function buildContainer(config: AppConfig): Container {
     aiAnomalyService,
     inspectionAssignmentService,
     notificationService,
-    reportService,
     userAdminService,
     registryService,
     cctvService,
@@ -271,6 +383,19 @@ export function buildContainer(config: AppConfig): Container {
     auditRepo,
     outboxRepo,
     attendanceService,
-    analyticsService,
+    fundService,
+    expenseService,
+    financialDocumentService,
+    financialRiskService,
+    fundRepo,
+    expenseRepo,
+    docRepo,
+    riskRepo,
+    flagRepo,
+    projectRiskService,
+    projectRiskRepo,
+    actionInboxService,
+    callService,
+    callRepo,
   };
 }

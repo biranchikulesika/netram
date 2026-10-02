@@ -21,14 +21,14 @@ async function main() {
   console.log("==================================================================");
 
   // 1. Authenticate as assigned inspector (inspector.one)
-  console.log("\n1. Authenticating as assigned inspector: inspector.one@dev.netram.in...");
+  console.log("\n1. Authenticating as assigned inspector: inspector@netram.dev...");
   let currentToken: string | null = null;
   const client = new NetramApiClient({
     baseUrl: API_URL,
     getToken: () => currentToken,
   });
 
-  const inspectorLogin = await client.devLogin("inspector.one@dev.netram.in");
+  const inspectorLogin = await client.devLogin("inspector@netram.dev");
   currentToken = inspectorLogin.token;
   console.log(`✓ Logged in as ${inspectorLogin.user.displayName} (id: ${inspectorLogin.user.id})`);
 
@@ -303,7 +303,7 @@ async function main() {
 
   // 11. Authoritative Audit Trail (§37)
   console.log("\n11. Verifying Authoritative Audit Trail...");
-  const officerLogin = await client.devLogin("officer.khordha@dev.netram.in");
+  const officerLogin = await client.devLogin("officer@netram.dev");
   currentToken = officerLogin.token;
 
   const auditEvents = await client.listAuditEvents({

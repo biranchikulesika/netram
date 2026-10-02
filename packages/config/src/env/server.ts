@@ -27,7 +27,20 @@ export const serverEnvSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? v : undefined)),
-  NETRAM_CORS_ORIGIN: z.string().default("*"),
+  /**
+   * Allowed browser origins for CORS. Comma-separated list, e.g.
+   * "http://localhost:3000,http://localhost:8081" (web app + Expo web).
+   * A single value and the wildcard "*" remain valid.
+   */
+  NETRAM_CORS_ORIGIN: z
+    .string()
+    .default("*")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+    ),
   NETRAM_OBJECT_STORAGE_ENDPOINT: z.string().default("http://localhost:9000"),
   NETRAM_OBJECT_STORAGE_ACCESS_KEY: z.string().default("netram"),
   NETRAM_OBJECT_STORAGE_SECRET_KEY: z.string().default("netram-secret"),
@@ -41,6 +54,16 @@ export const serverEnvSchema = z.object({
     .string()
     .min(32)
     .default("replace-me-with-a-32-char-plus-cctv-stream-secret"),
+  /** Shared secret the NETRAM API presents to the CCTV gateway (§14). */
+  NETRAM_CCTV_SERVICE_SECRET: z
+    .string()
+    .min(32)
+    .default("replace-me-with-a-32-char-plus-cctv-service-secret"),
+  /** Secret the MediaMTX external auth hook must present (Phase 4, §13). */
+  NETRAM_MEDIAMTX_HOOK_SECRET: z
+    .string()
+    .min(32)
+    .default("replace-me-with-a-32-char-plus-mediamtx-hook-secret"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

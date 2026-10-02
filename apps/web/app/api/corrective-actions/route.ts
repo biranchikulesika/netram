@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/corrective-actions`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/corrective-actions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

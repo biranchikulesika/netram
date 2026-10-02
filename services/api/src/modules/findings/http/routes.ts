@@ -4,6 +4,7 @@ import type { Container } from "../../../infrastructure/container.js";
 import { toJsonSchema } from "../../../infrastructure/schema-helper.js";
 import {
   createFindingSchema,
+  findingAwaitingOrderListSchema,
   findingListSchema,
   idParamsSchema,
   transitionFindingSchema,
@@ -31,6 +32,20 @@ export async function registerFindingRoutes(
       const { id } = request.params as { id: string };
       return findingService.listFindings(request.netram!, id);
     },
+  );
+
+  app.get(
+    "/findings/awaiting-order",
+    {
+      schema: {
+        tags: ["findings"],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: toJsonSchema("FindingAwaitingOrderList", findingAwaitingOrderListSchema),
+        },
+      },
+    },
+    async (request) => findingService.listFindingsAwaitingOrder(request.netram!),
   );
 
   app.post(

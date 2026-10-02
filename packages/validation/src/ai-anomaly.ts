@@ -15,6 +15,7 @@ export const aiAnomalySchema = z.object({
   reviewedBy: z.string().uuid().nullable(),
   reviewedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
+  projectId: z.string().uuid().nullable(),
   projectCode: z.string().max(50).nullable(),
   projectName: z.string().max(300).nullable(),
   districtId: z.string().uuid().nullable(),
@@ -32,6 +33,7 @@ export const aiAnomalyListQuerySchema = paginationSchema.extend({
   severity: z.enum(ANOMALY_SEVERITIES).optional(),
   status: z.enum(ANOMALY_STATUSES).optional(),
   inspectionId: uuidSchema.optional(),
+  projectId: uuidSchema.optional(),
 });
 
 export const transitionAiAnomalySchema = z

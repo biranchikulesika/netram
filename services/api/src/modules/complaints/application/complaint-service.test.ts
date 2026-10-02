@@ -5,6 +5,7 @@ import { InvalidComplaintTransitionError } from "../domain/complaint.js";
 import type { Complaint } from "@netram/types";
 import type { ComplaintRepositoryPort } from "./ports/complaint-repository.js";
 import type { ProjectRepositoryPort } from "../../projects/application/ports/project-repository.js";
+import type { ObjectStoragePort } from "../../../infrastructure/object-storage.js";
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { AuthorizationService } from "../../authorization/application/authorization-service.js";
 
@@ -25,6 +26,10 @@ function mockCtx(overrides: Partial<RequestUserContext> = {}): RequestUserContex
   };
 }
 
+function mockStorage(): ObjectStoragePort {
+  return { put: vi.fn().mockResolvedValue(undefined), get: vi.fn() };
+}
+
 function sampleComplaint(overrides: Partial<Complaint> = {}): Complaint {
   return {
     id: "complaint-1",
@@ -32,6 +37,7 @@ function sampleComplaint(overrides: Partial<Complaint> = {}): Complaint {
     projectCode: "OD-KHD-001",
     projectName: "Vani Vihar Water Works",
     districtId: "district-khordha",
+    districtName: "Khordha",
     complainantName: "Deepak Dash",
     contactInfo: "deepak@example.com",
     trackingCode: "CMP-2026-A1B2",
@@ -42,6 +48,7 @@ function sampleComplaint(overrides: Partial<Complaint> = {}): Complaint {
     resolvedAt: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    files: [],
     ...overrides,
   };
 }
@@ -62,7 +69,7 @@ describe("ComplaintService", () => {
       }),
     } as unknown as ComplaintRepositoryPort;
 
-    const service = new ComplaintService(authz, projectRepo, repo);
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
     const result = await service.listComplaints(mockCtx(), { page: 1, pageSize: 10 });
 
     expect(authz.requirePermission).toHaveBeenCalledWith(expect.anything(), "complaint:read");
@@ -88,7 +95,7 @@ describe("ComplaintService", () => {
       createWithAuditAndEvent: vi.fn().mockResolvedValue(sampleComplaint()),
     } as unknown as ComplaintRepositoryPort;
 
-    const service = new ComplaintService(authz, projectRepo, repo);
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
     const created = await service.createComplaint(mockCtx(), {
       projectId: "proj-1",
       description: "Contaminated water line observed near gate 2",
@@ -124,14 +131,12 @@ describe("ComplaintService", () => {
       }),
     } as unknown as ComplaintRepositoryPort;
 
-    const service = new ComplaintService(authz, projectRepo, repo);
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
     const updated = await service.transitionComplaint(mockCtx(), "complaint-1", "under_review");
 
-    expect(authz.requirePermission).toHaveBeenCalledWith(
-      expect.anything(),
-      "complaint:resolve",
-      { districtId: "district-khordha" },
-    );
+    expect(authz.requirePermission).toHaveBeenCalledWith(expect.anything(), "complaint:resolve", {
+      districtId: "district-khordha",
+    });
     expect(repo.transitionWithAuditAndEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         complaintId: "complaint-1",
@@ -155,12 +160,12 @@ describe("ComplaintService", () => {
       transitionWithAuditAndEvent: vi.fn(),
     } as unknown as ComplaintRepositoryPort;
 
-    const service = new ComplaintService(authz, projectRepo, repo);
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
 
     // Missing resolutionText
-    await expect(
-      service.transitionComplaint(mockCtx(), "complaint-1", "resolved"),
-    ).rejects.toThrow(AppError);
+    await expect(service.transitionComplaint(mockCtx(), "complaint-1", "resolved")).rejects.toThrow(
+      AppError,
+    );
 
     // With resolutionText
     repo.transitionWithAuditAndEvent = vi.fn().mockResolvedValue({
@@ -190,12 +195,68 @@ describe("ComplaintService", () => {
       findById: vi.fn().mockResolvedValue(current),
     } as unknown as ComplaintRepositoryPort;
 
-    const service = new ComplaintService(authz, projectRepo, repo);
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
 
     // cannot skip under_review to resolved
     await expect(
       service.transitionComplaint(mockCtx(), "complaint-1", "resolved", "Fix"),
     ).rejects.toThrow(InvalidComplaintTransitionError);
+  });
+
+  it("creates a public complaint without authz but still audits and emits event", async () => {
+    const authz = {
+      requirePermission: vi.fn(),
+    } as unknown as AuthorizationService;
+
+    const projectRepo = {
+      findById: vi.fn().mockResolvedValue({ id: "proj-1", name: "Vani Vihar" }),
+    } as unknown as ProjectRepositoryPort;
+
+    const repo = {
+      createWithAuditAndEvent: vi.fn().mockResolvedValue(sampleComplaint()),
+    } as unknown as ComplaintRepositoryPort;
+
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
+    const created = await service.createPublicComplaint(
+      {
+        projectId: "proj-1",
+        description: "Contaminated water line observed near gate 2",
+      },
+      [],
+      "req-citizen-1",
+      "192.168.0.42",
+    );
+
+    expect(authz.requirePermission).not.toHaveBeenCalled();
+    expect(repo.createWithAuditAndEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: "proj-1",
+        actorUserId: null,
+        requestId: "req-citizen-1",
+        ipAddress: "192.168.0.42",
+        auditAction: "complaint.submitted",
+        eventType: "complaint.submitted",
+      }),
+    );
+    expect(created.trackingCode).toBe("CMP-2026-A1B2");
+  });
+
+  it("rejects a public complaint for a non-existent project", async () => {
+    const authz = {} as AuthorizationService;
+    const projectRepo = {
+      findById: vi.fn().mockResolvedValue(null),
+    } as unknown as ProjectRepositoryPort;
+    const repo = {} as unknown as ComplaintRepositoryPort;
+
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
+    await expect(
+      service.createPublicComplaint(
+        { projectId: "proj-missing", description: "A genuinely long description text" },
+        [],
+        "req-x",
+        "ip",
+      ),
+    ).rejects.toThrow(AppError);
   });
 
   it("tracks complaint publicly by tracking code without disclosing PII", async () => {
@@ -212,7 +273,7 @@ describe("ComplaintService", () => {
       ),
     } as unknown as ComplaintRepositoryPort;
 
-    const service = new ComplaintService(authz, projectRepo, repo);
+    const service = new ComplaintService(authz, projectRepo, repo, mockStorage());
     const tracking = await service.trackComplaint("CMP-2026-A1B2");
 
     expect(repo.findByTrackingCode).toHaveBeenCalledWith("CMP-2026-A1B2");
