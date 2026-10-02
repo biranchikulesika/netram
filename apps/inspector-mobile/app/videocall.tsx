@@ -18,7 +18,6 @@ import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo
 import { Audio as ExpoAudio, Video as ExpoVideo, ResizeMode } from "expo-av";
 import { Icon } from "../src/components/ui/Icon";
 import { InteractiveVideoPlayer } from "../src/components/ui/InteractiveVideoPlayer";
-import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { useAuth } from "../src/auth/auth-context";
 import { OfflineInspectionQueue } from "../src/offline/queue";
