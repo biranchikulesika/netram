@@ -43,7 +43,7 @@ export default function InspectorDashboardScreen() {
 
   // Assigned inspections come from the authoritative API on every open, then
   // fall back to the offline cache when the device cannot reach it (§5, §31).
-  const { inspections, refreshing, refresh: refreshInspections } = useAssignedInspections(
+  const { inspections, refreshing, problem, refresh: refreshInspections } = useAssignedInspections(
     client,
     user?.id,
   );
@@ -191,6 +191,26 @@ export default function InspectorDashboardScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Refresh status ── */}
+        {problem ? (
+          <View
+            style={[
+              styles.statusBanner,
+              {
+                backgroundColor: bgSurface,
+                borderColor: theme.gold,
+              },
+            ]}
+          >
+            <Icon name="alert-circle" size={18} color={theme.gold} />
+            <Text style={[styles.statusBannerText, { color: textPrimary }]}>
+              {problem === "unauthorized"
+                ? "Your session has expired. Please sign in again to load your assigned inspections."
+                : "Offline. Showing inspections saved on this device."}
+            </Text>
+          </View>
+        ) : null}
+
         {/* ── Stats Strip ── */}
         <View style={[styles.statsRow, { borderColor }]}>
           <View
@@ -432,6 +452,22 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 16,
     gap: 12,
+  },
+  // ── Refresh status ──
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  statusBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   // ── Stats Strip ──
   statsRow: {
