@@ -26,6 +26,10 @@ import * as Location from "expo-location";
 import { colors } from "../src/theme/colors";
 import { useSettings } from "../src/theme/settings-context";
 import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
+import {
+  filterAssignedInspections,
+  refreshInspectionsFromServer,
+} from "../src/offline/inspection-feed";
 import { Icon } from "../src/components/ui/Icon";
 import { useAuth } from "../src/auth/auth-context";
 import type { ProjectGeofence } from "@netram/types";
@@ -425,38 +429,25 @@ export default function MapScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const local = await queue.getCachedInspections();
-      // Only show inspections assigned to the logged-in inspector
-      const filterAssigned = (records: typeof local) =>
-        user?.id
-          ? records.filter((r) => {
-              try {
-                const ids = JSON.parse(r.assigned_user_ids || "[]") as string[];
-                return ids.includes(user.id);
-              } catch {
-                return false;
-              }
-            })
-          : records;
-      setCachedInspections(filterAssigned(local));
+      setCachedInspections(
+        filterAssignedInspections(await queue.getCachedInspections(), user?.id),
+      );
 
       if (client) {
-        const [inspRes, geoRes] = await Promise.allSettled([
-          client.listInspections({ pageSize: 50 }),
-          client.listProjectGeofences(),
-        ]);
-        if (inspRes.status === "fulfilled" && inspRes.value.items.length > 0) {
-          await queue.cacheInspections(inspRes.value.items);
-          setCachedInspections(filterAssigned(await queue.getCachedInspections()));
+        // Geofences are best effort: a map failure must not hide assignments.
+        void client.listProjectGeofences().then(setRemoteGeofences).catch(() => {});
+        if (await refreshInspectionsFromServer(client, queue)) {
+          setCachedInspections(
+            filterAssignedInspections(await queue.getCachedInspections(), user?.id),
+          );
         }
-        if (geoRes.status === "fulfilled") setRemoteGeofences(geoRes.value);
       }
     } catch {
       // offline - use cached data
     } finally {
       setLoading(false);
     }
-  }, [client, user?.id]);
+  }, [client, queue, user?.id]);
 
   useEffect(() => {
     void loadData();

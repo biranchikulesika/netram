@@ -94,7 +94,31 @@ const https = require("https");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const http = require("http");
 
-const targetApiUrl = process.env.EXPO_PUBLIC_API_URL || "https://netram.kulesika.in";
+/**
+ * Public origin of the deployed Netram stack. This is the API base a device on
+ * the Netram VPS can actually reach; loopback only exists on the build machine.
+ */
+const PRODUCTION_API_URL = "https://netram.kulesika.in";
+
+/**
+ * A release bundle pointed at loopback still builds cleanly and then fails on
+ * the device as "no assignments", because the device cannot reach the build
+ * machine's localhost. Fail the bundle instead of shipping an APK whose only
+ * symptom looks like a data problem. `@expo/env` has already loaded any `.env`
+ * files by the time this runs, so a local `.env` aimed at localhost is caught too.
+ */
+if (process.env.NODE_ENV === "production") {
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (!apiUrl || /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(apiUrl)) {
+    throw new Error(
+      `EXPO_PUBLIC_API_URL must be a device-reachable API base for release builds (got ${
+        apiUrl ?? "undefined"
+      }). Build with "pnpm build:release" or export EXPO_PUBLIC_API_URL=${PRODUCTION_API_URL}.`,
+    );
+  }
+}
+
+const targetApiUrl = process.env.EXPO_PUBLIC_API_URL || PRODUCTION_API_URL;
 const parsedTarget = new URL(targetApiUrl);
 const transport = parsedTarget.protocol === "https:" ? https : http;
 

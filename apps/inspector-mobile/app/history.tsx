@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -19,7 +19,7 @@ import { useSettings } from "../src/theme/settings-context";
 import { Icon } from "../src/components/ui/Icon";
 import { NetramCard } from "../src/components/ui/NetramCard";
 import { EmptyState } from "../src/components/ui/EmptyState";
-import { OfflineInspectionQueue, type CachedInspectionRecord } from "../src/offline/queue";
+import { useAssignedInspections } from "../src/offline/inspection-feed";
 import { useAuth } from "../src/auth/auth-context";
 import { CustomDatePicker } from "../src/components/CustomDatePicker";
 import { formatInspectionType } from "../src/utils/formatters";
@@ -53,13 +53,15 @@ export default function HistoryScreen() {
   const router = useRouter();
   const { theme } = useSettings();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { user } = useAuth();
-  const queue = useMemo(() => new OfflineInspectionQueue(), []);
+  const { client, user } = useAuth();
+  const {
+    inspections: assigned,
+    refreshing,
+    refresh,
+  } = useAssignedInspections(client, user?.id);
 
-  const [inspections, setInspections] = useState<CachedInspectionRecord[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<HistoryFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [sheetTab, setSheetTab] = useState<"date" | "status" | "type">("date");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
@@ -113,38 +115,18 @@ export default function HistoryScreen() {
     }
   };
 
-  const loadData = useCallback(async () => {
-    try {
-      const records = await queue.getCachedInspections();
-      // Only show inspections assigned to the logged-in inspector
-      const assigned = user?.id
-        ? records.filter((r) => {
-            try {
-              const ids = JSON.parse(r.assigned_user_ids || "[]") as string[];
-              return ids.includes(user.id);
-            } catch {
-              return false;
-            }
-          })
-        : records;
-      // Inspected areas: submitted, closed, or in_progress (actively inspected)
-      const inspected = assigned.filter(
+  // Inspected areas: submitted, closed, or in_progress (actively inspected).
+  // Assignments that have not been started yet belong on the dashboard.
+  const inspections = useMemo(
+    () =>
+      assigned.filter(
         (r) => r.status === "submitted" || r.status === "closed" || r.status === "in_progress",
-      );
-      setInspections(inspected);
-    } catch {
-      // ignore
-    }
-  }, [queue, user?.id]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+      ),
+    [assigned],
+  );
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    await refresh();
   };
 
   const filteredInspections = useMemo(() => {
