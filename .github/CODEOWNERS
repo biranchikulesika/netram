@@ -1,4 +1,4 @@
-# Code ownership — see docs/OWNERSHIP.md and AGENTS.md §61-62
+# Code ownership - see docs/OWNERSHIP.md
 
 apps/web/                          @biranchikulesika @srutiswarupa @smrutirekhaparida576
 apps/inspector-mobile/             @biranchikulesika @srutiswarupa @smrutirekhaparida576 @BISHNU-CHARAN-BARIK
@@ -15,11 +15,12 @@ packages/api-client/               @biranchikulesika
 packages/ui/                       @biranchikulesika
 packages/config/                   @biranchikulesika
 
-supabase/                          @biranchikulesika @jyotirmaya2004
+db/                                @biranchikulesika @jyotirmaya2004
 scripts/                           @biranchikulesika
 
 infrastructure/                    @biranchikulesika @BISHNU-CHARAN-BARIK
 docs/architecture/                 @biranchikulesika
+docs/history/                      @biranchikulesika
 docs/domain/                       @biranchikulesika
 docs/contracts/                    @biranchikulesika
 docs/decisions/                    @biranchikulesika

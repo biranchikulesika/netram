@@ -125,6 +125,7 @@ describe("cctv schemas", () => {
       provider: "simulated",
       protocol: "rtsp",
       districtId: "22222222-2222-4222-8222-222222222222",
+      projectId: "33333333-3333-4333-8333-333333333333",
       status: "active",
       createdAt: "2026-02-11T00:00:00.000Z",
       updatedAt: "2026-02-11T00:00:00.000Z",

@@ -30,19 +30,35 @@ export function createAuthHook(container: Container, log: FastifyBaseLogger) {
         ipAddress: request.ip ?? "unknown",
       };
     } catch (err) {
-      const appError = err instanceof AppError ? err : AppError.unauthorized();
+      // A real authentication/authorization failure is a verdict about the
+      // caller: audit it, and let the client act on it (sign in again, fix
+      // permissions).
+      //
+      // Anything that is NOT an AppError means we could not determine who the
+      // caller is - a dropped connection, a missing relation, a failing
+      // repository. That is emphatically not "unauthorised": answering 401 here
+      // makes an infrastructure outage indistinguishable from a bad token, and
+      // a client that trusts the status code will sign the user out or show a
+      // login screen for a session that is perfectly valid. It must be a 5xx,
+      // it must not be recorded as an authorisation failure, and the underlying
+      // error must be logged rather than discarded.
+      if (!(err instanceof AppError)) {
+        log.error({ err, path: request.url }, "Authentication failed for an infrastructure reason");
+        throw AppError.internal();
+      }
+
       void container.auditRepo
         .append({
           action: "auth.authorization_failed",
           actorUserId: null,
           requestId: request.id,
           ipAddress: request.ip ?? "unknown",
-          metadata: { code: appError.code, path: request.url },
+          metadata: { code: err.code, path: request.url },
         })
         .catch((e: unknown) => {
           log.error({ err: e }, "Failed to record authorization audit event");
         });
-      throw appError;
+      throw err;
     }
   };
 }

@@ -9,7 +9,5 @@ import { describe, it } from "vitest";
  * service-layer side effects (audit + outbox) which the HTTP layer delegates to.
  */
 describe("attendance drill-down audit + outbox", () => {
-  it.todo(
-    "authorized drill-down records audit event + enqueues outbox event",
-  );
+  it.todo("authorized drill-down records audit event + enqueues outbox event");
 });

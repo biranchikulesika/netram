@@ -47,9 +47,7 @@ export async function startAttendanceExportWorker(
         from?: string | null;
         to?: string | null;
       };
-      const jurisdictionIds = scope.districtId
-        ? [scope.districtId]
-        : undefined;
+      const jurisdictionIds = scope.districtId ? [scope.districtId] : undefined;
       const rows = await repo.listAllCalculations({
         projectId: scope.projectId ?? undefined,
         jurisdictionIds,
@@ -65,9 +63,7 @@ export async function startAttendanceExportWorker(
         requestId: null,
         ipAddress: null,
       });
-      job.log(
-        `attendance export ${exportId} generated (${rows.length} rows)`,
-      );
+      job.log(`attendance export ${exportId} generated (${rows.length} rows)`);
       return { generated: true, rows: rows.length };
     },
     { connection, concurrency: opts.concurrency ?? 2 },
@@ -90,7 +86,7 @@ export async function startAttendanceExportWorker(
 
 export async function main(): Promise<void> {
   const env = loadWorkerEnv();
-  console.log(`[attendance-export-worker] starting (redis=${env.REDIS_URL})`);
+  console.log("[attendance-export-worker] starting");
   const instance = await startAttendanceExportWorker({
     redisUrl: env.REDIS_URL,
     databaseUrl: env.DATABASE_URL,

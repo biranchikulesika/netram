@@ -13,7 +13,7 @@ export const NOTIFICATION_CHANNELS = ["in_app", "push", "email", "sms"] as const
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
 export interface OutboundNotification {
-  /** Idempotency/correlation key — safe to retry with the same id. */
+  /** Idempotency/correlation key - safe to retry with the same id. */
   notificationId: string;
   userId: string;
   type: NotificationType;

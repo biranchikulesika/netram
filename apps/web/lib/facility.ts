@@ -5,12 +5,13 @@ import type {
   Inspection,
   Complaint,
   CorrectiveAction,
+  AttendanceCalculation,
   AttendanceOverviewItem,
   AttendanceAnomaly,
   AIAnomaly,
-  Report,
   AuditEvent,
   PublicCctvCamera,
+  ProjectRiskSnapshot,
 } from "@netram/types";
 import { getClient } from "./api";
 
@@ -19,10 +20,10 @@ import { getClient } from "./api";
  *
  * A facility is the primary operational context. These helpers serve one
  * facility's aspects (inspections, complaints, monitoring, attendance,
- * corrective actions, reports, activity) from the existing REST API so the
+ * corrective actions, activity) from the existing REST API so the
  * facility hub can present them without duplicating global navigation.
  *
- * APIs without a native project filter (AI anomalies, reports, corrective
+ * APIs without a native project filter (AI anomalies, corrective
  * actions, CCTV) are scoped here by following the facility's own records
  * (inspection/project context). Server-side jurisdiction still applies at the
  * API layer; these filters only narrow to the current facility.
@@ -37,7 +38,6 @@ const EMPTY_CORRECTIVE_ACTIONS = {
   pageSize: 0,
 };
 const EMPTY_ANOMALIES = { items: [] as AIAnomaly[], total: 0, page: 1, pageSize: 0 };
-const EMPTY_REPORTS = { items: [] as Report[], total: 0, page: 1, pageSize: 0 };
 const EMPTY_AUDIT = {
   items: [] as AuditEvent[],
   total: 0,
@@ -66,6 +66,26 @@ export const getFacility = cache(async (id: string): Promise<Project | null> => 
   } catch {
     return null;
   }
+});
+
+/**
+ * User directory as `userId -> displayName`.
+ *
+ * The user-admin API is permission-gated, so this degrades to an empty map for
+ * viewers without it; callers then fall back to honest role labels. Shared
+ * across every page that renders a person, and cached so one request fetches it
+ * once.
+ */
+export const getUserNames = cache(async (): Promise<Record<string, string>> => {
+  const client = await getClient();
+  const page = await client
+    .listUsers({ pageSize: 200 })
+    .catch(() => ({ items: [], total: 0, page: 1, pageSize: 0 }));
+  const names: Record<string, string> = {};
+  for (const u of page.items) {
+    if (u.displayName) names[u.id] = u.displayName;
+  }
+  return names;
 });
 
 export const getFacilityPhotos = cache(async (id: string): Promise<ProjectPhoto[]> => {
@@ -116,18 +136,17 @@ export async function getFacilityCorrectiveActions(
   return pages.flatMap((p) => p.items);
 }
 
-/** AI anomalies are reviewable signals tied to this facility's inspections. */
-export async function getFacilityAiAnomalies(
-  projectId: string,
-  projectCode: string,
-  projectName: string,
-): Promise<AIAnomaly[]> {
+/**
+ * AI anomalies are reviewable signals tied to this facility. Filtering happens
+ * server-side (API contract supports projectId); jurisdiction scoping still
+ * applies at the API layer on top of this.
+ */
+export async function getFacilityAiAnomalies(projectId: string): Promise<AIAnomaly[]> {
   const client = await getClient();
-  void projectId;
-  const page = await client.listAiAnomalies({ pageSize: 100 }).catch(() => EMPTY_ANOMALIES);
-  return page.items.filter(
-    (a) => a.projectCode === projectCode || a.projectName === projectName,
-  );
+  const page = await client
+    .listAiAnomalies({ projectId, pageSize: 100 })
+    .catch(() => EMPTY_ANOMALIES);
+  return page.items;
 }
 
 export async function getFacilityAttendance(projectId: string): Promise<{
@@ -146,21 +165,27 @@ export async function getFacilityAttendance(projectId: string): Promise<{
   return { overview: overview.items, anomalies: anomalies.items };
 }
 
-export async function getFacilityReports(
-  projectCode: string,
-  projectName: string,
-): Promise<Report[]> {
+export async function getFacilityAttendanceCalculations(
+  projectId: string,
+): Promise<AttendanceCalculation[]> {
   const client = await getClient();
-  const page = await client.listReports({ pageSize: 100 }).catch(() => EMPTY_REPORTS);
-  return page.items.filter(
-    (r) => r.projectCode === projectCode || r.projectName === projectName,
-  );
+  const all: AttendanceCalculation[] = [];
+  for (let page = 1; page <= 20; page += 1) {
+    try {
+      const res = await client.listAttendanceCalculations({ projectId, page, pageSize: 100 });
+      all.push(...res.items);
+      if (res.items.length < 100) break;
+    } catch {
+      break;
+    }
+  }
+  return all;
 }
 
-export async function getFacilityAudit(projectId: string): Promise<AuditEvent[]> {
+export async function getFacilityAudit(projectId: string, pageSize = 100): Promise<AuditEvent[]> {
   const client = await getClient();
   const page = await client
-    .listAuditEvents({ resourceType: "project", resourceId: projectId, pageSize: 20 })
+    .listAuditEvents({ resourceType: "project", resourceId: projectId, pageSize })
     .catch(() => EMPTY_AUDIT);
   return page.items;
 }
@@ -169,8 +194,24 @@ export async function getFacilityAudit(projectId: string): Promise<AuditEvent[]>
 export async function getDistrictCameras(districtId: string | null): Promise<PublicCctvCamera[]> {
   if (!districtId) return [];
   const client = await getClient();
-  const page = await client
-    .listCameras({ districtId, pageSize: 100 })
-    .catch(() => EMPTY_CAMERAS);
+  const page = await client.listCameras({ districtId, pageSize: 100 }).catch(() => EMPTY_CAMERAS);
   return page.items;
 }
+
+export async function getFacilityFunds(projectId: string) {
+  const client = await getClient();
+  return client.getProjectFundOverview(projectId).catch(() => null);
+}
+
+/**
+ * Returns the latest snapshot, or null when the project has never been scored.
+ * A failed request is deliberately NOT swallowed: a 200-with-null body is the
+ * API's "not scored yet" signal, so an error here is a real fault and must not
+ * be rendered as a missing score.
+ */
+export const getFacilityRiskSnapshot = cache(
+  async (projectId: string): Promise<ProjectRiskSnapshot | null> => {
+    const client = await getClient();
+    return client.getLatestProjectRiskSnapshot(projectId);
+  },
+);

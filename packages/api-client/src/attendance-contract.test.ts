@@ -13,19 +13,26 @@ function makeClient(fetchImpl: typeof fetch): NetramApiClient {
 describe("NetramApiClient attendance contract", () => {
   it("reviewAttendanceAnomaly interpolates the real ID into the request path", async () => {
     const fetchImpl = vi.fn(async (_input: unknown) => {
-      const response = new Response(JSON.stringify({ items: [], total: 0, page: 1, pageSize: 20 }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      const response = new Response(
+        JSON.stringify({ items: [], total: 0, page: 1, pageSize: 20 }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
       return response;
     });
     const client = makeClient(fetchImpl as unknown as typeof fetch);
 
-    await client.reviewAttendanceAnomaly("b8e3a4d6-6a1e-4ef1-9f1b-2c1d3e4f5a6b", { action: "acknowledge" });
+    await client.reviewAttendanceAnomaly("b8e3a4d6-6a1e-4ef1-9f1b-2c1d3e4f5a6b", {
+      action: "acknowledge",
+    });
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [url] = fetchImpl.mock.calls[0] as [unknown];
-    expect(String(url)).toBe("http://test/api/v1/attendance/anomalies/b8e3a4d6-6a1e-4ef1-9f1b-2c1d3e4f5a6b/review");
+    expect(String(url)).toBe(
+      "http://test/api/v1/attendance/anomalies/b8e3a4d6-6a1e-4ef1-9f1b-2c1d3e4f5a6b/review",
+    );
   });
 
   it("drillDownIndividualAttendance issues a GET with query parameters", async () => {
@@ -61,6 +68,8 @@ describe("NetramApiClient attendance contract", () => {
     await client.drillDownIndividualAttendance({ projectId: "proj-1", personExternalId: "EXT-42" });
 
     const [url] = fetchImpl.mock.calls[0] as [unknown];
-    expect(String(url)).toBe("http://test/api/v1/attendance/individual?projectId=proj-1&personExternalId=EXT-42");
+    expect(String(url)).toBe(
+      "http://test/api/v1/attendance/individual?projectId=proj-1&personExternalId=EXT-42",
+    );
   });
 });

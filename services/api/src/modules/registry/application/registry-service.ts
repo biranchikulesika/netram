@@ -32,7 +32,7 @@ const OFFICIAL_REGISTRABLE_ROLES = new Set([
  *
  * Every command re-checks its permission server-side; the Registry UI
  * merely mirrors the same capability matrix for presentation.
- * Invited people are created suspended — account activation happens
+ * Invited people are created suspended - account activation happens
  * through the normal authentication flow, never at registration time.
  */
 export class RegistryService {
@@ -46,11 +46,6 @@ export class RegistryService {
     input: CreateOrganisationInput,
   ): Promise<OrganisationView> {
     this.authz.requirePermission(ctx, ORGANISATION_CREATE);
-    if (input.districtId) {
-      this.authz.requirePermission(ctx, ORGANISATION_CREATE, {
-        districtId: input.districtId,
-      });
-    }
 
     const code = input.code.toUpperCase();
     if (await this.repository.organisationExists(code)) {
@@ -62,7 +57,6 @@ export class RegistryService {
       name: input.name.trim(),
       category: input.category.trim(),
       authorityId: this.firstAuthorityId(ctx),
-      districtId: input.districtId ?? null,
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
@@ -123,8 +117,8 @@ export class RegistryService {
       name: input.name.trim(),
       description: input.description?.trim() ?? null,
       scopeLevel: input.scopeLevel,
-      stateId: input.scopeLevel === "state" ? input.stateId ?? null : null,
-      districtId: input.scopeLevel === "district" ? input.districtId ?? null : null,
+      stateId: input.scopeLevel === "state" ? (input.stateId ?? null) : null,
+      districtId: input.scopeLevel === "district" ? (input.districtId ?? null) : null,
       authorityId: this.firstAuthorityId(ctx),
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
@@ -240,7 +234,6 @@ export class RegistryService {
     name: string;
     category: string;
     authorityId: string | null;
-    districtId: string | null;
     createdAt: Date;
   }): OrganisationView {
     return {
@@ -249,7 +242,6 @@ export class RegistryService {
       name: row.name,
       category: row.category,
       authorityId: row.authorityId,
-      districtId: row.districtId,
       createdAt: row.createdAt.toISOString(),
     };
   }

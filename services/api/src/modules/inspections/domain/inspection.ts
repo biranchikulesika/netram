@@ -41,9 +41,12 @@ export class InvalidInspectionTransitionError extends Error {
 
 /**
  * Disclosure (§20/§34): an inspection that has not started yet is only visible
- * to its assigned inspectors and to authority officers who manage inspections.
- * This protects surprise inspection scheduling. Started inspections are visible
- * to any inspection:read holder in jurisdiction. The API must NOT leak an
+ * to its assigned inspectors and to authority officers who manage inspections
+ * (surprise-inspection protection). Started inspections are visible to any
+ * inspection:read holder in jurisdiction - a set that excludes the inspected
+ * organisation itself: the establishment is the oversight *subject* and holds
+ * no inspection:read, so it can neither list inspections against it nor see
+ * the evidence or flags arising from them. The API must NOT leak an
  * undisclosed inspection's existence to other callers.
  */
 export function isDisclosedTo(

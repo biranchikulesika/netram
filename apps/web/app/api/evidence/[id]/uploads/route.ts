@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const formData = await request.formData();
   const env = loadClientEnv();
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/evidence/${id}/uploads`, {
+  const res = await fetch(`${env.NETRAM_API_BASE_URL}/api/v1/evidence/${id}/uploads`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

@@ -103,6 +103,19 @@ export class AuthorizationRepository {
   }
 
   /**
+   * User IDs holding a role code across all assignments (any jurisdiction).
+   * Used for subject-side notification fan-out - e.g. pulsing every
+   * institution administrator when the authority orders them to act.
+   */
+  async findUserIdsWithRole(roleCode: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .where(eq(roleAssignments.roleCode, roleCode));
+    return [...new Set(rows.map((r) => r.userId))];
+  }
+
+  /**
    * If every permission on the assignment is global in nature, the reference
    * jurisdiction still controls. National scope (no jurisdiction) allows all.
    */

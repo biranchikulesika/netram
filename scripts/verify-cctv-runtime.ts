@@ -1,9 +1,17 @@
 import { NetramApiClient, ApiError } from "@netram/api-client";
-import { loadServerEnv } from "@netram/config";
+import { loadCctvEnv, loadServerEnv } from "@netram/config";
 
 const env = loadServerEnv();
+const cctvEnv = loadCctvEnv();
 const API_URL = env.NETRAM_API_URL || "http://localhost:3001";
 const GATEWAY_URL = env.NETRAM_CCTV_GATEWAY_URL || "http://localhost:3003";
+// Media-plane mode: with a running rig (docker compose --profile facility)
+// this script verifies the full path including the WHEP handshake and token
+// rejection at MediaMTX. Where the rig is absent (CI), the configured
+// NETRAM_CCTV_VERIFY_NO_RIG flag limits verification to the control plane;
+// health must still reflect REAL media state (never "online" from a DB row
+// alone).
+const NO_MEDIA_RIG = cctvEnv.NETRAM_CCTV_VERIFY_NO_RIG;
 
 function assert(condition: boolean, msg: string): asserts condition {
   if (!condition) {
@@ -18,14 +26,14 @@ async function main() {
   console.log("==================================================================");
 
   // 1. Authenticate as Khordha District Officer
-  console.log("\n1. Authenticating as Khordha District Officer: officer.khordha@dev.netram.in...");
+  console.log("\n1. Authenticating as Khordha District Officer: officer@netram.dev...");
   let currentToken: string | null = null;
   const khordhaClient = new NetramApiClient({
     baseUrl: API_URL,
     getToken: () => currentToken,
   });
 
-  const khordhaLogin = await khordhaClient.devLogin("officer.khordha@dev.netram.in");
+  const khordhaLogin = await khordhaClient.devLogin("officer@netram.dev");
   currentToken = khordhaLogin.token;
   console.log(`✓ Logged in as ${khordhaLogin.user.displayName} (id: ${khordhaLogin.user.id})`);
 
@@ -69,55 +77,99 @@ async function main() {
   console.log(`\n4. Checking live camera health via CCTV Gateway...`);
   const health = await khordhaClient.getCameraHealth(vaniGate!.id);
   assert(health.cameraId === vaniGate!.id, "Health check camera ID mismatch");
-  assert(health.status === "online", `Expected online status, got: ${health.status}`);
-  console.log(`✓ Camera health verified: ${health.status} (latency: ${health.latencyMs ?? 0}ms)`);
+  const validHealthStates = ["online", "offline", "degraded", "unknown"];
+  assert(validHealthStates.includes(health.status), `Invalid health status: ${health.status}`);
+  if (health.status === "online") {
+    console.log(
+      `✓ Camera health verified: online (media flowing, latency: ${health.latencyMs ?? 0}ms)`,
+    );
+  } else if (NO_MEDIA_RIG) {
+    console.log(
+      `✓ Camera health reflects REAL media state without a rig: ${health.status} (a DB row alone must never read "online")`,
+    );
+  } else {
+    assert(false, `Expected online status with media rig attached, got: ${health.status}`);
+  }
 
-  // 5. Request authorized stream relay URL and token
+  // 5. Request an authorized stream session.
+  // Without a rig the gateway must fail CLOSED: MediaMTX is unreachable, so no
+  // playback contract may be minted and the API surfaces SERVICE_UNAVAILABLE.
+  // With a rig a full contract is returned and verified below.
   console.log(`\n5. Requesting authorized stream session from API...`);
-  const stream = await khordhaClient.requestCameraStream(vaniGate!.id, { ttlSeconds: 180 });
-  assert(Boolean(stream.streamId), "Stream session ID missing");
-  assert(Boolean(stream.streamUrl), "Stream relay URL missing");
-  assert(Boolean(stream.token), "Stream authorization token missing");
-  assert(
-    !stream.streamUrl.startsWith("rtsp://"),
-    "Security violation: returned raw RTSP URL instead of relay",
-  );
-  console.log(`✓ Authorized stream relay established:`);
-  console.log(`   - Stream ID:  ${stream.streamId}`);
-  console.log(`   - Relay URL:  ${stream.streamUrl}`);
-  console.log(`   - Expires At: ${stream.expiresAt}`);
+  let stream: Awaited<ReturnType<typeof khordhaClient.requestCameraStream>> | null = null;
+  if (NO_MEDIA_RIG) {
+    try {
+      await khordhaClient.requestCameraStream(vaniGate!.id, { ttlSeconds: 180 });
+      assert(false, "Stream request unexpectedly succeeded without a media rig (must fail closed)");
+    } catch (err) {
+      assert(
+        err instanceof ApiError && err.code === "SERVICE_UNAVAILABLE",
+        `Expected SERVICE_UNAVAILABLE without a media rig, got: ${err}`,
+      );
+      console.log(
+        "✓ Stream request fails CLOSED without MediaMTX (SERVICE_UNAVAILABLE, no contract minted)",
+      );
+    }
+  } else {
+    stream = await khordhaClient.requestCameraStream(vaniGate!.id, { ttlSeconds: 180 });
+  }
 
-  // 6. Connect to CCTV Gateway stream relay endpoint with valid token
-  console.log(`\n6. Accessing stream relay with valid signed token...`);
-  const streamRes = await fetch(stream.streamUrl);
-  assert(streamRes.ok, `Stream relay request failed with status: ${streamRes.status}`);
-  const contentType = streamRes.headers.get("content-type");
-  assert(contentType?.includes("video/mp2t"), `Unexpected content-type: ${contentType}`);
+  if (stream) {
+    assert(Boolean(stream.streamId), "Stream session ID missing");
+    assert(Boolean(stream.streamUrl), "Stream relay URL missing");
+    assert(Boolean(stream.token), "Stream authorization token missing");
+    assert(
+      !stream.streamUrl.startsWith("rtsp://"),
+      "Security violation: returned raw RTSP URL instead of playback contract",
+    );
+    assert(
+      !JSON.stringify(stream).includes("rtsp://"),
+      "Security violation: RTSP endpoint leaked inside the stream payload",
+    );
+    assert(Boolean(stream.playback), "Playback contract missing (Phase 4/5 WHEP)");
+    assert(stream.playback?.protocol === "webrtc", "Playback protocol must be webrtc");
+    assert(Boolean(stream.playback?.whepUrl), "WHEP URL missing from playback contract");
+    assert(Boolean(stream.playback?.token), "Playback token missing from playback contract");
+    assert(Boolean(stream.playback?.mediaPath), "Media path missing from playback contract");
+    console.log(`✓ Authorized playback contract established:`);
+    console.log(`   - Stream ID:   ${stream.streamId}`);
+    console.log(`   - Playback:    ${stream.playback?.protocol} via ${stream.playback?.whepUrl}`);
+    console.log(`   - Media path:  ${stream.playback?.mediaPath}`);
+    console.log(`   - Expires At:  ${stream.expiresAt}`);
+  } // 6/7. Media-plane verification with a rig only; without one the fail-closed
+  // behaviour was already verified in step 5 (the gateway no longer relays
+  // bytes - MediaMTX owns the data plane, so token enforcement happens at the
+  // WHEP auth hook).
+  if (stream) {
+    console.log(`\n6. WHEP handshake against the media rig with the issued token...`);
+    const whepRes = await fetch(stream.playback!.whepUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/sdp",
+        Authorization: `Bearer ${stream.playback!.token}`,
+      },
+      body: "v=0",
+    });
+    assert(
+      whepRes.status !== 401 && whepRes.status !== 403,
+      `Valid token rejected at media plane: ${whepRes.status}`,
+    );
+    console.log(`✓ Media plane accepted the authorized token (SDP-level status ${whepRes.status})`);
 
-  const chunk = Buffer.from(await streamRes.arrayBuffer());
-  assert(chunk.length === 188, `Expected 188-byte MPEG-TS packet, got ${chunk.length}`);
-  assert(chunk[0] === 0x47, `MPEG-TS sync byte 0x47 missing, got 0x${chunk[0]?.toString(16)}`);
-  console.log(
-    `✓ Successfully received video stream data (188-byte MPEG-TS chunk with 0x47 sync byte)`,
-  );
-
-  // 7. Security: Tampered & missing token verification
-  console.log(`\n7. Testing security guards against unauthorized stream relay access...`);
-  const tamperedUrl = stream.streamUrl.replace(/token=.*$/, "token=tampered.invalid.token");
-  const tamperedRes = await fetch(tamperedUrl);
-  assert(
-    tamperedRes.status === 401,
-    `Expected 401 Unauthorized for tampered token, got ${tamperedRes.status}`,
-  );
-  console.log("✓ Tampered token rejected with 401 Unauthorized");
-
-  const noTokenUrl = stream.streamUrl.split("?")[0];
-  const noTokenRes = await fetch(noTokenUrl);
-  assert(
-    noTokenRes.status === 401,
-    `Expected 401 Unauthorized without token, got ${noTokenRes.status}`,
-  );
-  console.log("✓ Missing token request rejected with 401 Unauthorized");
+    console.log(`\n7. Testing media-plane rejection of unauthorized access...`);
+    const garbageRes = await fetch(stream.playback!.whepUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/sdp",
+        Authorization: "Bearer tampered.invalid.token",
+      },
+      body: "v=0",
+    });
+    assert(garbageRes.status === 401, `Expected 401 for tampered token, got ${garbageRes.status}`);
+    console.log("✓ Tampered token rejected with 401 Unauthorized");
+  } else {
+    console.log("\n6/7. Skipped: media plane not attached (fail-closed path already verified).\n");
+  }
 
   // 8. Capture snapshot frame for advisory AI inference
   console.log(`\n8. Capturing snapshot frame from camera feed for AI pipeline (§7, §36)...`);
@@ -176,25 +228,41 @@ async function main() {
     );
   }
 
-  // 10. Verify Audit Trail contains cctv.accessed
+  // 10. Verify the append-only audit trail (§37). With a rig, an accepted
+  // stream session must produce a cctv.accessed audit record attributed to the
+  // requesting officer. Without a rig, no session can be accepted, so the
+  // integrity property is the inverse: no cctv.accessed records may be
+  // fabricated for fail-closed attempts.
   console.log(`\n10. Verifying append-only audit trail for cctv.accessed (§37)...`);
   let adminToken: string | null = null;
   const adminClient = new NetramApiClient({
     baseUrl: API_URL,
     getToken: () => adminToken,
   });
-  const adminLogin = await adminClient.devLogin("admin.example-social@dev.netram.in");
+  const adminLogin = await adminClient.devLogin("admin@netram.dev");
   adminToken = adminLogin.token;
 
   const auditEvents = await adminClient.listAuditEvents({ action: "cctv.accessed" });
-  assert(auditEvents.items.length > 0, "No cctv.accessed audit events found");
-  const recentAudit = auditEvents.items.find((e) => e.resourceId === vaniGate!.id);
-  assert(Boolean(recentAudit), `Audit event for camera ${vaniGate!.id} not found`);
-  assert(recentAudit!.actorUserId === khordhaLogin.user.id, "Audit actor mismatch");
-  console.log(`✓ Audit event recorded:`);
-  console.log(`   - Action:    ${recentAudit!.action}`);
-  console.log(`   - Actor:     ${recentAudit!.actorUserId}`);
-  console.log(`   - Resource:  ${recentAudit!.resourceType}:${recentAudit!.resourceId}`);
+  if (NO_MEDIA_RIG) {
+    assert(
+      auditEvents.items.length === 0,
+      "cctv.accessed audit records exist although every stream request failed closed",
+    );
+    const allEvents = await adminClient.listAuditEvents({});
+    assert(allEvents.items.length > 0, "Audit system returned no events at all");
+    console.log(
+      `✓ Audit integrity: no cctv.accessed records fabricated for fail-closed attempts (${allEvents.items.length} other audit events queryable)`,
+    );
+  } else {
+    assert(auditEvents.items.length > 0, "No cctv.accessed audit events found");
+    const recentAudit = auditEvents.items.find((e) => e.resourceId === vaniGate!.id);
+    assert(Boolean(recentAudit), `Audit event for camera ${vaniGate!.id} not found`);
+    assert(recentAudit!.actorUserId === khordhaLogin.user.id, "Audit actor mismatch");
+    console.log(`✓ Audit event recorded:`);
+    console.log(`   - Action:    ${recentAudit!.action}`);
+    console.log(`   - Actor:     ${recentAudit!.actorUserId}`);
+    console.log(`   - Resource:  ${recentAudit!.resourceType}:${recentAudit!.resourceId}`);
+  }
 
   console.log("\n==================================================================");
   console.log("🎉 ALL CCTV GATEWAY & STREAM ABSTRACTION VERIFICATIONS PASSED!");

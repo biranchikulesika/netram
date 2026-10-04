@@ -43,6 +43,7 @@ function makeInspection(
     projectCode: "PRJ-1",
     projectName: "Project One",
     districtId: "dist-1",
+    districtName: "Khordha",
     templateId: null,
     type: "routine",
     trigger: "risk_engine",

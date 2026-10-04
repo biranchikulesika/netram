@@ -1,4 +1,5 @@
 import type { UUID, ISODateTime } from "./common.js";
+import type { InspectionStatus } from "./inspection.js";
 
 export const FINDING_SEVERITIES = ["critical", "high", "medium", "low"] as const;
 
@@ -20,6 +21,13 @@ export const FINDING_TRANSITIONS: Record<FindingStatus, readonly FindingStatus[]
   action_required: [],
 };
 
+export interface FindingCategory {
+  id: UUID;
+  code: string;
+  name: string;
+  description: string | null;
+}
+
 export interface Finding {
   id: UUID;
   inspectionId: UUID;
@@ -28,6 +36,34 @@ export interface Finding {
   description: string;
   remediation: string | null;
   status: FindingStatus;
+  /**
+   * Issue category (DoSJE social audit MIS tracks issues by category;
+   * docs/DoSJE.md §15). Optional so existing inspections keep working.
+   */
+  categoryId: UUID | null;
+  /** Disputed/misappropriated amount in INR, when the issue is financial. */
+  amountInr: number | null;
+  /**
+   * Organisation expected to answer the issue (the future ATR submitter).
+   * Defaults from the target's organisation when omitted at creation.
+   */
+  responsibleOrganisationId: UUID | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
+}
+
+/**
+ * Confirmed finding without a corrective action yet, surfaced to authorities
+ * for remediation ordering. Joins the finding's inspection status and target
+ * project so the authority can identify the facility (AGENTS.md §24).
+ */
+export interface FindingAwaitingOrder extends Finding {
+  inspectionStatus: InspectionStatus;
+  project: {
+    id: UUID;
+    code: string;
+    name: string;
+    districtId: UUID | null;
+    organisationId: UUID | null;
+  };
 }

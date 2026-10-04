@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
+import type { Readable } from "node:stream";
 import { AppError } from "../../../infrastructure/errors.js";
+import type { ObjectStoragePort } from "../../../infrastructure/object-storage.js";
 import type { AuthorizationService } from "../../authorization/application/authorization-service.js";
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { FindingRepositoryPort } from "../../findings/application/ports/finding-repository.js";
@@ -8,18 +11,32 @@ import type { CorrectiveActionRepositoryPort } from "./ports/corrective-action-r
 import type {
   CorrectiveAction,
   CorrectiveActionListQuery,
-  CorrectiveActionStatus,
+  CorrectiveActionReviewOutcome,
 } from "@netram/types";
-import { evaluateCorrectiveActionTransition } from "../domain/corrective-action.js";
+import { submitAtrSchema } from "@netram/validation";
+import {
+  canSubmitAtr,
+  isAllowedAtrAttachmentType,
+  MAX_ATR_ATTACHMENT_BYTES,
+  MAX_ATR_ATTACHMENTS,
+  resolveReviewTransition,
+} from "../domain/corrective-action.js";
 import { canOrderCorrectiveAction } from "../../findings/domain/finding.js";
 
 const APPROVE = "corrective_action:approve" as const;
 const SUBMIT = "corrective_action:submit" as const;
+const READ = "corrective_action:read" as const;
 
 export interface CreateCorrectiveActionInput {
   findingId: string;
   organisationId?: string | null;
   deadline?: string | null;
+}
+
+export interface AtrAttachmentInput {
+  data: Buffer;
+  fileName: string;
+  mimeType: string;
 }
 
 export class CorrectiveActionService {
@@ -28,6 +45,7 @@ export class CorrectiveActionService {
     private readonly inspectionService: Pick<InspectionService, "getInspection">,
     private readonly findingRepo: FindingRepositoryPort,
     private readonly repository: CorrectiveActionRepositoryPort,
+    private readonly storage: ObjectStoragePort,
   ) {}
 
   async listCorrectiveActions(
@@ -104,56 +122,164 @@ export class CorrectiveActionService {
     });
   }
 
-  async transitionCorrectiveAction(
+  /**
+   * Institution lodges its Action Taken Report (§32, §16). Recording this work
+   * is what automatically moves the order to `submitted` - there is no manual
+   * status toggle anywhere.
+   */
+  async submitAtr(
     ctx: RequestUserContext,
     correctiveActionId: string,
-    to: CorrectiveActionStatus,
-    note?: string,
+    input: { actionSummary: string; files: AtrAttachmentInput[] },
+  ): Promise<CorrectiveAction> {
+    const action = await this.repository.findById(correctiveActionId);
+    if (!action) throw AppError.notFound("Corrective action not found.");
+    if (!this.authz.canAccessDistrict(ctx, action.districtId))
+      throw AppError.notFound("Corrective action not found.");
+    if (!canSubmitAtr(action.status)) {
+      throw AppError.conflict(
+        `An ATR can only be submitted for a pending, rejected, or overdue corrective action (current status: ${action.status}).`,
+      );
+    }
+
+    this.authz.requirePermission(ctx, SUBMIT, { districtId: action.districtId });
+
+    const { actionSummary } = submitAtrSchema.parse({ actionSummary: input.actionSummary });
+
+    const files = input.files ?? [];
+    if (files.length > MAX_ATR_ATTACHMENTS) {
+      throw AppError.badRequest(`An ATR can carry at most ${MAX_ATR_ATTACHMENTS} attachments.`);
+    }
+    const storedFiles = await Promise.all(
+      files.map(
+        async (
+          file,
+        ): Promise<{
+          id: string;
+          fileName: string;
+          mimeType: string;
+          sizeBytes: number;
+          storageKey: string;
+          contentHash: string;
+        }> => {
+          if (!isAllowedAtrAttachmentType(file.mimeType)) {
+            throw AppError.badRequest(
+              `Attachment '${file.fileName}' uses an unsupported type '${file.mimeType}'. Only PDF, photo, and video files are accepted.`,
+            );
+          }
+          if (file.data.byteLength > MAX_ATR_ATTACHMENT_BYTES) {
+            throw AppError.badRequest(
+              `Attachment '${file.fileName}' exceeds the 100 MB size limit.`,
+            );
+          }
+          const id = randomUUID();
+          const storageKey = `corrective-actions/${correctiveActionId}/${id}`;
+          const contentHash = `sha256:${createHash("sha256").update(file.data).digest("hex")}`;
+          await this.storage.put(storageKey, file.data, file.mimeType);
+          return {
+            id,
+            fileName: file.fileName,
+            mimeType: file.mimeType,
+            sizeBytes: file.data.byteLength,
+            storageKey,
+            contentHash,
+          };
+        },
+      ),
+    );
+
+    return this.repository.applyWorkWithAuditAndEvent({
+      correctiveActionId,
+      to: "submitted",
+      note: null,
+      actionSummary,
+      files: storedFiles,
+      actorUserId: ctx.userId,
+      requestId: ctx.requestId ?? null,
+      ipAddress: ctx.ipAddress ?? null,
+      auditAction: "corrective_action.submitted",
+      auditMetadata: {
+        from: action.status,
+        to: "submitted",
+        attachmentCount: storedFiles.length,
+      },
+      eventType: "corrective_action.submitted",
+      eventPayload: {
+        from: action.status,
+        to: "submitted",
+        inspectionId: action.inspectionId,
+        attachmentCount: storedFiles.length,
+      },
+    });
+  }
+
+  /** Stream an ATR attachment back to an authorized reader (§30 storage). */
+  async getAtrFileContent(
+    ctx: RequestUserContext,
+    correctiveActionId: string,
+    fileId: string,
+  ): Promise<{
+    file: { id: string; fileName: string; mimeType: string; sizeBytes: number };
+    stream: Readable;
+  }> {
+    const action = await this.repository.findById(correctiveActionId);
+    if (!action) throw AppError.notFound("Corrective action not found.");
+    if (!this.authz.canAccessDistrict(ctx, action.districtId))
+      throw AppError.notFound("Corrective action not found.");
+    this.authz.requirePermission(ctx, READ, { districtId: action.districtId });
+
+    const file = await this.repository.findFileById(fileId);
+    if (!file || file.correctiveActionId !== correctiveActionId) {
+      throw AppError.notFound("Attachment not found.");
+    }
+    const stream = await this.storage.get(file.storageKey);
+    return { file: file.file, stream };
+  }
+
+  /**
+   * Authority records its review of the submitted remediation (§24): beginning
+   * review (`under_review`) or the terminal verdict (`accepted`/`rejected`).
+   * The recorded decision is what advances the workflow automatically.
+   */
+  async reviewAction(
+    ctx: RequestUserContext,
+    correctiveActionId: string,
+    input: { outcome: CorrectiveActionReviewOutcome; note?: string | null },
   ): Promise<CorrectiveAction> {
     const action = await this.repository.findById(correctiveActionId);
     if (!action) throw AppError.notFound("Corrective action not found.");
     if (!this.authz.canAccessDistrict(ctx, action.districtId))
       throw AppError.notFound("Corrective action not found.");
 
-    const decision = evaluateCorrectiveActionTransition(action.status, to);
-
-    // §24: institution submits remediation (`corrective_action:submit`); authority reviews (`corrective_action:approve`).
-    if (decision.isInstitutionStep) {
-      this.authz.requirePermission(ctx, SUBMIT, {
-        districtId: action.districtId,
-      });
-    } else {
-      this.authz.requirePermission(ctx, APPROVE, {
-        districtId: action.districtId,
-      });
-    }
+    const to = resolveReviewTransition(action.status, input.outcome);
+    this.authz.requirePermission(ctx, APPROVE, { districtId: action.districtId });
 
     const eventType =
-      to === "submitted"
-        ? "corrective_action.submitted"
-        : to === "accepted"
-          ? "corrective_action.accepted"
-          : to === "rejected"
-            ? "corrective_action.rejected"
-            : "corrective_action.review_started";
+      to === "accepted"
+        ? "corrective_action.accepted"
+        : to === "rejected"
+          ? "corrective_action.rejected"
+          : "corrective_action.review_started";
     const auditAction =
-      to === "submitted"
-        ? "corrective_action.submitted"
-        : to === "accepted"
-          ? "corrective_action.accepted"
-          : to === "rejected"
-            ? "corrective_action.rejected"
-            : "corrective_action.updated";
+      to === "accepted"
+        ? "corrective_action.accepted"
+        : to === "rejected"
+          ? "corrective_action.rejected"
+          : "corrective_action.updated";
 
-    return this.repository.transitionWithAuditAndEvent({
+    return this.repository.applyWorkWithAuditAndEvent({
       correctiveActionId,
-      to: decision.to,
-      note: note ?? null,
+      to,
+      note: input.note ?? null,
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
       ipAddress: ctx.ipAddress ?? null,
       auditAction,
-      auditMetadata: { from: action.status, to, note: note ?? null },
+      auditMetadata: {
+        from: action.status,
+        to,
+        note: input.note ?? null,
+      },
       eventType,
       eventPayload: {
         from: action.status,

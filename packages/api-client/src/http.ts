@@ -2,7 +2,7 @@ import type { AuthenticatedUser } from "@netram/types";
 
 /**
  * Token supplier. Web passes cookies-based server tokens; mobile passes a
- * bearer token obtained from login. The client never decides authentication —
+ * bearer token obtained from login. The client never decides authentication -
  * it only transports whatever the host environment provides.
  */
 export type TokenSupplier = () => string | null | Promise<string | null>;
@@ -35,18 +35,54 @@ export interface HttpOptions {
   baseUrl: string;
   fetchImpl?: typeof fetch;
   getToken?: TokenSupplier;
+  /**
+   * Invoked whenever the server rejects the transport token (HTTP 401).
+   *
+   * An expired token must not be indistinguishable from "no data": callers
+   * that swallow a 401 end up rendering an empty list for a signed-in user.
+   * The host owns the session, so it decides what to do (clear the session and
+   * return to login). Invoked for any 401, on every endpoint.
+   */
+  onUnauthorized?: () => void;
 }
 
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly fetch: typeof fetch;
   private readonly getToken?: TokenSupplier;
+  private readonly onUnauthorized?: () => void;
 
   constructor(opts: HttpOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
     const rawFetch = opts.fetchImpl ?? globalThis.fetch;
     this.fetch = (...args: Parameters<typeof fetch>) => rawFetch(...args);
     this.getToken = opts.getToken;
+    this.onUnauthorized = opts.onUnauthorized;
+  }
+
+  private toApiError(res: Response, payload: unknown): ApiError {
+    const errBody =
+      payload && typeof payload === "object" && "error" in payload
+        ? (payload as ApiErrorBody)
+        : null;
+    const err = errBody
+      ? new ApiError(res.status, errBody)
+      : new ApiError(res.status, {
+          error: {
+            code: "unknown",
+            message: `Request failed with status ${res.status}`,
+          },
+        });
+    if (res.status === 401) {
+      // Never let an auth rejection pass silently: surface it to the host so a
+      // stale session cannot masquerade as an empty result.
+      try {
+        this.onUnauthorized?.();
+      } catch {
+        // A failing handler must not mask the 401 itself.
+      }
+    }
+    return err;
   }
 
   async request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -64,17 +100,7 @@ export class HttpClient {
 
     const payload = (await res.json().catch(() => null)) as unknown;
     if (!res.ok) {
-      const errBody =
-        payload && typeof payload === "object" && "error" in payload
-          ? (payload as ApiErrorBody)
-          : null;
-      if (errBody) throw new ApiError(res.status, errBody);
-      throw new ApiError(res.status, {
-        error: {
-          code: "unknown",
-          message: `Request failed with status ${res.status}`,
-        },
-      });
+      throw this.toApiError(res, payload);
     }
     return payload as T;
   }
@@ -91,17 +117,7 @@ export class HttpClient {
     });
     if (!res.ok) {
       const errBody = (await res.json().catch(() => null)) as unknown;
-      const body =
-        errBody && typeof errBody === "object" && "error" in errBody
-          ? (errBody as ApiErrorBody)
-          : null;
-      if (body) throw new ApiError(res.status, body);
-      throw new ApiError(res.status, {
-        error: {
-          code: "unknown",
-          message: `Request failed with status ${res.status}`,
-        },
-      });
+      throw this.toApiError(res, errBody);
     }
     return res.blob();
   }
@@ -122,8 +138,8 @@ export class HttpClient {
     return this.request<T>("PUT", path, body);
   }
 
-  delete<T>(path: string): Promise<T> {
-    return this.request<T>("DELETE", path);
+  delete<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("DELETE", path, body);
   }
 }
 

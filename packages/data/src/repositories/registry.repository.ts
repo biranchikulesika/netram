@@ -1,6 +1,13 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleDB } from "../db/client.js";
-import { organisations, programmes, roleAssignments, users, districts, states } from "../db/schema.js";
+import {
+  organisations,
+  programmes,
+  roleAssignments,
+  users,
+  districts,
+  states,
+} from "../db/schema.js";
 
 export interface OrganisationRow {
   id: string;
@@ -8,7 +15,6 @@ export interface OrganisationRow {
   name: string;
   category: string;
   authorityId: string | null;
-  districtId: string | null;
   createdAt: Date;
 }
 
@@ -29,7 +35,6 @@ export interface CreateOrganisationCmd {
   name: string;
   category: string;
   authorityId: string | null;
-  districtId: string | null;
   actorUserId: string | null;
   requestId: string | null;
   ipAddress: string | null;
@@ -87,7 +92,6 @@ export class RegistryRepository {
         name: cmd.name,
         category: cmd.category,
         authorityId: cmd.authorityId,
-        districtId: cmd.districtId,
       })
       .returning({
         id: organisations.id,
@@ -95,7 +99,6 @@ export class RegistryRepository {
         name: organisations.name,
         category: organisations.category,
         authorityId: organisations.authorityId,
-        districtId: organisations.districtId,
         createdAt: organisations.createdAt,
       });
     return row!;
@@ -135,7 +138,6 @@ export class RegistryRepository {
         name: organisations.name,
         category: organisations.category,
         authorityId: organisations.authorityId,
-        districtId: organisations.districtId,
         createdAt: organisations.createdAt,
       })
       .from(organisations)
@@ -233,7 +235,7 @@ export class RegistryRepository {
     return rows.length > 0;
   }
 
-  /** District IDs belonging to a state — used for state-scope authorization. */
+  /** District IDs belonging to a state - used for state-scope authorization. */
   async districtsInState(stateId: string): Promise<string[]> {
     const rows = await this.db
       .select({ id: districts.id })
@@ -242,7 +244,7 @@ export class RegistryRepository {
     return rows.map((r) => r.id);
   }
 
-  /** All states — for scheme scope pickers. */
+  /** All states - for scheme scope pickers. */
   async listStates(): Promise<{ id: string; code: string; name: string }[]> {
     return this.db
       .select({ id: states.id, code: states.code, name: states.name })
@@ -250,7 +252,7 @@ export class RegistryRepository {
       .orderBy(states.name);
   }
 
-  /** All districts with their state name — for scope and agency pickers. */
+  /** All districts with their state name - for scope and agency pickers. */
   async listDistrictsWithState(): Promise<
     { id: string; code: string; name: string; stateId: string; stateName: string }[]
   > {

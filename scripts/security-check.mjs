@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Security scan (AGENTS.md §22, §65).
+ * Security scan.
  * Blocks commits / CI that would leak secrets into the repository.
  */
 import { readdirSync, readFileSync } from "node:fs";
@@ -19,12 +19,14 @@ function walk(dir, out = []) {
           "node_modules",
           ".next",
           "dist",
+          "build",
           ".turbo",
           ".expo",
           "coverage",
           ".pnpm",
           ".temp",
           ".venv",
+          ".kilo",
         ].includes(entry.name)
       )
         continue;
@@ -40,9 +42,7 @@ const rel = (f) => f.slice(ROOT.length + 1).replaceAll("\\", "/");
 
 const FILES = walk(ROOT).filter(
   (f) =>
-    !/(\.env\.example$|package-lock\.json$|pnpm-lock\.yaml$|^\.gitignore$|^scripts\/)/.test(
-      rel(f),
-    ),
+    !/(\.env\.example$|package-lock\.json$|pnpm-lock\.yaml$|^\.gitignore$|^scripts\/)/.test(rel(f)),
 );
 
 // High-signal secret patterns. These are deliberately suspicious, not exhaustive.

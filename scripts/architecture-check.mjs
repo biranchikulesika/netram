@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Mechanical architecture guards (AGENTS.md §66).
- * Fails the build when the architectural dependency boundaries are violated.
+ * Mechanical architecture guards.
+ * Fails the build when architectural dependency boundaries are violated.
  */
 import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -18,12 +18,14 @@ function walk(dir, out = []) {
           ".git",
           "node_modules",
           "dist",
+          "build",
           ".next",
           ".turbo",
           ".expo",
           "openapi",
           "coverage",
           ".pnpm",
+          ".kilo",
         ].includes(entry.name)
       )
         continue;
@@ -58,7 +60,7 @@ for (const f of tsFiles) {
   const m = src.match(/from ["']([^"']*services\/(api|ai|cctv-gateway|realtime)\/[^"']*src)/);
   if (m) {
     problems.push(
-      `${rel(f)}: cross-service import of service internals ("${m[1]}") — only explicit contracts allowed`,
+      `${rel(f)}: cross-service import of service internals ("${m[1]}") - only explicit contracts allowed`,
     );
   }
 }
@@ -81,7 +83,7 @@ for (const f of tsFiles) {
   const hits = [...src.matchAll(envAccess)].map((m) => m[1]);
   if (hits.some((k) => k !== "NODE_ENV")) {
     problems.push(
-      `${rel(f)}: direct process.env access (${[...new Set(hits)].join(", ")}) — configure via packages/config`,
+      `${rel(f)}: direct process.env access (${[...new Set(hits)].join(", ")}) - configure via packages/config`,
     );
   }
 }

@@ -1,4 +1,6 @@
 import type { CameraProvider, CameraRef, CameraSnapshotResult } from "./provider.js";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 // Standard 1x1 valid JFIF JPEG buffer
 const MINIMAL_JPEG = Buffer.from([
@@ -14,43 +16,53 @@ const MINIMAL_JPEG = Buffer.from([
   0x00, 0xbf, 0x80, 0xff, 0xd9,
 ]);
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const samplesDir = path.resolve(__dirname, "../../samples");
+
+/**
+ * Simulated camera source (Phase 3 role change).
+ *
+ * NO LONGER a camera catalog and NO LONGER a media delivery mechanism. The
+ * camera catalog lives in the NETRAM database (control plane); media delivery
+ * is MediaMTX's job. This provider's remaining role is to RESOLVE the
+ * simulated facility's ingest source for the dev rig: the gateway provisions
+ * MediaMTX paths against it and MediaMTX pulls the RTSP feed that the
+ * camera-sim container pushes into the facility NVR.
+ */
 export class SimulatedCameraProvider implements CameraProvider {
   readonly name = "simulated";
 
-  private cameras: Map<string, CameraRef> = new Map([
-    [
-      "cctv:vani-gate",
-      {
-        id: "cctv:vani-gate",
-        label: "Vani Vihar - Main Gate",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-    [
-      "cctv:cuttack-dinning",
-      {
-        id: "cctv:cuttack-dinning",
-        label: "Cuttack Girls' Hostel - Dining Hall",
-        provider: "simulated",
-        status: "online",
-      },
-    ],
-  ]);
+  /** The dev rig's single simulated facility feed (Phase 1–2 topology). */
+  private readonly rigSource: string;
 
+  constructor(rigSource = "rtsp://facility-nvr:8554/facility-vani/cam-gate") {
+    this.rigSource = rigSource;
+  }
+
+  /**
+   * No static catalog: the DB is the camera source of truth. The provider
+   * reports no cameras of its own; cameras are described by camera context
+   * passed from the control plane.
+   */
   async listCameras(): Promise<CameraRef[]> {
-    return Array.from(this.cameras.values());
+    return [];
   }
 
-  async cameraHealth(cameraId: string): Promise<CameraRef["status"]> {
-    if (this.cameras.has(cameraId)) {
-      return this.cameras.get(cameraId)!.status;
-    }
-    return "online";
+  /**
+   * Health is resolved from real media state by the MediaControlService -
+   * a source resolver alone cannot know camera health.
+   */
+  async cameraHealth(_cameraId: string): Promise<CameraRef["status"]> {
+    return "unknown";
   }
 
-  async acquireRawStream(cameraId: string): Promise<string> {
-    return `rtsp://simulated.internal:8554/live/${cameraId}`;
+  /**
+   * Resolve the simulated facility's ingest source URI (server-side only).
+   * Any camera routed to the simulated provider pulls from the rig feed.
+   */
+  async acquireRawStream(_cameraId: string): Promise<string> {
+    return this.rigSource;
   }
 
   async acquireSnapshot(_cameraId: string): Promise<CameraSnapshotResult> {
@@ -58,5 +70,10 @@ export class SimulatedCameraProvider implements CameraProvider {
       contentType: "image/jpeg",
       data: MINIMAL_JPEG,
     };
+  }
+
+  /** Sample directory (used by tooling/tests only). */
+  get samplesDir(): string {
+    return samplesDir;
   }
 }

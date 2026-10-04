@@ -19,7 +19,7 @@ export class AuthorizationService {
   constructor() {}
 
   hasPermission(ctx: Pick<RequestUserContext, "permissions">, permission: PermissionCode): boolean {
-    return ctx.permissions.has(permission);
+    return ctx.permissions.has("*") || ctx.permissions.has(permission);
   }
 
   /**

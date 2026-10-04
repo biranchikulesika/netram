@@ -1,0 +1,40 @@
+/* Smart India Hackathon attribution mark - the public pages' entire masthead.
+ *
+ * It replaced a government masthead (National Emblem of India, "Government of
+ * India"), which claimed an official portal that does not exist. Do not add
+ * product naming or provenance wording here: the login card and the landing
+ * hero already state what Netram is, and DisclaimerModal carries the "not an
+ * official Government of India or DoSJE platform" notice site-wide.
+ *
+ * Owns its own vertical rhythm so the three call sites do not each carry a
+ * slightly different copy of it.
+ */
+
+.masthead {
+  display: flex;
+  justify-content: center;
+  padding-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.link {
+  line-height: 0;
+  border-radius: 6px;
+}
+
+.link:hover,
+.link:focus-visible {
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.sihLogo {
+  object-fit: contain;
+}
+
+@media (max-width: 720px) {
+  .sihLogo {
+    width: 120px;
+    height: auto;
+  }
+}

@@ -129,10 +129,7 @@ export async function registerAttendanceRoutes(
       schema: {
         tags: ["attendance"],
         security: [{ bearerAuth: [] }],
-        querystring: toJsonSchema(
-          "AttendanceObservationsQuery",
-          attendanceOverviewQuerySchema,
-        ),
+        querystring: toJsonSchema("AttendanceObservationsQuery", attendanceOverviewQuerySchema),
       },
     },
     async (request) => {

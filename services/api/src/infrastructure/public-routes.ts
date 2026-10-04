@@ -1,14 +1,12 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { PUBLIC_API_PATH_PREFIXES } from "@netram/types";
 
-export const PUBLIC_PATH_PREFIXES = [
-  "/docs",
-  "/openapi.json",
-  "/health",
-  "/ready",
-  "/api/v1/auth/dev-login",
-  "/api/v1/info",
-  "/api/v1/complaints/track",
-];
+/**
+ * Unauthenticated API paths. The list itself is a shared contract (it is also
+ * needed by the web BFF, which must proxy these paths without a session token)
+ * and therefore lives in @netram/types. Re-exported here for API-internal use.
+ */
+export const PUBLIC_PATH_PREFIXES = PUBLIC_API_PATH_PREFIXES;
 
 export function isPublicRoute(req: FastifyRequest): boolean {
   const cfg = (req.routeOptions?.config as unknown as Record<string, unknown> | undefined) ?? {};

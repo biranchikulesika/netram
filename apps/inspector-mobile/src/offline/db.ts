@@ -1,9 +1,3 @@
-/**
- * SQLite local persistence for Inspector Mobile application (§5, §31).
- * Supports offline queuing, inspection caching, and media upload tracking.
- */
-
-
 export interface ISqliteDatabase {
   execAsync(sql: string): Promise<void>;
   runAsync(
@@ -36,7 +30,7 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
     sql: string,
     params: unknown[] = [],
   ): Promise<{ lastInsertRowId?: number; changes?: number }> {
-    const trimmed = sql.trim();
+    const trimmed = sql.replace(/\s+/g, " ").trim();
     const insertMatch = trimmed.match(
       /^INSERT(?:\s+OR\s+REPLACE)?\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i,
     );
@@ -94,6 +88,8 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
             if (col) {
               if (valExpr === "?") {
                 row[col] = params[paramIdx++];
+              } else if (valExpr === "null") {
+                row[col] = null;
               } else if (valExpr?.startsWith("'") && valExpr.endsWith("'")) {
                 row[col] = valExpr.slice(1, -1);
               }
@@ -104,10 +100,23 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
       return { changes: rows.length };
     }
 
-    const deleteMatch = trimmed.match(/^DELETE\s+FROM\s+(\w+)/i);
+    const deleteMatch = trimmed.match(/^DELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?$/i);
     if (deleteMatch) {
       const table = deleteMatch[1]?.toLowerCase();
-      if (table) this.tables.set(table, []);
+      const whereClause = deleteMatch[2];
+      if (table) {
+        if (!whereClause) {
+          this.tables.set(table, []);
+        } else {
+          const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
+          if (whereMatch && whereMatch[1]) {
+            const whereCol = whereMatch[1].toLowerCase();
+            const whereVal = whereMatch[2] !== undefined ? whereMatch[2] : params[0];
+            const rows = (this.tables.get(table) ?? []).filter((r) => r[whereCol] !== whereVal);
+            this.tables.set(table, rows);
+          }
+        }
+      }
       return { changes: 1 };
     }
 
@@ -115,24 +124,39 @@ export class InMemorySqliteDatabase implements ISqliteDatabase {
   }
 
   async getAllAsync<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-    const fromMatch = sql.match(/FROM\s+(\w+)(?:\s+WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s*$))?/i);
+    const trimmed = sql.replace(/\s+/g, " ").trim();
+    const fromMatch = trimmed.match(/FROM\s+(\w+)(?:\s+WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s*$))?/i);
     if (!fromMatch) return [];
     const table = fromMatch[1]?.toLowerCase();
     const whereClause = fromMatch[2]?.trim() ?? "";
     const rows = this.tables.get(table ?? "") ?? [];
 
-    if (!whereClause) {
-      return rows as T[];
+    let filtered = [...rows];
+    if (whereClause) {
+      const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
+      if (whereMatch && whereMatch[1]) {
+        const col = whereMatch[1].toLowerCase();
+        const val = whereMatch[2] !== undefined ? whereMatch[2] : params[0];
+        filtered = filtered.filter((r) => r[col] === val);
+      }
     }
 
-    const whereMatch = whereClause.match(/(\w+)\s*=\s*(?:\?|'([^']*)')/i);
-    if (whereMatch && whereMatch[1]) {
-      const col = whereMatch[1].toLowerCase();
-      const val = whereMatch[2] !== undefined ? whereMatch[2] : params[0];
-      return rows.filter((r) => r[col] === val) as T[];
+    const orderMatch = trimmed.match(/ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?/i);
+    if (orderMatch && orderMatch[1]) {
+      const orderCol = orderMatch[1].toLowerCase();
+      const isDesc = orderMatch[2]?.toUpperCase() === "DESC";
+      filtered.sort((a, b) => {
+        const valA = a[orderCol];
+        const valB = b[orderCol];
+        if (valA === valB) return 0;
+        if (valA == null) return isDesc ? 1 : -1;
+        if (valB == null) return isDesc ? -1 : 1;
+        const cmp = valA < valB ? -1 : 1;
+        return isDesc ? -cmp : cmp;
+      });
     }
 
-    return rows as T[];
+    return filtered as T[];
   }
 
   async getFirstAsync<T = unknown>(sql: string, params: unknown[] = []): Promise<T | null> {
@@ -164,10 +188,12 @@ CREATE TABLE IF NOT EXISTS cached_inspections (
   type TEXT NOT NULL,
   status TEXT NOT NULL,
   district_id TEXT,
+  district_name TEXT,
   scheduled_start TEXT,
   scheduled_end TEXT,
   started_at TEXT,
   submitted_at TEXT,
+  assigned_user_ids TEXT NOT NULL DEFAULT '[]',
   cached_at TEXT NOT NULL
 );
 
@@ -219,6 +245,51 @@ CREATE TABLE IF NOT EXISTS media_upload_queue (
   created_at TEXT NOT NULL,
   uploaded_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS cached_checklist_items (
+  id TEXT PRIMARY KEY,
+  inspection_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  question TEXT NOT NULL,
+  is_required INTEGER NOT NULL DEFAULT 1,
+  response TEXT,
+  note TEXT,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cached_call_contacts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  title TEXT NOT NULL,
+  project_code TEXT NOT NULL,
+  project_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  is_online INTEGER NOT NULL DEFAULT 1,
+  avatar_color TEXT NOT NULL,
+  video_uri TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cached_call_history (
+  id TEXT PRIMARY KEY,
+  contact_id TEXT NOT NULL,
+  contact_name TEXT NOT NULL,
+  contact_title TEXT NOT NULL,
+  role TEXT NOT NULL,
+  project_name TEXT NOT NULL,
+  project_code TEXT NOT NULL,
+  call_type TEXT NOT NULL DEFAULT 'video',
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  timestamp TEXT NOT NULL,
+  condition TEXT NOT NULL,
+  review_text TEXT NOT NULL,
+  flag_inspection INTEGER NOT NULL DEFAULT 0,
+  video_uri TEXT,
+  inspector_video_uri TEXT,
+  direction TEXT NOT NULL DEFAULT 'outgoing',
+  status TEXT NOT NULL DEFAULT 'answered',
+  created_at TEXT NOT NULL
+);
 `;
 
 interface ExpoSQLiteLike {
@@ -229,7 +300,7 @@ interface ExpoSQLiteLike {
 }
 
 class ExpoSqliteAdapter implements ISqliteDatabase {
-  constructor(private readonly db: ExpoSQLiteLike) { }
+  constructor(private readonly db: ExpoSQLiteLike) {}
 
   async execAsync(sql: string): Promise<void> {
     await this.db.execAsync(sql);
@@ -260,11 +331,24 @@ let currentDb: ISqliteDatabase | null = null;
 export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
   if (currentDb) return currentDb;
 
-  if (typeof window === "undefined") {
+  // Detect React Native lazily: a static import here would pull react-native's
+  // Flow-typed source into every plain-node import chain (runtime verification
+  // scripts, tsx), which cannot parse it. A dynamic require fails cleanly
+  // outside the mobile bundle, mirroring the expo-sqlite pattern below.
+  let isNativeMobile = false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Platform } = require("react-native");
+    isNativeMobile = Platform.OS === "android" || Platform.OS === "ios";
+  } catch {
+    isNativeMobile = false;
+  }
+
+  if (isNativeMobile && !(typeof process !== "undefined" && process.env?.VITEST)) {
     try {
-      // Attempt dynamic import of expo-sqlite
-      const SQLite = await import("expo-sqlite");
-      if (typeof SQLite.openDatabaseAsync === "function") {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const SQLite = require("expo-sqlite");
+      if (SQLite && typeof SQLite.openDatabaseAsync === "function") {
         const nativeDb = await SQLite.openDatabaseAsync("netram_inspector.db");
         await nativeDb.execAsync(DDL_SCHEMA);
         const adapter = new ExpoSqliteAdapter(nativeDb);
@@ -272,7 +356,7 @@ export async function getOfflineDatabase(): Promise<ISqliteDatabase> {
         return adapter;
       }
     } catch {
-      // Fall back to in-memory database in non-Expo or test environments
+      // Fall back to in-memory database in case native module is unavailable
     }
   }
 

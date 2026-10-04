@@ -8,7 +8,7 @@ import { SmtpClient, type SmtpClientOptions } from "./smtp-client.js";
 /**
  * Email delivery through any SMTP server (MailHog/Inbucket in development,
  * a transactional provider's SMTP relay in production). The provider is
- * agnostic to the upstream vendor — credentials/config live in
+ * agnostic to the upstream vendor - credentials/config live in
  * `NETRAM_SMTP_URL`, isolated behind this adapter.
  */
 export class EmailNotificationProvider implements NotificationProviderPort {

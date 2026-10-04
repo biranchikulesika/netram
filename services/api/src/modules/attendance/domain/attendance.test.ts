@@ -99,9 +99,7 @@ describe("attendance domain", () => {
     it("returns UNAVAILABLE when no sources contribute", () => {
       expect(overallCoverage([])).toBe("UNAVAILABLE");
       expect(
-        overallCoverage([
-          { source: "BIOMETRIC" as AttendanceSource, coverage: "UNAVAILABLE" },
-        ]),
+        overallCoverage([{ source: "BIOMETRIC" as AttendanceSource, coverage: "UNAVAILABLE" }]),
       ).toBe("UNAVAILABLE");
     });
 
@@ -135,20 +133,84 @@ describe("attendance domain", () => {
 
   describe("assessDataQuality", () => {
     it("returns POOR when coverage is unavailable or insufficient", () => {
-      expect(assessDataQuality({ coverage: "UNAVAILABLE", duplicateRate: 0, unmatchedCount: 0, invalidCount: 0, stale: false })).toBe("POOR");
-      expect(assessDataQuality({ coverage: "INSUFFICIENT", duplicateRate: 0, unmatchedCount: 0, invalidCount: 0, stale: false })).toBe("POOR");
+      expect(
+        assessDataQuality({
+          coverage: "UNAVAILABLE",
+          duplicateRate: 0,
+          unmatchedCount: 0,
+          invalidCount: 0,
+          stale: false,
+        }),
+      ).toBe("POOR");
+      expect(
+        assessDataQuality({
+          coverage: "INSUFFICIENT",
+          duplicateRate: 0,
+          unmatchedCount: 0,
+          invalidCount: 0,
+          stale: false,
+        }),
+      ).toBe("POOR");
     });
 
     it("returns DEGRADED when stale, high duplicate rate, or unmatched/invalid events", () => {
-      expect(assessDataQuality({ coverage: "COMPLETE", duplicateRate: 0, unmatchedCount: 0, invalidCount: 0, stale: true })).toBe("DEGRADED");
-      expect(assessDataQuality({ coverage: "COMPLETE", duplicateRate: 0.4, unmatchedCount: 0, invalidCount: 0, stale: false })).toBe("DEGRADED");
-      expect(assessDataQuality({ coverage: "COMPLETE", duplicateRate: 0, unmatchedCount: 1, invalidCount: 0, stale: false })).toBe("DEGRADED");
-      expect(assessDataQuality({ coverage: "COMPLETE", duplicateRate: 0, unmatchedCount: 0, invalidCount: 1, stale: false })).toBe("DEGRADED");
-      expect(assessDataQuality({ coverage: "PARTIAL", duplicateRate: 0, unmatchedCount: 0, invalidCount: 0, stale: false })).toBe("DEGRADED");
+      expect(
+        assessDataQuality({
+          coverage: "COMPLETE",
+          duplicateRate: 0,
+          unmatchedCount: 0,
+          invalidCount: 0,
+          stale: true,
+        }),
+      ).toBe("DEGRADED");
+      expect(
+        assessDataQuality({
+          coverage: "COMPLETE",
+          duplicateRate: 0.4,
+          unmatchedCount: 0,
+          invalidCount: 0,
+          stale: false,
+        }),
+      ).toBe("DEGRADED");
+      expect(
+        assessDataQuality({
+          coverage: "COMPLETE",
+          duplicateRate: 0,
+          unmatchedCount: 1,
+          invalidCount: 0,
+          stale: false,
+        }),
+      ).toBe("DEGRADED");
+      expect(
+        assessDataQuality({
+          coverage: "COMPLETE",
+          duplicateRate: 0,
+          unmatchedCount: 0,
+          invalidCount: 1,
+          stale: false,
+        }),
+      ).toBe("DEGRADED");
+      expect(
+        assessDataQuality({
+          coverage: "PARTIAL",
+          duplicateRate: 0,
+          unmatchedCount: 0,
+          invalidCount: 0,
+          stale: false,
+        }),
+      ).toBe("DEGRADED");
     });
 
     it("returns GOOD when coverage is complete and data is clean", () => {
-      expect(assessDataQuality({ coverage: "COMPLETE", duplicateRate: 0, unmatchedCount: 0, invalidCount: 0, stale: false })).toBe("GOOD");
+      expect(
+        assessDataQuality({
+          coverage: "COMPLETE",
+          duplicateRate: 0,
+          unmatchedCount: 0,
+          invalidCount: 0,
+          stale: false,
+        }),
+      ).toBe("GOOD");
     });
   });
 
@@ -171,7 +233,18 @@ describe("attendance domain", () => {
         status: "NORMALIZED" as const,
       }));
       const result = calculateAttendance({
-        window: { id: "w1", projectId: "p1", code: "M", name: "Morning", startTime: "06:00", endTime: "09:00", populationId: null, minCoverage: 0.5, config: {}, createdAt: "2026-01-01T00:00:00Z" },
+        window: {
+          id: "w1",
+          projectId: "p1",
+          code: "M",
+          name: "Morning",
+          startTime: "06:00",
+          endTime: "09:00",
+          populationId: null,
+          minCoverage: 0.5,
+          config: {},
+          createdAt: "2026-01-01T00:00:00Z",
+        },
         expected: 15,
         presentEvents,
         sourceCounts: { BIOMETRIC: 15, INSTITUTION_REPORTED: 0, CCTV: 0, MANUAL: 0 },
@@ -188,12 +261,68 @@ describe("attendance domain", () => {
 
     it("counts present events passed to it (dedup happens at service layer)", () => {
       const presentEvents: AttendanceEvent[] = [
-        { id: "e1", projectId: "p1", deviceId: "d1", populationId: null, personExternalId: "p1", netramUserId: null, eventType: "PRESENCE" as AttendanceEventType, occurredAt: "2026-03-01T08:00:00Z", receivedAt: "2026-03-01T08:00:00Z", rawTransactionId: "rt1", windowId: null, operationalDate: null, dedupKey: "same-key", status: "NORMALIZED" as const },
-        { id: "e2", projectId: "p1", deviceId: "d1", populationId: null, personExternalId: "p1", netramUserId: null, eventType: "CHECK_IN" as AttendanceEventType, occurredAt: "2026-03-01T08:00:00Z", receivedAt: "2026-03-01T08:00:00Z", rawTransactionId: "rt2", windowId: null, operationalDate: null, dedupKey: "same-key", status: "NORMALIZED" as const },
-        { id: "e3", projectId: "p1", deviceId: "d1", populationId: null, personExternalId: "p2", netramUserId: null, eventType: "PRESENCE" as AttendanceEventType, occurredAt: "2026-03-01T08:00:00Z", receivedAt: "2026-03-01T08:00:00Z", rawTransactionId: "rt3", windowId: null, operationalDate: null, dedupKey: "other-key", status: "NORMALIZED" as const },
+        {
+          id: "e1",
+          projectId: "p1",
+          deviceId: "d1",
+          populationId: null,
+          personExternalId: "p1",
+          netramUserId: null,
+          eventType: "PRESENCE" as AttendanceEventType,
+          occurredAt: "2026-03-01T08:00:00Z",
+          receivedAt: "2026-03-01T08:00:00Z",
+          rawTransactionId: "rt1",
+          windowId: null,
+          operationalDate: null,
+          dedupKey: "same-key",
+          status: "NORMALIZED" as const,
+        },
+        {
+          id: "e2",
+          projectId: "p1",
+          deviceId: "d1",
+          populationId: null,
+          personExternalId: "p1",
+          netramUserId: null,
+          eventType: "CHECK_IN" as AttendanceEventType,
+          occurredAt: "2026-03-01T08:00:00Z",
+          receivedAt: "2026-03-01T08:00:00Z",
+          rawTransactionId: "rt2",
+          windowId: null,
+          operationalDate: null,
+          dedupKey: "same-key",
+          status: "NORMALIZED" as const,
+        },
+        {
+          id: "e3",
+          projectId: "p1",
+          deviceId: "d1",
+          populationId: null,
+          personExternalId: "p2",
+          netramUserId: null,
+          eventType: "PRESENCE" as AttendanceEventType,
+          occurredAt: "2026-03-01T08:00:00Z",
+          receivedAt: "2026-03-01T08:00:00Z",
+          rawTransactionId: "rt3",
+          windowId: null,
+          operationalDate: null,
+          dedupKey: "other-key",
+          status: "NORMALIZED" as const,
+        },
       ];
       const result = calculateAttendance({
-        window: { id: "w1", projectId: "p1", code: "M", name: "Morning", startTime: "06:00", endTime: "09:00", populationId: null, minCoverage: 0.5, config: {}, createdAt: "2026-01-01T00:00:00Z" },
+        window: {
+          id: "w1",
+          projectId: "p1",
+          code: "M",
+          name: "Morning",
+          startTime: "06:00",
+          endTime: "09:00",
+          populationId: null,
+          minCoverage: 0.5,
+          config: {},
+          createdAt: "2026-01-01T00:00:00Z",
+        },
         expected: 3,
         presentEvents,
         sourceCounts: { BIOMETRIC: 3, INSTITUTION_REPORTED: 0, CCTV: 0, MANUAL: 0 },
@@ -211,11 +340,52 @@ describe("attendance domain", () => {
 
     it("counts present events without dedupKey", () => {
       const presentEvents: AttendanceEvent[] = [
-        { id: "e1", projectId: "p1", deviceId: "d1", populationId: null, personExternalId: "p1", netramUserId: null, eventType: "PRESENCE" as AttendanceEventType, occurredAt: "2026-03-01T08:00:00Z", receivedAt: "2026-03-01T08:00:00Z", rawTransactionId: "rt1", windowId: null, operationalDate: null, dedupKey: null, status: "NORMALIZED" as const },
-        { id: "e2", projectId: "p1", deviceId: "d1", populationId: null, personExternalId: "p2", netramUserId: null, eventType: "PRESENCE" as AttendanceEventType, occurredAt: "2026-03-01T08:00:00Z", receivedAt: "2026-03-01T08:00:00Z", rawTransactionId: "rt2", windowId: null, operationalDate: null, dedupKey: null, status: "NORMALIZED" as const },
+        {
+          id: "e1",
+          projectId: "p1",
+          deviceId: "d1",
+          populationId: null,
+          personExternalId: "p1",
+          netramUserId: null,
+          eventType: "PRESENCE" as AttendanceEventType,
+          occurredAt: "2026-03-01T08:00:00Z",
+          receivedAt: "2026-03-01T08:00:00Z",
+          rawTransactionId: "rt1",
+          windowId: null,
+          operationalDate: null,
+          dedupKey: null,
+          status: "NORMALIZED" as const,
+        },
+        {
+          id: "e2",
+          projectId: "p1",
+          deviceId: "d1",
+          populationId: null,
+          personExternalId: "p2",
+          netramUserId: null,
+          eventType: "PRESENCE" as AttendanceEventType,
+          occurredAt: "2026-03-01T08:00:00Z",
+          receivedAt: "2026-03-01T08:00:00Z",
+          rawTransactionId: "rt2",
+          windowId: null,
+          operationalDate: null,
+          dedupKey: null,
+          status: "NORMALIZED" as const,
+        },
       ];
       const result = calculateAttendance({
-        window: { id: "w1", projectId: "p1", code: "M", name: "Morning", startTime: "06:00", endTime: "09:00", populationId: null, minCoverage: 0.5, config: {}, createdAt: "2026-01-01T00:00:00Z" },
+        window: {
+          id: "w1",
+          projectId: "p1",
+          code: "M",
+          name: "Morning",
+          startTime: "06:00",
+          endTime: "09:00",
+          populationId: null,
+          minCoverage: 0.5,
+          config: {},
+          createdAt: "2026-01-01T00:00:00Z",
+        },
         expected: 2,
         presentEvents,
         sourceCounts: { BIOMETRIC: 2, INSTITUTION_REPORTED: 0, CCTV: 0, MANUAL: 0 },
@@ -232,7 +402,18 @@ describe("attendance domain", () => {
 
     it("computes absent only under complete coverage", () => {
       const resultComplete = calculateAttendance({
-        window: { id: "w1", projectId: "p1", code: "M", name: "Morning", startTime: "06:00", endTime: "09:00", populationId: null, minCoverage: 0.5, config: {}, createdAt: "2026-01-01T00:00:00Z" },
+        window: {
+          id: "w1",
+          projectId: "p1",
+          code: "M",
+          name: "Morning",
+          startTime: "06:00",
+          endTime: "09:00",
+          populationId: null,
+          minCoverage: 0.5,
+          config: {},
+          createdAt: "2026-01-01T00:00:00Z",
+        },
         expected: 10,
         presentEvents: [],
         sourceCounts: { BIOMETRIC: 0, INSTITUTION_REPORTED: 0, CCTV: 0, MANUAL: 0 },
@@ -249,7 +430,18 @@ describe("attendance domain", () => {
 
       // partial coverage: absent is null, unknown = expected - present
       const resultPartial2 = calculateAttendance({
-        window: { id: "w1", projectId: "p1", code: "M", name: "Morning", startTime: "06:00", endTime: "09:00", populationId: null, minCoverage: 0.5, config: {}, createdAt: "2026-01-01T00:00:00Z" },
+        window: {
+          id: "w1",
+          projectId: "p1",
+          code: "M",
+          name: "Morning",
+          startTime: "06:00",
+          endTime: "09:00",
+          populationId: null,
+          minCoverage: 0.5,
+          config: {},
+          createdAt: "2026-01-01T00:00:00Z",
+        },
         expected: 10,
         presentEvents: [],
         sourceCounts: { BIOMETRIC: 0, INSTITUTION_REPORTED: 0, CCTV: 0, MANUAL: 0 },
@@ -267,12 +459,53 @@ describe("attendance domain", () => {
 
     it("handles events without dedupKey (falls back to id)", () => {
       const presentEvents = [
-        { id: "e1", projectId: "p1", deviceId: "d1", populationId: null, personExternalId: "p1", netramUserId: null, eventType: "PRESENCE" as AttendanceEventType, occurredAt: "2026-03-01T08:00:00Z", receivedAt: "2026-03-01T08:00:00Z", rawTransactionId: "rt1", windowId: null, operationalDate: null, dedupKey: null, status: "NORMALIZED" as const },
-        { id: "e2", projectId: "p1", deviceId: "d1", populationId: null, personExternalId: "p2", netramUserId: null, eventType: "PRESENCE" as AttendanceEventType, occurredAt: "2026-03-01T08:00:00Z", receivedAt: "2026-03-01T08:00:00Z", rawTransactionId: "rt2", windowId: null, operationalDate: null, dedupKey: null, status: "NORMALIZED" as const },
+        {
+          id: "e1",
+          projectId: "p1",
+          deviceId: "d1",
+          populationId: null,
+          personExternalId: "p1",
+          netramUserId: null,
+          eventType: "PRESENCE" as AttendanceEventType,
+          occurredAt: "2026-03-01T08:00:00Z",
+          receivedAt: "2026-03-01T08:00:00Z",
+          rawTransactionId: "rt1",
+          windowId: null,
+          operationalDate: null,
+          dedupKey: null,
+          status: "NORMALIZED" as const,
+        },
+        {
+          id: "e2",
+          projectId: "p1",
+          deviceId: "d1",
+          populationId: null,
+          personExternalId: "p2",
+          netramUserId: null,
+          eventType: "PRESENCE" as AttendanceEventType,
+          occurredAt: "2026-03-01T08:00:00Z",
+          receivedAt: "2026-03-01T08:00:00Z",
+          rawTransactionId: "rt2",
+          windowId: null,
+          operationalDate: null,
+          dedupKey: null,
+          status: "NORMALIZED" as const,
+        },
       ];
       // dedup fallback uses e.id when dedupKey is falsy; both have different ids → 2 present
       const result = calculateAttendance({
-        window: { id: "w1", projectId: "p1", code: "M", name: "Morning", startTime: "06:00", endTime: "09:00", populationId: null, minCoverage: 0.5, config: {}, createdAt: "2026-01-01T00:00:00Z" },
+        window: {
+          id: "w1",
+          projectId: "p1",
+          code: "M",
+          name: "Morning",
+          startTime: "06:00",
+          endTime: "09:00",
+          populationId: null,
+          minCoverage: 0.5,
+          config: {},
+          createdAt: "2026-01-01T00:00:00Z",
+        },
         expected: 2,
         presentEvents,
         sourceCounts: { BIOMETRIC: 2, INSTITUTION_REPORTED: 0, CCTV: 0, MANUAL: 0 },
@@ -289,7 +522,18 @@ describe("attendance domain", () => {
 
     it("handles null expected population", () => {
       const result = calculateAttendance({
-        window: { id: "w1", projectId: "p1", code: "M", name: "Morning", startTime: "06:00", endTime: "09:00", populationId: null, minCoverage: 0.5, config: {}, createdAt: "2026-01-01T00:00:00Z" },
+        window: {
+          id: "w1",
+          projectId: "p1",
+          code: "M",
+          name: "Morning",
+          startTime: "06:00",
+          endTime: "09:00",
+          populationId: null,
+          minCoverage: 0.5,
+          config: {},
+          createdAt: "2026-01-01T00:00:00Z",
+        },
         expected: null,
         presentEvents: [],
         sourceCounts: { BIOMETRIC: 0, INSTITUTION_REPORTED: 0, CCTV: 0, MANUAL: 0 },

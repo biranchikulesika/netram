@@ -23,16 +23,71 @@ the typed client in `packages/api-client`.
    ```
 
 4. No stack traces, SQL errors, or provider internals in responses.
-5. Information disclosure is server-side: unauthorized fields are **omitted**,
-   never merely hidden in the UI (AGENTS.md §34).
+5. Information disclosure is server-side: unauthorised fields are **omitted** at the API layer,
+   never merely hidden in the UI.
 
-## Changing an API
+## Changing a Contract Boundary
 
-The change checklist (AGENTS.md §19): update the contract → update validation →
-update backend → update client → update tests → verify consumers. The CI job
-fails if `openapi.json` drifts from the code.
+The change checklist for contract boundaries:
 
-## Current surface
+1. Update domain types (`packages/types`)
+2. Update validation schemas (`packages/validation`)
+3. Update backend implementation & routes (`services/api`)
+4. Regenerate OpenAPI contract (`pnpm api:export-openapi`)
+5. Update typed client (`packages/api-client`)
+6. Update test assertions and verify all consumers
+
+The CI job strictly validates that `openapi.json` does not drift from code (`git diff --exit-code -- services/api/openapi`).
+
+---
+
+## Shared Contract Packages
+
+The monorepo defines shared contracts in isolated workspace packages to maintain strict synchronization across the web, mobile, and backend services:
+
+| Package                  | Path                       | Purpose                                                                    | Key Consumers                       |
+| ------------------------ | -------------------------- | -------------------------------------------------------------------------- | ----------------------------------- |
+| **`@netram/types`**      | `packages/types/src/`      | Canonical domain definitions, contract interfaces, enums, and event shapes | Web, Mobile, API, Workers, Realtime |
+| **`@netram/validation`** | `packages/validation/src/` | Zod runtime boundary validation schemas and input parsers                  | Web, Mobile, API                    |
+| **`@netram/api-client`** | `packages/api-client/src/` | Strongly-typed HTTP client wrapping all REST endpoints                     | Web, Mobile                         |
+| **`@netram/config`**     | `packages/config/src/`     | Validated, typed environment variable schemas (server and client)          | All apps & services                 |
+| **`@netram/data`**       | `packages/data/src/`       | Persistence schemas (Drizzle ORM) and repository interfaces                | API, Seed, Workers                  |
+
+### Domain Type Inventory (`packages/types/src/`)
+
+| File                       | Domain Area & Core Concepts                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `auth.ts`                  | `AuthenticatedUser`, `RequestUserContext`, dev token structures                        |
+| `authorization.ts`         | `Role`, `Permission`, `RoleAssignment`, `Scope`, `Policy`                              |
+| `user.ts`                  | `User`, `UserProfile`, user status transitions                                         |
+| `geography.ts`             | `State`, `District`, `Jurisdiction` hierarchy                                          |
+| `project.ts`               | `Project`, `ProjectStatus`, lifecycle transitions, facility profiles                   |
+| `project-photo.ts`         | `ProjectPhoto`, photo metadata, capture checksums                                      |
+| `inspection.ts`            | `Inspection`, `InspectionStatus`, workflow states, random assignment                   |
+| `inspection-assignment.ts` | `InspectionAssignment`, team allocation rules                                          |
+| `finding.ts`               | `Finding`, `FindingSeverity`, `FindingStatus`                                          |
+| `corrective-action.ts`     | `CorrectiveAction`, `CorrectiveActionStatus`, ATR records                              |
+| `evidence.ts`              | `Evidence`, `EvidenceIntegrityState`, `EvidenceUploadState`                            |
+| `observation.ts`           | `Observation`, `ObservationType`                                                       |
+| `complaint.ts`             | `Complaint`, `ComplaintStatus`, escalation pathways                                    |
+| `notification.ts`          | `Notification`, notification channels (in-app, email, sms, push)                       |
+| `audit.ts`                 | `AuditEvent`, append-only audit trail entries                                          |
+| `ai-anomaly.ts`            | `AIAnomaly`, `AnomalyScore`, `AnomalySeverity`, confidence intervals                   |
+| `attendance.ts`            | `AttendanceCalculation`, `AttendanceAnomaly`, `AttendanceCorrection`                   |
+| `cctv.ts`                  | `PublicCctvCamera`, `CameraHealthStatus`, `AuthorizedStream`, WHEP playback            |
+| `vc.ts`                    | `VideoConferenceSession`, `VCSessionStatus`, participant state                         |
+| `fund.ts`                  | `FundAllocation`, `FundRelease`, `Expense`, `FinancialDocument`, `InspectionFlag`      |
+| `project-risk.ts`          | `ProjectRiskSnapshot`, composite multi-dimensional scoring types                       |
+| `action-inbox.ts`          | `ActionInboxItem`, `ActionInboxSection`, kind-to-permission mapping                    |
+| `scheme-component.ts`      | `SchemeComponent` (DoSJE welfare scheme components)                                    |
+| `registry.ts`              | `AgencyRegistration`, `OfficialRegistration`, `REGISTRY_CAPABILITIES`                  |
+| `sync.ts`                  | Offline operation batch contracts (`OfflineOperation`, `SyncResult`, `ConflictResult`) |
+| `domain-events.ts`         | Strongly-typed event payloads (`InspectionAssigned`, `EvidenceCaptured`, etc.)         |
+| `common.ts`                | Shared primitives (`UUID`, `Timestamp`, `Pagination`, `ApiError`)                      |
+
+---
+
+## HTTP REST API Surface (`/api/v1/`)
 
 All routes are served under `/api/v1/` with `bearerAuth` security unless
 otherwise noted.
@@ -64,13 +119,17 @@ otherwise noted.
 - `GET /inspections/:id/findings`
 - `POST /inspections/:id/findings`
 - `POST /findings/:id/transitions`
+- `GET /findings/awaiting-order` (`inspection:review` + `corrective_action:read`; confirmed findings without a corrective action, scoped to the caller's jurisdictions - the authority "pending remediation orders" queue)
 
 ### Corrective Actions
 
 - `GET /corrective-actions`
 - `POST /corrective-actions`
 - `GET /corrective-actions/:id`
-- `POST /corrective-actions/:id/transitions`
+- `POST /corrective-actions/:id/submit-atr` (institution lodges the Action Taken Report; automatically advances the order to `submitted`)
+- `POST /corrective-actions/:id/review` (authority records a review decision; automatically advances the workflow to `under_review`/`accepted`/`rejected`)
+
+Corrective action status is derived from recorded work - there is no manual status-transition endpoint. `overdue` is produced by the SLA scheduled job; `escalated` is reserved for job-driven escalation.
 
 ### Observations
 
@@ -96,6 +155,23 @@ otherwise noted.
 
 - `GET /audit-events`
 
+### Action Inbox
+
+- `GET /action-inbox` (read-only; no extra permission of its own - each section
+  appears only when the caller holds the section's decision permission and stays
+  within its jurisdiction)
+
+  Unified pending-decision queue aggregating: project verification
+  (`project:approve`), finding review (`inspection:review`), ATR review
+  (`corrective_action:approve`), complaint decisions (`complaint:resolve`), AI
+  anomaly review (`ai:anomaly:transition`), attendance anomaly review
+  (`attendance:anomaly:review`), attendance correction approval
+  (`attendance:correction:approve`), expense verification (`expense:verify`),
+  financial document verification (`financial_document:verify`), and risk flag
+  review (`inspection_flag:review`). Items disappear once the underlying
+  workflow moves past its decision point; decisions are executed through each
+  workflow's own canonical endpoints (never through the inbox).
+
 ### AI Anomalies
 
 - `GET /ai-anomalies`
@@ -114,13 +190,6 @@ otherwise noted.
 - `GET /notifications`
 - `POST /notifications/:id/read`
 - `POST /notifications/read-all`
-
-### Reports
-
-- `GET /reports`
-- `POST /reports`
-- `GET /reports/:id`
-- `POST /reports/:id/finalize`
 
 ### User Administration
 
@@ -152,11 +221,20 @@ Permissions for these routes are governed by the
 
 ### CCTV
 
+The CCTV surface follows the two-plane architecture in
+[`../architecture/cctv.md`](../architecture/cctv.md): camera/session control
+below, plus the MediaMTX-facing external auth hook. Session lifecycle
+(creation, heartbeat, explicit end), the hook route, and health reflect the
+implemented Phase 3–5 behaviour.
+
 - `GET /cctv/cameras`
 - `GET /cctv/cameras/:id`
 - `GET /cctv/cameras/:id/health`
 - `POST /cctv/cameras/:id/streams`
+- `POST /cctv/cameras/:id/streams/:streamId/heartbeat`
+- `DELETE /cctv/cameras/:id/streams/:streamId`
 - `GET /cctv/cameras/:id/snapshot`
+- `POST /media/auth` (MediaMTX external auth hook; secret-gated, public route)
 
 ### Video Conferencing
 
@@ -194,6 +272,62 @@ Permissions for these routes are governed by the
 - `GET /attendance/exports/:id`
 - `GET /attendance/exports/:id/download`
 
+### Funds & Allocations
+
+- `GET /funds/allocations`
+- `POST /funds/allocations`
+- `GET /funds/allocations/:id`
+- `PATCH /funds/allocations/:id`
+- `GET /funds/allocations/:id/releases`
+- `POST /funds/releases`
+- `POST /funds/releases/:id/reverse`
+- `GET /funds/projects/:id/summary`
+- `GET /funds/projects/:id/overview`
+
+### Expenses
+
+- `GET /funds/expenses`
+- `POST /funds/expenses`
+- `GET /funds/expenses/:id`
+- `PATCH /funds/expenses/:id`
+- `POST /funds/expenses/:id/submit`
+- `POST /funds/expenses/:id/verify` (maker-checker: the submitter cannot verify)
+- `POST /funds/expenses/:id/reject`
+- `POST /funds/expenses/:id/void`
+
+### Financial Documents
+
+- `POST /funds/documents/upload` (multipart/form-data)
+- `GET /funds/documents/:id`
+- `GET /funds/documents/:id/download`
+- `GET /funds/expenses/:id/documents`
+- `POST /funds/documents/:id/verify` (verified / rejected / flagged)
+
+### Financial Risk (rule engine)
+
+- `POST /financial-risk/evaluate/:projectId`
+- `GET /financial-risk/rules` · `POST /financial-risk/rules`
+- `GET /financial-risk/rules/:id` · `PATCH /financial-risk/rules/:id`
+- `GET /financial-risk/events`
+
+### Inspection Flags
+
+- `GET /inspection-flags`
+- `GET /inspection-flags/:id`
+- `POST /inspection-flags/:id/assign`
+- `POST /inspection-flags/:id/create-inspection`
+- `POST /inspection-flags/:id/review`
+- `POST /inspection-flags/:id/resolve`
+- `POST /inspection-flags/:id/dismiss`
+
+### Project Risk (composite scoring & scheduling)
+
+- `GET /project-risk/rankings`
+- `GET /project-risk/projects/:id/snapshots`
+- `GET /project-risk/projects/:id/latest`
+- `POST /project-risk/evaluate/:projectId`
+- `POST /project-risk/sweep` (scheduled scoring sweep)
+
 ### Health
 
 - `GET /health` (public)
@@ -204,8 +338,8 @@ Permissions for these routes are governed by the
 ## API client source of truth
 
 - `packages/api-client` is **hand-written**, not generated. It mirrors the
-  server routes and the OpenAPI document. There is intentionally no code
-  generator in this repository (see AGENTS.md §19 and the OpenAPI document).
+  server routes and the OpenAPI document to maintain full control over client
+  abstractions without generative drift.
 - The authoritative wire contract is the server route definitions in
   `services/api/src/modules/*/http/routes.ts` plus the processed validation
   schemas from `packages/validation`. `services/api/openapi/openapi.json` is
@@ -223,22 +357,22 @@ Permissions for these routes are governed by the
 ## Registry capability matrix
 
 **Location of truth:** `REGISTRY_CAPABILITIES` in `packages/types/src/registry.ts`.
-This documentation and the web UI must mirror it — the exported constant is
+This documentation and the web UI must mirror it - the exported constant is
 authoritative. Server-side enforcement happens in
 `services/api/src/modules/registry/application/registry-service.ts` via
 `AuthorizationService.requirePermission`; the web Registry page
 (`apps/web/app/registry`) renders the same matrix for presentation only.
-Client gating never substitutes for the server check (AGENTS.md §16, §65).
+Client gating is purely cosmetic and never substitutes for strict server-side authorization.
 
 The matrix defines **who can register what** in the Registrations hub:
 
-| Capability key | Entity registered | Required permission | Intended holders | Created record starts |
-|---|---|---|---|---|
-| `facility` | Welfare facility / project | `project:create` | Institution admins, authority officers | Pending (Draft → Pending Verification) |
-| `organisation` | Agency / society | `organisation:create` | Authority officers | Active |
-| `programme` | Scheme / programme | `programme:create` | Authority officers | Active |
-| `inspector` | Inspector (user + role assignment) | `inspector:register` | Authority officers | Suspended until first sign-in |
-| `official` | Authority official / admin (user + role + authority + jurisdiction) | `official:register` | System administrators only | Suspended until first sign-in |
+| Capability key | Entity registered                                                   | Required permission   | Intended holders                       | Created record starts                  |
+| -------------- | ------------------------------------------------------------------- | --------------------- | -------------------------------------- | -------------------------------------- |
+| `facility`     | Welfare facility / project                                          | `project:create`      | Institution admins, authority officers | Pending (Draft → Pending Verification) |
+| `organisation` | Agency / society                                                    | `organisation:create` | Authority officers                     | Active                                 |
+| `programme`    | Scheme / programme                                                  | `programme:create`    | Authority officers                     | Active                                 |
+| `inspector`    | Inspector (user + role assignment)                                  | `inspector:register`  | Authority officers                     | Suspended until first sign-in          |
+| `official`     | Authority official / admin (user + role + authority + jurisdiction) | `official:register`   | System administrators only             | Suspended until first sign-in          |
 
 Rules bound to the matrix:
 
@@ -251,7 +385,7 @@ Rules bound to the matrix:
 3. **Registrable officials allow-list.** `POST /registry/officials` accepts
    only roles on the service-level allow-list (`authority_official`,
    `district_officer`, `institution_admin`, `inspector`, `viewer`). Requests
-   for any other role are rejected with 403 — official registration cannot be
+   for any other role are rejected with 403 - official registration cannot be
    used to mint unlisted privileged roles.
 4. **Invited people start suspended.** Inspector and official registration
    create the user with `status: suspended`; there is no password at
@@ -265,12 +399,12 @@ Rules bound to the matrix:
 6. **Adding a capability.** Add the permission to `PERMISSIONS`
    (`packages/types/src/authorization.ts`), the capability to
    `REGISTRY_CAPABILITIES`, the route + service check, the seed grants, and a
-   row here — in the same change.
+   row here - in the same change.
 
 The corresponding permission definitions (code, name, description) that the
 seed inserts into the `permissions` table are part of the same contract; when
 a permission is added, the seed's `permissionRows` and the role grant lists
-must be updated together (AGENTS.md §13, §19).
+must be updated together.
 
 ## Registration verification (approval) flow
 
@@ -282,7 +416,7 @@ authoritative chart; invalid transitions are rejected server-side).
 **Who approves.** Any authenticated user holding `project:approve` whose
 jurisdiction reach covers the project's district. The seeded
 `authority_officer` and `system_admin` roles carry it; institution roles never
-do — an institution cannot approve its own registration.
+do - an institution cannot approve its own registration.
 
 **Where.** The **Projects page** renders a verification-queue section at the
 top for approvers only (`GET /projects/verification-queue`, scoped to the
@@ -299,7 +433,7 @@ facility dossier, where `POST /projects/:id/transitions` (via the standard
   lifecycle (Approved → Active).
 - **Reject** (`Pending Verification → Draft`): a normal transition (`project:transition`);
   the registration returns to Draft for correction and resubmission. Nothing
-  is deleted — history stays traceable (AGENTS.md §33).
+  is deleted - history remains fully traceable in the immutable audit log.
 - After approval the authority seals the facility **geofence**
   (`POST /projects/:id/geofence`, `project:approve`) and links programmes if
   not already linked; then the facility can be activated.
@@ -308,19 +442,19 @@ facility dossier, where `POST /projects/:id/transitions` (via the standard
 not user-created records: project types (`institution`, `authority_project`,
 `other`) and organisation categories are fixed constants in
 `packages/types`/`packages/validation`, extended by developers through a
-contract change. The registry creates *instances* (agencies, schemes,
-facilities, people) — never new categories.
+contract change. The registry creates _instances_ (agencies, schemes,
+facilities, people) - never new categories.
 
 ## Programme (scheme) geographic scope
 
 Schemes differ in territorial reach; the scope is chosen at registration and
 governs which facilities may link the scheme.
 
-| Scope | Meaning | Required reference |
-|---|---|---|
-| `national` | Linkable from any facility | none |
-| `state` | Only facilities inside one state | `stateId` |
-| `district` | Only facilities in one district | `districtId` |
+| Scope      | Meaning                          | Required reference |
+| ---------- | -------------------------------- | ------------------ |
+| `national` | Linkable from any facility       | none               |
+| `state`    | Only facilities inside one state | `stateId`          |
+| `district` | Only facilities in one district  | `districtId`       |
 
 - Validation (`createProgrammeSchema` in `packages/validation`) enforces the
   scope/reference pairing at every boundary; the registry service re-checks

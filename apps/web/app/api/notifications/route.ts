@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/notifications?page=${encodeURIComponent(page)}&pageSize=${encodeURIComponent(pageSize)}`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/notifications?page=${encodeURIComponent(page)}&pageSize=${encodeURIComponent(pageSize)}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

@@ -95,7 +95,7 @@ export class EvidenceService {
   /**
    * Real upload: the server hashes the received bytes itself and compares them
    * against the capture-time hash (§30). The hash proves byte equality with the
-   * previously hashed content — nothing more.
+   * previously hashed content - nothing more.
    */
   async uploadEvidence(
     ctx: RequestUserContext,

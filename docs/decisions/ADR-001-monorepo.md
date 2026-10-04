@@ -12,7 +12,7 @@ state.
 ## Decision
 
 - Single pnpm + Turborepo workspace.
-- `services/api` is a modular monolith owning all application/domain behavior.
+- `services/api` is a modular monolith owning all application/domain behaviour.
 - Only `realtime`, `ai`, and `cctv-gateway` exist as separate services, and only
   because their isolation is justified (transport/streaming, model inference,
   provider SDKs).
@@ -23,12 +23,12 @@ state.
 
 ## Alternatives considered
 
-- **Full microservices now** — rejected: no demonstrated technical requirement;
-  adds operational cost without value at this stage (AGENTS.md §6).
-- **Relying on the old implementation** — rejected: it conflicts with the
-  authoritative architecture (AGENTS.md §1).
-- **No shared packages** — rejected: web+mobile+api genuinely share contracts;
-  a junk-drawer is prevented by AGENTS.md §20 rules.
+- **Full microservices now** - rejected: no demonstrated technical requirement;
+  adds operational cost and network complexity without value at this stage.
+- **Relying on the legacy prototype implementation** - rejected: it conflicts with the
+  modular, domain-driven target architecture.
+- **No shared packages** - rejected: web, mobile, and api genuinely share domain contracts;
+  package bloat is prevented by keeping shared modules strictly scoped.
 
 ## Consequences
 

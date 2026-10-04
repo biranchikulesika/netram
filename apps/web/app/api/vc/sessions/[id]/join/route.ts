@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/vc/sessions/${encodeURIComponent(id)}/join`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/vc/sessions/${encodeURIComponent(id)}/join`,
     {
       method: "POST",
       headers: {

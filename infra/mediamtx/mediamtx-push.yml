@@ -1,0 +1,36 @@
+# MediaMTX configuration - PUSH mode variant (development rig).
+#
+# Used only for the alternative dev demo where the facility FFmpeg camera
+# PUSHES its RTSP stream across the network boundary into MediaMTX
+# (target architecture "Option D" shape). The default pull-mode config is
+# mediamtx.yml (pilot topology). See docs/history/cctv-phase-1-2.md
+# for how to switch modes.
+#
+# Difference vs mediamtx.yml: paths have no `source`, so MediaMTX accepts
+# incoming RTSP publishers instead of pulling from the facility server.
+
+paths:
+  ~^.*$: {}
+
+rtsp: yes
+rtspAddress: :8554
+
+rtmp: no
+srt: no
+
+webrtc: yes
+webrtcAddress: :8189
+webrtcAdditionalHosts: [localhost]
+
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+
+api: no
+playback: no
+metrics: no
+pprof: no
+
+logLevel: info

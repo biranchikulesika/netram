@@ -16,7 +16,16 @@ export const ATTENDANCE_CALCULATION_VERSION = "attendance-calc-0.1";
 
 export function hhmmToMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
-  if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+  if (
+    h === undefined ||
+    m === undefined ||
+    Number.isNaN(h) ||
+    Number.isNaN(m) ||
+    h < 0 ||
+    h > 23 ||
+    m < 0 ||
+    m > 59
+  ) {
     throw new Error(`Invalid HH:MM time: "${hhmm}"`);
   }
   return h * 60 + m;
@@ -85,7 +94,12 @@ export function dedupKeyFor(
 
 /** CHECK_IN / FINGERPRINT_VERIFIED / PRESENCE / CHECK_OUT all establish presence. */
 export function eventEstablishesPresence(eventType: AttendanceEventType): boolean {
-  return eventType === "CHECK_IN" || eventType === "CHECK_OUT" || eventType === "FINGERPRINT_VERIFIED" || eventType === "PRESENCE";
+  return (
+    eventType === "CHECK_IN" ||
+    eventType === "CHECK_OUT" ||
+    eventType === "FINGERPRINT_VERIFIED" ||
+    eventType === "PRESENCE"
+  );
 }
 
 /* ---------- Coverage (§21) ---------- */

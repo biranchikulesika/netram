@@ -17,7 +17,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const env = loadClientEnv();
   const res = await fetch(
-    `${env.NEXT_PUBLIC_API_URL}/api/v1/cctv/cameras/${encodeURIComponent(id)}/health`,
+    `${env.NETRAM_API_BASE_URL}/api/v1/cctv/cameras/${encodeURIComponent(id)}/health`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

@@ -54,6 +54,90 @@ export async function registerComplaintRoutes(
     },
   );
 
+  app.post(
+    "/complaints/register",
+    {
+      config: { public: true },
+      schema: {
+        tags: ["complaints"],
+        consumes: ["multipart/form-data"],
+        response: { 201: toJsonSchema("Complaint", complaintSchema) },
+      },
+    },
+    async (request, reply) => {
+      let projectId = "";
+      let description = "";
+      let complainantName: string | undefined;
+      let contactInfo: string | undefined;
+      const files: { data: Buffer; fileName: string; mimeType: string }[] = [];
+
+      for await (const part of request.parts()) {
+        if (part.type === "file") {
+          const data = await part.toBuffer();
+          files.push({
+            data,
+            fileName: part.filename || "attachment",
+            mimeType: part.mimetype || "application/octet-stream",
+          });
+        } else if (part.fieldname === "projectId" && typeof part.value === "string") {
+          projectId = part.value;
+        } else if (part.fieldname === "description" && typeof part.value === "string") {
+          description = part.value;
+        } else if (part.fieldname === "complainantName" && typeof part.value === "string") {
+          complainantName = part.value;
+        } else if (part.fieldname === "contactInfo" && typeof part.value === "string") {
+          contactInfo = part.value;
+        }
+      }
+
+      const body = createComplaintSchema.parse({
+        projectId,
+        description,
+        complainantName,
+        contactInfo,
+      });
+      const complaint = await complaintService.createPublicComplaint(
+        body,
+        files,
+        request.id,
+        request.ip ?? "unknown",
+      );
+      void reply.code(201);
+      return complaint;
+    },
+  );
+
+  app.get(
+    "/complaints/:id/files/:fileId",
+    {
+      schema: {
+        tags: ["complaints"],
+        security: [{ bearerAuth: [] }],
+        params: toJsonSchema(
+          "ComplaintFileIdParams",
+          idParamsSchema.extend({ fileId: idParamsSchema.shape.id }),
+        ),
+        response: { 200: { type: "string", format: "binary" } },
+      },
+    },
+    async (request, reply) => {
+      const { id, fileId } = request.params as { id: string; fileId: string };
+      const { file, stream } = await complaintService.getComplaintFileContent(
+        request.netram!,
+        id,
+        fileId,
+      );
+      reply.header("content-type", file.mimeType ?? "application/octet-stream");
+      reply.header("content-length", String(file.sizeBytes));
+      void reply.header("x-netram-attachment-id", file.id);
+      void reply.header(
+        "content-disposition",
+        `inline; filename="${encodeURIComponent(file.fileName)}"`,
+      );
+      return reply.send(stream);
+    },
+  );
+
   app.get(
     "/complaints/:id",
     {

@@ -1,690 +1,1321 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
+  Linking,
   Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { OfflineInspectionQueue } from "../../src/offline/queue.js";
-import { captureEvidenceOffline as captureEvidenceOfflineFn } from "../../src/offline/evidence.js"; // alias to avoid duplicate name
+import * as Location from "expo-location";
+import { typography } from "../../src/theme/colors";
+import { useSettings } from "../../src/theme/settings-context";
+import { requestInspectionPermissions } from "../../src/utils/permissions";
+import {
+  EmptyState,
+  Icon,
+  NetramBadge,
+  NetramButton,
+  InteractiveVideoPlayer,
+  InAppCameraModal,
+  type CapturedMediaItem,
+} from "../../src/components/ui";
+import {
+  OfflineInspectionQueue,
+  type CachedEvidenceRecord,
+  type CachedFindingDraftRecord,
+  type CachedInspectionRecord,
+  type CachedObservationRecord,
+} from "../../src/offline/queue";
+import { captureEvidenceOffline } from "../../src/offline/evidence";
+import { useSyncStatus } from "../../src/offline/sync-context";
+import { useAuth } from "../../src/auth/auth-context";
+import { formatCurrencyString } from "../../src/utils/currency";
+import { formatInspectionType } from "../../src/utils/formatters";
+import type { InspectionFlag, OrganisationView, Project, ProjectFundOverview } from "@netram/types";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/**
- * Capture evidence bytes, compute SHA‑256 hash, and enqueue an offline operation.
- * Returns the generated evidenceId and contentHash for UI feedback.
- */
-
-
-import type {
-  CachedInspectionRecord,
-  CachedObservationRecord,
-  CachedEvidenceRecord,
-  CachedFindingDraftRecord,
-  OfflineOperationRecord,
-} from "../../src/offline/queue.js";
-import type { EvidenceType, FindingSeverity } from "@netram/types";
-
-const queue = new OfflineInspectionQueue();
-
-function generateObsId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
-
-function getStatusStyle(status: string) {
-  switch (status) {
-    case "in_progress":
-      return styles.status_in_progress;
-    case "submitted":
-      return styles.status_submitted;
-    case "closed":
-      return styles.status_closed;
-    case "assigned":
-    default:
-      return styles.status_assigned;
-  }
+/** Video evidence may be typed loosely or only carry an .mp4/.mov file name. */
+function isVideoMedia(media: { evidence_type?: string | null; file_name?: string | null }) {
+  return media.evidence_type === "video" || /\.(mp4|mov)$/i.test(media.file_name ?? "");
 }
 
 export default function InspectionDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const queue = useMemo(() => new OfflineInspectionQueue(), []);
+  const { refreshPendingCount } = useSyncStatus();
+  const { client } = useAuth();
+  const { theme, isPureDark } = useSettings();
 
   const [inspection, setInspection] = useState<CachedInspectionRecord | null>(null);
-  const [operations, setOperations] = useState<OfflineOperationRecord[]>([]);
-  const [cachedObservations, setCachedObservations] = useState<CachedObservationRecord[]>([]);
-  const [cachedEvidence, setCachedEvidence] = useState<CachedEvidenceRecord[]>([]);
-  const [findingDrafts, setFindingDrafts] = useState<CachedFindingDraftRecord[]>([]);
+  const [project, setProject] = useState<Project | null>(null);
+  const [organisation, setOrganisation] = useState<OrganisationView | null>(null);
+  const [fundOverview, setFundOverview] = useState<ProjectFundOverview | null>(null);
+  const [inspectionFlags, setInspectionFlags] = useState<InspectionFlag[]>([]);
+
+  const [observations, setObservations] = useState<CachedObservationRecord[]>([]);
+  const [evidenceList, setEvidenceList] = useState<CachedEvidenceRecord[]>([]);
+  const [findings, setFindings] = useState<CachedFindingDraftRecord[]>([]);
+
   const [loading, setLoading] = useState(true);
-
-  // Observation form
-  const [obsText, setObsText] = useState("");
-  const [showObsModal, setShowObsModal] = useState(false);
-
-  // Evidence form
-  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
-  const [evidenceType, setEvidenceType] = useState<EvidenceType>("photo");
-  const [evidenceName, setEvidenceName] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
-  const [showFindingModal, setShowFindingModal] = useState(false);
-  const [editingFinding, setEditingFinding] = useState<CachedFindingDraftRecord | null>(null);
-  const [findingSeverity, setFindingSeverity] = useState<FindingSeverity>("medium");
-  const [findingDescription, setFindingDescription] = useState("");
-  const [findingRemediation, setFindingRemediation] = useState("");
+
+  // Evidence preview modal state
+  const [previewMedia, setPreviewMedia] = useState<
+    | (CachedEvidenceRecord & {
+        caption?: string | null;
+      })
+    | null
+  >(null);
+
+  // In-App Camera and Video Modal state (No external mobile apps)
+  const [cameraModalVisible, setCameraModalVisible] = useState(false);
+  const [cameraModalMode, setCameraModalMode] = useState<"photo" | "video">("photo");
+
+  // Request Android runtime permissions on screen entry
+  useEffect(() => {
+    void requestInspectionPermissions();
+  }, []);
+
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   const loadData = useCallback(async () => {
-    if (!id) return;
     setLoading(true);
+    setLoadError(null);
+    if (!id) {
+      setLoadError("This inspection could not be identified.");
+      setLoading(false);
+      return;
+    }
     try {
-      const [cached, ops, obs, ev, drafts] = await Promise.all([
+      const [cached, obs, ev, drafts] = await Promise.all([
         queue.getCachedInspection(id),
-        queue.getAllOperations(id),
         queue.getCachedObservations(id),
         queue.getCachedEvidence(id),
         queue.getCachedFindingDrafts(id),
       ]);
       setInspection(cached);
-      setOperations(ops);
-      setCachedObservations(obs);
-      setCachedEvidence(ev);
-      setFindingDrafts(drafts);
+      setObservations(obs);
+      setEvidenceList(ev);
+      setFindings(drafts);
+      void refreshPendingCount();
+
+      // Graceful server enrichment if online
+      if (client && cached?.project_id) {
+        try {
+          const prj = await client.getProject(cached.project_id);
+          setProject(prj);
+
+          if (prj.organisationId) {
+            try {
+              const orgs = await client.listOrganisations();
+              const foundOrg = orgs.find((o) => o.id === prj.organisationId);
+              if (foundOrg) setOrganisation(foundOrg);
+            } catch {
+              // Proceed gracefully
+            }
+          }
+        } catch {
+          // Proceed gracefully
+        }
+
+        try {
+          const funds = await client.getProjectFundOverview(cached.project_id);
+          setFundOverview(funds);
+        } catch {
+          // Proceed gracefully
+        }
+
+        try {
+          const flagsRes = await client.listInspectionFlags({
+            projectId: cached.project_id,
+            pageSize: 20,
+          });
+          setInspectionFlags(flagsRes.items);
+        } catch {
+          // Proceed gracefully
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load inspection detail:", err);
+      setLoadError("This inspection could not be read from the offline store.");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, queue, refreshPendingCount, client]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // Status computation
+  const status = inspection?.status ?? "assigned";
+  const canStart = status === "assigned";
+  const isFieldStage = status === "in_progress";
+
+  // Workflow Action: Start Inspection
   const handleStartInspection = async () => {
     if (!id) return;
-    setActionBusy(true);
-    try {
-      await queue.enqueueOperation(id, "start_inspection", { note: "Field visit started" });
-      await loadData();
-      Alert.alert("Operation Queued", "Start inspection operation added to offline queue.");
-    } catch (err) {
-      Alert.alert("Error", String(err));
-    } finally {
-      setActionBusy(false);
-    }
+
+    Alert.alert(
+      "Start Inspection",
+      `Begin field inspection for ${inspection?.project_name || "this assigned facility"}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Start",
+          onPress: async () => {
+            setActionBusy(true);
+            try {
+              await queue.startInspection(id);
+              await loadData();
+              Alert.alert("Inspection Started", "Status updated to In Progress.");
+            } catch (err: unknown) {
+              Alert.alert("Error", String(err));
+            } finally {
+              setActionBusy(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
-  const openFindingDraft = (draft?: CachedFindingDraftRecord) => {
-    setEditingFinding(draft ?? null);
-    setFindingSeverity((draft?.severity as FindingSeverity | undefined) ?? "medium");
-    setFindingDescription(draft?.description ?? "");
-    setFindingRemediation(draft?.remediation ?? "");
-    setShowFindingModal(true);
-  };
-
-  const handleSaveFindingDraft = async () => {
-    if (!id || !findingDescription.trim()) return;
-    setActionBusy(true);
-    try {
-      await queue.saveFindingDraft(id, {
-        findingId: editingFinding?.id,
-        operationId: editingFinding?.operation_id,
-        severity: findingSeverity,
-        description: findingDescription.trim(),
-        remediation: findingRemediation.trim() || null,
-      });
-      setShowFindingModal(false);
-      await loadData();
-      Alert.alert("Finding Draft Saved", "This is an inspector draft and will be submitted for authority review during sync.");
-    } catch (err) { Alert.alert("Error", String(err)); } finally { setActionBusy(false); }
-  };
-
-  const handleRecordObservation = async () => {
-    if (!id || !obsText.trim()) return;
-    setActionBusy(true);
-    try {
-      const observationId = generateObsId();
-      await queue.enqueueOperation(id, "record_observation", { text: obsText.trim(), observationId });
-      setObsText("");
-      setShowObsModal(false);
-      await loadData();
-      Alert.alert("Observation Queued", "Observation recorded in local queue.");
-    } catch (err) {
-      Alert.alert("Error", String(err));
-    } finally {
-      setActionBusy(false);
-    }
-  };
-
-  const handleCaptureEvidence = async () => {
+  // Workflow Action: Submit Inspection (§2.6)
+  const handleSubmitInspection = () => {
     if (!id) return;
-    const fileName = evidenceName.trim() || `capture-${Date.now()}.jpg`;
-    setActionBusy(true);
-    try {
-      // Simulate photo file capture with bytes and SHA-256 computation (§30)
-      const mockPhotoBytes = new TextEncoder().encode(
-        `Mock JPEG binary for ${fileName} - ${Date.now()}`,
-      );
-      const res = await captureEvidenceOfflineFn(queue, {
-        inspectionId: id,
-        evidenceType,
-        fileName,
-        fileBytes: mockPhotoBytes,
-        latitude: 20.2961,
-        longitude: 85.8245,
-      });
-
-      setEvidenceName("");
-      setShowEvidenceModal(false);
-      await loadData();
+    if (!canSubmitInspection) {
+      if (observations.length === 0 && findings.length === 0 && evidenceList.length === 0) {
+        Alert.alert(
+          "Submission Blocked",
+          "Statutory inspection protocol requires at least 1 field observation note, media evidence, or finding before sign-off.",
+        );
+        return;
+      }
       Alert.alert(
-        "Evidence Captured",
-        `Evidence metadata registered offline with SHA-256: ${res.contentHash.slice(0, 18)}…`,
+        "Submission Blocked",
+        "This inspection does not currently satisfy mandatory pre-submission conditions.",
       );
-    } catch (err) {
-      Alert.alert("Error", String(err));
-    } finally {
-      setActionBusy(false);
+      return;
     }
+    setShowSubmitModal(true);
   };
 
-  const handleSubmitInspection = async () => {
+  const handleConfirmSubmit = async () => {
     if (!id) return;
     setActionBusy(true);
     try {
-      await queue.enqueueOperation(id, "submit_inspection", {
-        note: "Inspection completed on site by lead inspector",
-      });
+      await queue.submitInspection(id);
+      setShowSubmitModal(false);
       await loadData();
       Alert.alert(
-        "Submission Queued",
-        "Submission operation queued. It will be validated by the authority upon sync.",
+        "Inspection Submitted",
+        "The inspection record has been officially signed and queued in the offline outbox for server reconciliation.",
       );
-    } catch (err) {
-      Alert.alert("Error", String(err));
+    } catch (err: unknown) {
+      Alert.alert("Submission Error", String(err));
     } finally {
       setActionBusy(false);
     }
   };
+
+  // Helper to acquire location at evidence capture time (§2.5) - instant with fallback
+  const getCaptureLocation = async () => {
+    try {
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (perm.granted) {
+        // 1. Try instant last known location (0ms delay)
+        const lastKnown = await Location.getLastKnownPositionAsync();
+        if (lastKnown && Date.now() - lastKnown.timestamp < 120000) {
+          return {
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+          };
+        }
+        // 2. Fast race with 1.5s timeout for fresh GPS
+        const posPromise = Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 1500),
+        );
+        const pos = await Promise.race([posPromise, timeoutPromise]);
+        if (pos) {
+          return {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          };
+        }
+        if (lastKnown) {
+          return {
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+          };
+        }
+      }
+    } catch {
+      // Store null/undefined if unavailable per Rule 2.5
+    }
+    return {};
+  };
+
+  // Evidence Action: In-App Camera (§2.5, §30 - No external apps).
+  // Photo or video is chosen inside the camera, the way a native camera app works.
+  const handleOpenCamera = async () => {
+    if (!id) return;
+    try {
+      const perms = await requestInspectionPermissions();
+      if (!perms.camera) {
+        Alert.alert(
+          "Camera access needed",
+          "Netram needs camera access to capture site evidence. You can enable it in Settings.",
+          [
+            { text: "Not now", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                if (Platform.OS !== "web" && Linking.openSettings) {
+                  void Linking.openSettings();
+                }
+              },
+            },
+          ],
+        );
+        return;
+      }
+      setCameraModalMode("photo");
+      setCameraModalVisible(true);
+    } catch (err: unknown) {
+      Alert.alert("Capture Error", err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const openCheckIn = () => router.push({ pathname: "/check-in", params: { inspectionId: id } });
+
+  // Persist the captures the user reviewed and saved in the camera. Location is
+  // attached to every item, since they were all taken in the same pass.
+  const handleSaveMediaBatch = async (items: CapturedMediaItem[]): Promise<boolean> => {
+    if (!id || items.length === 0) return true;
+    setActionBusy(true);
+    try {
+      const loc = await getCaptureLocation();
+      for (const item of items) {
+        const mediaResult = await captureEvidenceOffline(queue, {
+          inspectionId: id,
+          evidenceType: item.evidenceType,
+          fileName: item.fileName,
+          fileBytes: item.fileBytes,
+          localFileUri: item.uri,
+          mimeType: item.mimeType,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        });
+
+        let obsPayload = `[media:${mediaResult.evidenceId}]`;
+        const caption = item.note.trim();
+        if (caption.length > 0) {
+          obsPayload += ` ${caption}`;
+        }
+        await queue.recordObservation(id, obsPayload);
+      }
+
+      await loadData();
+      return true;
+    } catch (err: unknown) {
+      Alert.alert("Save Error", err instanceof Error ? err.message : String(err));
+      return false;
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const canSubmitInspection = useMemo(() => {
+    if (status !== "in_progress") return false;
+    return observations.length > 0 || findings.length > 0 || evidenceList.length > 0;
+  }, [status, observations.length, findings.length, evidenceList.length]);
+
+  // Derived media observations (Photo & Video evidence linked with their observation note)
+  const mediaObservations = useMemo(() => {
+    const captionMap: Record<string, string> = {};
+
+    for (const obs of observations) {
+      const mediaMatch = obs.text.match(/\[media:([^\]]+)\]/);
+      if (mediaMatch && mediaMatch[1]) {
+        const mediaId = mediaMatch[1];
+        // "[voice:…]" is still stripped: observations captured before voice
+        // notes were removed may carry the marker, and it is not display text.
+        const cleanCaption = obs.text
+          .replace(/\[media:[^\]]+\]/g, "")
+          .replace(/\[voice:[^\]]+\]/g, "")
+          .trim();
+        if (cleanCaption) {
+          captionMap[mediaId] = cleanCaption;
+        }
+      }
+    }
+
+    return evidenceList
+      .filter((ev) => ev.evidence_type === "photo" || ev.evidence_type === "video")
+      .map((ev) => ({
+        ...ev,
+        caption: captionMap[ev.id] || null,
+      }));
+  }, [evidenceList, observations]);
+
+  // Color theme tokens - follows user's dark/light mode preference
+  const bgCanvas = theme.bgCanvas;
+  const bgSurface = theme.bgSurface;
+  const bgSubtle = isPureDark ? "#18181B" : theme.bgSubtle;
+  const borderColor = theme.borderSubtle;
+  const textPrimary = theme.textPrimary;
+  const textMuted = theme.textMuted;
+  const accentBlue = theme.accentBlue;
+  const navyDark = theme.navyDark;
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#38bdf8" />
+      <SafeAreaView style={[styles.centerContainer, { backgroundColor: bgCanvas }]}>
+        <ActivityIndicator size="large" color={accentBlue} />
       </SafeAreaView>
     );
   }
 
-  const status = inspection?.status ?? "assigned";
-  const canStart = status === "assigned" || status === "scheduled";
-  const isFieldStage = status === "in_progress" || status === "evidence_collection";
+  // Only a genuine read failure gets the dead-end screen. A record that is
+  // simply absent still renders the detail page, because the officer followed
+  // a link to a real inspection and must not be bounced to another screen.
+  if (!inspection && loadError) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas, paddingTop: insets.top }]}>
+        <View
+          style={[
+            styles.inspTopBar,
+            { backgroundColor: bgSurface, borderBottomColor: borderColor },
+          ]}
+        >
+          <View style={styles.navRow}>
+            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+              <Icon name="chevron-back" size={24} color={textPrimary} />
+            </Pressable>
+            <Text style={[styles.inspTitle, { color: textPrimary }]}>Inspection</Text>
+          </View>        </View>
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Navigation back */}
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back to Inspections</Text>
-        </Pressable>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Inspection unavailable"
+            subtitle={loadError}
+            action={{ label: "Retry", onPress: () => void loadData() }}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
-        {/* Inspection Header */}
-        <View style={styles.headerCard}>
-          <View style={styles.headerTop}>
-            <Text style={styles.typeBadge}>
-              {(inspection?.type ?? "routine").toUpperCase()} INSPECTION
-            </Text>
-            <View style={[styles.statusPill, getStatusStyle(status)]}>
-              <Text style={styles.statusText}>{status.replace("_", " ")}</Text>
+  // Helper row component for Facility specs
+  const MetaRow = ({
+    label,
+    value,
+    mono,
+    bold,
+    badge,
+  }: {
+    label: string;
+    value?: string;
+    mono?: boolean;
+    bold?: boolean;
+    badge?: React.ReactNode;
+  }) => (
+    <View style={[styles.metaRow, { borderBottomColor: borderColor }]}>
+      <Text style={[styles.metaLabel, { color: textMuted }]}>{label}</Text>
+      {badge ? (
+        badge
+      ) : (
+        <Text
+          style={[
+            styles.metaValue,
+            { color: textPrimary },
+            bold && { fontWeight: "700" },
+            mono && { fontFamily: typography.mono, color: accentBlue },
+          ]}
+        >
+          {value ?? "-"}
+        </Text>
+      )}
+    </View>
+  );
+
+  // The schema has no inspection code, only the uuid. Show a short, stable
+  // reference an inspector can read out over the phone.
+  const inspectionRef = inspection?.id
+    ? `INSP-${inspection.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`
+    : undefined;
+
+  const SectionHeading = ({ title, count }: { title: string; count?: number }) => (
+    <View style={styles.cleanSectionHeadingRow}>
+      <Text style={[styles.cleanSectionHeading, { color: accentBlue }]}>{title}</Text>
+      {count !== undefined && count > 0 && (
+        <View style={[styles.sectionCountPill, { backgroundColor: bgSubtle }]}>
+          <Text style={[styles.sectionCountText, { color: textMuted }]}>{count}</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  return (        <SafeAreaView style={[styles.safeArea, { backgroundColor: bgCanvas, paddingTop: insets.top }]}>
+      <View style={[styles.container, { backgroundColor: bgCanvas }]}>
+        {/* ── TOP BAR (video-call style) ── */}
+        <View
+          style={[
+            styles.inspTopBar,
+            { backgroundColor: bgSurface, borderBottomColor: borderColor },
+          ]}
+        >
+          <View style={styles.navRow}>
+            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+              <Icon name="chevron-back" size={24} color={textPrimary} />
+            </Pressable>
+
+            <View style={styles.inspTitleGroup}>
+              <Text style={[styles.inspTitle, { color: textPrimary }]} numberOfLines={1}>
+                {project?.name || inspection?.project_name || "Inspection"}
+              </Text>
+              <Text style={[styles.inspSubtitle, { color: textMuted }]} numberOfLines={1}>
+                {project?.code || inspection?.project_code || ""}
+                {inspection?.district_name ? ` · ${inspection.district_name}` : ""}
+              </Text>
             </View>
           </View>
-          <Text style={styles.projectName}>
-            {inspection?.project_name ?? `Inspection #${id?.slice(0, 8)}`}
-          </Text>
-          <Text style={styles.projectCode}>Code: {inspection?.project_code ?? "PRJ"}</Text>
         </View>
 
-        {/* Field Action Buttons */}
-        <View style={styles.actionsCard}>
-          <Text style={styles.sectionTitle}>Field Operations (Offline-First)</Text>
-          <Text style={styles.sectionSubtitle}>
-            Actions are queued locally in SQLite and synced idempotently (§5, §31).
-          </Text>
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.pageContainer}>
+            {/* ──────────────── FACILITY DOSSIER ──────────────── */}
+            <>
+              {/* FACILITY IDENTITY */}
+              <View style={styles.cleanSection}>
+                <SectionHeading title="Facility Identity" />
+                <MetaRow label="Inspection Ref" value={inspectionRef} mono />
+                <MetaRow
+                  label="Project Code"
+                  value={project?.code || inspection?.project_code}
+                  mono
+                />
+                <MetaRow
+                  label="Type"
+                  value={formatInspectionType(project?.type || inspection?.type)}
+                />
+                <MetaRow label="Operating Agency" value={organisation?.name} />
+                <MetaRow
+                  label="Status"
+                  value={(project?.status || inspection?.status || "active")
+                    .replace(/_/g, " ")
+                    .toUpperCase()}
+                />
+                <Pressable
+                  style={[styles.metaRow, { borderBottomColor: borderColor }]}
+                  onPress={openCheckIn}
+                  accessibilityRole="button"
+                  accessibilityLabel="View site on map"
+                >
+                  <Text style={[styles.metaLabel, { color: textMuted }]}>Location</Text>
+                  <View style={styles.metaLinkValue}>
+                    <Text style={[styles.metaValue, { color: accentBlue }]}>View on Map</Text>
+                    <Icon name="chevron-forward" size={14} color={accentBlue} />
+                  </View>
+                </Pressable>
+              </View>
 
-          <View style={styles.buttonGrid}>
-            {canStart && (
+              {/* FUNDS & SANCTIONS */}
+              {fundOverview && (
+                <View style={styles.cleanSection}>
+                  <SectionHeading title="Funds & Sanctions" />
+                  <MetaRow
+                    label="Total Sanctioned"
+                    value={formatCurrencyString(fundOverview.summary.totalAllocated)}
+                    bold
+                  />
+                  <MetaRow
+                    label="Total Released"
+                    value={formatCurrencyString(fundOverview.summary.totalReleased)}
+                  />
+                  <MetaRow
+                    label="Total Expended"
+                    value={formatCurrencyString(fundOverview.summary.totalExpenditure)}
+                  />
+                  <View style={styles.utilisationBlock}>
+                    <View style={styles.utilisationHeader}>
+                      <Text style={[styles.utilisationLabel, { color: textMuted }]}>
+                        UTILISATION
+                      </Text>
+                      <Text style={[styles.utilisationValue, { color: accentBlue }]}>
+                        {fundOverview.summary.utilizationRate.toFixed(1)}%
+                      </Text>
+                    </View>
+                    <View style={[styles.utilisationTrack, { backgroundColor: bgSubtle }]}>
+                      <View
+                        style={[
+                          styles.utilisationFill,
+                          {
+                            backgroundColor: accentBlue,
+                            width: `${Math.min(100, Math.max(0, fundOverview.summary.utilizationRate))}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* ADVISORY FLAGS */}
+              {inspectionFlags.length > 0 && (
+                <View style={styles.cleanSection}>
+                  <SectionHeading title="Advisory Flags" count={inspectionFlags.length} />
+                  <View style={{ gap: 8, marginTop: 4 }}>
+                    {inspectionFlags.map((flag) => (
+                      <View
+                        key={flag.id}
+                        style={[
+                          styles.cleanFlagRow,
+                          {
+                            backgroundColor: bgSubtle,
+                            borderLeftColor:
+                              flag.riskLevel === "high" || flag.riskLevel === "critical"
+                                ? "#EF4444"
+                                : accentBlue,
+                          },
+                        ]}
+                      >
+                        <View style={styles.flagTopRow}>
+                          <NetramBadge
+                            label={flag.riskLevel.toUpperCase()}
+                            variant="severity"
+                            severity={flag.riskLevel}
+                            size="sm"
+                          />
+                        </View>
+                        <Text style={[styles.flagText, { color: textPrimary }]}>
+                          {flag.explanation}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </>
+
+            {/* ──────────────── OBSERVATIONS ──────────────── */}
+            <View style={styles.cleanSection}>
+              <SectionHeading title="Observations" count={mediaObservations.length} />
+              {/* Sideways roll: one row of evidence instead of a tall stack. */}
+              {mediaObservations.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.obsStrip}
+                >
+                  {mediaObservations.map((item) => {
+                    const isVideo = isVideoMedia(item);
+                    const synced = item.upload_state === "uploaded";
+
+                    return (
+                      <View
+                        key={item.id}
+                        style={[styles.obsTile, { backgroundColor: bgSurface, borderColor }]}
+                      >
+                        <Pressable
+                          style={[styles.obsTileMedia, { backgroundColor: bgSubtle }]}
+                          onPress={() => setPreviewMedia(item)}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            isVideo ? "Play observation video" : "Open observation photo"
+                          }
+                        >
+                          {!isVideo && item.local_file_uri ? (
+                            <Image
+                              source={{ uri: item.local_file_uri }}
+                              style={styles.obsImage}
+                              resizeMode="cover"
+                            />
+                          ) : isVideo && item.local_file_uri ? (
+                            <InteractiveVideoPlayer
+                              src={item.local_file_uri}
+                              style={styles.obsImage}
+                            />
+                          ) : (
+                            <View style={styles.obsVideoPlaceholder}>
+                              <Icon
+                                name={isVideo ? "videocam" : "camera"}
+                                size={32}
+                                color={isVideo ? navyDark : accentBlue}
+                              />
+                            </View>
+                          )}
+
+                          {/* Capture time and upload state sit on the media
+                              itself, so a tile stays one clean block. */}
+                          <View style={styles.obsTileOverlay}>
+                            <View style={styles.obsTimeRow}>
+                              <Icon name="time-outline" size={11} color="#FFFFFF" />
+                              <Text style={styles.obsTimeText}>
+                                {new Date(item.created_at).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </Text>
+                            </View>
+
+                            {/* Icon only, but labelled so the state is still
+                                announced rather than read as decoration. */}
+                            <View
+                              accessibilityRole="image"
+                              accessibilityLabel={synced ? "Synced" : "Not synced"}
+                            >
+                              <Icon
+                                name={synced ? "cloud-done" : "cloud-offline-outline"}
+                                size={13}
+                                color={synced ? "#4ADE80" : "#FBBF24"}
+                              />
+                            </View>
+                          </View>
+                        </Pressable>
+
+                        {item.caption ? (
+                          <Text
+                            style={[styles.obsTileCaption, { color: textPrimary }]}
+                            numberOfLines={3}
+                          >
+                            {item.caption}
+                          </Text>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              ) : (
+                <View style={[styles.obsEmptyCard, { backgroundColor: bgSurface, borderColor }]}>
+                  <Icon name="camera-outline" size={44} color={accentBlue} />
+                  <Text style={[styles.obsEmptyTitle, { color: textPrimary }]}>
+                    No observations recorded
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* ── BOTTOM ACTION BAR: capture + the one primary workflow action ── */}
+        {(isFieldStage || canStart) && (
+          <View
+            style={[styles.actionBar, { backgroundColor: bgSurface, borderTopColor: borderColor, ...Platform.select({ android: { paddingBottom: 14 + insets.bottom } }) }]}
+          >
+            {canStart ? (
               <Pressable
-                style={[styles.actionBtn, styles.btnStart]}
+                style={({ pressed }) => [
+                  styles.actionBarPrimary,
+                  { backgroundColor: accentBlue },
+                  pressed && { opacity: 0.85 },
+                ]}
                 onPress={handleStartInspection}
                 disabled={actionBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Start inspection"
               >
-                <Text style={styles.actionBtnText}>Start Inspection</Text>
+                <Icon name="play" size={16} color="#FFFFFF" />
+                <Text style={styles.actionBarPrimaryText}>Start Inspection</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionBarPrimary,
+                  {
+                    backgroundColor: canSubmitInspection ? theme.actionGreen : theme.textMuted,
+                  },
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={handleSubmitInspection}
+                disabled={actionBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Submit inspection"
+              >
+                <Text style={styles.actionBarPrimaryText}>Submit Inspection</Text>
               </Pressable>
             )}
 
             {isFieldStage && (
-              <>
-                <Pressable
-                  style={[styles.actionBtn, styles.btnObs]}
-                  onPress={() => setShowObsModal(true)}
-                  disabled={actionBusy}
-                >
-                  <Text style={styles.actionBtnText}>+ Observation</Text>
-                </Pressable>
-
-                <Pressable style={[styles.actionBtn, styles.btnFinding]} onPress={() => openFindingDraft()} disabled={actionBusy}>
-                  <Text style={styles.actionBtnText}>+ Finding Draft</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.actionBtn, styles.btnEv]}
-                  onPress={() => setShowEvidenceModal(true)}
-                  disabled={actionBusy}
-                >
-                  <Text style={styles.actionBtnText}>+ Capture Evidence</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.actionBtn, styles.btnSubmit]}
-                  onPress={handleSubmitInspection}
-                  disabled={actionBusy}
-                >
-                  <Text style={styles.actionBtnText}>Submit Inspection</Text>
-                </Pressable>
-              </>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionBarCapture,
+                  { backgroundColor: accentBlue },
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={handleOpenCamera}
+                accessibilityRole="button"
+                accessibilityLabel="Open camera to capture photo or video"
+              >
+                <Icon name="camera" size={24} color="#FFFFFF" />
+              </Pressable>
             )}
           </View>
-        </View>
+        )}
 
-        {/* Field Observations Card */}
-        {cachedObservations.length > 0 && (
-          <View style={styles.queueCard}>
-            <View style={styles.queueHeader}>
-              <Text style={styles.sectionTitle}>Field Observations</Text>
-              <Text style={styles.badgeCount}>{cachedObservations.length} recorded</Text>
-            </View>
-            {cachedObservations.map((obs) => (
-              <View key={obs.id} style={styles.opItem}>
-                <Text style={styles.obsText}>{obs.text}</Text>
-                <View style={styles.obsFooter}>
-                  <Text style={styles.opTime}>
-                    {new Date(obs.created_at).toLocaleTimeString()}
-                  </Text>
-                  {obs.is_local === 1 && <Text style={styles.localTag}>Offline Stored</Text>}
-                </View>
+        {/* ── MODAL: Media Full Preview ── */}
+        <Modal
+          visible={previewMedia !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPreviewMedia(null)}
+        >
+          <View style={styles.previewModalOverlay}>
+            {/* Frameless lightbox: media edge-to-edge on pure black, no card chrome. */}
+            <View
+              style={[
+                styles.previewLightbox,
+                { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 },
+              ]}
+            >
+              <View style={styles.previewModalHeader}>
+                <Pressable
+                  onPress={() => setPreviewMedia(null)}
+                  hitSlop={14}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close preview"
+                >
+                  <Icon name="close" size={26} color="#FFFFFF" />
+                </Pressable>
               </View>
-            ))}
-          </View>
-        )}
 
-        {findingDrafts.length > 0 && (
-          <View style={styles.queueCard}>
-            <View style={styles.queueHeader}><Text style={styles.sectionTitle}>Finding Drafts</Text><Text style={styles.badgeCount}>{findingDrafts.length} saved</Text></View>
-            <Text style={styles.sectionSubtitle}>Drafts are submitted as new findings for authority review; they are not decisions.</Text>
-            {findingDrafts.map((draft) => (
-              <Pressable key={draft.id} style={styles.opItem} onPress={() => draft.sync_state !== "submitted_for_review" && openFindingDraft(draft)}>
-                <View style={styles.opHeader}><Text style={styles.opType}>{draft.severity.toUpperCase()} · {draft.sync_state.replaceAll("_", " ")}</Text><Text style={styles.editHint}>{draft.sync_state === "submitted_for_review" ? "Awaiting review" : "Edit & resync"}</Text></View>
-                <Text style={styles.obsText}>{draft.description}</Text>
-                {draft.remediation ? <Text style={styles.opTime}>Suggested remediation: {draft.remediation}</Text> : null}
-              </Pressable>
-            ))}
-          </View>
-        )}
-
-        {/* Captured Evidence Card */}
-        {cachedEvidence.length > 0 && (
-          <View style={styles.queueCard}>
-            <View style={styles.queueHeader}>
-              <Text style={styles.sectionTitle}>Captured Evidence & Hash Audit</Text>
-              <Text style={styles.badgeCount}>{cachedEvidence.length} items</Text>
-            </View>
-            {cachedEvidence.map((ev) => (
-              <View key={ev.id} style={styles.opItem}>
-                <View style={styles.opHeader}>
-                  <Text style={styles.opType}>
-                    {ev.evidence_type.toUpperCase()}: {ev.file_name ?? "media"}
-                  </Text>
-                  <View
-                    style={[
-                      styles.opStatusPill,
-                      ev.upload_state === "uploaded"
-                        ? styles.opStatusAccepted
-                        : styles.opStatusPending,
-                    ]}
-                  >
-                    <Text style={styles.opStatusText}>{ev.upload_state.toUpperCase()}</Text>
-                  </View>
-                </View>
-                {ev.content_hash ? (
-                  <Text style={styles.hashText}>SHA-256: {ev.content_hash.slice(0, 24)}…</Text>
-                ) : null}
-                <View style={styles.obsFooter}>
-                  <Text style={styles.opTime}>
-                    {new Date(ev.created_at).toLocaleTimeString()}
-                  </Text>
-                  <Text style={styles.integrityTag}>Integrity: {ev.integrity_state}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Operations Queue Log */}
-        <View style={styles.queueCard}>
-          <View style={styles.queueHeader}>
-            <Text style={styles.sectionTitle}>Local Operation Log</Text>
-            <Text style={styles.badgeCount}>{operations.length} total</Text>
-          </View>
-
-          {operations.length === 0 ? (
-            <View style={styles.emptyOps}>
-              <Text style={styles.emptyOpsText}>No operations queued for this inspection yet.</Text>
-            </View>
-          ) : (
-            operations.map((op) => (
-              <View key={op.operation_id} style={styles.opItem}>
-                <View style={styles.opHeader}>
-                  <Text style={styles.opType}>
-                    {op.operation_type.replace("_", " ").toUpperCase()}
-                  </Text>
-                  <View
-                    style={[
-                      styles.opStatusPill,
-                      op.status === "accepted" && styles.opStatusAccepted,
-                      op.status === "pending" && styles.opStatusPending,
-                      op.status === "conflict" && styles.opStatusConflict,
-                      op.status === "rejected" && styles.opStatusRejected,
-                    ]}
-                  >
-                    <Text style={styles.opStatusText}>{op.status.toUpperCase()}</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.opId}>ID: {op.operation_id.slice(0, 16)}…</Text>
-                <Text style={styles.opTime}>
-                  {new Date(op.client_timestamp).toLocaleTimeString()}
-                </Text>
-
-                {op.error_message && (
-                  <View style={styles.opErrorBox}>
-                    <Text style={styles.opErrorText}>
-                      [{op.code ?? "ERROR"}] {op.error_message}
-                    </Text>
+              <View style={styles.previewMediaContent}>
+                {previewMedia && !isVideoMedia(previewMedia) && previewMedia.local_file_uri ? (
+                  <Image
+                    source={{ uri: previewMedia.local_file_uri }}
+                    style={styles.previewMediaImage}
+                    resizeMode="contain"
+                  />
+                ) : previewMedia && isVideoMedia(previewMedia) && previewMedia.local_file_uri ? (
+                  <InteractiveVideoPlayer
+                    src={previewMedia.local_file_uri}
+                    autoPlay
+                    style={styles.previewMediaImage}
+                  />
+                ) : (
+                  <View style={styles.previewMediaPlaceholder}>
+                    <Icon name="videocam" size={56} color="#FFFFFF" />
                   </View>
                 )}
               </View>
-            ))
-          )}
-        </View>
-      </ScrollView>
 
-      {/* Modal: Add Observation */}
-      <Modal visible={showObsModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Record Field Observation</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Describe observation on site..."
-              placeholderTextColor="#64748b"
-              value={obsText}
-              onChangeText={setObsText}
-              multiline
-              numberOfLines={4}
-            />
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalBtn, styles.btnCancel]}
-                onPress={() => setShowObsModal(false)}
-              >
-                <Text style={styles.modalBtnText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalBtn, styles.btnConfirm]}
-                onPress={handleRecordObservation}
-                disabled={!obsText.trim() || actionBusy}
-              >
-                <Text style={styles.modalBtnText}>Queue Observation</Text>
-              </Pressable>
+              {previewMedia?.caption || previewMedia?.created_at ? (
+                <View style={styles.previewMetaBar}>
+                  {previewMedia?.caption ? (
+                    <Text style={styles.previewCaptionText}>{previewMedia.caption}</Text>
+                  ) : null}
+                  {previewMedia?.created_at ? (
+                    <View style={styles.obsTimeRow}>
+                      <Icon name="time-outline" size={13} color="#FFFFFF" />
+                      <Text style={styles.obsTimeText}>
+                        {new Date(previewMedia.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <Modal visible={showFindingModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}><View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{editingFinding ? "Edit Finding Draft" : "New Finding Draft"}</Text>
-          <Text style={styles.modalSubtitle}>Saved offline first; authority review remains server-controlled.</Text>
-          <View style={styles.typeSelector}>{(["critical", "high", "medium", "low"] as FindingSeverity[]).map((severity) => <Pressable key={severity} style={[styles.typePill, findingSeverity === severity && styles.typePillActive]} onPress={() => setFindingSeverity(severity)}><Text style={[styles.typePillText, findingSeverity === severity && styles.typePillTextActive]}>{severity.toUpperCase()}</Text></Pressable>)}</View>
-          <TextInput style={styles.textInput} placeholder="Describe the condition observed..." placeholderTextColor="#64748b" value={findingDescription} onChangeText={setFindingDescription} multiline numberOfLines={4} />
-          <TextInput style={styles.textInputSmall} placeholder="Suggested remediation (optional)" placeholderTextColor="#64748b" value={findingRemediation} onChangeText={setFindingRemediation} />
-          <View style={styles.modalActions}><Pressable style={[styles.modalBtn, styles.btnCancel]} onPress={() => setShowFindingModal(false)}><Text style={styles.modalBtnText}>Cancel</Text></Pressable><Pressable style={[styles.modalBtn, styles.btnConfirm]} onPress={handleSaveFindingDraft} disabled={!findingDescription.trim() || actionBusy}><Text style={styles.modalBtnText}>Save Draft</Text></Pressable></View>
-        </View></View>
-      </Modal>
+        {/* ── MODAL: Official Submission Confirmation ── */}
+        <Modal
+          visible={showSubmitModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSubmitModal(false)}
+        >
+          <View
+            style={[
+              styles.modalOverlay,
+              { backgroundColor: isPureDark ? "rgba(0,0,0,0.85)" : "rgba(0, 36, 73, 0.65)" },
+            ]}
+          >
+            <View style={[styles.modalContent, { backgroundColor: bgSurface, borderColor }]}>
+              <Text style={[styles.modalTitle, { color: textPrimary }]}>
+                OFFICIAL FIELD SIGN-OFF
+              </Text>
+              <Text style={[styles.modalSubtitle, { color: textMuted }]}>
+                Netram Field Inspection Oversight Protocol
+              </Text>
 
-      {/* Modal: Capture Evidence */}
-      <Modal visible={showEvidenceModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Capture Evidence Offline</Text>
-            <Text style={styles.modalSubtitle}>
-              SHA-256 hash is computed at capture time and stored locally (§30).
-            </Text>
+              {/* Project / Facility Summary */}
+              <View style={[styles.declarationBox, { backgroundColor: bgSubtle, borderColor }]}>
+                <Text style={[styles.declarationTitle, { color: accentBlue }]}>
+                  FACILITY VERIFICATION
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: textPrimary }}>
+                  {inspection?.project_name || project?.name || "Facility Site"}
+                </Text>
+                <Text style={{ fontSize: 11, color: textMuted, marginTop: 2 }}>
+                  {[
+                    inspection?.project_code,
+                    inspection?.district_name && `${inspection.district_name} District`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "-"}
+                </Text>
+              </View>
 
-            <View style={styles.typeSelector}>
-              {(["photo", "video", "document"] as EvidenceType[]).map((t) => (
-                <Pressable
-                  key={t}
-                  style={[styles.typePill, evidenceType === t && styles.typePillActive]}
-                  onPress={() => setEvidenceType(t)}
+              {/* Metric Summary Grid */}
+              <View style={styles.submitSummaryGrid}>
+                <View
+                  style={[styles.submitSummaryCell, { backgroundColor: bgSubtle, borderColor }]}
                 >
-                  <Text
-                    style={[styles.typePillText, evidenceType === t && styles.typePillTextActive]}
-                  >
-                    {t.toUpperCase()}
+                  <Text style={[styles.submitSummaryLabel, { color: textMuted }]}>Field Notes</Text>
+                  <Text style={[styles.submitSummaryValue, { color: textPrimary }]}>
+                    {observations.length}
                   </Text>
-                </Pressable>
-              ))}
-            </View>
+                </View>
+                <View
+                  style={[styles.submitSummaryCell, { backgroundColor: bgSubtle, borderColor }]}
+                >
+                  <Text style={[styles.submitSummaryLabel, { color: textMuted }]}>
+                    Media Evidence
+                  </Text>
+                  <Text style={[styles.submitSummaryValue, { color: textPrimary }]}>
+                    {evidenceList.length}
+                  </Text>
+                </View>
+              </View>
 
-            <TextInput
-              style={styles.textInputSmall}
-              placeholder="File name (e.g. kitchen-storage.jpg)"
-              placeholderTextColor="#64748b"
-              value={evidenceName}
-              onChangeText={setEvidenceName}
-            />
+              {/* Formal Statutory Declaration */}
+              <View
+                style={[
+                  styles.declarationBox,
+                  {
+                    backgroundColor: isPureDark ? "#112211" : "#F0FDF4",
+                    borderColor: theme.actionGreen,
+                  },
+                ]}
+              >
+                <Text style={[styles.declarationTitle, { color: theme.actionGreen }]}>
+                  STATUTORY DECLARATION
+                </Text>
+                <Text style={[styles.declarationText, { color: textPrimary }]}>
+                  "I hereby solemnly declare that this inspection was conducted in person within the
+                  designated geofence boundary, and the field notes and media evidence recorded
+                  herein represent an accurate on-site verification."
+                </Text>
+              </View>
 
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalBtn, styles.btnCancel]}
-                onPress={() => setShowEvidenceModal(false)}
-              >
-                <Text style={styles.modalBtnText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalBtn, styles.btnConfirm]}
-                onPress={handleCaptureEvidence}
-                disabled={actionBusy}
-              >
-                <Text style={styles.modalBtnText}>Capture & Hash</Text>
-              </Pressable>
+              <View style={styles.modalBtnRow}>
+                <NetramButton
+                  label="Cancel"
+                  variant="secondary"
+                  onPress={() => setShowSubmitModal(false)}
+                  style={styles.modalActionBtn}
+                />
+                <NetramButton
+                  label="Sign & Submit"
+                  variant="primary"
+                  loading={actionBusy}
+                  disabled={actionBusy}
+                  onPress={handleConfirmSubmit}
+                  style={[styles.modalActionBtn, { backgroundColor: theme.actionGreen }]}
+                />
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+
+        {/* ── MODAL: In-App Camera & Video Recorder (No External Apps) ── */}
+        <InAppCameraModal
+          visible={cameraModalVisible}
+          initialMode={cameraModalMode}
+          onClose={() => setCameraModalVisible(false)}
+          onSaveMedia={handleSaveMediaBatch}
+        />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#0f172a" },
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+  },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#0f172a",
   },
-  scrollContent: { padding: 16, gap: 16 },
-  backButton: { marginBottom: 4 },
-  backButtonText: { color: "#38bdf8", fontSize: 14, fontWeight: "600" },
-  headerCard: {
-    backgroundColor: "#1e293b",
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#334155",
-    gap: 6,
-  },
-  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  typeBadge: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
-  statusPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
-  statusText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
-  status_assigned: { backgroundColor: "#334155" },
-  status_in_progress: { backgroundColor: "#14532d" },
-  status_submitted: { backgroundColor: "#581c87" },
-  status_closed: { backgroundColor: "#022c22" },
-  projectName: { fontSize: 18, fontWeight: "bold", color: "#f8fafc" },
-  projectCode: { fontSize: 13, color: "#64748b", fontFamily: "monospace" },
-  actionsCard: {
-    backgroundColor: "#1e293b",
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#334155",
-    gap: 12,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#f8fafc" },
-  sectionSubtitle: { fontSize: 12, color: "#94a3b8" },
-  buttonGrid: { gap: 10 },
-  actionBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignItems: "center",
-  },
-  actionBtnText: { color: "#ffffff", fontWeight: "700", fontSize: 14 },
-  btnStart: { backgroundColor: "#16a34a" },
-  btnObs: { backgroundColor: "#0284c7" },
-  btnEv: { backgroundColor: "#7c3aed" },
-  btnFinding: { backgroundColor: "#0f766e" },
-  btnSubmit: { backgroundColor: "#d97706" },
-  queueCard: {
-    backgroundColor: "#1e293b",
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#334155",
-    gap: 12,
-  },
-  queueHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  badgeCount: {
-    backgroundColor: "#334155",
-    color: "#94a3b8",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    fontSize: 12,
-  },
-  emptyOps: { padding: 16, alignItems: "center" },
-  emptyOpsText: { color: "#64748b", fontSize: 13 },
-  opItem: {
-    backgroundColor: "#0f172a",
-    padding: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#334155",
-    gap: 4,
-  },
-  opHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  opType: { color: "#f1f5f9", fontWeight: "700", fontSize: 13 },
-  opStatusPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  opStatusAccepted: { backgroundColor: "#14532d" },
-  opStatusPending: { backgroundColor: "#713f12" },
-  opStatusConflict: { backgroundColor: "#78350f" },
-  opStatusRejected: { backgroundColor: "#7f1d1d" },
-  opStatusText: { color: "#ffffff", fontSize: 10, fontWeight: "700" },
-  opId: { color: "#64748b", fontSize: 11, fontFamily: "monospace" },
-  opTime: { color: "#94a3b8", fontSize: 11 },
-  opErrorBox: {
-    backgroundColor: "#450a0a",
-    padding: 6,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  opErrorText: { color: "#fca5a5", fontSize: 11 },
-  editHint: { color: "#7dd3fc", fontSize: 12, fontWeight: "600" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "#1e293b",
-    borderRadius: 8,
-    padding: 20,
-    width: "100%",
-    maxWidth: 400,
-    gap: 12,
-  },
-  modalTitle: { fontSize: 17, fontWeight: "bold", color: "#f8fafc" },
-  modalSubtitle: { fontSize: 12, color: "#94a3b8" },
-  typeSelector: { flexDirection: "row", gap: 8 },
-  typePill: {
-    flex: 1,
-    paddingVertical: 6,
-    alignItems: "center",
-    borderRadius: 6,
-    backgroundColor: "#334155",
-  },
-  typePillActive: { backgroundColor: "#3b82f6" },
-  typePillText: { color: "#94a3b8", fontSize: 11, fontWeight: "700" },
-  typePillTextActive: { color: "#ffffff" },
-  textInput: {
-    backgroundColor: "#0f172a",
-    borderColor: "#334155",
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 10,
-    color: "#f8fafc",
-    textAlignVertical: "top",
-    minHeight: 80,
-  },
-  textInputSmall: {
-    backgroundColor: "#0f172a",
-    borderColor: "#334155",
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 10,
-    color: "#f8fafc",
-  },
-  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 4 },
-  modalBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 6 },
-  btnCancel: { backgroundColor: "#334155" },
-  btnConfirm: { backgroundColor: "#2563eb" },
-  modalBtnText: { color: "#ffffff", fontWeight: "600", fontSize: 13 },
-  obsText: { color: "#f8fafc", fontSize: 13, lineHeight: 18 },
-  obsFooter: {
+  navRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 4,
+    marginBottom: 6,
   },
-  localTag: {
-    color: "#38bdf8",
+  backBtn: {
+    padding: 6,
+    borderRadius: 8,
+  },
+
+  // Video-call-style top bar
+  inspTopBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  inspTitleGroup: {
+    flex: 1,
+    marginHorizontal: 10,
+    gap: 1,
+  },
+  inspTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  inspSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+
+  // Underline tab bar (video-call style)
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  cleanSection: {
+    marginBottom: 22,
+  },
+  pageContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  cleanSectionHeadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sectionCountPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  sectionCountText: {
     fontSize: 10,
     fontWeight: "700",
-    backgroundColor: "#0369a1",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
   },
-  hashText: { color: "#94a3b8", fontSize: 11, fontFamily: "monospace" },
-  integrityTag: { color: "#10b981", fontSize: 11, fontWeight: "600" },
+  cleanSectionHeading: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 4,
+    paddingBottom: 2,
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  metaLabel: {
+    fontSize: 13,
+    flex: 1,
+  },
+  metaValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    flexShrink: 1,
+    textAlign: "right",
+  },
+  metaLinkValue: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  cleanFlagRow: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderLeftWidth: 3,
+    borderRadius: 4,
+    gap: 4,
+  },
+  flagTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  flagText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalContent: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    marginBottom: 16,
+  },
+  modalBtnRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+  },
+  modalActionBtn: {
+    flex: 1,
+  },
+
+  // ── In-progress banner styles ──────────────────────────────
+
+  // ── Tab bar styles ─────────────────────────────────────────
+
+  submitSummaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginVertical: 12,
+  },
+  submitSummaryCell: {
+    flex: 1,
+    minWidth: 90,
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  submitSummaryLabel: {
+    fontSize: 10,
+    fontFamily: typography.mono,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  submitSummaryValue: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  declarationBox: {
+    padding: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginVertical: 10,
+  },
+  declarationTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    fontFamily: typography.mono,
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  declarationText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: "italic",
+  },
+
+  // ── Preview Modal Styles ──────────────────────────────────
+  previewModalOverlay: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  previewLightbox: {
+    flex: 1,
+    gap: 16,
+  },
+  previewModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+  },
+  previewMediaContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewMediaImage: {
+    width: "100%",
+    height: "100%",
+  },
+  previewMediaPlaceholder: {
+    height: 180,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewMetaBar: {
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  previewCaptionText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+  actionBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  actionBarCapture: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  actionBarPrimary: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 52,
+    borderRadius: 26,
+  },
+  actionBarPrimaryText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  obsStrip: {
+    gap: 12,
+    paddingRight: 4,
+  },
+  obsTile: {
+    width: 210,
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  obsTileMedia: {
+    width: "100%",
+    height: 150,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  obsTileOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: "rgba(15, 23, 42, 0.55)",
+  },
+  obsTileCaption: {
+    fontSize: 12,
+    lineHeight: 17,
+    padding: 10,
+  },
+  obsImage: {
+    width: "100%",
+    height: "100%",
+  },
+  obsVideoPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  obsTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  obsTimeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  utilisationBlock: {
+    marginTop: 10,
+    gap: 6,
+  },
+  utilisationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  utilisationLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  utilisationValue: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  utilisationTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  utilisationFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  obsEmptyCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  obsEmptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 4,
+  },
 });

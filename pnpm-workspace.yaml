@@ -2,7 +2,7 @@ packages:
   - "apps/*"
   - "services/*"
   - "packages/*"
-  - "supabase/seed"
+  - "db/seed"
 
 # Lifecycle build scripts are approved per-package (supply-chain awareness).
 allowBuilds:
@@ -13,3 +13,54 @@ allowBuilds:
   msgpackr-extract: true
   unrs-resolver: true
   workerd: true
+  ffmpeg-static: true
+
+# Security overrides: force patched versions of transitive dependencies flagged
+# by Dependabot/pnpm audit. Keep this list minimal and review each override
+# before removing it (upstream may ship the fix, making the override obsolete).
+overrides:
+  # GHSA-gpj5-g38j-94v9: SQL injection via improperly escaped SQL identifiers (<0.45.2)
+  drizzle-orm: ^0.45.3
+  # GHSA-83w8-p2f5-377r / GHSA-8pvw-jcv7-9cmj: authorization bypass via
+  # non-canonical URL paths (pulled in by @fastify/swagger-ui)
+  "@fastify/static": ">=10.1.2"
+  # GHSA-6g55-p6wh-862q et al.: XSS/unescaped output fixes (next pins 8.4.31)
+  postcss: ^8.5.28
+  # GHSA-5p2g-fcmc-qvqq + ICNS advisory: JXL/HEIF/ICNS parser DoS.
+  # The only consumer is metro@0.81's Assets.js, which calls the module
+  # directly - that incompatibility with image-size 2.x is fixed by the
+  # metro patch in patchedDependencies below.
+  "image-size": ">=2.0.3"
+  # GHSA-67mh-4wv8-2f99: dev-server request forgery (fixed in 0.25.0).
+  # Transitive via drizzle-kit>@esbuild-kit/core-utils (esbuild ^0.18 pin);
+  # @esbuild-kit is deprecated and core-utils uses only the basic transform API.
+  esbuild: ">=0.25.0"
+  # GHSA-34x7-hfp2-rc4v et al.: hardlink path traversal / arbitrary file overwrite
+  # (critical/high across all 6.x; 40 audit paths via @expo/cli and cacache).
+  # tar 7 has no CJS default export, so @expo/cli's babel-compiled
+  # `_tar().default.extract` fallback would throw on Windows (its non-Windows
+  # path shells out to the system `tar` binary first). The @expo/cli patch in
+  # patchedDependencies below restores interop (`_tar().default ?? _tar()`).
+  # Verified working on Linux: `expo --version` and the native extraction
+  # path are unaffected.
+  tar: ^7.5.22
+  # GHSA-wh4c-j3r5-mjhp et al.: XML injection fixes (expo>@expo/plist pins 0.7.13)
+  "@xmldom/xmldom": ^0.8.15
+  # GHSA-w5hq-g745-h8pq: buffer bounds check in v3/v5/v6 with buf param (<11.1.1).#  uuid 11 keeps the CJS entry point and the v5 API; db/seed uses uuidv5 only.
+  uuid: ^11.1.1
+
+# NOT overridden (documented exceptions):
+#
+# stream-json (GHSA-528h-pc64-c93x) and decode-uri-component
+# (GHSA-vcc3-ghjq-m6fr): deliberately NOT overridden. The only vulnerable
+# consumer is minio>query-string/stream-json, used solely for MinIO bucket
+# event notifications, which Netram does not use. Upgrading stream-json to 3.x
+# breaks minio at runtime (minio requires 'stream-json/jsonl/Parser.js', but
+# 3.x ships lowercase 'parser.js' under ESM-only packaging), and forcing
+# decode-uri-component 0.5.x breaks query-string 7.x's direct CJS call. Both
+# overrides caused runtime breakage in verification, so these two moderate
+# findings are accepted: they are unreachable from Netram's code paths.
+
+patchedDependencies:
+  "@expo/cli@0.22.28": patches/@expo__cli@0.22.28.patch
+  metro@0.81.5: patches/metro@0.81.5.patch

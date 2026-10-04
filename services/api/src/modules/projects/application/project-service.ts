@@ -4,7 +4,15 @@ import type { AuthorizationService } from "../../authorization/application/autho
 import type { RequestUserContext } from "../../../infrastructure/request-context.js";
 import type { ProjectRepositoryPort } from "./ports/project-repository.js";
 import { evaluateTransition } from "../domain/project.js";
-import type { Page, Project, ProjectGeofence, ProjectListQuery, ProjectType } from "@netram/types";
+import type {
+  Page,
+  Project,
+  ProjectGeofence,
+  ProjectListQuery,
+  ProjectRegistryItem,
+  ProjectType,
+  UpdateProjectContactCommand,
+} from "@netram/types";
 
 export interface CreateProjectInput {
   name: string;
@@ -12,6 +20,14 @@ export interface CreateProjectInput {
   description?: string | null;
   organisationId?: string | null;
   districtId?: string | null;
+  /** Village-level location for village-type targets (docs/DoSJE.md §25). */
+  villageId?: string | null;
+  /** Scheme component this target is an instance of (docs/DoSJE.md §21). */
+  schemeComponentId?: string | null;
+  /** Facility contact details (person in charge + phone/email). */
+  contactName?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
   programmeIds?: string[];
 }
 
@@ -68,6 +84,15 @@ export class ProjectService {
     });
   }
 
+  /**
+   * Public facility registry for the citizen grievance portal (no authz):
+   * a minimal, jurisdiction-free reference of monitored facilities.
+   */
+  async listPublicRegistry(): Promise<ProjectRegistryItem[]> {
+    const page = await this.repository.list({ page: 1, pageSize: 1000 });
+    return page.items.map((p) => ({ id: p.id, code: p.code, name: p.name }));
+  }
+
   async getProject(ctx: RequestUserContext, id: string): Promise<Project> {
     this.authz.requirePermission(ctx, READ);
     const project = await this.repository.findById(id);
@@ -100,6 +125,11 @@ export class ProjectService {
       organisationId: input.organisationId ?? null,
       authorityId: this.authorityIdOrNull(ctx),
       districtId: input.districtId ?? null,
+      villageId: input.villageId ?? null,
+      schemeComponentId: input.schemeComponentId ?? null,
+      contactName: input.contactName ?? null,
+      contactPhone: input.contactPhone ?? null,
+      contactEmail: input.contactEmail ?? null,
       programmeIds: input.programmeIds ?? [],
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
@@ -138,6 +168,11 @@ export class ProjectService {
       description: input.description ?? project.description,
       organisationId: input.organisationId ?? project.organisationId,
       districtId: input.districtId ?? project.districtId,
+      villageId: input.villageId ?? project.villageId,
+      schemeComponentId: input.schemeComponentId ?? project.schemeComponentId,
+      contactName: input.contactName ?? project.contactName,
+      contactPhone: input.contactPhone ?? project.contactPhone,
+      contactEmail: input.contactEmail ?? project.contactEmail,
       programmeIds: input.programmeIds ?? project.programmeIds,
       actorUserId: ctx.userId,
       requestId: ctx.requestId ?? null,
@@ -146,6 +181,51 @@ export class ProjectService {
       auditMetadata: { name: input.name, code: project.code },
       eventType: "project.updated",
       eventPayload: { name: input.name, code: project.code },
+    });
+  }
+
+  /**
+   * Updates the facility's contact details (person in charge + contacts).
+   * Permitted for anyone who can edit the facility (project:create) within
+   * jurisdiction, regardless of lifecycle status - contact correction is a
+   * routine administrative task, not a workflow decision. Audited atomically.
+   */
+  async updateContact(
+    ctx: RequestUserContext,
+    projectId: string,
+    input: UpdateProjectContactCommand,
+  ): Promise<Project> {
+    const project = await this.repository.findById(projectId);
+    if (!project) throw AppError.notFound("Project not found.");
+    if (!this.authz.canAccessDistrict(ctx, project.districtId)) {
+      throw AppError.notFound("Project not found.");
+    }
+    this.authz.requirePermission(ctx, CREATE, {
+      districtId: project.districtId,
+    });
+
+    const changedFields = (["contactName", "contactPhone", "contactEmail"] as const).filter(
+      (f) => input[f] !== undefined && input[f] !== project[f],
+    );
+
+    return this.repository.updateContactWithAuditAndEvent({
+      projectId,
+      contactName: input.contactName,
+      contactPhone: input.contactPhone,
+      contactEmail: input.contactEmail,
+      actorUserId: ctx.userId,
+      requestId: ctx.requestId ?? null,
+      ipAddress: ctx.ipAddress ?? null,
+      auditAction: "project.contact_updated",
+      auditMetadata: {
+        code: project.code,
+        changedFields,
+      },
+      eventType: "project.contact_updated",
+      eventPayload: {
+        code: project.code,
+        changedFields,
+      },
     });
   }
 

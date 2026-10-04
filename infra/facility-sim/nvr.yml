@@ -1,0 +1,25 @@
+# Facility NVR stand-in (development rig).
+#
+# Simulates the on-site NVR/RTSP server that a real facility camera would
+# register itself with. Accepts RTSP publishers on :8554 inside the facility
+# network ONLY - it has no route into NETRAM infrastructure; netram-media
+# pulls from it across the compose network boundary (pilot topology).
+#
+# Everything except RTSP is disabled: this box is a dumb recording headend.
+
+paths:
+  # Accept any incoming RTSP publisher as a static path.
+  ~^.*$: {}
+
+rtsp: yes
+rtspAddress: :8554
+rtmp: no
+srt: no
+hls: no
+webrtc: no
+api: no
+playback: no
+metrics: no
+pprof: no
+
+logLevel: info

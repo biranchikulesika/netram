@@ -1,289 +1,318 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { loginAsInspector, loginOfflineDemo } from "../src/auth/session";
-import { colors, typography } from "../src/theme/colors";
+// The RN-core SafeAreaView is an iOS-only no-op; edge-to-edge Android (SDK 35)
+// draws content under the status bar unless insets come from this package.
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../src/auth/auth-context";
+import { Icon } from "../src/components/ui";
 
-const PRESET_INSPECTORS = [
-  { label: "Inspector 1", email: "inspector.one@dev.netram.in" },
-  { label: "Inspector 2", email: "inspector.two@dev.netram.in" },
-  { label: "Inspector 3", email: "inspector.three@dev.netram.in" },
-];
+/**
+ * Development quick-fill accounts. These are the dev/test seed users shared
+ * with the web app via the same API and local database - development-only
+ * credentials, not production secrets. The dev-login provider resolves the
+ * account by email; the password field is the shared dev placeholder kept for
+ * form completeness.
+ */
+const DEV_ACCOUNTS = [
+  {
+    email: "inspector@netram.dev",
+    password: "Inspector@netram2026",
+  },
+  {
+    email: "inspector.two@dev.netram.in",
+    password: "Inspector@netram2026",
+  },
+  {
+    email: "inspector.three@dev.netram.in",
+    password: "Inspector@netram2026",
+  },
+] as const;
+
+const DEFAULT_DEV_ACCOUNT = DEV_ACCOUNTS[0];
+
+/* Web login palette (does not follow the app's dark mode - the web has none). */
+const palette = {
+  canvas: "#ffffff",
+  surface: "#ffffff",
+  borderSubtle: "#edf0f5",
+  borderStrong: "#45556c",
+  textPrimary: "#0c2a52",
+  textMuted: "#45556c",
+  actionGreen: "#137e3a",
+  error: "#dc2626",
+  errorBg: "rgba(220, 38, 38, 0.08)",
+  pillBg: "#edf0f5",
+  pillActive: "rgba(12, 42, 82, 0.12)",
+  focusRing: "rgba(12, 42, 82, 0.18)",
+  buttonShadow: "rgba(19, 126, 58, 0.25)",
+};
+
+function FieldError({ message }: { message: string }) {
+  return (
+    <View style={styles.fieldError} accessibilityLiveRegion="polite">
+      <Icon name="alert-circle" size={14} color={palette.error} />
+      <Text style={styles.fieldErrorText}>{message}</Text>
+    </View>
+  );
+}
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState("inspector.one@dev.netram.in");
-  const [passcode, setPasscode] = useState("******");
-  const [apiUrl, setApiUrl] = useState("http://localhost:3001");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showForgotInfo, setShowForgotInfo] = useState(false);
-  const [showPin, setShowPin] = useState(false);
-  const [rememberId, setRememberId] = useState(true);
-  const [biometricBusy, setBiometricBusy] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { login } = useAuth();
 
-  const handleBiometricLogin = async () => {
-    setBiometricBusy(true);
-    setErrorMessage(null);
-    try {
-      // Simulate biometric sensor read & verification
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      loginOfflineDemo(email.trim() || "inspector.one@dev.netram.in");
-      router.replace("/");
-    } catch {
-      setErrorMessage("Biometric sensor verification failed. Please enter your PIN.");
-    } finally {
-      setBiometricBusy(false);
-    }
+  const [email, setEmail] = useState<string>(DEFAULT_DEV_ACCOUNT.email);
+  const [password, setPassword] = useState<string>(DEFAULT_DEV_ACCOUNT.password);
+  const [showPassword, setShowPassword] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const [showDevAccounts, setShowDevAccounts] = useState(false);
+  const [focusedField, setFocusedField] = useState<"email" | "password" | null>(null);
+
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
+  const clearError = () => {
+    setEmailError(null);
+    setPasswordError(null);
+    setServerError(null);
   };
 
-  const handleLogin = async (useOfflineFallback = false) => {
-    if (!email.trim()) {
-      setErrorMessage("Please enter an official inspector email.");
-      return;
+  function validate(): boolean {
+    let valid = true;
+    setEmailError(null);
+    setPasswordError(null);
+
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setEmailError("Email or username is required.");
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailError("Please enter a valid official email address.");
+      valid = false;
     }
+
+    if (!password) {
+      setPasswordError("Password is required.");
+      valid = false;
+    }
+
+    return valid;
+  }
+
+  const handleLogin = async () => {
+    if (!validate()) return;
 
     setBusy(true);
-    setErrorMessage(null);
-
-    if (useOfflineFallback) {
-      try {
-        loginOfflineDemo(email.trim());
-        router.replace("/");
-      } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : String(err));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-
+    setServerError(null);
     try {
-      await loginAsInspector(email.trim(), apiUrl.trim());
+      await login(email, password);
       router.replace("/");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMessage(`Live sign-in failed: ${msg}. You can tap "Sign In (Offline Mode)" if the backend is not running.`);
+    } catch (err: unknown) {
+      setServerError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
   };
 
+  function handleQuickFill(account: (typeof DEV_ACCOUNTS)[number]) {
+    setEmail(account.email);
+    setPassword(account.password);
+    clearError();
+    setShowDevAccounts(false);
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardContainer}
+        style={styles.flex}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.card}>
-            {/* Header / Emblem */}
-            <View style={styles.header}>
-              <Image
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                source={require("../assets/ashoka_stambh.png")}
-                style={styles.ashokaStambh}
-                resizeMode="contain"
-              />
-              <View style={styles.badgeRow}>
-                <Text style={styles.emblemBadge}>DOSJE • GOVT OF INDIA</Text>
-                <Text style={styles.securityBadge}>SECURE TERMINAL</Text>
-              </View>
-              <Text style={styles.title}>NETRAM</Text>
-              <Text style={styles.subtitle}>Field Inspection &amp; Evidence Terminal</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.formContainer}>
+            {/* ── Branding ── */}
+            <View style={styles.branding}>
+              <Text style={styles.brandTitle}>Netram</Text>
+              <Text style={styles.brandSubtitle}>
+                {"Smart real-time monitoring and inspection platform"}
+              </Text>
             </View>
 
-            {/* Presets Chips */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Select Inspector</Text>
-              <View style={styles.chipRow}>
-                {PRESET_INSPECTORS.map((preset) => {
-                  const isSelected = email === preset.email;
-                  return (
-                    <Pressable
-                      key={preset.email}
-                      style={[styles.chip, isSelected && styles.chipActive]}
-                      onPress={() => {
-                        setEmail(preset.email);
-                        setErrorMessage(null);
-                      }}
-                    >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                        {preset.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Form Fields */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Official Email / Inspector ID</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  setErrorMessage(null);
-                }}
-                placeholder="e.g. inspector.one@dev.netram.in"
-                placeholderTextColor={colors.textSubtle}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Passcode / PIN</Text>
-                <Pressable onPress={() => setShowForgotInfo((prev) => !prev)}>
-                  <Text style={styles.forgotLink}>Forgot PIN?</Text>
+            {/* ── Error Banner ── */}
+            {serverError && (
+              <View style={styles.alertBanner} accessibilityLiveRegion="assertive">
+                <Icon name="alert-circle" size={18} color={palette.error} />
+                <View style={styles.alertContent}>
+                  <Text style={styles.alertTitle}>Access Denied</Text>
+                  <Text style={styles.alertText}>{serverError}</Text>
+                </View>
+                <Pressable
+                  onPress={() => setServerError(null)}
+                  hitSlop={10}
+                  accessibilityLabel="Dismiss error message"
+                >
+                  <Text style={styles.alertClose}>×</Text>
                 </Pressable>
               </View>
-              <View style={styles.passwordContainer}>
+            )}
+
+            {/* ── Email or Username ── */}
+            <View style={styles.fieldGroup}>
+              <View
+                style={[
+                  styles.inputRow,
+                  emailError && styles.inputRowError,
+                  focusedField === "email" && styles.inputRowFocused,
+                ]}
+              >
+                <Icon name="mail-outline" size={16} color={palette.textMuted} />
                 <TextInput
-                  style={styles.passwordInput}
-                  value={passcode}
-                  onChangeText={setPasscode}
-                  placeholder="Enter field PIN"
-                  placeholderTextColor={colors.textSubtle}
-                  secureTextEntry={!showPin}
-                  keyboardType="numeric"
+                  ref={emailRef}
+                  style={styles.input}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    clearError();
+                  }}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
+                  placeholder="Enter your email"
+                  placeholderTextColor={palette.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  editable={!busy}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  accessibilityLabel="Official email"
+                />
+              </View>
+              {emailError && <FieldError message={emailError} />}
+            </View>
+
+            {/* ── Password ── */}
+            <View style={styles.fieldGroup}>
+              <View
+                style={[
+                  styles.inputRow,
+                  passwordError && styles.inputRowError,
+                  focusedField === "password" && styles.inputRowFocused,
+                ]}
+              >
+                <Icon name="lock-closed" size={16} color={palette.textMuted} />
+                <TextInput
+                  ref={passwordRef}
+                  style={styles.input}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    clearError();
+                  }}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
+                  placeholder="Enter your password"
+                  placeholderTextColor={palette.textMuted}
+                  secureTextEntry={!showPassword}
+                  editable={!busy}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  accessibilityLabel="Password"
                 />
                 <Pressable
-                  style={styles.eyeButton}
-                  onPress={() => setShowPin((prev) => !prev)}
+                  onPress={() => setShowPassword((prev) => !prev)}
                   hitSlop={10}
-                  accessibilityLabel={showPin ? "Hide PIN" : "Show PIN"}
+                  style={styles.eyeButton}
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                 >
-                  <View style={styles.eyeContainer}>
-                    <Text style={styles.eyeIcon}>👁️</Text>
-                    {!showPin && <View style={styles.eyeSlash} />}
-                  </View>
+                  <Icon
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={18}
+                    color={palette.textMuted}
+                  />
                 </Pressable>
               </View>
+              {passwordError && <FieldError message={passwordError} />}
             </View>
 
-            {/* Remember ID Checkbox */}
+            {/* ── Submit ── */}
             <Pressable
-              style={styles.checkboxRow}
-              onPress={() => setRememberId((prev) => !prev)}
+              style={({ pressed }) => [
+                styles.submitButton,
+                pressed && !busy && styles.submitButtonPressed,
+                busy && styles.submitButtonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={busy}
+              accessibilityRole="button"
             >
-              <View style={[styles.checkbox, rememberId && styles.checkboxChecked]}>
-                {rememberId && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <Text style={styles.checkboxLabel}>Remember Inspector ID on this terminal</Text>
+              {busy ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.submitButtonText}>Authenticating…</Text>
+                </>
+              ) : (
+                <Text style={styles.submitButtonText}>Sign In</Text>
+              )}
             </Pressable>
 
-            {showForgotInfo && (
-              <View style={styles.infoBox}>
-                <View style={styles.infoBoxHeader}>
-                  <Text style={styles.infoBoxTitle}>🔐 PIN Reset Assistance</Text>
-                  <Pressable onPress={() => setShowForgotInfo(false)}>
-                    <Text style={styles.infoBoxClose}>✕</Text>
-                  </Pressable>
-                </View>
-                <Text style={styles.infoBoxText}>
-                  For institutional security, field terminal PINs are authenticated by your District Officer. Contact your district IT coordinator at{" "}
-                  <Text style={{ fontWeight: "700" }}>admin.social@dev.netram.in</Text> to re-issue credentials.
-                </Text>
-              </View>
-            )}
-
-            {/* Advanced API Config Toggle */}
-            <Pressable
-              onPress={() => setShowAdvanced((prev) => !prev)}
-              style={styles.advancedToggle}
-            >
-              <Text style={styles.advancedToggleText}>
-                {showAdvanced ? "▾ Hide Server URL" : "▸ Advanced Server Settings"}
-              </Text>
-            </Pressable>
-
-            {showAdvanced && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Backend API Endpoint</Text>
-                <TextInput
-                  style={styles.input}
-                  value={apiUrl}
-                  onChangeText={setApiUrl}
-                  placeholder="http://localhost:3001"
-                  placeholderTextColor={colors.textSubtle}
-                  autoCapitalize="none"
+            {/* ── Development Quick-Fill Helper ── */}
+            <View style={styles.devSection}>
+              <Pressable
+                style={styles.devToggle}
+                onPress={() => setShowDevAccounts((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showDevAccounts }}
+              >
+                <Text style={styles.devToggleText}>Test accounts</Text>
+                <Icon
+                  name="chevron-down"
+                  size={14}
+                  color={palette.textMuted}
+                  style={[styles.devChevron, showDevAccounts && styles.devChevronOpen]}
                 />
-              </View>
-            )}
-
-            {/* Error Display */}
-            {errorMessage && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
-              </View>
-            )}
-
-            {/* Actions */}
-            <View style={styles.actionContainer}>
-              <Pressable
-                style={[styles.primaryButton, busy && styles.buttonDisabled]}
-                onPress={() => handleLogin(false)}
-                disabled={busy || biometricBusy}
-              >
-                {busy ? (
-                  <ActivityIndicator color={colors.textInverse} size="small" />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Sign In to Terminal</Text>
-                )}
               </Pressable>
 
-              <Pressable
-                style={[styles.biometricButton, (busy || biometricBusy) && styles.buttonDisabled]}
-                onPress={handleBiometricLogin}
-                disabled={busy || biometricBusy}
-              >
-                {biometricBusy ? (
-                  <ActivityIndicator color={colors.accentBlue} size="small" />
-                ) : (
-                  <Text style={styles.biometricButtonText}>👆 Biometric Quick-Login (Fingerprint)</Text>
-                )}
-              </Pressable>
-
-              <Pressable
-                style={[styles.secondaryButton, busy && styles.buttonDisabled]}
-                onPress={() => handleLogin(true)}
-                disabled={busy || biometricBusy}
-              >
-                <Text style={styles.secondaryButtonText}>⚡ Continue in Offline Mode</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.registerLink}
-                onPress={() => router.push("/signup")}
-              >
-                <Text style={styles.registerLinkText}>
-                  New Field Inspector? <Text style={styles.registerLinkBold}>Register Terminal</Text>
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Security Notice */}
-            <View style={styles.footerNotice}>
-              <Text style={styles.footerNoticeText}>
-                🛡️ Tamper-evident logging, GPS geo-stamping, and offline SHA-256 evidence hashing enabled.
-              </Text>
+              {showDevAccounts && (
+                <View style={styles.devAccountsList}>
+                  {DEV_ACCOUNTS.map((account) => {
+                    const active = account.email === email.trim();
+                    return (
+                      <Pressable
+                        key={account.email}
+                        style={[styles.devAccountButton, active && styles.devAccountActive]}
+                        onPress={() => handleQuickFill(account)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                      >
+                        <Text
+                          style={[styles.devAccountRole, active && styles.devAccountRoleActive]}
+                        >
+                          {account.email}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -295,350 +324,184 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.bgCanvas,
+    backgroundColor: palette.canvas,
   },
-  keyboardContainer: {
+  flex: {
     flex: 1,
+    backgroundColor: palette.canvas,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
   },
-  card: {
+  formContainer: {
     width: "100%",
     maxWidth: 440,
-    backgroundColor: colors.bgSurface,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: colors.navyBrand,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    alignSelf: "center",
   },
-  header: {
+  branding: {
     alignItems: "center",
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
+    marginBottom: 24,
   },
-  ashokaStambh: {
-    width: 48,
-    height: 72,
-    tintColor: colors.gold,
-    marginBottom: 10,
+  brandTitle: {
+    fontSize: 25,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    color: palette.textPrimary,
+    marginBottom: 4,
+    lineHeight: 30,
   },
-  badgeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 10,
-  },
-  emblemBadge: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.goldDark,
-    backgroundColor: "#fef3c7",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#fde68a",
-    fontFamily: typography.mono,
-    letterSpacing: 0.5,
-  },
-  securityBadge: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.actionGreen,
-    backgroundColor: "#dcfce7",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#bbf7d0",
-    fontFamily: typography.mono,
-    letterSpacing: 0.5,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "900",
-    color: colors.textPrimary,
-    letterSpacing: 2,
-  },
-  subtitle: {
+  brandSubtitle: {
     fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 4,
+    color: palette.textMuted,
+    fontWeight: "500",
     textAlign: "center",
+    lineHeight: 18,
   },
-  section: {
+  alertBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: palette.errorBg,
+    borderWidth: 1,
+    borderColor: palette.errorBg,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  alertContent: {
+    flex: 1,
+  },
+  alertTitle: {
+    fontWeight: "700",
+    fontSize: 13,
+    color: palette.error,
+    marginBottom: 2,
+  },
+  alertText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: palette.error,
+  },
+  alertClose: {
+    fontSize: 18,
+    lineHeight: 20,
+    color: palette.error,
+  },
+  fieldGroup: {
     marginBottom: 18,
   },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.accentBlue,
-    marginBottom: 8,
-    textTransform: "uppercase",
-    fontFamily: typography.mono,
-    letterSpacing: 0.8,
-  },
-  chipRow: {
+  inputRow: {
     flexDirection: "row",
-    gap: 8,
-  },
-  chip: {
-    flex: 1,
-    backgroundColor: colors.bgSubtle,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 8,
     alignItems: "center",
+    gap: 10,
+    backgroundColor: palette.surface,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  chipActive: {
-    backgroundColor: colors.navyBrand,
-    borderColor: colors.accentBlue,
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.textMuted,
-  },
-  chipTextActive: {
-    color: colors.textInverse,
-  },
-  formGroup: {
-    marginBottom: 14,
-  },
-  labelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  forgotLink: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.accentBlue,
-  },
-  infoBox: {
-    backgroundColor: colors.bgSubtle,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: palette.borderStrong,
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
+    paddingHorizontal: 14,
+    minHeight: 48,
   },
-  infoBoxHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
+  inputRowFocused: {
+    borderColor: palette.textPrimary,
+    boxShadow: `0 0 0 3px ${palette.focusRing}`,
   },
-  infoBoxTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  infoBoxClose: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.textSubtle,
-    padding: 2,
-  },
-  infoBoxText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    lineHeight: 16,
+  inputRowError: {
+    borderColor: palette.error,
   },
   input: {
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
-  advancedToggle: {
-    marginVertical: 6,
-  },
-  advancedToggleText: {
-    fontSize: 12,
-    color: colors.accentBlue,
-    fontWeight: "600",
-  },
-  errorBox: {
-    backgroundColor: colors.errorBg,
-    borderColor: colors.errorBorder,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 14,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  actionContainer: {
-    gap: 10,
-    marginTop: 8,
-  },
-  primaryButton: {
-    backgroundColor: colors.actionGreen,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    shadowColor: colors.actionGreenDark,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  primaryButtonText: {
-    color: colors.textInverse,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    backgroundColor: colors.bgSubtle,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  secondaryButtonText: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  registerLink: {
-    alignItems: "center",
-    paddingVertical: 8,
-    marginTop: 2,
-  },
-  registerLinkText: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  registerLinkBold: {
-    color: colors.accentBlue,
-    fontWeight: "700",
-  },
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.bgSurface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 8,
-  },
-  passwordInput: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
-  eyeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  eyeContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  eyeIcon: {
     fontSize: 16,
+    color: palette.textPrimary,
+    paddingVertical: 11,
   },
-  eyeSlash: {
-    position: "absolute",
-    width: 20,
-    height: 2,
-    backgroundColor: colors.textSubtle,
-    borderRadius: 1,
-    transform: [{ rotate: "-45deg" }],
-  },
-  checkboxRow: {
+  fieldError: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 14,
-    marginTop: 2,
+    gap: 5,
+    marginTop: 4,
   },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: colors.borderStrong,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.bgSurface,
-  },
-  checkboxChecked: {
-    backgroundColor: colors.actionGreen,
-    borderColor: colors.actionGreen,
-  },
-  checkmark: {
-    color: colors.textInverse,
+  fieldErrorText: {
     fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 14,
-  },
-  checkboxLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
+    color: palette.error,
     fontWeight: "500",
   },
-  biometricButton: {
-    backgroundColor: "#eff6ff",
-    paddingVertical: 11,
-    borderRadius: 8,
+  eyeButton: {
+    padding: 4,
+  },
+  submitButton: {
+    flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: palette.actionGreen,
+    borderRadius: 8,
+    minHeight: 48,
+    marginTop: 6,
+    boxShadow: "0 1px 3px rgba(19,126,58,0.25)",
+    elevation: 1,
   },
-  biometricButtonText: {
-    color: colors.accentBlue,
-    fontSize: 13,
-    fontWeight: "700",
+  submitButtonPressed: {
+    opacity: 0.9,
   },
-  footerNotice: {
-    marginTop: 20,
-    paddingTop: 12,
+  submitButtonDisabled: {
+    opacity: 0.65,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  devSection: {
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
+    borderTopColor: palette.textMuted,
+    borderStyle: "dashed",
   },
-  footerNoticeText: {
+  devToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    alignSelf: "center",
+  },
+  devToggleText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: palette.textMuted,
+  },
+  devChevron: {},
+  devChevronOpen: {
+    transform: [{ rotate: "180deg" }],
+  },
+  devAccountsList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 5,
+    marginTop: 9,
+  },
+  devAccountButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: palette.pillBg,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  devAccountActive: {
+    backgroundColor: palette.pillActive,
+  },
+  devAccountRole: {
     fontSize: 11,
-    color: colors.textSubtle,
-    textAlign: "center",
-    lineHeight: 15,
-    fontFamily: typography.mono,
+    fontWeight: "600",
+    color: palette.textMuted,
+  },
+  devAccountRoleActive: {
+    color: palette.textPrimary,
   },
 });
-

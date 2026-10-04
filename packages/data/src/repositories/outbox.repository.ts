@@ -85,7 +85,7 @@ export class OutboxRepository {
     return rows.map((r) => toOutboxRecord(r as unknown as OutboxRow));
   }
 
-  /** Returns the durable event history for a resource, newest first — used by `/inspections/:id/events`. */
+  /** Returns the durable event history for a resource, newest first - used by `/inspections/:id/events`. */
   async listByResource(
     resourceType: string,
     resourceId: string,
