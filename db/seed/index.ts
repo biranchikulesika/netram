@@ -857,15 +857,6 @@ export async function seedDatabase(databaseUrl = process.env.DATABASE_URL): Prom
         jurisdictionId: did("jurisdiction:khordha"),
         scope: "jurisdiction",
       },
-      {
-        // Social audit resource persons operate state-wide (docs/DoSJE.md §10);
-        // inspector-1 doubles as the SAU resource person for Odisha-wide audits.
-        id: did("ra:inspector-1-state"),
-        userId: did("user:inspector-1"),
-        roleCode: "inspector",
-        jurisdictionId: did("jurisdiction:odisha"),
-        scope: "jurisdiction",
-      },
     ])
     .onConflictDoNothing();
 
