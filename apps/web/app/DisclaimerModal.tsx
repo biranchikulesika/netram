@@ -9,8 +9,9 @@ export default function DisclaimerModal() {
 
   useEffect(() => {
     // Authority workspaces are behind authentication; the public demonstration
-    // disclosure belongs to the public-facing pages only.
-    if (pathname?.startsWith("/dashboard")) return;
+    // disclosure belongs to the public-facing pages only. The demo-video route
+    // opens its own modal, so two dialogs must not stack.
+    if (pathname?.startsWith("/dashboard") || pathname === "/demo-video") return;
     if (!sessionStorage.getItem("netram-disclaimer-seen")) {
       setVisible(true);
     }
